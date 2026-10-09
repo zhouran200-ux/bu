@@ -100,9 +100,23 @@ jobs:
           LUCENT_KEYSTORE_FILE: ${{ steps.resolve-key.outputs.store }}
           LUCENT_KEY_ALIAS: ${{ steps.resolve-key.outputs.alias }}
         run: |
+          set +e
           ./gradlew assembleRelease --no-daemon --stacktrace \
             -PversionCode=${{ steps.resolve-version.outputs.version_code }} \
-            -PversionName='${{ steps.resolve-version.outputs.version }}'
+            -PversionName='${{ steps.resolve-version.outputs.version }}' 2>&1 | tee "$RUNNER_TEMP/gradle-release.log"
+          status=${PIPESTATUS[0]}
+          if [ "$status" != "0" ]; then
+            WHY=$(awk '/\* What went wrong/{f=1} f{print} /^\* Try/{exit}' "$RUNNER_TEMP/gradle-release.log" | head -n 30)
+            if [ -z "$WHY" ]; then
+              WHY=$(grep -E "^e: |error:|FAILED" "$RUNNER_TEMP/gradle-release.log" | head -n 30)
+            fi
+            if [ -z "$WHY" ]; then
+              WHY=$(tail -n 40 "$RUNNER_TEMP/gradle-release.log")
+            fi
+            ONE=$(printf '%s' "$WHY" | sed 's/::/--/g' | tr -d '\r' | sed ':a;N;$!ba;s/\n/%0A/g')
+            echo "::error::assembleRelease 失败（退出码 $status）：%0A$ONE"
+            exit "$status"
+          fi
 
       - name: Verify APK
         run: |

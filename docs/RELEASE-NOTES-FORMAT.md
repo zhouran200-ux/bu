@@ -102,4 +102,4 @@ Lucent 3.0.0 把助手从一位彬彬有礼的聊天对象，变成了一间工�
 - Android APK: 58.73 MiB
 - Windows installer: 165.37 MiB
 - Built from commit `ba4dfd072069b4f7d95978063c327da79dead64e`
-- Build log: https://github.com/Yuan0-o/Lucent/actions/runs/36127855604
+- Build log: https://github.com/zhouran200-ux/bu/actions/runs/36127855604

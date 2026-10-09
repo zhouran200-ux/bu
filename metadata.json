@@ -1,0 +1,6 @@
+{
+  "name": "Lucent",
+  "description": "Lucent - 个人 AI 笔记助手",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

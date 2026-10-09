@@ -1,0 +1,13 @@
+build/
+.gradle/
+.kotlin/
+local.properties
+*.iml
+.idea/
+__pycache__/
+
+*.keystore
+*.jks
+keystore-base64.txt
+
+RELEASE_NOTES*.md

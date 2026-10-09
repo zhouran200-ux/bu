@@ -1,0 +1,147 @@
+plugins {
+    id("com.android.application")
+    id("org.jetbrains.kotlin.plugin.compose")
+    id("com.google.devtools.ksp")
+}
+
+val MARKETING_VERSION = "3.1.2"
+
+val ciVersionCode = (project.findProperty("versionCode") as String?)?.toIntOrNull()
+    ?: MARKETING_VERSION.replace(".", "").toIntOrNull()
+    ?: 1
+
+val ciVersionName = (project.findProperty("versionName") as String?)
+    ?.trim()
+    ?.takeIf { it.isNotEmpty() }
+    ?: MARKETING_VERSION
+
+android {
+    namespace = "com.lucent.app"
+    compileSdk = 36
+
+    defaultConfig {
+        applicationId = "com.jiaying.yuan.lucentapp"
+        minSdk = 28
+        targetSdk = 36
+        versionCode = ciVersionCode
+        versionName = ciVersionName
+    }
+
+    androidResources {
+        localeFilters += listOf("zh")
+    }
+
+    sourceSets {
+        getByName("androidTest") {
+            assets.directories += "$projectDir/schemas"
+        }
+    }
+
+    signingConfigs {
+        create("debugConfig") {
+            storeFile = file("${rootDir}/debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+        val releaseStorePath = System.getenv("LUCENT_KEYSTORE_FILE")
+        if (releaseStorePath != null) {
+            create("release") {
+                storeFile = file(releaseStorePath)
+                storePassword = System.getenv("LUCENT_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("LUCENT_KEY_ALIAS") ?: "lucent"
+                keyPassword = System.getenv("LUCENT_KEYSTORE_PASSWORD")
+            }
+        }
+    }
+
+    buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("debugConfig")
+        }
+        release {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+            signingConfig = signingConfigs.findByName("release")
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
+
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+    }
+
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+        }
+    }
+
+    lint {
+        abortOnError = false
+        baseline = file("lint-baseline.xml")
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+    }
+}
+
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
+dependencies {
+    implementation(platform(libs.compose.bom))
+    implementation(libs.androidx.ui)
+    implementation(libs.androidx.ui.tooling.preview)
+    implementation(libs.androidx.material3)
+    implementation(libs.androidx.material.icons.extended)
+    implementation(libs.activity.compose)
+    implementation(libs.core.ktx)
+
+    debugImplementation(libs.androidx.ui.tooling)
+
+    implementation(libs.kotlinx.coroutines.android)
+
+    implementation(libs.room.runtime)
+    ksp(libs.room.compiler)
+
+    implementation(libs.sqlcipher.android)
+    implementation(libs.sqlite.ktx)
+
+    implementation(libs.datastore.preferences)
+
+    implementation(libs.okhttp)
+
+    implementation(libs.haze)
+    implementation(libs.haze.materials)
+
+    testImplementation("org.jetbrains.kotlin:kotlin-test-junit")
+    testImplementation(libs.org.json)
+
+    androidTestImplementation(libs.room.testing)
+    androidTestImplementation(libs.androidx.test.core)
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.androidx.test.ext.junit)
+
+    implementation(libs.androidx.profileinstaller)
+
+    implementation("org.apache.commons:commons-compress:1.27.1")
+    implementation("org.tukaani:xz:1.10")
+}

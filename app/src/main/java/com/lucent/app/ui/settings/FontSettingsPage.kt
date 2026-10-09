@@ -1,0 +1,655 @@
+package com.lucent.app.ui.settings
+
+import android.net.Uri
+import android.provider.OpenableColumns
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.lucent.app.data.FontStore
+import com.lucent.app.data.SettingsCache
+import com.lucent.app.data.SettingsRepository
+import com.lucent.app.i18n.S
+import com.lucent.app.ui.BackHeader
+import com.lucent.app.ui.LocalOnGradient
+import com.lucent.app.ui.LocalOnGradientMuted
+import com.lucent.app.ui.LucentFontResolver
+import com.lucent.app.ui.SYSTEM_FONT_KEY
+import com.lucent.app.ui.SettingsRoute
+import com.lucent.app.ui.frostedGlass
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun FontSettingsPage(
+    repo: SettingsRepository,
+    onRoute: (SettingsRoute) -> Unit
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val onGradient = LocalOnGradient.current
+    val onGradientMuted = LocalOnGradientMuted.current
+
+    val fontKey by repo.font.collectAsState(initial = SettingsCache.font)
+    val savedFontScale by repo.fontScale.collectAsState(initial = SettingsCache.fontScale)
+    val savedLineSpacing by repo.lineSpacing.collectAsState(initial = SettingsCache.lineSpacing)
+    val savedLetterSpacing by repo.letterSpacing.collectAsState(initial = SettingsCache.letterSpacing)
+
+    var activeFontScale by remember(savedFontScale) { mutableFloatStateOf(savedFontScale) }
+    var activeLineSpacing by remember(savedLineSpacing) { mutableFloatStateOf(savedLineSpacing) }
+    var activeLetterSpacing by remember(savedLetterSpacing) { mutableFloatStateOf(savedLetterSpacing) }
+
+    var fontRefreshIndex by remember { mutableStateOf(0) }
+    val importedFonts = remember(fontRefreshIndex) { FontStore.index(context).slots }
+    val canImportMore = importedFonts.size < FontStore.MAX_FONTS
+
+    var fontImporting by remember { mutableStateOf(false) }
+    var fontError by remember { mutableStateOf("") }
+    var pendingImportUri by remember { mutableStateOf<Uri?>(null) }
+    var importFontNameDraft by remember { mutableStateOf("") }
+    var fontPendingDelete by remember { mutableStateOf<FontStore.FontSlot?>(null) }
+
+    val documentPickerLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        if (uri != null && !fontImporting) {
+            fontError = ""
+            val displayName = try {
+                context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
+                    if (c.moveToFirst()) c.getString(0) else null
+                }
+            } catch (_: Throwable) { null }
+
+            importFontNameDraft = (displayName ?: "").substringBeforeLast('.').take(60)
+            pendingImportUri = uri
+        }
+    }
+
+    fun startImportFont(uri: Uri, name: String) {
+        if (fontImporting) return
+        fontImporting = true
+        fontError = ""
+        scope.launch {
+            try {
+                val slot = withContext(Dispatchers.IO) {
+                    FontStore.import(context, uri, name)
+                }
+                fontRefreshIndex++
+                repo.setFont(slot.id)
+                Toast.makeText(context, S.fontImportedToast, Toast.LENGTH_SHORT).show()
+            } catch (e: FontStore.NotFontException) {
+                fontError = S.fontImportFailedNotFont
+            } catch (e: FontStore.TooManyFontsException) {
+                fontError = S.fontImportFailedTooMany(FontStore.MAX_FONTS)
+            } catch (t: Throwable) {
+                fontError = S.fontImportFailedGeneric(t.localizedMessage ?: "Error")
+            } finally {
+                fontImporting = false
+                pendingImportUri = null
+            }
+        }
+    }
+
+    BackHeader(onBack = { onRoute(SettingsRoute.Appearance) })
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .frostedGlass()
+            .padding(16.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(6.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = S.typographyPreviewTitle,
+                    color = onGradientMuted,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = onGradient.copy(alpha = 0.08f),
+                border = BorderStroke(1.dp, onGradient.copy(alpha = 0.16f)),
+                modifier = Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable {
+                        scope.launch {
+                            repo.resetTypographyDefaults()
+                            activeFontScale = 1.0f
+                            activeLineSpacing = 1.2f
+                            activeLetterSpacing = 0.0f
+                            Toast.makeText(context, S.resetTypographyDefaults, Toast.LENGTH_SHORT).show()
+                        }
+                    }
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = null,
+                        tint = onGradient,
+                        modifier = Modifier.size(12.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = S.resetTypographyDefaults,
+                        color = onGradient,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        val previewFamily = remember(fontKey) { LucentFontResolver.resolve(context, fontKey) }
+        val previewFontSize = (14.sp.value * activeFontScale).sp
+        val previewLineHeight = (previewFontSize.value * 1.35f * activeLineSpacing).sp
+        val previewLetterSpacing = activeLetterSpacing.sp
+
+        Text(
+            text = S.typographyPreviewSample,
+            style = MaterialTheme.typography.bodyMedium.copy(
+                fontFamily = previewFamily,
+                fontSize = previewFontSize,
+                lineHeight = previewLineHeight,
+                letterSpacing = previewLetterSpacing
+            ),
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            color = onGradient
+        )
+    }
+
+    Spacer(modifier = Modifier.height(12.dp))
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .frostedGlass()
+            .padding(16.dp)
+    ) {
+        StandardSliderRow(
+            title = S.fontSizeScaleTitle,
+            valueLabel = "${(activeFontScale * 100).toInt()}%",
+            value = activeFontScale,
+            valueRange = 0.85f..1.30f,
+            onValueChange = { activeFontScale = it },
+            onValueChangeFinished = { scope.launch { repo.setFontScale(activeFontScale) } },
+            onGradient = onGradient
+        )
+
+        HorizontalDivider(
+            modifier = Modifier.padding(vertical = 10.dp),
+            color = onGradient.copy(alpha = 0.08f)
+        )
+
+        StandardSliderRow(
+            title = S.lineSpacingTitle,
+            valueLabel = String.format("%.2fx", activeLineSpacing),
+            value = activeLineSpacing,
+            valueRange = 1.0f..1.8f,
+            onValueChange = { activeLineSpacing = it },
+            onValueChangeFinished = { scope.launch { repo.setLineSpacing(activeLineSpacing) } },
+            onGradient = onGradient
+        )
+
+        HorizontalDivider(
+            modifier = Modifier.padding(vertical = 10.dp),
+            color = onGradient.copy(alpha = 0.08f)
+        )
+
+        StandardSliderRow(
+            title = S.letterSpacingTitle,
+            valueLabel = String.format("%+.1fsp", activeLetterSpacing),
+            value = activeLetterSpacing,
+            valueRange = -0.5f..2.0f,
+            onValueChange = { activeLetterSpacing = it },
+            onValueChangeFinished = { scope.launch { repo.setLetterSpacing(activeLetterSpacing) } },
+            onGradient = onGradient
+        )
+    }
+
+    Spacer(modifier = Modifier.height(12.dp))
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .frostedGlass()
+            .padding(16.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = S.settingsFontTitle,
+                color = onGradient,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                text = S.settingsFontSub,
+                color = onGradientMuted,
+                fontSize = 12.sp
+            )
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        if (fontError.isNotBlank()) {
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f)),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp)
+            ) {
+                Text(
+                    text = fontError,
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                )
+            }
+        }
+
+        val isSystemSelected = fontKey.isBlank() || fontKey == SYSTEM_FONT_KEY
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(
+                    if (isSystemSelected) onGradient.copy(alpha = 0.08f) else Color.Transparent
+                )
+                .border(
+                    1.dp,
+                    if (isSystemSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.45f)
+                    else onGradient.copy(alpha = 0.12f),
+                    RoundedCornerShape(12.dp)
+                )
+                .clickable { scope.launch { repo.setFont(SYSTEM_FONT_KEY) } }
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(
+                        if (isSystemSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.22f)
+                        else onGradient.copy(alpha = 0.08f)
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Aa",
+                    color = if (isSystemSelected) MaterialTheme.colorScheme.primary else onGradient,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp
+                )
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Text(
+                text = S.fontSystemLabel,
+                color = onGradient,
+                fontSize = 15.sp,
+                fontWeight = if (isSystemSelected) FontWeight.SemiBold else FontWeight.Normal,
+                modifier = Modifier.weight(1f)
+            )
+
+            if (isSystemSelected) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+
+        importedFonts.forEach { slot ->
+            val isSelected = fontKey == slot.id
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(
+                        if (isSelected) onGradient.copy(alpha = 0.08f) else Color.Transparent
+                    )
+                    .border(
+                        1.dp,
+                        if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.45f)
+                        else onGradient.copy(alpha = 0.12f),
+                        RoundedCornerShape(12.dp)
+                    )
+                    .clickable { scope.launch { repo.setFont(slot.id) } }
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                val fontSlotFamily = remember(slot.id) { LucentFontResolver.resolve(context, slot.id) }
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(
+                            if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.22f)
+                            else onGradient.copy(alpha = 0.08f)
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Aa",
+                        color = if (isSelected) MaterialTheme.colorScheme.primary else onGradient,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = fontSlotFamily,
+                        fontSize = 14.sp
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Text(
+                    text = slot.name,
+                    color = onGradient,
+                    fontSize = 15.sp,
+                    fontFamily = fontSlotFamily,
+                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+
+                if (isSelected) {
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                }
+
+                IconButton(
+                    onClick = { fontPendingDelete = slot },
+                    modifier = Modifier.size(28.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = S.fontDeleteA11y,
+                        tint = onGradientMuted,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        Surface(
+            shape = RoundedCornerShape(12.dp),
+            color = onGradient.copy(alpha = 0.06f),
+            border = BorderStroke(1.dp, onGradient.copy(alpha = 0.16f)),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .clickable(enabled = canImportMore && !fontImporting) {
+                    documentPickerLauncher.launch(
+                        arrayOf(
+                            "font/*",
+                            "application/x-font-ttf",
+                            "application/x-font-opentype",
+                            "application/vnd.ms-opentype",
+                            "application/octet-stream"
+                        )
+                    )
+                }
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 11.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (fontImporting) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(15.dp),
+                        color = onGradient,
+                        strokeWidth = 2.dp
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(S.fontImporting, color = onGradient, fontSize = 13.sp)
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = null,
+                        tint = onGradient,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = if (canImportMore) S.fontImportButton else S.fontSlotsFullHint(FontStore.MAX_FONTS),
+                        color = onGradient,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+        }
+    }
+
+    pendingImportUri?.let { uri ->
+        AlertDialog(
+            onDismissRequest = { pendingImportUri = null },
+            shape = RoundedCornerShape(20.dp),
+            title = { Text(S.fontNameTitle) },
+            text = {
+                Column {
+                    Text(S.fontNameBody, style = MaterialTheme.typography.bodySmall)
+                    Spacer(modifier = Modifier.height(10.dp))
+                    OutlinedTextField(
+                        value = importFontNameDraft,
+                        onValueChange = { importFontNameDraft = it },
+                        label = { Text(S.fontNameField) },
+                        singleLine = true,
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val nameToUse = importFontNameDraft.ifBlank { "Custom Font" }
+                        startImportFont(uri, nameToUse)
+                    }
+                ) {
+                    Text("导入")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingImportUri = null }) {
+                    Text("取消")
+                }
+            }
+        )
+    }
+
+    fontPendingDelete?.let { slot ->
+        AlertDialog(
+            onDismissRequest = { fontPendingDelete = null },
+            shape = RoundedCornerShape(20.dp),
+            title = { Text(S.fontDeleteTitle) },
+            text = { Text(S.fontDeleteBody(slot.name)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val idToDelete = slot.id
+                        fontPendingDelete = null
+                        FontStore.delete(context, idToDelete)
+                        LucentFontResolver.evict(idToDelete)
+                        fontRefreshIndex++
+                        if (fontKey == idToDelete) {
+                            scope.launch { repo.setFont(SYSTEM_FONT_KEY) }
+                        }
+                    }
+                ) {
+                    Text("删除", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { fontPendingDelete = null }) {
+                    Text("取消")
+                }
+            }
+        )
+    }
+}
+
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun StandardSliderRow(
+    title: String,
+    valueLabel: String,
+    value: Float,
+    valueRange: ClosedFloatingPointRange<Float>,
+    onValueChange: (Float) -> Unit,
+    onValueChangeFinished: () -> Unit,
+    onGradient: Color
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = title,
+                color = onGradient,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium
+            )
+
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(onGradient.copy(alpha = 0.08f))
+                    .border(1.dp, onGradient.copy(alpha = 0.16f), RoundedCornerShape(8.dp))
+                    .padding(horizontal = 8.dp, vertical = 2.dp)
+            ) {
+                Text(
+                    text = valueLabel,
+                    color = onGradient,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        Slider(
+            value = value,
+            onValueChange = onValueChange,
+            onValueChangeFinished = onValueChangeFinished,
+            valueRange = valueRange,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(28.dp),
+            thumb = {
+                Box(
+                    modifier = Modifier
+                        .size(16.dp)
+                        .clip(CircleShape)
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(
+                                    Color.White.copy(alpha = 0.95f),
+                                    Color.White.copy(alpha = 0.45f),
+                                    onGradient.copy(alpha = 0.35f)
+                                )
+                            )
+                        )
+                        .border(
+                            1.dp,
+                            Brush.verticalGradient(
+                                listOf(
+                                    Color.White.copy(alpha = 0.98f),
+                                    Color.White.copy(alpha = 0.45f)
+                                )
+                            ),
+                            CircleShape
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(5.dp)
+                            .clip(CircleShape)
+                            .background(Color.White)
+                    )
+                }
+            },
+            track = { sliderState ->
+                SliderDefaults.Track(
+                    sliderState = sliderState,
+                    modifier = Modifier.height(12.dp),
+                    colors = SliderDefaults.colors(
+                        activeTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.45f),
+                        inactiveTrackColor = onGradient.copy(alpha = 0.10f)
+                    ),
+                    thumbTrackGapSize = 0.dp,
+                    drawStopIndicator = null
+                )
+            }
+        )
+    }
+}

@@ -50,15 +50,29 @@ jobs:
           echo "version_code=$CODE" >> "$GITHUB_OUTPUT"
           echo "Building APK for version $VER (versionCode $CODE)"
 
-      - name: Check signing secrets
+      - name: Resolve signing key
+        id: resolve-key
         env:
-          LUCENT_KEYSTORE_BASE64: ${{ secrets.LUCENT_KEYSTORE_BASE64 }}
-          LUCENT_KEYSTORE_PASSWORD: ${{ secrets.LUCENT_KEYSTORE_PASSWORD }}
+          KEYSTORE_B64: ${{ secrets.LUCENT_KEYSTORE_BASE64 }}
+          KEYSTORE_PW: ${{ secrets.LUCENT_KEYSTORE_PASSWORD }}
         run: |
-          if [ -z "$LUCENT_KEYSTORE_BASE64" ] || [ -z "$LUCENT_KEYSTORE_PASSWORD" ]; then
-            echo "::error::Missing signing secrets."
-            exit 1
+          set -eu
+          if [ -n "$KEYSTORE_B64" ] && [ -n "$KEYSTORE_PW" ]; then
+            STORE="$RUNNER_TEMP/lucent-release.keystore"
+            printf '%s' "$KEYSTORE_B64" | base64 -d > "$STORE"
+            echo "LUCENT_KEYSTORE_PASSWORD=$KEYSTORE_PW" >> "$GITHUB_ENV"
+            echo "alias=lucent" >> "$GITHUB_OUTPUT"
+            echo "mode=release" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::未配置 LUCENT_KEYSTORE_BASE64 / LUCENT_KEYSTORE_PASSWORD，本次改用仓库内的 debug.keystore 签名。APK 可以正常安装使用，但它不是可分发的正式发布签名。"
+            STORE="$GITHUB_WORKSPACE/debug.keystore"
+            echo "LUCENT_KEYSTORE_PASSWORD=android" >> "$GITHUB_ENV"
+            echo "alias=androiddebugkey" >> "$GITHUB_OUTPUT"
+            echo "mode=debug-signed" >> "$GITHUB_OUTPUT"
           fi
+          if [ ! -s "$STORE" ]; then echo "::error::签名文件不存在或为空：$STORE"; exit 1; fi
+          echo "store=$STORE" >> "$GITHUB_OUTPUT"
+          echo "Signing mode resolved from the keystore at $STORE"
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5
@@ -81,16 +95,10 @@ jobs:
             "platforms;android-36" \
             "build-tools;36.0.0"
 
-      - name: Decode keystore
-        env:
-          LUCENT_KEYSTORE_BASE64: ${{ secrets.LUCENT_KEYSTORE_BASE64 }}
-        run: printf '%s' "$LUCENT_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/lucent-release.keystore"
-
       - name: Assemble signed APK
         env:
-          LUCENT_KEYSTORE_FILE: ${{ runner.temp }}/lucent-release.keystore
-          LUCENT_KEYSTORE_PASSWORD: ${{ secrets.LUCENT_KEYSTORE_PASSWORD }}
-          LUCENT_KEY_ALIAS: lucent
+          LUCENT_KEYSTORE_FILE: ${{ steps.resolve-key.outputs.store }}
+          LUCENT_KEY_ALIAS: ${{ steps.resolve-key.outputs.alias }}
         run: |
           ./gradlew assembleRelease --no-daemon --stacktrace \
             -PversionCode=${{ steps.resolve-version.outputs.version_code }} \
@@ -107,8 +115,12 @@ jobs:
       - name: Rename APK
         run: |
           VER="${{ steps.resolve-version.outputs.version }}"
+          SUFFIX=""
+          if [ "${{ steps.resolve-key.outputs.mode }}" = "debug-signed" ]; then
+            SUFFIX="-debugsigned"
+          fi
           APK=$(find app/build/outputs/apk/release -name '*.apk' ! -name '*unsigned*' | head -n 1)
-          mv "$APK" "app/build/outputs/apk/release/Lucent.for.Android-$VER.apk"
+          mv "$APK" "app/build/outputs/apk/release/Lucent.for.Android-$VER$SUFFIX.apk"
 
       - name: Upload APK
         uses: actions/upload-artifact@v6

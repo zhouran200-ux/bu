@@ -8,6 +8,7 @@ __pycache__/
 
 *.keystore
 *.jks
+!debug.keystore
 keystore-base64.txt
 
 RELEASE_NOTES*.md

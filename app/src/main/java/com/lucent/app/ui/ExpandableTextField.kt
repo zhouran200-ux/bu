@@ -233,7 +233,7 @@ private fun ExpandedEditor(
                         )
                     }
                     Spacer(modifier = Modifier.size(4.dp))
-                    Text(title, color = onGradient, fontSize = 18.sp, modifier = Modifier.weight(1f))
+                    Text(title, color = onGradient, fontSize = LucentTitles.SectionSize, fontWeight = LucentTitles.SectionWeight, modifier = Modifier.weight(1f))
                 }
                 Spacer(modifier = Modifier.size(8.dp))
                 OutlinedTextField(

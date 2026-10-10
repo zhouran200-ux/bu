@@ -49,7 +49,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.lucent.app.AppScope
@@ -135,8 +134,8 @@ fun NotebookSourcesTab(
 
                 Text(
                     text = "暂无关联资料文档",
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.Bold,
+                    fontSize = LucentTitles.SectionSize,
+                    fontWeight = LucentTitles.SectionWeight,
                     color = onGradient
                 )
 
@@ -204,7 +203,7 @@ fun NotebookSourcesTab(
         if (showAddDialog) {
             AlertDialog(
                 onDismissRequest = { showAddDialog = false },
-                title = { Text("添加来源资料", fontWeight = FontWeight.Bold) },
+                title = { Text("添加来源资料", fontSize = LucentTitles.EntrySize, fontWeight = LucentTitles.EntryWeight) },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Surface(
@@ -237,8 +236,8 @@ fun NotebookSourcesTab(
                                 Column {
                                     Text(
                                         "上传本地文档 (TXT / Word)",
-                                        fontSize = 15.sp,
-                                        fontWeight = FontWeight.Bold,
+                                        fontSize = LucentTitles.ItemSize,
+                                        fontWeight = LucentTitles.ItemWeight,
                                         color = onGradient
                                     )
                                     Text(
@@ -272,7 +271,7 @@ fun NotebookSourcesTab(
                                 )
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Column {
-                                    Text("新建笔记本文档", fontSize = 15.sp, color = onGradient)
+                                    Text("新建笔记本文档", fontSize = LucentTitles.ItemSize, fontWeight = LucentTitles.ItemWeight, color = onGradient)
                                     Text("手动输入标题与正文", fontSize = 12.sp, color = onGradientMuted)
                                 }
                             }
@@ -316,7 +315,7 @@ fun NotebookSourcesTab(
                                 )
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Column {
-                                    Text("导入用户预置示例文档", fontSize = 15.sp, color = onGradient)
+                                    Text("导入用户预置示例文档", fontSize = LucentTitles.ItemSize, fontWeight = LucentTitles.ItemWeight, color = onGradient)
                                     Text("加载演示用的章节资料", fontSize = 12.sp, color = onGradientMuted)
                                 }
                             }
@@ -334,7 +333,7 @@ fun NotebookSourcesTab(
         if (showCreateNoteDialog) {
             AlertDialog(
                 onDismissRequest = { showCreateNoteDialog = false },
-                title = { Text("新建笔记本文档", fontWeight = FontWeight.Bold) },
+                title = { Text("新建笔记本文档", fontSize = LucentTitles.EntrySize, fontWeight = LucentTitles.EntryWeight) },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         OutlinedTextField(
@@ -429,8 +428,8 @@ private fun SourceNoteCard(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = note.title.ifBlank { "用户预置文档" },
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
+                    fontSize = LucentTitles.EntrySize,
+                    fontWeight = LucentTitles.EntryWeight,
                     color = onGradient
                 )
 
@@ -511,8 +510,8 @@ fun SourceReaderOverlay(
                     Text(
                         text = note.title.ifBlank { "〔CH:1〕 第一百零三章 拥抱" },
                         color = Color(0xFF38BDF8),
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
+                        fontSize = LucentTitles.EntrySize,
+                        fontWeight = LucentTitles.EntryWeight,
                         modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
                     )
                 }

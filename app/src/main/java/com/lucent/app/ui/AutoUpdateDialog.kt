@@ -43,7 +43,7 @@ fun AutoUpdateDialog(repo: SettingsRepository, onOpenUrl: ((String) -> Unit)? = 
 
     AlertDialog(
         onDismissRequest = { if (downloading) AutoUpdate.hide() else if (!busy) AutoUpdate.later() },
-        title = { Text(S.updateAvailableTitle) },
+        title = { Text(S.updateAvailableTitle, fontSize = LucentTitles.EntrySize, fontWeight = LucentTitles.EntryWeight) },
         text = {
             Column {
                 if (AutoUpdate.awaitingFolder) {

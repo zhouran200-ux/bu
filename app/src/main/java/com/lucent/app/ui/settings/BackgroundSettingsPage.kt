@@ -21,7 +21,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.lucent.app.AppScope
 import com.lucent.app.data.SettingsCache
 import com.lucent.app.data.SettingsRepository
@@ -30,6 +29,7 @@ import com.lucent.app.ui.BackHeader
 import com.lucent.app.ui.LocalOnGradient
 import com.lucent.app.ui.LocalOnGradientMuted
 import com.lucent.app.ui.LucentPalette
+import com.lucent.app.ui.LucentTitles
 import com.lucent.app.ui.LucentToast
 import com.lucent.app.ui.PALETTE_CYCLE
 import com.lucent.app.ui.PALETTE_RANDOM
@@ -74,7 +74,7 @@ internal fun BackgroundSettingsPage(repo: SettingsRepository, onRoute: (Settings
     Column(modifier = Modifier.fillMaxWidth().frostedGlass().padding(16.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(S.backgroundAnimationTitle, color = onGradient)
+                Text(S.backgroundAnimationTitle, color = onGradient, fontSize = LucentTitles.ItemSize, fontWeight = LucentTitles.ItemWeight)
             }
             Spacer(modifier = Modifier.width(12.dp))
             Switch(
@@ -106,6 +106,8 @@ internal fun BackgroundSettingsPage(repo: SettingsRepository, onRoute: (Settings
             Text(
                 S.paletteCycleAuto,
                 color = onGradient.copy(alpha = onGradient.alpha * motionAlpha),
+                fontSize = LucentTitles.ItemSize,
+                fontWeight = LucentTitles.ItemWeight,
                 modifier = Modifier.padding(start = 10.dp)
             )
         }
@@ -127,6 +129,8 @@ internal fun BackgroundSettingsPage(repo: SettingsRepository, onRoute: (Settings
                 Text(
                     S.paletteRandomAuto,
                     color = onGradient.copy(alpha = onGradient.alpha * motionAlpha),
+                    fontSize = LucentTitles.ItemSize,
+                    fontWeight = LucentTitles.ItemWeight,
                     modifier = Modifier.padding(start = 10.dp)
                 )
             }
@@ -138,7 +142,8 @@ internal fun BackgroundSettingsPage(repo: SettingsRepository, onRoute: (Settings
             Text(
                 heading,
                 color = onGradientMuted.copy(alpha = onGradientMuted.alpha * lockAlpha),
-                fontSize = 13.sp
+                fontSize = LucentTitles.SectionSize,
+                fontWeight = LucentTitles.SectionWeight
             )
             LucentPalette.pickerEntries.filter { it.group == group }.forEach { p ->
                 Row(
@@ -158,6 +163,8 @@ internal fun BackgroundSettingsPage(repo: SettingsRepository, onRoute: (Settings
                     Text(
                         p.label,
                         color = onGradient.copy(alpha = onGradient.alpha * lockAlpha),
+                        fontSize = LucentTitles.ItemSize,
+                        fontWeight = LucentTitles.ItemWeight,
                         modifier = Modifier.padding(start = 10.dp)
                     )
                 }

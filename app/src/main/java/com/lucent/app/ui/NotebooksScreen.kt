@@ -45,7 +45,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -174,7 +173,7 @@ fun NotebooksScreen(
     deleting?.let { notebook ->
         AlertDialog(
             onDismissRequest = { deleting = null },
-            title = { Text(com.lucent.app.i18n.S.notebookDeleteTitle) },
+            title = { Text(com.lucent.app.i18n.S.notebookDeleteTitle, fontSize = LucentTitles.EntrySize, fontWeight = LucentTitles.EntryWeight) },
             text = { Text(com.lucent.app.i18n.S.notebookDeleteBody(notebook.title.ifBlank { com.lucent.app.i18n.S.notebookEmptyTitle })) },
             confirmButton = {
                 TextButton(onClick = {
@@ -196,7 +195,7 @@ fun NotebooksScreen(
         val count = selectedIds.size
         AlertDialog(
             onDismissRequest = { batchDeleting = false },
-            title = { Text(com.lucent.app.i18n.S.notebookDeleteTitle) },
+            title = { Text(com.lucent.app.i18n.S.notebookDeleteTitle, fontSize = LucentTitles.EntrySize, fontWeight = LucentTitles.EntryWeight) },
             text = { Text(com.lucent.app.i18n.S.notebookBatchDeleteBody(count)) },
             confirmButton = {
                 TextButton(onClick = {
@@ -313,7 +312,8 @@ fun NotebooksScreen(
                 Text(
                     com.lucent.app.i18n.S.nSelected(selectedIds.size),
                     color = onGradient,
-                    fontSize = 18.sp,
+                    fontSize = LucentTitles.ScreenSize,
+                    fontWeight = LucentTitles.ScreenWeight,
                     modifier = Modifier.weight(1f)
                 )
                 IconButton(onClick = {
@@ -485,8 +485,8 @@ private fun NotebookShelfItem(
             Text(
                 text = title,
                 color = onGradient,
-                fontSize = 17.sp,
-                fontWeight = FontWeight.SemiBold,
+                fontSize = LucentTitles.EntrySize,
+                fontWeight = LucentTitles.EntryWeight,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -562,7 +562,7 @@ internal fun NotebookEditorDialog(
     var color by remember { mutableStateOf(initialColor) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(title) },
+        title = { Text(title, fontSize = LucentTitles.EntrySize, fontWeight = LucentTitles.EntryWeight) },
         text = {
             Column(modifier = Modifier.fillMaxWidth()) {
                 if (showNameField) {
@@ -582,7 +582,8 @@ internal fun NotebookEditorDialog(
                     Text(
                         com.lucent.app.i18n.S.notebookCoverTitle,
                         color = LocalOnGradient.current,
-                        fontSize = 14.sp
+                        fontSize = LucentTitles.SectionSize,
+                        fontWeight = LucentTitles.SectionWeight
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     NotebookCoverPicker(selected = color, onSelect = { color = it })

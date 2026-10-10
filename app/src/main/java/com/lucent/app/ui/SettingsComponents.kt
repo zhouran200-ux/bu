@@ -137,7 +137,7 @@ internal fun NavCard(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(title, color = onGradient, fontSize = 18.sp)
+            Text(title, color = onGradient, fontSize = LucentTitles.EntrySize, fontWeight = LucentTitles.EntryWeight)
             Spacer(modifier = Modifier.height(4.dp))
             Text(subtitle, color = onGradientMuted, fontSize = 13.sp)
         }
@@ -202,7 +202,6 @@ internal fun SettingsBreadcrumb(
     route: SettingsRoute,
     onNavigate: (SettingsRoute) -> Unit,
     modifier: Modifier = Modifier,
-    rootSize: androidx.compose.ui.unit.TextUnit = 20.sp,
     leading: @Composable () -> Unit = {}
 ) {
     val onGradient = LocalOnGradient.current
@@ -212,19 +211,19 @@ internal fun SettingsBreadcrumb(
     val scroll = rememberScrollState()
     BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
         val titles = crumbs.map { SettingsTrail.title(it) }
-        val rootValue = rootSize.value.toDouble()
-        val glyphEm = titles.sumOf { title ->
-            title.sumOf { ch -> if (ch.code > 0x2E7F) 1.0 else 0.52 }
-        }
-        val textWidth = glyphEm * rootValue +
-            (crumbs.size - 1).coerceAtLeast(0) * (0.3 * rootValue + 8.0)
+        val rootValue = LucentTitles.ScreenSize.value.toDouble()
+        val leafValue = LucentTitles.EntrySize.value.toDouble()
+        val textWidth = titles.sumIndexed { index, title ->
+            val value = if (index == titles.lastIndex) leafValue else rootValue
+            title.sumOf { ch -> if (ch.code > 0x2E7F) 1.0 else 0.52 } * value
+        } + (crumbs.size - 1).coerceAtLeast(0) * (0.3 * rootValue + 8.0)
         val available = (maxWidth.value - 28f).coerceAtLeast(1f).toDouble()
         val scale = if (textWidth > 0.0) {
             (available / textWidth).toFloat().coerceIn(0.7f, 1f)
         } else {
             1f
         }
-        val textSize = (rootSize.value * scale).sp
+        val separatorSize = (rootValue * scale / 2.0).sp
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp).horizontalScroll(scroll),
             verticalAlignment = Alignment.CenterVertically
@@ -235,7 +234,7 @@ internal fun SettingsBreadcrumb(
                     Text(
                         "\u2013",
                         color = onGradientMuted,
-                        fontSize = textSize / 2,
+                        fontSize = separatorSize,
                         modifier = Modifier.padding(horizontal = 4.dp).alignByBaseline()
                     )
                 }
@@ -243,7 +242,8 @@ internal fun SettingsBreadcrumb(
                 Text(
                     text = titles[index],
                     color = if (isLast) onGradient else onGradientMuted,
-                    fontSize = textSize,
+                    fontSize = (if (isLast) LucentTitles.EntrySize else LucentTitles.ScreenSize) * scale,
+                    fontWeight = if (isLast) LucentTitles.EntryWeight else LucentTitles.ScreenWeight,
                     maxLines = 1,
                     modifier = Modifier
                         .alignByBaseline()
@@ -255,6 +255,12 @@ internal fun SettingsBreadcrumb(
             }
         }
     }
+}
+
+private inline fun <T> List<T>.sumIndexed(block: (Int, T) -> Double): Double {
+    var total = 0.0
+    forEachIndexed { index, item -> total += block(index, item) }
+    return total
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -286,8 +292,8 @@ internal fun ApiModelPickerDialog(
             ) {
                 Text(
                     text = S.apiModelsTitle,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
+                    fontSize = LucentTitles.SectionSize,
+                    fontWeight = LucentTitles.SectionWeight,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Spacer(modifier = Modifier.width(8.dp))
@@ -410,7 +416,7 @@ internal fun ApiModelPickerDialog(
                             ) {
                                 Text(
                                     text = name,
-                                    fontSize = 13.sp,
+                                    fontSize = LucentTitles.ItemSize,
                                     fontWeight = if (checked) FontWeight.SemiBold else FontWeight.Normal,
                                     color = MaterialTheme.colorScheme.onSurface,
                                     maxLines = 1,

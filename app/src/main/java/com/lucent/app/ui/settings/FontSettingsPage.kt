@@ -36,6 +36,7 @@ import com.lucent.app.ui.BackHeader
 import com.lucent.app.ui.LocalOnGradient
 import com.lucent.app.ui.LocalOnGradientMuted
 import com.lucent.app.ui.LucentFontResolver
+import com.lucent.app.ui.LucentTitles
 import com.lucent.app.ui.SYSTEM_FONT_KEY
 import com.lucent.app.ui.SettingsRoute
 import com.lucent.app.ui.StandardSliderRow
@@ -139,8 +140,8 @@ internal fun FontSettingsPage(
                 Text(
                     text = S.typographyPreviewTitle,
                     color = onGradientMuted,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold
+                    fontSize = LucentTitles.SectionSize,
+                    fontWeight = LucentTitles.SectionWeight
                 )
             }
 
@@ -267,8 +268,8 @@ internal fun FontSettingsPage(
             Text(
                 text = S.settingsFontTitle,
                 color = onGradient,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.SemiBold
+                fontSize = LucentTitles.SectionSize,
+                fontWeight = LucentTitles.SectionWeight
             )
             Text(
                 text = S.settingsFontSub,
@@ -338,7 +339,7 @@ internal fun FontSettingsPage(
             Text(
                 text = S.fontSystemLabel,
                 color = onGradient,
-                fontSize = 15.sp,
+                fontSize = LucentTitles.ItemSize,
                 fontWeight = if (isSystemSelected) FontWeight.SemiBold else FontWeight.Normal,
                 modifier = Modifier.weight(1f)
             )
@@ -398,7 +399,7 @@ internal fun FontSettingsPage(
                 Text(
                     text = slot.name,
                     color = onGradient,
-                    fontSize = 15.sp,
+                    fontSize = LucentTitles.ItemSize,
                     fontFamily = fontSlotFamily,
                     fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
                     maxLines = 1,
@@ -489,7 +490,7 @@ internal fun FontSettingsPage(
         AlertDialog(
             onDismissRequest = { pendingImportUri = null },
             shape = RoundedCornerShape(20.dp),
-            title = { Text(S.fontNameTitle) },
+            title = { Text(S.fontNameTitle, fontSize = LucentTitles.EntrySize, fontWeight = LucentTitles.EntryWeight) },
             text = {
                 Column {
                     Text(S.fontNameBody, style = MaterialTheme.typography.bodySmall)
@@ -526,7 +527,7 @@ internal fun FontSettingsPage(
         AlertDialog(
             onDismissRequest = { fontPendingDelete = null },
             shape = RoundedCornerShape(20.dp),
-            title = { Text(S.fontDeleteTitle) },
+            title = { Text(S.fontDeleteTitle, fontSize = LucentTitles.EntrySize, fontWeight = LucentTitles.EntryWeight) },
             text = { Text(S.fontDeleteBody(slot.name)) },
             confirmButton = {
                 TextButton(

@@ -35,7 +35,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.lucent.app.data.AppDatabase
 import com.lucent.app.data.Note
 import com.lucent.app.data.Notebook
@@ -193,7 +192,7 @@ private fun NotebookDetailHeader(
                         Text(
                             text = "对话",
                             color = if (isChat) (if (dark) Color(0xFF38BDF8) else Color(0xFF0284C7)) else onGradientMuted,
-                            fontSize = 15.sp,
+                            fontSize = LucentTitles.SectionSize,
                             fontWeight = if (isChat) FontWeight.Bold else FontWeight.Medium
                         )
                     }
@@ -217,7 +216,7 @@ private fun NotebookDetailHeader(
                         Text(
                             text = "来源 ($sourceCount)",
                             color = if (isSources) (if (dark) Color(0xFF38BDF8) else Color(0xFF0284C7)) else onGradientMuted,
-                            fontSize = 15.sp,
+                            fontSize = LucentTitles.SectionSize,
                             fontWeight = if (isSources) FontWeight.Bold else FontWeight.Medium
                         )
                     }

@@ -382,7 +382,8 @@ private fun AttachmentRow(
         Text(
             att.name,
             color = tint,
-            fontSize = 13.sp,
+            fontSize = LucentTitles.ItemSize,
+            fontWeight = LucentTitles.ItemWeight,
             lineHeight = 20.sp,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -406,7 +407,7 @@ private fun AttachmentRenameDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(com.lucent.app.i18n.S.attachmentRenameTitle) },
+        title = { Text(com.lucent.app.i18n.S.attachmentRenameTitle, fontSize = LucentTitles.EntrySize, fontWeight = LucentTitles.EntryWeight) },
         text = {
             Column {
                 OutlinedTextField(

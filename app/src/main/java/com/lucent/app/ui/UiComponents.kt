@@ -334,7 +334,7 @@ fun LucentExpandedInput(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text(title, color = onGradient, fontSize = 18.sp)
+                Text(title, color = onGradient, fontSize = LucentTitles.SectionSize, fontWeight = LucentTitles.SectionWeight)
                 androidx.compose.material3.IconButton(
                     onClick = onCollapse,
                     modifier = Modifier.size(32.dp)

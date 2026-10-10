@@ -220,7 +220,8 @@ fun AttachmentViewerDialog(attachments: List<Attachment>, initialIndex: Int, onD
                 Text(
                     att.name,
                     color = Color.White,
-                    fontSize = 15.sp,
+                    fontSize = LucentTitles.EntrySize,
+                    fontWeight = LucentTitles.EntryWeight,
                     modifier = Modifier.weight(1f).padding(start = 8.dp)
                 )
                 if (attachments.size > 1) {

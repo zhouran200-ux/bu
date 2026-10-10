@@ -28,6 +28,7 @@ import com.lucent.app.ui.LocalOnGradient
 import com.lucent.app.ui.LocalOnGradientMuted
 import com.lucent.app.ui.LucentThemeMode
 import com.lucent.app.ui.LucentThemeSection
+import com.lucent.app.ui.LucentTitles
 import com.lucent.app.ui.PaletteSwatch
 import com.lucent.app.ui.SettingsRoute
 import com.lucent.app.ui.frostedGlass
@@ -52,7 +53,7 @@ internal fun ThemeSettingsPage(repo: SettingsRepository, onRoute: (SettingsRoute
     LucentThemeSection.entries.forEachIndexed { index, section ->
         if (index > 0) Spacer(modifier = Modifier.height(12.dp))
         Column(modifier = Modifier.fillMaxWidth().frostedGlass().padding(16.dp)) {
-            Text(section.label, color = onGradient, fontSize = 16.sp)
+            Text(section.label, color = onGradient, fontSize = LucentTitles.SectionSize, fontWeight = LucentTitles.SectionWeight)
             Spacer(modifier = Modifier.height(8.dp))
             offered.filter { it.section == section }.forEach { mode ->
                 Row(
@@ -79,7 +80,7 @@ internal fun ThemeSettingsPage(repo: SettingsRepository, onRoute: (SettingsRoute
                         PaletteSwatch(mode.swatch(systemDark))
                     }
                     Column(modifier = Modifier.padding(start = 10.dp).alpha(lockAlpha)) {
-                        Text(mode.label, color = onGradient)
+                        Text(mode.label, color = onGradient, fontSize = LucentTitles.ItemSize, fontWeight = LucentTitles.ItemWeight)
                         Text(mode.detail, color = onGradientMuted, fontSize = 12.sp)
                     }
                 }

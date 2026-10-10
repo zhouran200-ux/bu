@@ -13,7 +13,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -74,7 +73,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.lucent.app.AppScope
 import com.lucent.app.data.AndroidUpdateInstaller
@@ -500,15 +498,14 @@ fun LucentApp(paletteColors: List<Color>, backdropColor: Color, backgroundAnimat
                                     com.lucent.app.ui.SettingsBreadcrumb(
                                         route = AppNavigation.settingsRoute,
                                         onNavigate = { SettingsNav.go(it) },
-                                        rootSize = 22.sp,
                                         modifier = Modifier.padding(end = 16.dp)
                                     )
                                 } else {
                                     Text(
                                         currentScreen.label,
                                         color = onGradient,
-                                        fontSize = 22.sp,
-                                        fontWeight = FontWeight.SemiBold
+                                        fontSize = com.lucent.app.ui.LucentTitles.ScreenSize,
+                                        fontWeight = com.lucent.app.ui.LucentTitles.ScreenWeight
                                     )
                                 }
                             },

@@ -33,7 +33,7 @@ fun SessionRestoreDialog() {
         onDismissRequest = {
             decline()
         },
-        title = { Text(com.lucent.app.i18n.S.sessionRestoreTitle) },
+        title = { Text(com.lucent.app.i18n.S.sessionRestoreTitle, fontSize = LucentTitles.EntrySize, fontWeight = LucentTitles.EntryWeight) },
         text = {
             Text(com.lucent.app.i18n.S.sessionRestoreNoteBody(title))
         },

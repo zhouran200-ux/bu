@@ -87,7 +87,7 @@ fun NoteHistoryScreen(
     confirmRestore?.let { version ->
         AlertDialog(
             onDismissRequest = { confirmRestore = null },
-            title = { Text(com.lucent.app.i18n.S.restoreVersionTitle) },
+            title = { Text(com.lucent.app.i18n.S.restoreVersionTitle, fontSize = LucentTitles.EntrySize, fontWeight = LucentTitles.EntryWeight) },
             text = {
                 Text(com.lucent.app.i18n.S.restoreVersionBody(formatTimestamp(version.savedAt)))
             },
@@ -99,7 +99,7 @@ fun NoteHistoryScreen(
     confirmDelete?.let { version ->
         AlertDialog(
             onDismissRequest = { confirmDelete = null },
-            title = { Text(com.lucent.app.i18n.S.deleteVersionTitle) },
+            title = { Text(com.lucent.app.i18n.S.deleteVersionTitle, fontSize = LucentTitles.EntrySize, fontWeight = LucentTitles.EntryWeight) },
             text = { Text(com.lucent.app.i18n.S.deleteVersionBody(formatTimestamp(version.savedAt))) },
             confirmButton = {
                 TextButton(onClick = {
@@ -119,14 +119,14 @@ fun NoteHistoryScreen(
                 IconButton(onClick = { previewing = null }) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = com.lucent.app.i18n.S.actionBack, tint = onGradient)
                 }
-                Text(com.lucent.app.i18n.S.screenVersion, color = onGradient, fontSize = 20.sp, modifier = Modifier.weight(1f))
+                Text(com.lucent.app.i18n.S.screenVersion, color = onGradient, fontSize = LucentTitles.ScreenSize, fontWeight = LucentTitles.ScreenWeight, modifier = Modifier.weight(1f))
                 IconButton(onClick = { confirmDelete = preview }) {
                     Icon(Icons.Default.DeleteOutline, contentDescription = com.lucent.app.i18n.S.deleteThisVersion, tint = onGradientMuted)
                 }
             }
 
             Column(modifier = Modifier.fillMaxWidth().frostedGlass().padding(16.dp)) {
-                Text(preview.title.ifBlank { com.lucent.app.i18n.S.untitled }, color = onGradient, fontSize = 22.sp)
+                Text(preview.title.ifBlank { com.lucent.app.i18n.S.untitled }, color = onGradient, fontSize = LucentTitles.EntrySize, fontWeight = LucentTitles.EntryWeight)
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(com.lucent.app.i18n.S.historyAsOf(formatTimestamp(preview.savedAt)), color = onGradientMuted, fontSize = 12.sp)
                 val statsText = preview.body
@@ -162,7 +162,7 @@ fun NoteHistoryScreen(
             IconButton(onClick = onBack) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = com.lucent.app.i18n.S.actionBack, tint = onGradient)
             }
-            Text(com.lucent.app.i18n.S.screenVersionHistory, color = onGradient, fontSize = 20.sp, modifier = Modifier.weight(1f))
+            Text(com.lucent.app.i18n.S.screenVersionHistory, color = onGradient, fontSize = LucentTitles.ScreenSize, fontWeight = LucentTitles.ScreenWeight, modifier = Modifier.weight(1f))
         }
 
         Text(
@@ -227,6 +227,8 @@ private fun VersionCard(
                 Text(
                     version.title.ifBlank { com.lucent.app.i18n.S.untitled },
                     color = onGradient,
+                    fontSize = LucentTitles.EntrySize,
+                    fontWeight = LucentTitles.EntryWeight,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )

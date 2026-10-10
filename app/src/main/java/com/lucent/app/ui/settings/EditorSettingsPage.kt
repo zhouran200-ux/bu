@@ -24,6 +24,7 @@ import com.lucent.app.ui.BackHeader
 import com.lucent.app.ui.DesktopIntegrationRows
 import com.lucent.app.ui.LocalOnGradient
 import com.lucent.app.ui.LocalOnGradientMuted
+import com.lucent.app.ui.LucentTitles
 import com.lucent.app.ui.SettingsRoute
 import com.lucent.app.ui.frostedGlass
 import kotlinx.coroutines.launch
@@ -48,7 +49,7 @@ internal fun EditorSettingsPage(
     Column(modifier = Modifier.fillMaxWidth().frostedGlass().padding(16.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(S.markdownFormattingTitle, color = onGradient)
+                Text(S.markdownFormattingTitle, color = onGradient, fontSize = LucentTitles.ItemSize, fontWeight = LucentTitles.ItemWeight)
             }
             Spacer(modifier = Modifier.width(12.dp))
             Switch(
@@ -62,7 +63,7 @@ internal fun EditorSettingsPage(
         Spacer(modifier = Modifier.height(12.dp))
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(S.richTextTitle, color = onGradient)
+                Text(S.richTextTitle, color = onGradient, fontSize = LucentTitles.ItemSize, fontWeight = LucentTitles.ItemWeight)
             }
             Spacer(modifier = Modifier.width(12.dp))
             Switch(
@@ -77,7 +78,7 @@ internal fun EditorSettingsPage(
         DesktopIntegrationRows(repo)
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(S.linksTitle, color = onGradient)
+                Text(S.linksTitle, color = onGradient, fontSize = LucentTitles.ItemSize, fontWeight = LucentTitles.ItemWeight)
             }
             Spacer(modifier = Modifier.width(12.dp))
             Switch(
@@ -91,7 +92,7 @@ internal fun EditorSettingsPage(
         Spacer(modifier = Modifier.height(12.dp))
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(S.globalTextSelectionTitle, color = onGradient)
+                Text(S.globalTextSelectionTitle, color = onGradient, fontSize = LucentTitles.ItemSize, fontWeight = LucentTitles.ItemWeight)
             }
             Spacer(modifier = Modifier.width(12.dp))
             Switch(
@@ -105,7 +106,7 @@ internal fun EditorSettingsPage(
         Spacer(modifier = Modifier.height(12.dp))
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(S.openLinksTitle, color = onGradient)
+                Text(S.openLinksTitle, color = onGradient, fontSize = LucentTitles.ItemSize, fontWeight = LucentTitles.ItemWeight)
             }
             Spacer(modifier = Modifier.width(12.dp))
             Switch(

@@ -67,8 +67,8 @@ fun StandardSliderRow(
             Text(
                 text = title,
                 color = onGradient,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Medium
+                fontSize = LucentTitles.ItemSize,
+                fontWeight = LucentTitles.ItemWeight
             )
 
             Box(

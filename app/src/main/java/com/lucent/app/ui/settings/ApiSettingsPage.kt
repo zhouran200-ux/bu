@@ -104,6 +104,7 @@ import com.lucent.app.ui.Haptics
 import com.lucent.app.ui.LocalOnGradient
 import com.lucent.app.ui.LocalOnGradientMuted
 import com.lucent.app.ui.LucentToast
+import com.lucent.app.ui.LucentTitles
 import com.lucent.app.ui.SettingsRoute
 import com.lucent.app.ui.frostedGlass
 import kotlinx.coroutines.delay
@@ -324,7 +325,7 @@ internal fun ApiConfigSettingsPage(
 
     Column(modifier = Modifier.fillMaxWidth().frostedGlass().padding(12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(S.apiSelectionTitle, color = onGradient, modifier = Modifier.weight(1f))
+            Text(S.apiSelectionTitle, color = onGradient, fontSize = LucentTitles.SectionSize, fontWeight = LucentTitles.SectionWeight, modifier = Modifier.weight(1f))
             Text("${shownProfiles.size}/${ApiProfiles.MAX}", color = onGradientMuted, fontSize = 13.sp)
         }
         Spacer(modifier = Modifier.height(6.dp))
@@ -445,8 +446,8 @@ internal fun ApiConfigSettingsPage(
                             Text(
                                 text = p.name.ifBlank { "方案 ${idx + 1}" },
                                 color = onGradient,
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.SemiBold,
+                                fontSize = LucentTitles.ItemSize,
+                                fontWeight = LucentTitles.ItemWeight,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
@@ -641,8 +642,8 @@ internal fun ApiConfigSettingsPage(
             Text(
                 text = "对话模型",
                 color = onGradient,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.SemiBold
+                fontSize = LucentTitles.SectionSize,
+                fontWeight = LucentTitles.SectionWeight
             )
             Spacer(modifier = Modifier.width(6.dp))
             Box(
@@ -721,7 +722,7 @@ internal fun ApiConfigSettingsPage(
                             Text(
                                 text = m,
                                 color = contentColor,
-                                fontSize = 13.sp,
+                                fontSize = LucentTitles.ItemSize,
                                 fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
@@ -1062,8 +1063,8 @@ internal fun GlobalUserAgentSection(repo: SettingsRepository) {
             Text(
                 text = S.globalNetworkTitle,
                 color = onGradient,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.SemiBold,
+                fontSize = LucentTitles.SectionSize,
+                fontWeight = LucentTitles.SectionWeight,
                 modifier = Modifier.weight(1f)
             )
             Spacer(modifier = Modifier.width(8.dp))

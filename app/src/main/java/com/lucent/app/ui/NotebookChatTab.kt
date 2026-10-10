@@ -833,8 +833,8 @@ private fun BottomGlassComposer(
                         ) {
                             Text(
                                 text = "思考强度 (三层自适应体系)",
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Bold,
+                                fontSize = LucentTitles.SectionSize,
+                                fontWeight = LucentTitles.SectionWeight,
                                 color = onGradientMuted,
                                 modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp)
                             )
@@ -865,7 +865,7 @@ private fun BottomGlassComposer(
                                                     text = "$icon  ${preset.label}",
                                                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                                                     color = if (isSelected) Color(0xFFF59E0B) else onGradient,
-                                                    fontSize = 14.sp
+                                                    fontSize = LucentTitles.ItemSize
                                                 )
                                                 if (isSelected) {
                                                     Spacer(modifier = Modifier.width(6.dp))
@@ -1017,8 +1017,8 @@ private fun DialogueSettingsDialog(
                 ) {
                     Text(
                         text = "提示词与模型参数",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
+                        fontSize = LucentTitles.SectionSize,
+                        fontWeight = LucentTitles.SectionWeight,
                         color = onGradient
                     )
                     IconButton(
@@ -1091,8 +1091,8 @@ private fun DialogueSettingsDialog(
                     ) {
                         Text(
                             text = "模型参数",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
+                            fontSize = LucentTitles.SectionSize,
+                            fontWeight = LucentTitles.SectionWeight,
                             color = onGradientMuted
                         )
                         TextButton(
@@ -1233,8 +1233,8 @@ private fun ProfileModelPickerSheet(
         ) {
             Text(
                 text = "模型选择",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
+                fontSize = LucentTitles.SectionSize,
+                fontWeight = LucentTitles.SectionWeight,
                 color = ink,
                 modifier = Modifier.padding(vertical = 12.dp)
             )
@@ -1315,7 +1315,7 @@ private fun ProfileModelPickerSheet(
                                     ) {
                                         Text(
                                             text = subModel,
-                                            fontSize = 14.sp,
+                                            fontSize = LucentTitles.ItemSize,
                                             color = if (isSubSelected) Color(0xFF38BDF8) else ink.copy(alpha = 0.85f),
                                             fontWeight = if (isSubSelected) FontWeight.Bold else FontWeight.Normal
                                         )
@@ -1365,9 +1365,9 @@ private fun ProfileModelPickerSheet(
                         Spacer(modifier = Modifier.width(10.dp))
                         Text(
                             text = "管理与添加 API 方案",
-                            fontSize = 15.sp,
+                            fontSize = LucentTitles.SectionSize,
                             color = ink.copy(alpha = 0.90f),
-                            fontWeight = FontWeight.Medium
+                            fontWeight = LucentTitles.SectionWeight
                         )
                     }
                     Icon(

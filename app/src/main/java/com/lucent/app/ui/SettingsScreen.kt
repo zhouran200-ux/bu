@@ -326,7 +326,7 @@ fun SettingsScreen(active: Boolean = true) {
     fun OpenLinksWarningDialog() {
         AlertDialog(
             onDismissRequest = { showOpenLinksWarning = false },
-            title = { Text(S.openLinksWarnTitle) },
+            title = { Text(S.openLinksWarnTitle, fontSize = LucentTitles.EntrySize, fontWeight = LucentTitles.EntryWeight) },
             text = {
                 Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                     Text(S.openLinksWarnBody)
@@ -353,7 +353,7 @@ fun SettingsScreen(active: Boolean = true) {
     fun DeleteImportedFontDialog(slot: FontStore.FontSlot) {
         AlertDialog(
             onDismissRequest = { fontPendingDelete = null },
-            title = { Text(S.fontDeleteTitle) },
+            title = { Text(S.fontDeleteTitle, fontSize = LucentTitles.EntrySize, fontWeight = LucentTitles.EntryWeight) },
             text = { Text(S.fontDeleteBody(slot.name.ifBlank { slot.fileName })) },
             confirmButton = {
                 TextButton(onClick = {
@@ -371,7 +371,7 @@ fun SettingsScreen(active: Boolean = true) {
     fun NameImportedFontDialog(uri: Uri) {
         AlertDialog(
             onDismissRequest = { fontPendingImportUri = null },
-            title = { Text(S.fontNameTitle) },
+            title = { Text(S.fontNameTitle, fontSize = LucentTitles.EntrySize, fontWeight = LucentTitles.EntryWeight) },
             text = {
                 Column {
                     Text(S.fontNameBody, color = onGradientMuted, fontSize = 13.sp)

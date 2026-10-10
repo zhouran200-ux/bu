@@ -4,14 +4,13 @@ package com.lucent.app.data
 
 enum class ReasoningPreset(
     val key: String,
-    val label: String,
-    val desc: String
+    val label: String
 ) {
-    AUTO("auto", "自动", "使用模型原厂推荐的最佳自适应策略"),
-    FAST("fast", "极速", "优先响应速度，快速输出核心结论"),
-    BALANCED("balanced", "标准", "兼顾逻辑严密性与生成效率"),
-    DEEP("deep", "深度", "充分展开推演，细致论证每一个步骤"),
-    MAXIMUM("maximum", "极致", "调用模型算力极限进行高复杂度逻辑攻坚");
+    AUTO("auto", "自动"),
+    FAST("fast", "极速"),
+    BALANCED("balanced", "标准"),
+    DEEP("deep", "深度"),
+    MAXIMUM("maximum", "极致");
 
     companion object {
         val DEFAULT = AUTO

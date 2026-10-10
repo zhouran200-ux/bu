@@ -119,7 +119,6 @@ import com.lucent.app.data.ApiProfiles
 import com.lucent.app.data.AppDatabase
 import com.lucent.app.data.ChatMessage
 import com.lucent.app.data.ChatScope
-import com.lucent.app.data.ModelCapabilityRegistry
 import com.lucent.app.data.Note
 import com.lucent.app.data.ReasoningPreset
 import com.lucent.app.data.ReasoningResolver
@@ -1100,10 +1099,6 @@ private fun BottomGlassComposer(
     val onGradientMuted = LocalOnGradientMuted.current
     var showReasoningMenu by remember { mutableStateOf(false) }
 
-    val modelDef = remember(selectedModel, selectedProfileName) {
-        ModelCapabilityRegistry.findOrRegister(selectedModel, selectedProfileName)
-    }
-
     Surface(
         shape = RoundedCornerShape(24.dp),
         color = Color.Transparent,
@@ -1187,20 +1182,13 @@ private fun BottomGlassComposer(
                             onDismissRequest = { showReasoningMenu = false }
                         ) {
                             Text(
-                                text = "思考强度 (三层自适应体系)",
+                                text = "思考强度",
                                 fontSize = LucentTitles.SectionSize,
                                 fontWeight = LucentTitles.SectionWeight,
                                 color = onGradientMuted,
                                 modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp)
                             )
 
-                            val isNativeSupported = modelDef.reasoning.supported
-                            Text(
-                                text = if (isNativeSupported) "模型《${modelDef.id}》· 原生支持深度推理" else "模型《${modelDef.id}》· 遵循原厂自适应策略",
-                                fontSize = 11.sp,
-                                color = if (isNativeSupported) Color(0xFF38BDF8) else onGradientMuted.copy(alpha = 0.8f),
-                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 2.dp)
-                            )
                             Spacer(modifier = Modifier.height(4.dp))
 
                             ReasoningPreset.entries.forEach { preset ->
@@ -1214,29 +1202,22 @@ private fun BottomGlassComposer(
                                 }
                                 DropdownMenuItem(
                                     text = {
-                                        Column(modifier = Modifier.padding(vertical = 2.dp)) {
-                                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                                Text(
-                                                    text = "$icon  ${preset.label}",
-                                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                                    color = if (isSelected) Color(0xFFF59E0B) else onGradient,
-                                                    fontSize = LucentTitles.ItemSize
-                                                )
-                                                if (isSelected) {
-                                                    Spacer(modifier = Modifier.width(6.dp))
-                                                    Icon(
-                                                        Icons.Default.Check,
-                                                        contentDescription = null,
-                                                        tint = Color(0xFFF59E0B),
-                                                        modifier = Modifier.size(16.dp)
-                                                    )
-                                                }
-                                            }
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
                                             Text(
-                                                text = preset.desc,
-                                                color = onGradientMuted.copy(alpha = 0.75f),
-                                                fontSize = 11.sp
+                                                text = "$icon  ${preset.label}",
+                                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                                color = if (isSelected) Color(0xFFF59E0B) else onGradient,
+                                                fontSize = LucentTitles.ItemSize
                                             )
+                                            if (isSelected) {
+                                                Spacer(modifier = Modifier.width(6.dp))
+                                                Icon(
+                                                    Icons.Default.Check,
+                                                    contentDescription = null,
+                                                    tint = Color(0xFFF59E0B),
+                                                    modifier = Modifier.size(16.dp)
+                                                )
+                                            }
                                         }
                                     },
                                     onClick = {

@@ -56,7 +56,6 @@ private object SettingsKeys {
 
     val NOTE_HISTORY_ENABLED = booleanPreferencesKey("note_history_enabled")
 
-    val MEMORY_TIER = stringPreferencesKey("memory_tier")
     val ASSISTANT_CONFIRM_TOOLS = booleanPreferencesKey("assistant_confirm_tools")
     val TYPING_HAPTICS = booleanPreferencesKey("typing_haptics")
 
@@ -231,7 +230,6 @@ class SettingsRepository(context: Context) {
         val agentMode: Boolean = true,
         val reasoning: String = com.lucent.app.data.ReasoningEffort.DEFAULT.key,
         val smallModelModeEnabled: Boolean = false,
-        val memoryTier: String = MemoryTier.DEFAULT.key,
         val embeddingProvider: String = "local",
         val cloudEnabled: Boolean = false,
         val cloudProvider: String = "Nutstore",
@@ -299,7 +297,6 @@ class SettingsRepository(context: Context) {
             agentMode = prefs[SettingsKeys.AGENT_MODE] ?: true,
             reasoning = prefs[SettingsKeys.REASONING_EFFORT] ?: com.lucent.app.data.ReasoningEffort.DEFAULT.key,
             smallModelModeEnabled = prefs[SettingsKeys.SMALL_MODEL_MODE] ?: false,
-            memoryTier = prefs[SettingsKeys.MEMORY_TIER] ?: MemoryTier.DEFAULT.key,
             embeddingProvider = prefs[SettingsKeys.EMBEDDING_PROVIDER] ?: "local",
             cloudEnabled = prefs[SettingsKeys.CLOUD_ENABLED] ?: false,
             cloudProvider = prefs[SettingsKeys.CLOUD_PROVIDER] ?: "Nutstore",
@@ -463,10 +460,6 @@ class SettingsRepository(context: Context) {
     suspend fun setNoteHistoryEnabled(value: Boolean) {
         context.settingsDataStore.edit { it[SettingsKeys.NOTE_HISTORY_ENABLED] = value }
         SettingsCache.noteHistoryEnabled = value
-    }
-
-    val memoryTier: Flow<String> = context.settingsDataStore.data.map {
-        it[SettingsKeys.MEMORY_TIER] ?: MemoryTier.DEFAULT.key
     }
 
     val assistantConfirmToolsEnabled: Flow<Boolean> = context.settingsDataStore.data.map {
@@ -766,10 +759,6 @@ class SettingsRepository(context: Context) {
         SettingsCache.linksEnabled = value
     }
 
-    suspend fun setMemoryTier(value: String) {
-        context.settingsDataStore.edit { it[SettingsKeys.MEMORY_TIER] = value }
-        SettingsCache.memoryTier = value
-    }
     suspend fun setTypingHapticsEnabled(value: Boolean) {}
 
     suspend fun setApiKey(value: String) {

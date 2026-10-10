@@ -15,5 +15,5 @@ internal fun RootSettingsPage(onRoute: (SettingsRoute) -> Unit) {
     Spacer(modifier = Modifier.height(12.dp))
     NavCard(S.settingsEditorTitle, S.settingsEditorSub) { onRoute(SettingsRoute.Editor) }
     Spacer(modifier = Modifier.height(12.dp))
-    NavCard(S.settingsCloudModelTitle, "选择、连接与记忆") { onRoute(SettingsRoute.CloudModel) }
+    NavCard(S.settingsApiConfigTitle, "选择与连接") { onRoute(SettingsRoute.Api) }
 }

@@ -117,9 +117,6 @@ object SettingsCache {
     var smallModelModeEnabled: Boolean = false
 
     @Volatile
-    var memoryTier: String = MemoryTier.DEFAULT.key
-
-    @Volatile
     var embeddingProvider: String = "local"
 
     @Volatile
@@ -186,7 +183,6 @@ object SettingsCache {
         agentMode = prefs.agentMode
         reasoning = prefs.reasoning
         smallModelModeEnabled = prefs.smallModelModeEnabled
-        memoryTier = prefs.memoryTier
         embeddingProvider = prefs.embeddingProvider
 
         terminalFontSize = prefs.terminalFontSize

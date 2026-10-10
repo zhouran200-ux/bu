@@ -7,6 +7,5 @@ enum class SettingsRoute {
     Background,
     Editor,
     Font,
-    Api,
-    CloudModel
+    Api
 }

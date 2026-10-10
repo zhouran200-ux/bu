@@ -209,7 +209,7 @@ fun NotebookChatTab(
                 ?: savedProfiles.firstOrNull()
             val targetModel = selectedModel.ifBlank { matchedProfile?.model.orEmpty() }
             if (targetModel.isBlank()) {
-                LucentToast.show(context, "该方案还没有可用模型，请到设置-云端模型获取并保存模型")
+                LucentToast.show(context, "该方案还没有可用模型，请到设置-API 配置获取并保存模型")
                 return@send
             }
             inputText = ""
@@ -292,7 +292,7 @@ fun NotebookChatTab(
                 val pendingAi = UiChatMessage(
                     id = aiMsgId,
                     role = "assistant",
-                    content = "【未配置 API 密钥】\n当前所选方案未设置有效的 API Key。请点击底部右侧「模型选择」卡片中的「管理与添加 API 方案」，或前往「设置 -> API 设置」填入 API Key 与基础 URL，即可开始基于本地 Markdown 知识库与大模型对话。",
+                    content = "【未配置 API 密钥】\n当前所选方案未设置有效的 API Key。请点击底部右侧「模型选择」卡片中的「管理与添加 API 方案」，或前往「设置 -> API 配置」填入 API Key 与基础 URL，即可开始基于本地 Markdown 知识库与大模型对话。",
                     reasoningText = "配置检查：未找到有效 API Key (方案: $selectedProfileName · 模型: $targetModel)",
                     reasoningDurationSec = 1,
                     reasoningTag = effortLabel

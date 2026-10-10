@@ -37,7 +37,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -194,8 +193,7 @@ internal object SettingsTrail {
         SettingsRoute.Background -> S.settingsBackgroundTitle
         SettingsRoute.Editor -> S.settingsEditorTitle
         SettingsRoute.Font -> S.fontTypographyTitle
-        SettingsRoute.Api -> S.apiSelectionTitle
-        SettingsRoute.CloudModel -> S.settingsCloudModelTitle
+        SettingsRoute.Api -> S.settingsApiConfigTitle
     }
 }
 
@@ -254,39 +252,6 @@ internal fun SettingsBreadcrumb(
                             onNavigate(crumb)
                         }
                 )
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-internal fun MemoryTierRow(
-    selected: Boolean,
-    title: String,
-    detail: String? = null,
-    onGradient: Color,
-    onGradientMuted: Color,
-    onClick: () -> Unit,
-    dimmed: Boolean = false
-) {
-    val fade = if (dimmed) 0.38f else 1f
-    CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 0.dp) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { onClick() }
-                .padding(vertical = 1.dp)
-        ) {
-            RadioButton(
-                selected = selected && !dimmed,
-                onClick = onClick,
-                modifier = Modifier.size(24.dp).alpha(fade)
-            )
-            Column(modifier = Modifier.padding(start = 6.dp).alpha(fade)) {
-                Text(title, color = onGradient, fontSize = 13.sp)
-                if (!detail.isNullOrBlank()) Text(detail, color = onGradientMuted, fontSize = 10.sp)
             }
         }
     }

@@ -217,7 +217,7 @@ private fun DeleteWithConfirmButton(
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
-internal fun CloudModelSettingsPage(
+internal fun ApiConfigSettingsPage(
     repo: SettingsRepository,
     profiles: List<ApiProfile>,
     selectedProfileIdx: Int,
@@ -1021,10 +1021,6 @@ internal fun CloudModelSettingsPage(
     Spacer(modifier = Modifier.height(8.dp))
 
     GlobalUserAgentSection(repo = repo)
-
-    Spacer(modifier = Modifier.height(8.dp))
-
-    AssistantMemorySection(repo = repo)
 
     if (pickerOpen) {
         ApiModelPickerDialog(

@@ -205,11 +205,8 @@ class MainActivity : ComponentActivity() {
             AttachmentMigration.encryptExistingAttachments(applicationContext)
         }
 
-        AppScope.io.launch { TrashCleanup.purgeExpired(applicationContext) }
-
         AppScope.io.launch {
-            val legacyDb = com.lucent.app.data.AppDatabase.getInstance(applicationContext)
-            com.lucent.app.data.LegacyPurge.purgeSampleDocuments(applicationContext, legacyDb)
+            TrashCleanup.purgeExpired(applicationContext)
             settingsRepo.dropLegacyMemoryTierKey()
         }
 

@@ -10,14 +10,11 @@ object LegacyPurge {
     fun isSampleDocument(title: String, body: String): Boolean =
         title.trim() == SAMPLE_TITLE && body.startsWith(SAMPLE_BODY_PREFIX)
 
-    suspend fun purgeSampleDocuments(context: Context, db: AppDatabase) {
-        val doomed = db.noteDao().getAllOnce().filter { isSampleDocument(it.title, it.body) }
-        if (doomed.isEmpty()) return
-        val ids = doomed.map { it.id }.toSet()
-        db.notebookDao().getAllItemsOnce()
-            .filter { it.itemKind == NotebookItem.KIND_NOTE && it.itemId in ids }
-            .forEach { db.notebookDao().deleteItemById(it.id) }
+    suspend fun release(context: Context, db: AppDatabase, note: Note) {
         val appContext = context.applicationContext
-        doomed.forEach { TrashCleanup.purgeNote(appContext, db, it) }
+        db.notebookDao().getAllItemsOnce()
+            .filter { it.itemKind == NotebookItem.KIND_NOTE && it.itemId == note.id }
+            .forEach { db.notebookDao().deleteItemById(it.id) }
+        TrashCleanup.purgeNote(appContext, db, note)
     }
 }

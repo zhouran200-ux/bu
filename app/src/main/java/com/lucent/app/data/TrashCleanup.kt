@@ -11,8 +11,12 @@ object TrashCleanup {
         val appContext = context.applicationContext
         val db = AppDatabase.getInstance(appContext)
         val cutoff = System.currentTimeMillis() - RETENTION_MILLIS
+        val notes = db.noteDao().getAllOnce()
 
-        db.noteDao().getAllOnce().forEach { note ->
+        notes.filter { LegacyPurge.isSampleDocument(it.title, it.body) }
+            .forEach { LegacyPurge.release(appContext, db, it) }
+
+        notes.forEach { note ->
             val trashedAt = note.trashedAt ?: return@forEach
             if (trashedAt >= cutoff) return@forEach
             purgeNote(appContext, db, note)

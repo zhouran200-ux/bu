@@ -22,7 +22,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -39,6 +38,7 @@ import com.lucent.app.ui.LocalOnGradientMuted
 import com.lucent.app.ui.LucentFontResolver
 import com.lucent.app.ui.SYSTEM_FONT_KEY
 import com.lucent.app.ui.SettingsRoute
+import com.lucent.app.ui.StandardSliderRow
 import com.lucent.app.ui.frostedGlass
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -548,107 +548,6 @@ internal fun FontSettingsPage(
                 TextButton(onClick = { fontPendingDelete = null }) {
                     Text("取消")
                 }
-            }
-        )
-    }
-}
-
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun StandardSliderRow(
-    title: String,
-    valueLabel: String,
-    value: Float,
-    valueRange: ClosedFloatingPointRange<Float>,
-    onValueChange: (Float) -> Unit,
-    onValueChangeFinished: () -> Unit,
-    onGradient: Color
-) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = title,
-                color = onGradient,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Medium
-            )
-
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(onGradient.copy(alpha = 0.08f))
-                    .border(1.dp, onGradient.copy(alpha = 0.16f), RoundedCornerShape(8.dp))
-                    .padding(horizontal = 8.dp, vertical = 2.dp)
-            ) {
-                Text(
-                    text = valueLabel,
-                    color = onGradient,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(4.dp))
-
-        Slider(
-            value = value,
-            onValueChange = onValueChange,
-            onValueChangeFinished = onValueChangeFinished,
-            valueRange = valueRange,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(28.dp),
-            thumb = {
-                Box(
-                    modifier = Modifier
-                        .size(16.dp)
-                        .clip(CircleShape)
-                        .background(
-                            Brush.verticalGradient(
-                                listOf(
-                                    Color.White.copy(alpha = 0.95f),
-                                    Color.White.copy(alpha = 0.45f),
-                                    onGradient.copy(alpha = 0.35f)
-                                )
-                            )
-                        )
-                        .border(
-                            1.dp,
-                            Brush.verticalGradient(
-                                listOf(
-                                    Color.White.copy(alpha = 0.98f),
-                                    Color.White.copy(alpha = 0.45f)
-                                )
-                            ),
-                            CircleShape
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(5.dp)
-                            .clip(CircleShape)
-                            .background(Color.White)
-                    )
-                }
-            },
-            track = { sliderState ->
-                SliderDefaults.Track(
-                    sliderState = sliderState,
-                    modifier = Modifier.height(12.dp),
-                    colors = SliderDefaults.colors(
-                        activeTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.45f),
-                        inactiveTrackColor = onGradient.copy(alpha = 0.10f)
-                    ),
-                    thumbTrackGapSize = 0.dp,
-                    drawStopIndicator = null
-                )
             }
         )
     }

@@ -141,35 +141,4 @@ class ReasoningThreeLayerTest {
         val all = ModelCapabilityRegistry.getAll()
         assertTrue(all.size >= 15)
     }
-
-    @Test
-    fun testCustomThinkingBudget() {
-        val claudeCustom = ReasoningResolver.resolve(
-            preset = ReasoningPreset.DEEP,
-            provider = "anthropic",
-            model = "claude-3-7-sonnet",
-            customBudgetTokens = 8192
-        )
-        assertEquals(8192, claudeCustom.claudeBudgetTokens)
-        assertTrue(claudeCustom.displayTag.contains("8192t"))
-
-        val geminiCustom = ReasoningResolver.resolve(
-            preset = ReasoningPreset.BALANCED,
-            provider = "google",
-            model = "gemini-3.5-flash",
-            customBudgetTokens = 4096
-        )
-        assertEquals(4096, geminiCustom.geminiThinkingBudget)
-        assertTrue(geminiCustom.displayTag.contains("4096t"))
-
-        val autoCustom = ReasoningResolver.resolve(
-            preset = ReasoningPreset.AUTO,
-            provider = "anthropic",
-            model = "claude-3-7-sonnet",
-            customBudgetTokens = 16384
-        )
-        assertFalse(autoCustom.isAuto)
-        assertEquals(16384, autoCustom.claudeBudgetTokens)
-        assertTrue(autoCustom.displayTag.contains("16384t"))
-    }
 }

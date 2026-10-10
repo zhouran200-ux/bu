@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -29,6 +30,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -37,6 +39,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.Send
@@ -57,11 +60,11 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -176,9 +179,6 @@ fun NotebookChatTab(
     var temperature by remember {
         mutableFloatStateOf(prefs.getFloat("temperature_$notebookId", -1f))
     }
-    var thinkingBudget by remember {
-        mutableIntStateOf(prefs.getInt("thinking_budget_$notebookId", 0))
-    }
 
     var showDialogueSettingsDialog by remember { mutableStateOf(false) }
     var showProfileModelPickerSheet by remember { mutableStateOf(false) }
@@ -246,8 +246,7 @@ fun NotebookChatTab(
             val resolvedReasoning = ReasoningResolver.resolve(
                 preset = reasoningPreset,
                 provider = specStr,
-                model = targetModel,
-                customBudgetTokens = thinkingBudget
+                model = targetModel
             )
             val effortLabel = resolvedReasoning.displayTag
 
@@ -513,17 +512,14 @@ fun NotebookChatTab(
                 initialPrompt = systemPrompt,
                 initialHistoryRounds = historyRounds,
                 initialTemperature = temperature,
-                initialThinkingBudget = thinkingBudget,
-                onSave = { p, r, t, b ->
+                onSave = { p, r, t ->
                     systemPrompt = p
                     historyRounds = r
                     temperature = t
-                    thinkingBudget = b
                     prefs.edit()
                         .putString("prompt_$notebookId", p)
                         .putInt("history_rounds_$notebookId", r)
                         .putFloat("temperature_$notebookId", t)
-                        .putInt("thinking_budget_$notebookId", b)
                         .apply()
                     showDialogueSettingsDialog = false
                     LucentToast.show(context, "对话设置已保存")
@@ -986,25 +982,24 @@ private fun DialogueSettingsDialog(
     initialPrompt: String,
     initialHistoryRounds: Int,
     initialTemperature: Float,
-    initialThinkingBudget: Int,
-    onSave: (prompt: String, historyRounds: Int, temperature: Float, thinkingBudget: Int) -> Unit,
+    onSave: (prompt: String, historyRounds: Int, temperature: Float) -> Unit,
     onDismiss: () -> Unit
 ) {
     var prompt by remember { mutableStateOf(initialPrompt) }
     var historyRounds by remember { mutableIntStateOf(initialHistoryRounds) }
     var temperature by remember { mutableFloatStateOf(initialTemperature) }
-    var thinkingBudget by remember { mutableIntStateOf(initialThinkingBudget) }
+    val onGradient = LocalOnGradient.current
+    val onGradientMuted = LocalOnGradientMuted.current
+    val accent = MaterialTheme.colorScheme.primary
+    val rootScroll = rememberScrollState()
 
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
-        val onGradient = LocalOnGradient.current
-        val onGradientMuted = LocalOnGradientMuted.current
-        val dialogBg = lucentPanelBackground()
         Surface(
             shape = RoundedCornerShape(24.dp),
-            color = dialogBg,
+            color = lucentPanelBackground(),
             shadowElevation = 16.dp,
             modifier = Modifier
                 .fillMaxWidth(0.92f)
@@ -1013,7 +1008,7 @@ private fun DialogueSettingsDialog(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(20.dp)
+                    .padding(start = 20.dp, end = 20.dp, top = 16.dp)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -1021,8 +1016,8 @@ private fun DialogueSettingsDialog(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        text = "自定义提示词与对话设置",
-                        fontSize = 17.sp,
+                        text = "提示词与模型参数",
+                        fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
                         color = onGradient
                     )
@@ -1034,276 +1029,167 @@ private fun DialogueSettingsDialog(
                             Icons.Default.Close,
                             contentDescription = "关闭",
                             tint = onGradient.copy(alpha = 0.7f),
-                            modifier = Modifier.size(20.dp)
+                            modifier = Modifier.size(18.dp)
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(14.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
-                Surface(
-                    shape = RoundedCornerShape(14.dp),
-                    color = onGradient.copy(alpha = 0.05f),
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .border(1.dp, onGradient.copy(alpha = 0.10f), RoundedCornerShape(14.dp))
+                        .heightIn(max = 420.dp)
+                        .verticalScroll(rootScroll)
                 ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        BasicTextField(
-                            value = prompt,
-                            onValueChange = { prompt = it },
-                            textStyle = TextStyle(fontSize = 14.sp, color = onGradient, lineHeight = 20.sp),
-                            cursorBrush = SolidColor(Color(0xFF38BDF8)),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(min = 90.dp, max = 130.dp),
-                            decorationBox = { innerTextField ->
-                                if (prompt.isEmpty()) {
-                                    Text(
-                                        text = "输入自定义系统提示词，用于指导模型在此笔记本中的回答风格与规则...",
-                                        color = onGradient.copy(alpha = 0.40f),
-                                        fontSize = 14.sp,
-                                        lineHeight = 20.sp
-                                    )
-                                }
-                                innerTextField()
-                            }
-                        )
-
-                        Spacer(modifier = Modifier.height(6.dp))
-
-                        Text(
-                            text = "${prompt.length} 字",
-                            fontSize = 12.sp,
-                            color = onGradient.copy(alpha = 0.45f),
-                            modifier = Modifier.align(Alignment.End)
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = "模型参数",
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = onGradient
-                    )
-                    TextButton(
-                        onClick = {
-                            historyRounds = 10
-                            temperature = -1f
-                            thinkingBudget = 0
-                        }
+                    Surface(
+                        shape = RoundedCornerShape(14.dp),
+                        color = onGradient.copy(alpha = 0.05f),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .border(1.dp, onGradient.copy(alpha = 0.10f), RoundedCornerShape(14.dp))
                     ) {
-                        Text(
-                            text = "重置",
-                            fontSize = 13.sp,
-                            color = Color(0xFF38BDF8),
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Surface(
-                    shape = RoundedCornerShape(14.dp),
-                    color = onGradient.copy(alpha = 0.05f),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(modifier = Modifier.padding(14.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(
-                                text = "携带历史轮数",
-                                fontSize = 14.sp,
-                                color = onGradient.copy(alpha = 0.90f)
-                            )
-                            Surface(
-                                shape = RoundedCornerShape(8.dp),
-                                color = Color(0xFF0284C7).copy(alpha = 0.20f),
-                                modifier = Modifier.border(1.dp, Color(0xFF38BDF8).copy(alpha = 0.35f), RoundedCornerShape(8.dp))
-                            ) {
-                                Text(
-                                    text = "$historyRounds 轮",
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = Color(0xFF38BDF8),
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                                )
-                            }
-                        }
-
-                        Slider(
-                            value = historyRounds.toFloat(),
-                            onValueChange = { historyRounds = it.toInt() },
-                            valueRange = 1f..20f,
-                            steps = 18,
-                            colors = SliderDefaults.colors(
-                                thumbColor = Color(0xFF38BDF8),
-                                activeTrackColor = Color(0xFF0284C7),
-                                inactiveTrackColor = onGradient.copy(alpha = 0.15f)
-                            )
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                Surface(
-                    shape = RoundedCornerShape(14.dp),
-                    color = onGradient.copy(alpha = 0.05f),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(modifier = Modifier.padding(14.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(
-                                text = "温度 (Temperature)",
-                                fontSize = 14.sp,
-                                color = onGradient.copy(alpha = 0.90f)
-                            )
-                            Surface(
-                                shape = RoundedCornerShape(8.dp),
-                                color = if (temperature < 0f) onGradient.copy(alpha = 0.10f) else Color(0xFF0284C7).copy(alpha = 0.20f),
-                                modifier = Modifier.border(
-                                    1.dp,
-                                    if (temperature < 0f) onGradient.copy(alpha = 0.20f) else Color(0xFF38BDF8).copy(alpha = 0.35f),
-                                    RoundedCornerShape(8.dp)
-                                )
-                            ) {
-                                Text(
-                                    text = if (temperature < 0f) "未设置" else String.format("%.1f", temperature),
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = if (temperature < 0f) onGradient.copy(alpha = 0.7f) else Color(0xFF38BDF8),
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                                )
-                            }
-                        }
-
-                        Slider(
-                            value = if (temperature < 0f) 0.7f else temperature,
-                            onValueChange = { temperature = it },
-                            valueRange = 0.0f..2.0f,
-                            steps = 19,
-                            colors = SliderDefaults.colors(
-                                thumbColor = if (temperature < 0f) Color.Gray else Color(0xFF38BDF8),
-                                activeTrackColor = if (temperature < 0f) Color.Gray.copy(alpha = 0.4f) else Color(0xFF0284C7),
-                                inactiveTrackColor = onGradient.copy(alpha = 0.15f)
-                            )
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                Surface(
-                    shape = RoundedCornerShape(14.dp),
-                    color = onGradient.copy(alpha = 0.05f),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(modifier = Modifier.padding(14.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(
-                                text = "思考 Token 预算上限",
-                                fontSize = 14.sp,
-                                color = onGradient.copy(alpha = 0.90f)
-                            )
-                            Surface(
-                                shape = RoundedCornerShape(8.dp),
-                                color = if (thinkingBudget <= 0) onGradient.copy(alpha = 0.10f) else Color(0xFFF59E0B).copy(alpha = 0.20f),
-                                modifier = Modifier.border(
-                                    1.dp,
-                                    if (thinkingBudget <= 0) onGradient.copy(alpha = 0.20f) else Color(0xFFFBBF24).copy(alpha = 0.35f),
-                                    RoundedCornerShape(8.dp)
-                                )
-                            ) {
-                                Text(
-                                    text = if (thinkingBudget <= 0) "自适应推荐" else "${thinkingBudget}t",
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = if (thinkingBudget <= 0) onGradient.copy(alpha = 0.7f) else Color(0xFFFBBF24),
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(10.dp))
-
-                        val budgetOptions = listOf(
-                            0 to "自适应",
-                            2048 to "2K",
-                            4096 to "4K",
-                            8192 to "8K",
-                            16384 to "16K",
-                            32768 to "32K",
-                            65536 to "64K"
-                        )
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(5.dp)
-                        ) {
-                            budgetOptions.forEach { (budgetVal, label) ->
-                                val isSelected = thinkingBudget == budgetVal
-                                Surface(
-                                    shape = RoundedCornerShape(8.dp),
-                                    color = if (isSelected) Color(0xFFF59E0B) else onGradient.copy(alpha = 0.08f),
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .clickable { thinkingBudget = budgetVal }
-                                ) {
-                                    Box(
-                                        contentAlignment = Alignment.Center,
-                                        modifier = Modifier.padding(vertical = 6.dp)
-                                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            BasicTextField(
+                                value = prompt,
+                                onValueChange = { prompt = it },
+                                textStyle = TextStyle(fontSize = 14.sp, color = onGradient, lineHeight = 20.sp),
+                                cursorBrush = SolidColor(accent),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(min = 72.dp, max = 130.dp),
+                                decorationBox = { innerTextField ->
+                                    if (prompt.isEmpty()) {
                                         Text(
-                                            text = label,
-                                            fontSize = 11.sp,
-                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                            color = if (isSelected) Color(0xFF161622) else onGradient.copy(alpha = 0.85f)
+                                            text = "输入自定义系统提示词，用于指导模型在此笔记本中的回答风格与规则...",
+                                            color = onGradient.copy(alpha = 0.40f),
+                                            fontSize = 14.sp,
+                                            lineHeight = 20.sp
                                         )
                                     }
+                                    innerTextField()
                                 }
-                            }
+                            )
+
+                            Spacer(modifier = Modifier.height(6.dp))
+
+                            Text(
+                                text = "${prompt.length} 字",
+                                fontSize = 12.sp,
+                                color = onGradient.copy(alpha = 0.45f),
+                                modifier = Modifier.align(Alignment.End)
+                            )
                         }
                     }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "模型参数",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = onGradientMuted
+                        )
+                        TextButton(
+                            onClick = {
+                                historyRounds = 10
+                                temperature = -1f
+                            },
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
+                            modifier = Modifier.height(30.dp)
+                        ) {
+                            Text(
+                                text = "重置",
+                                fontSize = 13.sp,
+                                color = accent,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .frostedGlass()
+                            .padding(16.dp)
+                    ) {
+                        StandardSliderRow(
+                            title = "携带历史轮数",
+                            valueLabel = "$historyRounds 轮",
+                            value = historyRounds.toFloat(),
+                            valueRange = 1f..20f,
+                            steps = 18,
+                            onValueChange = { historyRounds = it.toInt() },
+                            onValueChangeFinished = { },
+                            onGradient = onGradient
+                        )
+
+                        HorizontalDivider(
+                            modifier = Modifier.padding(vertical = 12.dp),
+                            color = onGradient.copy(alpha = 0.08f)
+                        )
+
+                        StandardSliderRow(
+                            title = "温度 (Temperature)",
+                            valueLabel = if (temperature < 0f) "未设置" else String.format("%.1f", temperature),
+                            value = if (temperature < 0f) 0.7f else temperature,
+                            valueRange = 0f..2f,
+                            steps = 19,
+                            active = temperature >= 0f,
+                            onValueChange = { temperature = it },
+                            onValueChangeFinished = { },
+                            onGradient = onGradient
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
 
-                Spacer(modifier = Modifier.height(20.dp))
+                HorizontalDivider(
+                    modifier = Modifier.padding(top = 4.dp),
+                    color = onGradient.copy(alpha = 0.08f)
+                )
 
-                Button(
-                    onClick = { onSave(prompt, historyRounds, temperature, thinkingBudget) },
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0284C7)),
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(48.dp)
+                        .padding(top = 6.dp, bottom = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.End
                 ) {
-                    Text(
-                        text = "保存",
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
+                    TextButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.height(38.dp)
+                    ) {
+                        Text(
+                            text = "取消",
+                            fontSize = 14.sp,
+                            color = onGradientMuted
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    Button(
+                        onClick = { onSave(prompt, historyRounds, temperature) },
+                        shape = RoundedCornerShape(12.dp),
+                        contentPadding = PaddingValues(horizontal = 22.dp, vertical = 0.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = accent),
+                        modifier = Modifier.height(38.dp)
+                    ) {
+                        Text(
+                            text = "保存",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
         }

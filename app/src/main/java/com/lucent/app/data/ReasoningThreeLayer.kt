@@ -357,10 +357,9 @@ object ReasoningResolver {
     fun resolve(
         preset: ReasoningPreset,
         provider: String,
-        model: String,
-        customBudgetTokens: Int = 0
+        model: String
     ): ResolvedReasoningConfig {
-        if (preset == ReasoningPreset.AUTO && customBudgetTokens <= 0) {
+        if (preset == ReasoningPreset.AUTO) {
             return ResolvedReasoningConfig.AUTO
         }
 
@@ -374,22 +373,6 @@ object ReasoningResolver {
             ReasoningControl.NONE -> fallbackMapper
         }
 
-        val baseConfig = mapper.map(preset, modelDef)
-        if (customBudgetTokens > 0) {
-            val budgetTag = "预算 ${customBudgetTokens}t"
-            val display = if (baseConfig.displayTag.isNotBlank() && baseConfig.displayTag != "原厂自适应") {
-                "${baseConfig.displayTag} · $budgetTag"
-            } else {
-                "自适应 · $budgetTag"
-            }
-            return baseConfig.copy(
-                isAuto = false,
-                claudeBudgetTokens = customBudgetTokens,
-                geminiThinkingBudget = customBudgetTokens,
-                displayTag = display
-            )
-        }
-
-        return baseConfig
+        return mapper.map(preset, modelDef)
     }
 }

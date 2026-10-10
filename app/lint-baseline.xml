@@ -545,7 +545,6 @@
             column="8"/>
     </issue>
 
-    
 
     <issue
         id="NewerVersionAvailable"
@@ -901,4 +900,5 @@
             line="39"
             column="13"/>
     </issue>
+
 </issues>

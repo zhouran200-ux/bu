@@ -12,6 +12,17 @@ object NotebookPurge {
         return owners.filterValues { it == setOf(notebookId) }.keys.toList()
     }
 
+    suspend fun linkNote(db: AppDatabase, notebookId: Long, noteId: Long) {
+        db.notebookDao().unlinkItemExcept(NotebookItem.KIND_NOTE, noteId, notebookId)
+        db.notebookDao().insertItem(
+            NotebookItem(
+                notebookId = notebookId,
+                itemKind = NotebookItem.KIND_NOTE,
+                itemId = noteId
+            )
+        )
+    }
+
     suspend fun releaseNote(context: Context, db: AppDatabase, notebookId: Long, noteId: Long) {
         val exclusive = noteIdsExclusiveTo(db.notebookDao().getAllItemsOnce(), notebookId).contains(noteId)
         db.notebookDao().removeItem(notebookId, NotebookItem.KIND_NOTE, noteId)

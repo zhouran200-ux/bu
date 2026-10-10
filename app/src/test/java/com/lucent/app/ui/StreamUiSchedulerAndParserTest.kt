@@ -67,4 +67,70 @@ class StreamUiSchedulerAndParserTest {
         assertTrue(blocks3.size >= 2)
         assertEquals("这是第一段已经完成。", (blocks3[0] as MdBlock.Paragraph).text)
     }
+
+    @Test
+    fun testThoughtBurstUpdatesTheThoughtLaneOnly() {
+        var contentFlushes = 0
+        var lastThought = ""
+
+        val scheduler = StreamUiScheduler(
+            timeWindowMs = 5000L,
+            charBurstThreshold = 100,
+            thoughtWindowMs = 5000L,
+            thoughtBurstThreshold = 8,
+            onFlush = { _, _ -> contentFlushes++ },
+            onThought = { lastThought = it }
+        )
+
+        scheduler.append("", "先看看")
+        assertEquals(0, contentFlushes)
+        assertEquals("", lastThought)
+
+        scheduler.append("", "题目的条件")
+        assertEquals(0, contentFlushes)
+        assertEquals("先看看题目的条件", lastThought)
+    }
+
+    @Test
+    fun testContentBurstCarriesTheReasoningAlong() {
+        var lastContent = ""
+        var lastReasoning: String? = null
+        var thoughtPushes = 0
+
+        val scheduler = StreamUiScheduler(
+            timeWindowMs = 5000L,
+            charBurstThreshold = 6,
+            thoughtWindowMs = 5000L,
+            thoughtBurstThreshold = 500,
+            onFlush = { content, reasoning ->
+                lastContent = content
+                lastReasoning = reasoning
+            },
+            onThought = { thoughtPushes++ }
+        )
+
+        scheduler.append("推理中的", "第一段思考")
+        scheduler.append("回答文字", null)
+
+        assertEquals("推理中的回答文字", lastContent)
+        assertEquals("第一段思考", lastReasoning)
+        assertEquals(0, thoughtPushes)
+    }
+
+    @Test
+    fun testThoughtBoundaryFlushesBothLanesImmediately() {
+        var contentFlushes = 0
+
+        val scheduler = StreamUiScheduler(
+            timeWindowMs = 5000L,
+            charBurstThreshold = 500,
+            thoughtWindowMs = 5000L,
+            thoughtBurstThreshold = 500,
+            onFlush = { _, _ -> contentFlushes++ }
+        )
+
+        scheduler.append("", "一段完整的思考\n\n")
+        assertEquals(1, contentFlushes)
+        assertEquals("一段完整的思考\n\n", scheduler.getFinalReasoning())
+    }
 }

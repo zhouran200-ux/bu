@@ -8,9 +8,16 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -74,6 +81,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -85,6 +93,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -184,6 +194,8 @@ fun NotebookChatTab(
     var showProfileModelPickerSheet by remember { mutableStateOf(false) }
 
     val messages = remember { mutableStateListOf<UiChatMessage>() }
+    var streamingAnswerId by remember { mutableStateOf<Long?>(null) }
+    val streamingThought = remember { mutableStateOf("") }
 
     LaunchedEffect(notebookId) {
         val convId = ChatScope.forNotebook(notebookId)
@@ -292,47 +304,35 @@ fun NotebookChatTab(
                 val pendingAi = UiChatMessage(
                     id = aiMsgId,
                     role = "assistant",
-                    content = "【未配置 API 密钥】\n当前所选方案未设置有效的 API Key。请点击底部右侧「模型选择」卡片中的「管理与添加 API 方案」，或前往「设置 -> API 配置」填入 API Key 与基础 URL，即可开始基于本地 Markdown 知识库与大模型对话。",
-                    reasoningText = "配置检查：未找到有效 API Key (方案: $selectedProfileName · 模型: $targetModel)",
-                    reasoningDurationSec = 1,
-                    reasoningTag = effortLabel
+                    content = "【未配置 API 密钥】\n当前所选方案未设置有效的 API Key。请点击底部右侧「模型选择」卡片中的「管理与添加 API 方案」，或前往「设置 -> API 配置」填入 API Key 与基础 URL，即可开始基于本地 Markdown 知识库与大模型对话。"
                 )
                 messages.add(pendingAi)
             } else {
-                val promptHint = if (systemPrompt.isNotBlank()) "\n• 注入自定义提示词规则..." else ""
                 val pendingAi = UiChatMessage(
                     id = aiMsgId,
                     role = "assistant",
-                    content = "正在思考并回答中...",
-                    reasoningText = "思考过程 ($effortLabel · 模型：$selectedProfileName / $targetModel)：\n• 正在检索笔记本《$notebookTitle》关联的 ${sourceNotes.size} 篇完整 Markdown 文档...$promptHint\n• 提取提问关键词并进行逻辑推理...\n• 生成精炼且富有层次感的结构化回答。",
-                    reasoningDurationSec = if (reasoningPreset == ReasoningPreset.MAXIMUM || reasoningPreset == ReasoningPreset.DEEP) 24 else 12,
+                    content = "",
                     reasoningTag = effortLabel
                 )
                 messages.add(pendingAi)
+                streamingThought.value = ""
+                streamingAnswerId = aiMsgId
 
                 scope.launch {
                     val startTime = System.currentTimeMillis()
                     val scheduler = StreamUiScheduler(
                         timeWindowMs = 35L,
-                        charBurstThreshold = 48
-                    ) { currentContent, currentReasoning ->
-                        val durationSec = ((System.currentTimeMillis() - startTime) / 1000).toInt().coerceAtLeast(1)
-                        val currentAi = UiChatMessage(
-                            id = aiMsgId,
-                            role = "assistant",
-                            content = currentContent.ifBlank { "正在思考并回答中..." },
-                            reasoningText = currentReasoning
-                                ?: if (currentContent.isEmpty()) {
-                                    "思考过程 ($effortLabel · 模型：$selectedProfileName / $targetModel)：\n• 正在检索笔记本《$notebookTitle》关联的 ${sourceNotes.size} 篇完整 Markdown 文档...\n• 正在实时分析推理中..."
-                                } else null,
-                            reasoningDurationSec = durationSec,
-                            reasoningTag = effortLabel
-                        )
-                        val idx = messages.indexOfFirst { it.id == aiMsgId }
-                        if (idx >= 0) {
-                            messages[idx] = currentAi
-                        }
-                    }
+                        charBurstThreshold = 48,
+                        thoughtWindowMs = 16L,
+                        thoughtBurstThreshold = 24,
+                        onFlush = { currentContent, _ ->
+                            val idx = messages.indexOfFirst { it.id == aiMsgId }
+                            if (idx >= 0) {
+                                messages[idx] = messages[idx].copy(content = currentContent)
+                            }
+                        },
+                        onThought = { reasoning -> streamingThought.value = reasoning }
+                    )
 
                     val chatResult = LlmClient.chatStream(
                         baseUrl = baseUrl,
@@ -355,7 +355,6 @@ fun NotebookChatTab(
                     chatResult.onSuccess { res ->
                         val finalContent = res.content.ifBlank { scheduler.getFinalContent() }.ifBlank { "（模型返回了空回复）" }
                         val finalReasoning = res.reasoningText ?: scheduler.getFinalReasoning()
-                            ?: "思考完毕 ($effortLabel · 用时 ${durationSec}秒)：\n• 知识库全文匹配完成；\n• 生成结构化分析回答。"
 
                         val finalAi = UiChatMessage(
                             id = aiMsgId,
@@ -393,8 +392,7 @@ fun NotebookChatTab(
                             id = aiMsgId,
                             role = "assistant",
                             content = errorDisplay,
-                            reasoningText = scheduler.getFinalReasoning()
-                                ?: "思考中断：调用接口时出现异常 (${err.javaClass.simpleName})",
+                            reasoningText = scheduler.getFinalReasoning(),
                             reasoningDurationSec = durationSec,
                             reasoningTag = effortLabel
                         )
@@ -418,6 +416,7 @@ fun NotebookChatTab(
                         }
                     }
 
+                    streamingAnswerId = null
                     delay(100)
                     listState.animateScrollToItem((messages.size - 1).coerceAtLeast(0))
                 }
@@ -473,7 +472,9 @@ fun NotebookChatTab(
                         )
                     } else {
                         AiMessageCard(
-                            message = msg
+                            message = msg,
+                            streaming = msg.id == streamingAnswerId,
+                            liveThought = if (msg.id == streamingAnswerId) streamingThought else null
                         )
                     }
                 }
@@ -653,79 +654,153 @@ private fun UserMessageCard(
 
 @Composable
 private fun AiMessageCard(
-    message: UiChatMessage
+    message: UiChatMessage,
+    streaming: Boolean = false,
+    liveThought: State<String>? = null
 ) {
-    var expandedThinking by remember { mutableStateOf(false) }
-
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(end = 12.dp)
     ) {
-        if (!message.reasoningText.isNullOrBlank()) {
-            val thinkingTag = message.reasoningTag?.ifBlank { null } ?: "原厂自适应"
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .clip(RoundedCornerShape(12.dp))
-                    .clickable { expandedThinking = !expandedThinking }
-                    .padding(horizontal = 8.dp, vertical = 6.dp)
-            ) {
-                Text(
-                    text = "已深度思考 · $thinkingTag (用时 ${message.reasoningDurationSec}秒)",
-                    color = Color(0xFF38BDF8),
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Icon(
-                    imageVector = if (expandedThinking) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                    contentDescription = "展开思考",
-                    tint = Color(0xFF38BDF8),
-                    modifier = Modifier.size(18.dp)
-                )
-            }
+        if (streaming || liveThought != null || !message.reasoningText.isNullOrBlank()) {
+            ThinkingLane(
+                messageId = message.id,
+                liveThought = liveThought,
+                storedThought = message.reasoningText.orEmpty(),
+                tag = message.reasoningTag,
+                durationSec = message.reasoningDurationSec,
+                streaming = streaming
+            )
+        }
 
-            AnimatedVisibility(
-                visible = expandedThinking,
-                enter = fadeIn() + expandVertically(),
-                exit = fadeOut() + shrinkVertically()
+        if (message.content.isNotBlank()) {
+            Surface(
+                shape = RoundedCornerShape(18.dp),
+                color = Color.Transparent,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .frostedGlass(cornerRadius = 18.dp)
             ) {
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = Color.Transparent,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 8.dp)
-                        .frostedGlass(cornerRadius = 12.dp)
-                ) {
-                    Text(
-                        text = message.reasoningText,
-                        color = LocalOnGradient.current.copy(alpha = 0.85f),
-                        fontSize = 13.sp,
-                        fontFamily = FontFamily.Monospace,
-                        lineHeight = 18.sp,
-                        modifier = Modifier.padding(12.dp)
+                Column(modifier = Modifier.padding(16.dp)) {
+                    MarkdownText(
+                        text = message.content,
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
             }
         }
+    }
+}
 
-        Surface(
-            shape = RoundedCornerShape(18.dp),
-            color = Color.Transparent,
+@Composable
+private fun ThinkingLane(
+    messageId: Long,
+    liveThought: State<String>?,
+    storedThought: String,
+    tag: String?,
+    durationSec: Int,
+    streaming: Boolean
+) {
+    val accent = Color(0xFF38BDF8)
+    val onGradientMuted = LocalOnGradientMuted.current
+    var expanded by remember(messageId) { mutableStateOf(streaming) }
+    val laneState = rememberScrollState()
+    val thought = liveThought?.value ?: storedThought
+
+    LaunchedEffect(streaming) {
+        if (!streaming) expanded = false
+    }
+
+    LaunchedEffect(thought, expanded) {
+        val remaining = laneState.maxValue - laneState.value
+        if (expanded && remaining > 0) laneState.animateScrollBy(remaining.toFloat(), tween(180))
+    }
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
-                .fillMaxWidth()
-                .frostedGlass(cornerRadius = 18.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .clickable { expanded = !expanded }
+                .padding(horizontal = 8.dp, vertical = 6.dp)
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                MarkdownText(
-                    text = message.content,
-                    modifier = Modifier.fillMaxWidth()
+            Text(
+                text = if (streaming) {
+                    "正在思考"
+                } else {
+                    "已深度思考 · ${tag?.ifBlank { null } ?: "原厂自适应"} (用时 ${durationSec}秒)"
+                },
+                color = accent,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Icon(
+                imageVector = if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                contentDescription = if (expanded) "收起思考过程" else "展开思考过程",
+                tint = accent,
+                modifier = Modifier.size(18.dp)
+            )
+        }
+
+        AnimatedVisibility(
+            visible = expanded,
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically()
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp)
+                    .padding(start = 10.dp, bottom = 8.dp)
+                    .drawBehind {
+                        drawLine(
+                            color = accent.copy(alpha = 0.28f),
+                            start = Offset(0f, 0f),
+                            end = Offset(0f, size.height),
+                            strokeWidth = 2.dp.toPx()
+                        )
+                    }
+                    .padding(start = 10.dp)
+            ) {
+                Text(
+                    text = thought.ifBlank { "等待模型给出推理内容…" },
+                    color = if (thought.isBlank()) onGradientMuted.copy(alpha = 0.7f) else onGradientMuted,
+                    fontSize = 13.sp,
+                    fontFamily = FontFamily.Monospace,
+                    lineHeight = 19.sp,
+                    modifier = Modifier
+                        .heightIn(max = 132.dp)
+                        .verticalScroll(laneState)
                 )
+                if (streaming) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    ThoughtPulse(color = accent)
+                }
             }
         }
     }
+}
+
+@Composable
+private fun ThoughtPulse(color: Color) {
+    val pulse = rememberInfiniteTransition(label = "thoughtPulse")
+    val alpha by pulse.animateFloat(
+        initialValue = 0.2f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(650, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "thoughtPulseAlpha"
+    )
+    Box(
+        modifier = Modifier
+            .size(6.dp)
+            .clip(CircleShape)
+            .background(color.copy(alpha = alpha))
+    )
 }
 
 @Composable

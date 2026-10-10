@@ -56,13 +56,6 @@ object Haptics {
 
     fun tick(context: Context) = oneShot(context, TICK_MS, TICK_AMPLITUDE)
 
-    fun typingTick(context: Context) {
-        val now = android.os.SystemClock.uptimeMillis()
-        if (now - lastTypingTickAt < TYPING_MIN_GAP_MS) return
-        lastTypingTickAt = now
-        oneShot(context, TYPING_TICK_MS, TYPING_AMPLITUDE)
-    }
-
     private fun vibrateStrong(vib: Vibrator, effect: VibrationEffect) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             val attrs = VibrationAttributes.Builder()
@@ -80,23 +73,6 @@ object Haptics {
         }
     }
 
-    fun finishBuzz(context: Context) {
-        val vib = vibrator(context.applicationContext) ?: return
-        if (!vib.hasVibrator()) return
-        try {
-            vib.cancel()
-            lastTypingTickAt = 0L
-            try { Thread.sleep(SETTLE_MS) } catch (_: InterruptedException) { }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                val effect = VibrationEffect.createWaveform(FINISH_TIMINGS, FINISH_AMPLITUDES, -1)
-                vibrateStrong(vib, effect)
-            } else {
-                @Suppress("DEPRECATION")
-                vib.vibrate(FINISH_TIMINGS, -1)
-            }
-        } catch (_: Throwable) {
-        }
-    }
 }
 
 fun Modifier.hapticClickable(onClick: () -> Unit): Modifier = composed {

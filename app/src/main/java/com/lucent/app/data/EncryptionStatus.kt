@@ -1,6 +1,5 @@
 package com.lucent.app.data
 
-import android.content.Context
 
 object EncryptionStatus {
 
@@ -37,56 +36,4 @@ object EncryptionStatus {
         databaseReason = reason
     }
 
-    fun reportSecrets(state: State, reason: String? = null) {
-        secrets = state
-        secretsReason = reason
-    }
-
-    fun reportAttachments(state: State, reason: String? = null) {
-        attachments = state
-        attachmentsReason = reason
-    }
-
-    val degraded: Boolean
-        get() = database == State.PLAINTEXT ||
-            secrets == State.PLAINTEXT ||
-            attachments == State.PLAINTEXT
-
-    val lockedOut: Boolean
-        get() = database == State.LOCKED_OUT
-
-    fun summaryLine(): String = buildString {
-        append("encryption: db=")
-        append(database.name.lowercase())
-        databaseReason?.let { append(" (").append(it).append(")") }
-        append(", secrets=")
-        append(secrets.name.lowercase())
-        secretsReason?.let { append(" (").append(it).append(")") }
-        append(", attachments=")
-        append(attachments.name.lowercase())
-        attachmentsReason?.let { append(" (").append(it).append(")") }
-    }
-
-    fun logSummary(context: Context) {
-        StartupLog.event(context, summaryLine())
-    }
-
-    fun probeSecrets(): String? {
-        val probe = "lucent-probe-" + java.util.UUID.randomUUID()
-        val sealed = try {
-            LocalSecrets.encrypt(probe)
-        } catch (t: Throwable) {
-            return "sealing threw: ${t.message}"
-        }
-        if (sealed == probe) return "value was stored in plaintext"
-        if (sealed.isEmpty()) return "sealing produced nothing"
-        if (sealed.contains(probe)) return "plaintext is visible inside the stored value"
-        val opened = try {
-            LocalSecrets.decrypt(sealed)
-        } catch (t: Throwable) {
-            return "opening threw: ${t.message}"
-        }
-        if (opened != probe) return "the sealed value did not open back to the original"
-        return null
-    }
 }

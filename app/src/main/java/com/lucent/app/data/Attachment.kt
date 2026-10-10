@@ -15,10 +15,6 @@ data class Attachment(
     val isVideo: Boolean get() = mime.startsWith("video/")
 
     val isAudio: Boolean get() = mime.startsWith("audio/")
-
-    val isPdf: Boolean get() = mime == "application/pdf" || name.endsWith(".pdf", ignoreCase = true)
-
-    val isInlineViewable: Boolean get() = isImage || isVideo || isAudio
 }
 
 object Attachments {
@@ -53,14 +49,6 @@ object Attachments {
         return arr.toString()
     }
 
-
-    fun byteSize(context: Context, att: Attachment): Long {
-        return if (AttachmentStore.looksLikeId(att.data)) {
-            AttachmentStore.sizeOf(context, att.data)
-        } else {
-            estimateDecodedBase64Size(att.data)
-        }
-    }
 
     fun readBytes(context: Context, att: Attachment, maxBytes: Long = 32L * 1024 * 1024): ByteArray? {
         return if (AttachmentStore.looksLikeId(att.data)) {
@@ -97,17 +85,6 @@ object Attachments {
         }
     }
 
-    fun readAsBase64(context: Context, att: Attachment, maxBytes: Long = 8L * 1024 * 1024): String? {
-        val bytes = readBytes(context, att, maxBytes) ?: return null
-        return Base64.encodeToString(bytes, Base64.NO_WRAP)
-    }
-
-    fun textAttachment(context: Context, name: String, content: String): Attachment? {
-        val safeName = if (name.isBlank()) "note.txt" else name
-        val id = AttachmentStore.importBytes(context, content.toByteArray(Charsets.UTF_8)) ?: return null
-        return Attachment(mime = "text/plain", data = id, name = safeName)
-    }
-
     fun upsert(context: Context, list: List<Attachment>, attachment: Attachment): List<Attachment> {
         val idx = list.indexOfFirst { it.name.equals(attachment.name, ignoreCase = true) }
         return if (idx >= 0) {
@@ -117,14 +94,6 @@ object Attachments {
             }
             list.toMutableList().also { it[idx] = attachment }
         } else list + attachment
-    }
-
-    fun removeByName(context: Context, list: List<Attachment>, name: String): List<Attachment> {
-        val toRemove = list.filter { it.name.equals(name, ignoreCase = true) }
-        toRemove.forEach { att ->
-            if (AttachmentStore.looksLikeId(att.data)) AttachmentStore.delete(context, att.data)
-        }
-        return list.filterNot { it.name.equals(name, ignoreCase = true) }
     }
 
     fun idsFromJson(json: String?): Set<String> {
@@ -144,22 +113,4 @@ object Attachments {
         }
         return (base64.length.toLong() * 3 / 4) - padding
     }
-}
-
-object ChatAttachments {
-
-    fun all(
-        primaryMime: String?,
-        primaryData: String?,
-        primaryName: String?,
-        listJson: String?
-    ): List<Attachment> {
-        val stored = Attachments.parse(listJson)
-        if (stored.isNotEmpty()) return stored
-        if (primaryData.isNullOrBlank()) return emptyList()
-        return listOf(Attachment(primaryMime ?: "application/octet-stream", primaryData, primaryName ?: "file"))
-    }
-
-    fun listJsonFor(list: List<Attachment>): String? =
-        if (list.size > 1) Attachments.serialize(list) else null
 }

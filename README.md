@@ -1,22 +1,27 @@
 <div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
+
+# 𝓛𝓾𝓬𝓮𝓷𝓽
+
+### 现代 · 极简 · 内敛至近乎沉默
+
+**一款纯粹专注的 Android 笔记本应用，内置云端大模型知识库问答。数据全部留在设备上，封存在加密数据库里。**
+
 </div>
 
-# Run and deploy your AI Studio app
+完整说明（架构、功能、致谢与第三方许可）见 **[`docs/README.zh-CN.md`](docs/README.zh-CN.md)**。
 
-This contains everything you need to run your app locally.
+---
 
-View your app in AI Studio: https://ai.studio/apps/5fddd9cb-1777-4905-a99d-b77c57d98062
+## 本地构建
 
-## Run Locally
+需要 JDK 17 与 Android SDK（compileSdk 36、minSdk 28），无需其它工具：
 
-**Prerequisites:**  [Android Studio](https://developer.android.com/studio)
+```bash
+./gradlew :app:assembleDebug        # 调试包，使用仓库自带的 debug.keystore
+./gradlew :app:testDebugUnitTest    # 单元测试
+./gradlew :app:lintRelease          # 静态检查
+```
 
+## 云端构建
 
-1. Open Android Studio
-2. Select **Open** and choose the directory containing this project
-3. Allow Android Studio to fix any incompatibilities as it imports the project.
-4. Create a file named `.env` in the project directory and set `GEMINI_API_KEY` in that file to your Gemini API key (see `.env.example` for an example)
-5. Remove this line from the app's `build.gradle.kts` file: `signingConfig = signingConfigs.getByName("debugConfig")`
-6. Run the app on an emulator or physical device
-7. If you have already published your app in AI Studio, please [request upload key reset](https://support.google.com/googleplay/android-developer/answer/9842756#zippy=%2Crequest-an-upload-key-reset) in Google Play Console.
+推送到 `main` 即会自动运行 `build-apk.yml`，产出可直接安装的 APK 并附上构建产物。要打签名 Release 包，在仓库 Secrets 里配置 `LUCENT_KEYSTORE_BASE64` 与 `LUCENT_KEYSTORE_PASSWORD`。

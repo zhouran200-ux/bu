@@ -243,10 +243,6 @@ object ModelCapabilityRegistry {
         registry[definition.id.lowercase()] = definition
     }
 
-    fun registerBatch(definitions: List<ModelDefinition>) {
-        definitions.forEach { register(it) }
-    }
-
     fun getAll(): List<ModelDefinition> {
         return registry.values.toList()
     }

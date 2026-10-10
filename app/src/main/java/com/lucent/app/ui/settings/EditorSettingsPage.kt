@@ -16,7 +16,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.lucent.app.data.SettingsCache
 import com.lucent.app.data.SettingsRepository
 import com.lucent.app.i18n.S
@@ -41,7 +40,6 @@ internal fun EditorSettingsPage(
     val markdownEnabled by repo.markdownEnabled.collectAsState(initial = SettingsCache.markdownEnabled)
     val richTextEnabled by repo.richTextEnabled.collectAsState(initial = SettingsCache.richTextEnabled)
     val linksEnabled by repo.linksEnabled.collectAsState(initial = SettingsCache.linksEnabled)
-    val blackoutOn by repo.blackoutEnabled.collectAsState(initial = SettingsCache.blackoutEnabled)
     val openLinksExternallyOn by repo.openLinksExternally.collectAsState(initial = SettingsCache.openLinksExternally)
     val globalTextSelectionEnabled by repo.globalTextSelectionEnabled.collectAsState(initial = SettingsCache.globalTextSelectionEnabled)
 
@@ -111,7 +109,6 @@ internal fun EditorSettingsPage(
             Spacer(modifier = Modifier.width(12.dp))
             Switch(
                 checked = openLinksExternallyOn,
-                enabled = !blackoutOn,
                 onCheckedChange = { turnOn ->
                     if (turnOn) onRequestOpenLinksWarning()
                     else {
@@ -120,10 +117,6 @@ internal fun EditorSettingsPage(
                     }
                 }
             )
-        }
-        if (blackoutOn) {
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(S.openLinksBlockedByBlackout, color = onGradientMuted, fontSize = 12.sp)
         }
     }
 }

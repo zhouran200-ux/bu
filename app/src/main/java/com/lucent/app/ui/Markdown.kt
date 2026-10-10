@@ -283,53 +283,6 @@ private fun inlineAnnotated(
     }
 }
 
-private val LINKS_ONLY = Regex("""\[\[([^\[\]]+)]]|\[([^\]]+)]\(([^)\s]+)\)""")
-
-@Composable
-fun LinkedPlainText(
-    text: String,
-    modifier: Modifier = Modifier,
-    brokenLinks: Set<String> = emptySet(),
-    onWikiLink: (String) -> Unit = {}
-) {
-    val onGradient = LocalOnGradient.current
-    val brokenStyle = SpanStyle(color = OverdueColor, textDecoration = TextDecoration.Underline)
-    val linkStyle = SpanStyle(color = onGradient, textDecoration = TextDecoration.Underline)
-
-    val annotated = buildAnnotatedString {
-        var cursor = 0
-        for (match in LINKS_ONLY.findAll(text)) {
-            if (match.range.first > cursor) {
-                append(text.substring(cursor, match.range.first))
-            }
-            val g = match.groupValues
-            when {
-                g[1].isNotEmpty() -> {
-                    val target = g[1].trim()
-                    val broken = target.lowercase() in brokenLinks
-                    withLink(
-                        LinkAnnotation.Clickable(
-                            tag = "note:$target",
-                            styles = TextLinkStyles(style = if (broken) brokenStyle else linkStyle)
-                        ) { onWikiLink(target) }
-                    ) {
-                        append(target)
-                    }
-                }
-                g[2].isNotEmpty() && g[3].isNotEmpty() -> {
-                    withLink(LinkAnnotation.Url(url = g[3], styles = TextLinkStyles(style = linkStyle))) {
-                        append(g[2])
-                    }
-                }
-            }
-            cursor = match.range.last + 1
-        }
-        if (cursor < text.length) append(text.substring(cursor))
-    }
-
-    Text(annotated, color = onGradient, modifier = modifier)
-}
-
 @Composable
 fun MarkdownText(
     text: String,

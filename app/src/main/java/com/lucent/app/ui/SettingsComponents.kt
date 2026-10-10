@@ -16,16 +16,13 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.border
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -53,17 +50,10 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.lucent.app.i18n.S
-
-internal fun specLabel(spec: String): String = when (spec) {
-    "anthropic" -> "Anthropic"
-    "google" -> "Google"
-    else -> "OpenAI"
-}
 
 @Composable
 internal fun PaletteSwatch(colors: List<Color>) {
@@ -81,43 +71,6 @@ internal fun PaletteSwatch(colors: List<Color>) {
     )
 }
 
-
-@Composable
-internal fun StepperRow(
-    label: String,
-    value: Int,
-    range: IntRange,
-    step: Int = 1,
-    onChange: (Int) -> Unit
-) {
-    val onGradient = LocalOnGradient.current
-    val onGradientMuted = LocalOnGradientMuted.current
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(label, color = onGradient, fontSize = 14.sp, modifier = Modifier.weight(1f))
-        IconButton(
-            onClick = { onChange((value - step).coerceIn(range)) },
-            enabled = value > range.first
-        ) {
-            Icon(Icons.Default.Remove, contentDescription = null, tint = onGradient)
-        }
-        Text(
-            value.toString(),
-            color = onGradient,
-            fontSize = 15.sp,
-            modifier = Modifier.widthIn(min = 32.dp),
-            textAlign = TextAlign.Center
-        )
-        IconButton(
-            onClick = { onChange((value + step).coerceIn(range)) },
-            enabled = value < range.last
-        ) {
-            Icon(Icons.Default.Add, contentDescription = null, tint = onGradientMuted)
-        }
-    }
-}
 
 @Composable
 internal fun NavCard(

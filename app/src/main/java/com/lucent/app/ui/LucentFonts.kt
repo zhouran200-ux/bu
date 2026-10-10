@@ -35,10 +35,6 @@ object LucentFontResolver {
     fun evict(fontKey: String) {
         cache.remove(fontKey)
     }
-
-    fun evictAll() {
-        cache.clear()
-    }
 }
 
 @Composable

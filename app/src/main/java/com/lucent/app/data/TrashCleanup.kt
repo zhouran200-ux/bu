@@ -30,7 +30,7 @@ object TrashCleanup {
         Attachments.parse(note.attachments).forEach { att ->
             if (AttachmentStore.looksLikeId(att.data)) AttachmentStore.delete(appContext, att.data)
         }
-        NoteHistory.deleteAllFor(db, note.id)
+        db.noteVersionDao().deleteForNote(note.id)
         db.noteDao().delete(note)
     }
 }

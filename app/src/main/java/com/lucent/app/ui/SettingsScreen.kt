@@ -176,21 +176,6 @@ fun SettingsScreen(active: Boolean = true) {
 
     var backupStatus by remember { mutableStateOf("") }
 
-    val appLockOn = false
-    val selfDestructOn = false
-    val gateLockedOut = false
-    val gateWiping = false
-
-    fun settingsGateSuccess() {}
-    fun chargeSettingsGate() {}
-
-    @Composable
-    fun SettingsGateFeedback() {}
-
-    fun requireLockAuth(action: () -> Unit) {
-        action()
-    }
-
     var showOpenLinksWarning by remember { mutableStateOf(false) }
     LaunchedEffect(backupStatus) {
         if (backupStatus.isNotBlank()) {

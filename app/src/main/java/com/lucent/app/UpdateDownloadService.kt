@@ -3,13 +3,10 @@ package com.lucent.app
 import android.app.Notification
 import android.app.PendingIntent
 import android.app.Service
-import android.content.ContentResolver
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
-import android.net.Uri
 import android.os.IBinder
-import android.provider.DocumentsContract
 import androidx.core.app.NotificationChannelCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -195,34 +192,6 @@ class UpdateDownloadService : Service() {
 
     private fun copyToBackupFolder(source: File, name: String): Boolean {
         return false
-    }
-
-    private fun findChild(resolver: ContentResolver, tree: Uri, name: String): Uri? = try {
-        val children = DocumentsContract.buildChildDocumentsUriUsingTree(
-            tree,
-            DocumentsContract.getTreeDocumentId(tree)
-        )
-        resolver.query(
-            children,
-            arrayOf(
-                DocumentsContract.Document.COLUMN_DOCUMENT_ID,
-                DocumentsContract.Document.COLUMN_DISPLAY_NAME
-            ),
-            null,
-            null,
-            null
-        )?.use { cursor ->
-            var found: Uri? = null
-            while (cursor.moveToNext()) {
-                if (cursor.getString(1) == name) {
-                    found = DocumentsContract.buildDocumentUriUsingTree(tree, cursor.getString(0))
-                    break
-                }
-            }
-            found
-        }
-    } catch (t: Throwable) {
-        null
     }
 
     private fun promoteToForeground(percent: Int) {

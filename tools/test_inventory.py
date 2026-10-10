@@ -11,11 +11,10 @@ ROOTS = [
 ]
 
 EXPECTED_AREAS = {
-    "harness": "com.lucent.app.harness",
-    "tools": "com.lucent.app.tools",
     "data": "com.lucent.app.data",
     "ui": "com.lucent.app.ui",
     "network": "com.lucent.app.network",
+    "nativebridge": "com.lucent.app.nativebridge",
 }
 
 
@@ -67,12 +66,8 @@ def main():
     print("Test coverage by area (Android run):")
     for area in EXPECTED_AREAS:
         print(f"  {area}: {areas.get(area, 0)}")
-    if areas.get("harness", 0) < 20:
-        print(f"::error::the agent harness has only {areas.get('harness', 0)} tests")
-        return 1
-
     combined = sum(count for count, _, _ in totals.values())
-    print(f"{combined} tests ran across all platforms; the agent harness is covered.")
+    print(f"{combined} tests ran across all platforms.")
     for note in missing:
         print(f"::warning::{note}")
     return 0

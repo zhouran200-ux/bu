@@ -23,16 +23,6 @@
             column="14"/>
     </issue>
 
-    <issue
-        id="DefaultLocale"
-        message="Implicitly using the default locale is a common source of bugs: Use `String.format(Locale, ...)` instead"
-        errorLine1="            &quot;~${String.format(&quot;%.1f&quot;, k)}k tokens&quot;"
-        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="${:app*release*MAIN*sourceProvider*0*javaDir*3}/com/lucent/app/data/TokenEstimator.kt"
-            line="59"
-            column="17"/>
-    </issue>
 
     <issue
         id="OldTargetApi"
@@ -45,21 +35,6 @@
             column="9"/>
     </issue>
 
-    <issue
-        id="SuspiciousIndentation"
-        message="Suspicious indentation: This is conditionally executed; expected it to be indented"
-        errorLine1="        Row("
-        errorLine2="        ~~~~">
-        <location
-            file="src/main/java/com/lucent/app/ui/AssistantScreen.kt"
-            line="1054"
-            column="9"/>
-        <location
-            file="src/main/java/com/lucent/app/ui/AssistantScreen.kt"
-            line="974"
-            column="9"
-            message="Previous statement here"/>
-    </issue>
 
     <issue
         id="UnusedAttribute"
@@ -622,49 +597,9 @@
             column="15"/>
     </issue>
 
-    <issue
-        id="ModifierParameter"
-        message="Modifier parameter should be named modifier"
-        errorLine1="    reorderModifier: Modifier = Modifier,"
-        errorLine2="    ~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/com/lucent/app/ui/NotesScreen.kt"
-            line="2821"
-            column="5"/>
-    </issue>
 
-    <issue
-        id="ModifierParameter"
-        message="Modifier parameter should be the first optional parameter"
-        errorLine1="    reorderModifier: Modifier = Modifier,"
-        errorLine2="    ~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/com/lucent/app/ui/NotesScreen.kt"
-            line="2821"
-            column="5"/>
-    </issue>
 
-    <issue
-        id="ModifierParameter"
-        message="Modifier parameter should be named modifier"
-        errorLine1="    reorderModifier: Modifier = Modifier,"
-        errorLine2="    ~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/com/lucent/app/ui/TasksScreen.kt"
-            line="2133"
-            column="5"/>
-    </issue>
 
-    <issue
-        id="ModifierParameter"
-        message="Modifier parameter should be the first optional parameter"
-        errorLine1="    reorderModifier: Modifier = Modifier,"
-        errorLine2="    ~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/com/lucent/app/ui/TasksScreen.kt"
-            line="2133"
-            column="5"/>
-    </issue>
 
     <issue
         id="MissingTranslation"
@@ -717,170 +652,20 @@
             column="6"/>
     </issue>
 
-    <issue
-        id="FrequentlyChangingValue"
-        message="Reading a value annotated with @FrequentlyChangingValue inside composition"
-        errorLine1="    val composerScrollingUp = composerScroll.value &lt; lastScrollValue"
-        errorLine2="                                             ~~~~~">
-        <location
-            file="src/main/java/com/lucent/app/ui/NotesScreen.kt"
-            line="286"
-            column="46"/>
-    </issue>
 
-    <issue
-        id="FrequentlyChangingValue"
-        message="Reading a value annotated with @FrequentlyChangingValue inside composition"
-        errorLine1="    val composerScrollingDown = composerScroll.value > lastScrollValue"
-        errorLine2="                                               ~~~~~">
-        <location
-            file="src/main/java/com/lucent/app/ui/NotesScreen.kt"
-            line="287"
-            column="48"/>
-    </issue>
 
-    <issue
-        id="FrequentlyChangingValue"
-        message="Reading a value annotated with @FrequentlyChangingValue inside composition"
-        errorLine1="    LaunchedEffect(composerScroll.value) {"
-        errorLine2="                                  ~~~~~">
-        <location
-            file="src/main/java/com/lucent/app/ui/NotesScreen.kt"
-            line="288"
-            column="35"/>
-    </issue>
 
-    <issue
-        id="FrequentlyChangingValue"
-        message="Reading a value annotated with @FrequentlyChangingValue inside composition"
-        errorLine1="                    canUp = detailScroll.value > 0,"
-        errorLine2="                                         ~~~~~">
-        <location
-            file="src/main/java/com/lucent/app/ui/NotesScreen.kt"
-            line="2452"
-            column="42"/>
-    </issue>
 
-    <issue
-        id="FrequentlyChangingValue"
-        message="Reading a value annotated with @FrequentlyChangingValue inside composition"
-        errorLine1="                    canDown = detailScroll.value &lt; detailScroll.maxValue,"
-        errorLine2="                                           ~~~~~">
-        <location
-            file="src/main/java/com/lucent/app/ui/NotesScreen.kt"
-            line="2453"
-            column="44"/>
-    </issue>
 
-    <issue
-        id="FrequentlyChangingValue"
-        message="Reading a value annotated with @FrequentlyChangingValue inside composition"
-        errorLine1="    val composerScrollingUp = composerScroll.value &lt; lastScrollValue"
-        errorLine2="                                             ~~~~~">
-        <location
-            file="src/main/java/com/lucent/app/ui/TasksScreen.kt"
-            line="270"
-            column="46"/>
-    </issue>
 
-    <issue
-        id="FrequentlyChangingValue"
-        message="Reading a value annotated with @FrequentlyChangingValue inside composition"
-        errorLine1="    val composerScrollingDown = composerScroll.value > lastScrollValue"
-        errorLine2="                                               ~~~~~">
-        <location
-            file="src/main/java/com/lucent/app/ui/TasksScreen.kt"
-            line="271"
-            column="48"/>
-    </issue>
 
-    <issue
-        id="FrequentlyChangingValue"
-        message="Reading a value annotated with @FrequentlyChangingValue inside composition"
-        errorLine1="    LaunchedEffect(composerScroll.value) {"
-        errorLine2="                                  ~~~~~">
-        <location
-            file="src/main/java/com/lucent/app/ui/TasksScreen.kt"
-            line="272"
-            column="35"/>
-    </issue>
 
-    <issue
-        id="FrequentlyChangingValue"
-        message="Reading a value annotated with @FrequentlyChangingValue inside composition"
-        errorLine1="                    canUp = detailScroll.value > 0,"
-        errorLine2="                                         ~~~~~">
-        <location
-            file="src/main/java/com/lucent/app/ui/TasksScreen.kt"
-            line="1787"
-            column="42"/>
-    </issue>
 
-    <issue
-        id="FrequentlyChangingValue"
-        message="Reading a value annotated with @FrequentlyChangingValue inside composition"
-        errorLine1="                    canDown = detailScroll.value &lt; detailScroll.maxValue,"
-        errorLine2="                                           ~~~~~">
-        <location
-            file="src/main/java/com/lucent/app/ui/TasksScreen.kt"
-            line="1788"
-            column="44"/>
-    </issue>
 
-    <issue
-        id="AutoboxingStateCreation"
-        message="Prefer `mutableLongStateOf` instead of `mutableStateOf`"
-        errorLine1="    var errorClearsAt by remember { mutableStateOf(0L) }"
-        errorLine2="                                    ~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/com/lucent/app/ui/AppLockScreen.kt"
-            line="152"
-            column="37"/>
-    </issue>
 
-    <issue
-        id="AutoboxingStateCreation"
-        message="Prefer `mutableLongStateOf` instead of `mutableStateOf`"
-        errorLine1="    var attemptTick by remember { mutableStateOf(0L) }"
-        errorLine2="                                  ~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/com/lucent/app/ui/AppLockScreen.kt"
-            line="162"
-            column="35"/>
-    </issue>
 
-    <issue
-        id="AutoboxingStateCreation"
-        message="Prefer `mutableIntStateOf` instead of `mutableStateOf`"
-        errorLine1="    var highlightStart by remember { mutableStateOf(0) }"
-        errorLine2="                                     ~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/com/lucent/app/ui/AssistantScreen.kt"
-            line="344"
-            column="38"/>
-    </issue>
 
-    <issue
-        id="AutoboxingStateCreation"
-        message="Prefer `mutableIntStateOf` instead of `mutableStateOf`"
-        errorLine1="    var highlightLen by remember { mutableStateOf(0) }"
-        errorLine2="                                   ~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/com/lucent/app/ui/AssistantScreen.kt"
-            line="345"
-            column="36"/>
-    </issue>
 
-    <issue
-        id="AutoboxingStateCreation"
-        message="Prefer `mutableIntStateOf` instead of `mutableStateOf`"
-        errorLine1="    var highlightPulse by remember { mutableStateOf(0) }"
-        errorLine2="                                     ~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/com/lucent/app/ui/AssistantScreen.kt"
-            line="347"
-            column="38"/>
-    </issue>
 
     <issue
         id="AutoboxingStateCreation"
@@ -948,82 +733,12 @@
             column="41"/>
     </issue>
 
-    <issue
-        id="AutoboxingStateCreation"
-        message="Prefer `mutableIntStateOf` instead of `mutableStateOf`"
-        errorLine1="    var colorIndex by remember { mutableStateOf(0) }"
-        errorLine2="                                 ~~~~~~~~~~~~~~">
-        <location
-            file="${:app*release*MAIN*sourceProvider*0*javaDir*3}/com/lucent/app/ui/DoodleCanvas.kt"
-            line="266"
-            column="34"/>
-    </issue>
 
-    <issue
-        id="AutoboxingStateCreation"
-        message="Prefer `mutableIntStateOf` instead of `mutableStateOf`"
-        errorLine1="    var widthIndex by remember { mutableStateOf(1) }"
-        errorLine2="                                 ~~~~~~~~~~~~~~">
-        <location
-            file="${:app*release*MAIN*sourceProvider*0*javaDir*3}/com/lucent/app/ui/DoodleCanvas.kt"
-            line="267"
-            column="34"/>
-    </issue>
 
-    <issue
-        id="AutoboxingStateCreation"
-        message="Prefer `mutableIntStateOf` instead of `mutableStateOf`"
-        errorLine1="    var activeIndex by remember { mutableStateOf(0) }"
-        errorLine2="                                  ~~~~~~~~~~~~~~">
-        <location
-            file="${:app*release*MAIN*sourceProvider*0*javaDir*3}/com/lucent/app/ui/DoodleCanvas.kt"
-            line="494"
-            column="35"/>
-    </issue>
 
-    <issue
-        id="AutoboxingStateCreation"
-        message="Prefer `mutableIntStateOf` instead of `mutableStateOf`"
-        errorLine1="    var lastScrollValue by remember { mutableStateOf(0) }"
-        errorLine2="                                      ~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/com/lucent/app/ui/NotesScreen.kt"
-            line="285"
-            column="39"/>
-    </issue>
 
-    <issue
-        id="AutoboxingStateCreation"
-        message="Prefer `mutableIntStateOf` instead of `mutableStateOf`"
-        errorLine1="    var bodySelStart by remember(composing) { mutableStateOf(0) }"
-        errorLine2="                                              ~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/com/lucent/app/ui/NotesScreen.kt"
-            line="349"
-            column="47"/>
-    </issue>
 
-    <issue
-        id="AutoboxingStateCreation"
-        message="Prefer `mutableIntStateOf` instead of `mutableStateOf`"
-        errorLine1="    var bodySelEnd by remember(composing) { mutableStateOf(0) }"
-        errorLine2="                                            ~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/com/lucent/app/ui/NotesScreen.kt"
-            line="350"
-            column="45"/>
-    </issue>
 
-    <issue
-        id="AutoboxingStateCreation"
-        message="Prefer `mutableIntStateOf` instead of `mutableStateOf`"
-        errorLine1="    var refresh by remember { mutableStateOf(0) }"
-        errorLine2="                              ~~~~~~~~~~~~~~">
-        <location
-            file="${:app*release*MAIN*sourceProvider*0*javaDir*3}/com/lucent/app/ui/QuickModelSwitcher.kt"
-            line="102"
-            column="31"/>
-    </issue>
 
     <issue
         id="AutoboxingStateCreation"
@@ -1069,49 +784,9 @@
             column="36"/>
     </issue>
 
-    <issue
-        id="AutoboxingStateCreation"
-        message="Prefer `mutableLongStateOf` instead of `mutableStateOf`"
-        errorLine1="    var composerMinMillis by remember { mutableStateOf(System.currentTimeMillis()) }"
-        errorLine2="                                        ~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/com/lucent/app/ui/TasksScreen.kt"
-            line="240"
-            column="41"/>
-    </issue>
 
-    <issue
-        id="AutoboxingStateCreation"
-        message="Prefer `mutableIntStateOf` instead of `mutableStateOf`"
-        errorLine1="    var lastScrollValue by remember { mutableStateOf(0) }"
-        errorLine2="                                      ~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/com/lucent/app/ui/TasksScreen.kt"
-            line="269"
-            column="39"/>
-    </issue>
 
-    <issue
-        id="AutoboxingStateCreation"
-        message="Prefer `mutableIntStateOf` instead of `mutableStateOf`"
-        errorLine1="    var bodySelStart by remember(composing) { mutableStateOf(0) }"
-        errorLine2="                                              ~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/com/lucent/app/ui/TasksScreen.kt"
-            line="314"
-            column="47"/>
-    </issue>
 
-    <issue
-        id="AutoboxingStateCreation"
-        message="Prefer `mutableIntStateOf` instead of `mutableStateOf`"
-        errorLine1="    var bodySelEnd by remember(composing) { mutableStateOf(0) }"
-        errorLine2="                                            ~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/com/lucent/app/ui/TasksScreen.kt"
-            line="315"
-            column="45"/>
-    </issue>
 
     <issue
         id="DisableBaselineAlignment"
@@ -1237,38 +912,8 @@
             column="13"/>
     </issue>
 
-    <issue
-        id="UseKtx"
-        message="Use the KTX extension function `String.toUri` instead?"
-        errorLine1="    val tree = android.net.Uri.parse(folderUri)"
-        errorLine2="               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/com/lucent/app/data/AutoBackupRunner.kt"
-            line="119"
-            column="16"/>
-    </issue>
 
-    <issue
-        id="UseKtx"
-        message="Use the KTX extension function `String.toUri` instead?"
-        errorLine1="    val tree = android.net.Uri.parse(folderUri)"
-        errorLine2="               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/com/lucent/app/data/AutoBackupRunner.kt"
-            line="162"
-            column="16"/>
-    </issue>
 
-    <issue
-        id="UseKtx"
-        message="Use the KTX extension function `String.toUri` instead?"
-        errorLine1="    val tree = android.net.Uri.parse(folderUri)"
-        errorLine2="               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/com/lucent/app/data/AutoBackupRunner.kt"
-            line="176"
-            column="16"/>
-    </issue>
 
     <issue
         id="UseKtx"
@@ -1281,49 +926,9 @@
             column="21"/>
     </issue>
 
-    <issue
-        id="UseKtx"
-        message="Use the KTX function `createBitmap` instead?"
-        errorLine1="                        caches[cacheIndex] = Bitmap.createBitmap(sw, sh, Bitmap.Config.ARGB_8888)"
-        errorLine2="                                             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/com/lucent/app/ui/IsolatedBlobBackground.kt"
-            line="126"
-            column="46"/>
-    </issue>
 
-    <issue
-        id="UseKtx"
-        message="Use the KTX extension function `Canvas.withTranslation` instead?"
-        errorLine1="                        canvas.save()"
-        errorLine2="                        ~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/com/lucent/app/ui/IsolatedBlobBackground.kt"
-            line="150"
-            column="25"/>
-    </issue>
 
-    <issue
-        id="UseKtx"
-        message="Use the KTX extension function `String.toUri` instead?"
-        errorLine1="                    data = Uri.parse(&quot;lucent://widget/today/&quot; + widgetId)"
-        errorLine2="                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/com/lucent/app/widget/LucentWidgets.kt"
-            line="230"
-            column="28"/>
-    </issue>
 
-    <issue
-        id="UseKtx"
-        message="Use the KTX extension function `String.toUri` instead?"
-        errorLine1="                    data = Uri.parse(&quot;lucent://widget/today/&quot; + widgetId)"
-        errorLine2="                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/com/lucent/app/widget/LucentWidgets.kt"
-            line="230"
-            column="28"/>
-    </issue>
 
     <issue
         id="UseKtx"
@@ -1336,27 +941,7 @@
             column="35"/>
     </issue>
 
-    <issue
-        id="UseKtx"
-        message="Use the KTX extension function `String.toUri` instead?"
-        errorLine1="            data = android.net.Uri.parse(&quot;lucent://widget/$action/$id&quot;)"
-        errorLine2="                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/com/lucent/app/widget/WidgetActions.kt"
-            line="67"
-            column="20"/>
-    </issue>
 
-    <issue
-        id="UseKtx"
-        message="Use the KTX extension function `String.toUri` instead?"
-        errorLine1="            data = android.net.Uri.parse(&quot;lucent://widget/$action/$id&quot;)"
-        errorLine2="                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/com/lucent/app/widget/WidgetActions.kt"
-            line="67"
-            column="20"/>
-    </issue>
 
     <issue
         id="UseTomlInstead"

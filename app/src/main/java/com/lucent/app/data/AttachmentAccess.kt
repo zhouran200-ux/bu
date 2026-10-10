@@ -1,10 +1,7 @@
 package com.lucent.app.data
 
 import android.content.Context
-import android.net.Uri
-import androidx.core.content.FileProvider
 import java.io.File
-import java.io.OutputStream
 
 object AttachmentAccess {
 
@@ -16,15 +13,6 @@ object AttachmentAccess {
 
     private fun authority(context: Context): String =
         "${context.applicationContext.packageName}.fileprovider"
-
-    fun contentUri(context: Context, att: Attachment): Uri? {
-        val plaintext = materialize(context, att) ?: return null
-        return try {
-            FileProvider.getUriForFile(context.applicationContext, authority(context), plaintext)
-        } catch (t: Throwable) {
-            null
-        }
-    }
 
     fun materialize(context: Context, att: Attachment): File? {
         val dir = File(previewDir(context), safeFolder(att)).apply { if (!exists()) mkdirs() }
@@ -49,29 +37,6 @@ object AttachmentAccess {
         } catch (t: Throwable) {
             dest.delete()
             null
-        }
-    }
-
-    fun writeTo(context: Context, att: Attachment, out: OutputStream): Boolean {
-        val stream = Attachments.openStream(context, att)
-        return try {
-            out.use { output ->
-                if (stream != null) {
-                    stream.use { input ->
-                        val buf = ByteArray(COPY_BUFFER)
-                        while (true) {
-                            val r = input.read(buf); if (r == -1) break; output.write(buf, 0, r)
-                        }
-                    }
-                } else {
-                    val bytes = Attachments.readBytes(context, att, maxBytes = Long.MAX_VALUE) ?: return false
-                    output.write(bytes)
-                }
-                output.flush()
-            }
-            true
-        } catch (t: Throwable) {
-            false
         }
     }
 

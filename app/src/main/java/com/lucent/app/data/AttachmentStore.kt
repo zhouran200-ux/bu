@@ -30,21 +30,6 @@ object AttachmentStore {
         }
     }
 
-    fun importUri(context: Context, uri: Uri): String? {
-        val id = UUID.randomUUID().toString()
-        val dest = fileFor(context, id)
-        return try {
-            context.contentResolver.openInputStream(uri)?.use { input ->
-                openOutputStream(context, id)?.use { output -> copyStream(input, output) }
-                    ?: run { dest.delete(); return null }
-            } ?: run { dest.delete(); return null }
-            id
-        } catch (e: IOException) {
-            dest.delete()
-            null
-        }
-    }
-
     fun importBytes(context: Context, bytes: ByteArray): String? {
         val id = UUID.randomUUID().toString()
         return if (writeBytes(context, id, bytes)) id else null
@@ -95,11 +80,6 @@ object AttachmentStore {
         return if (FileCrypto.isEncrypted(f)) FileCrypto.plaintextSizeOf(f) else f.length()
     }
 
-    fun totalBytes(context: Context): Long =
-        baseDir(context).listFiles()?.sumOf { f ->
-            if (FileCrypto.isEncrypted(f)) FileCrypto.plaintextSizeOf(f) else f.length()
-        } ?: 0L
-
     fun encryptExistingFile(context: Context, id: String): Boolean {
         val file = fileFor(context, id)
         if (!file.exists() || FileCrypto.isEncrypted(file)) return false
@@ -143,17 +123,6 @@ object AttachmentStore {
             }
     } catch (e: Exception) {
         null
-    }
-
-    fun sizeHint(context: Context, uri: Uri): Long = try {
-        context.contentResolver
-            .query(uri, arrayOf(OpenableColumns.SIZE), null, null, null)
-            ?.use { cursor ->
-                val idx = cursor.getColumnIndex(OpenableColumns.SIZE)
-                if (idx >= 0 && cursor.moveToFirst() && !cursor.isNull(idx)) cursor.getLong(idx) else -1L
-            } ?: -1L
-    } catch (e: Exception) {
-        -1L
     }
 
     private fun copyStream(input: InputStream, output: java.io.OutputStream): Long {

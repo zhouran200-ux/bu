@@ -19,8 +19,6 @@ object StartupLog {
     private val format = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.US)
 
     fun setEnabled(value: Boolean) { enabled = value }
-    fun isEnabled(): Boolean = enabled
-
     private fun logFile(context: Context) = File(context.applicationContext.filesDir, FILE_NAME)
 
     fun event(context: Context, message: String) {
@@ -69,11 +67,6 @@ object StartupLog {
         }
     } catch (t: Throwable) {
         "(couldn't read logcat on this device: ${t.message})\n"
-    }
-
-    fun hasEntries(context: Context): Boolean = synchronized(lock) {
-        val f = logFile(context)
-        f.exists() && f.length() > 0
     }
 
     fun clear(context: Context) {

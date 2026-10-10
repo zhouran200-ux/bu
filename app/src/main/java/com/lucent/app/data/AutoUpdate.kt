@@ -101,10 +101,6 @@ object AutoUpdate {
         return removed
     }
 
-    fun markPhase(next: Phase) {
-        phase = next
-    }
-
     fun offer(info: ReleaseInfo) {
         offered = info
         readyForInstall = installer?.isDownloaded(info) == true

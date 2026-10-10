@@ -49,13 +49,13 @@ private object SettingsKeys {
 
     val API_PROFILE_SELECTED = intPreferencesKey("api_profile_selected")
 
-    val SESSION_SNAPSHOT = stringPreferencesKey("session_snapshot")
+    val LEGACY_SESSION_SNAPSHOT = stringPreferencesKey("session_snapshot")
     val NOTEBOOK_OPENS_ENC = stringPreferencesKey("notebook_opens_enc")
     val NOTEBOOK_OPENS_LEGACY = stringPreferencesKey("notebook_opens")
 
     val AUTO_BACKUP = stringPreferencesKey("auto_backup_state")
 
-    val NOTE_HISTORY_ENABLED = booleanPreferencesKey("note_history_enabled")
+    val LEGACY_NOTE_HISTORY_ENABLED = booleanPreferencesKey("note_history_enabled")
 
     val ASSISTANT_CONFIRM_TOOLS = booleanPreferencesKey("assistant_confirm_tools")
     val TYPING_HAPTICS = booleanPreferencesKey("typing_haptics")
@@ -96,8 +96,8 @@ private object SettingsKeys {
 
     val LAST_SCREEN = stringPreferencesKey("last_screen")
 
-    val BLACKOUT_ENABLED = booleanPreferencesKey("blackout_enabled")
-    val APP_LOCK_PREBLACKOUT = booleanPreferencesKey("app_lock_preblackout")
+    val LEGACY_BLACKOUT_ENABLED = booleanPreferencesKey("blackout_enabled")
+    val LEGACY_APP_LOCK_PREBLACKOUT = booleanPreferencesKey("app_lock_preblackout")
 
     val CRASH_SHIELD_ENABLED = booleanPreferencesKey("crash_shield_enabled")
 
@@ -205,7 +205,6 @@ class SettingsRepository(context: Context) {
         val assistantName: String = "Lucent",
         val backgroundAnimationEnabled: Boolean = true,
         val dynamicColor: Boolean = false,
-        val sessionSnapshot: String = "",
         val assistantStyle: String = "",
         val baseUrl: String = "",
         val apiSpec: String = "openai",
@@ -214,9 +213,7 @@ class SettingsRepository(context: Context) {
         val customUserAgent: String = "",
         val apiProfilesJson: String = "",
         val apiProfileSelected: Int = 0,
-        val noteHistoryEnabled: Boolean = true,
         val crashShieldEnabled: Boolean = false,
-        val blackoutEnabled: Boolean = false,
         val pwSelfDestructEnabled: Boolean = false,
         val pwFirstRoundLimit: Int = 5,
         val pwLaterRoundLimit: Int = 3,
@@ -270,7 +267,6 @@ class SettingsRepository(context: Context) {
             assistantName = secret(prefs, SettingsKeys.ASSISTANT_NAME_ENC, SettingsKeys.LEGACY_ASSISTANT_NAME, "Lucent"),
             backgroundAnimationEnabled = prefs[SettingsKeys.BACKGROUND_ANIMATION_ENABLED] ?: true,
             dynamicColor = prefs[SettingsKeys.DYNAMIC_COLOR_ENABLED] ?: false,
-            sessionSnapshot = prefs[SettingsKeys.SESSION_SNAPSHOT] ?: "",
             assistantStyle = secret(prefs, SettingsKeys.ASSISTANT_STYLE_ENC, SettingsKeys.LEGACY_ASSISTANT_STYLE, ""),
             baseUrl = secret(prefs, SettingsKeys.BASE_URL_ENC, SettingsKeys.LEGACY_BASE_URL, ""),
             apiSpec = secret(prefs, SettingsKeys.API_SPEC_ENC, SettingsKeys.LEGACY_API_SPEC, "openai"),
@@ -281,9 +277,7 @@ class SettingsRepository(context: Context) {
                 prefs[SettingsKeys.API_PROFILES_ENC] ?: prefs[SettingsKeys.LEGACY_API_PROFILES] ?: ""
             ),
             apiProfileSelected = prefs[SettingsKeys.API_PROFILE_SELECTED] ?: 0,
-            noteHistoryEnabled = prefs[SettingsKeys.NOTE_HISTORY_ENABLED] ?: true,
             crashShieldEnabled = prefs[SettingsKeys.CRASH_SHIELD_ENABLED] ?: false,
-            blackoutEnabled = prefs[SettingsKeys.BLACKOUT_ENABLED] ?: false,
             pwSelfDestructEnabled = prefs[SettingsKeys.PW_SELF_DESTRUCT_ENABLED] ?: false,
             pwFirstRoundLimit = prefs[SettingsKeys.PW_FIRST_ROUND_LIMIT] ?: 5,
             pwLaterRoundLimit = prefs[SettingsKeys.PW_LATER_ROUND_LIMIT] ?: 3,
@@ -327,28 +321,6 @@ class SettingsRepository(context: Context) {
     suspend fun setLastScreen(value: String) {
         context.settingsDataStore.edit { it[SettingsKeys.LAST_SCREEN] = value }
     }
-
-    val blackoutEnabled: Flow<Boolean> = context.settingsDataStore.data.map { it[SettingsKeys.BLACKOUT_ENABLED] ?: false }
-    suspend fun blackoutEnabledOnce(): Boolean =
-        context.settingsDataStore.data.first()[SettingsKeys.BLACKOUT_ENABLED] ?: false
-
-    suspend fun setBlackoutEnabled(value: Boolean) {
-        context.settingsDataStore.edit { prefs ->
-            val wasEnabled = prefs[SettingsKeys.BLACKOUT_ENABLED] ?: false
-            prefs[SettingsKeys.BLACKOUT_ENABLED] = value
-            if (value) {
-                if (!wasEnabled) {
-                    prefs[SettingsKeys.APP_LOCK_PREBLACKOUT] = prefs[SettingsKeys.APP_LOCK_ENABLED] ?: false
-                }
-            } else {
-                prefs.remove(SettingsKeys.APP_LOCK_PREBLACKOUT)
-            }
-        }
-        SettingsCache.blackoutEnabled = value
-    }
-
-    suspend fun appLockWasOnBeforeBlackout(): Boolean =
-        context.settingsDataStore.data.first()[SettingsKeys.APP_LOCK_PREBLACKOUT] ?: false
 
     val crashShieldEnabled: Flow<Boolean> = context.settingsDataStore.data.map { it[SettingsKeys.CRASH_SHIELD_ENABLED] ?: false }
     suspend fun crashShieldEnabledOnce(): Boolean =
@@ -454,13 +426,6 @@ class SettingsRepository(context: Context) {
 
     val backupPassword: Flow<String> = context.settingsDataStore.data.map { prefs ->
         LocalSecrets.decrypt(prefs[SettingsKeys.BACKUP_PASSWORD_ENC] ?: "")
-    }
-
-    val noteHistoryEnabled: Flow<Boolean> =
-        context.settingsDataStore.data.map { it[SettingsKeys.NOTE_HISTORY_ENABLED] ?: true }
-    suspend fun setNoteHistoryEnabled(value: Boolean) {
-        context.settingsDataStore.edit { it[SettingsKeys.NOTE_HISTORY_ENABLED] = value }
-        SettingsCache.noteHistoryEnabled = value
     }
 
     val assistantConfirmToolsEnabled: Flow<Boolean> = context.settingsDataStore.data.map {
@@ -590,10 +555,21 @@ class SettingsRepository(context: Context) {
         SettingsCache.startupLoggingEnabled = value
     }
 
-    suspend fun dropLegacyMemoryTierKey() {
-        val present = context.settingsDataStore.data.first()[SettingsKeys.LEGACY_MEMORY_TIER] != null
-        if (!present) return
-        context.settingsDataStore.edit { it.remove(SettingsKeys.LEGACY_MEMORY_TIER) }
+    suspend fun dropRemovedFeatureKeys() {
+        val prefs = context.settingsDataStore.data.first()
+        val stale = prefs[SettingsKeys.LEGACY_MEMORY_TIER] != null ||
+            prefs[SettingsKeys.LEGACY_BLACKOUT_ENABLED] != null ||
+            prefs[SettingsKeys.LEGACY_APP_LOCK_PREBLACKOUT] != null ||
+            prefs[SettingsKeys.LEGACY_NOTE_HISTORY_ENABLED] != null ||
+            prefs[SettingsKeys.LEGACY_SESSION_SNAPSHOT] != null
+        if (!stale) return
+        context.settingsDataStore.edit {
+            it.remove(SettingsKeys.LEGACY_MEMORY_TIER)
+            it.remove(SettingsKeys.LEGACY_BLACKOUT_ENABLED)
+            it.remove(SettingsKeys.LEGACY_APP_LOCK_PREBLACKOUT)
+            it.remove(SettingsKeys.LEGACY_NOTE_HISTORY_ENABLED)
+            it.remove(SettingsKeys.LEGACY_SESSION_SNAPSHOT)
+        }
     }
 
     private suspend fun putSecret(
@@ -739,12 +715,6 @@ class SettingsRepository(context: Context) {
     }
 
 
-    suspend fun setSessionSnapshot(value: String) {
-        context.settingsDataStore.edit { it[SettingsKeys.SESSION_SNAPSHOT] = value }
-    }
-
-    suspend fun sessionSnapshotOnce(): String =
-        context.settingsDataStore.data.first()[SettingsKeys.SESSION_SNAPSHOT] ?: ""
     val notebookOpens: Flow<String> = context.settingsDataStore.data.map { prefs ->
         prefs[SettingsKeys.NOTEBOOK_OPENS_ENC]?.let { LocalSecrets.decrypt(it) } ?: "{}"
     }

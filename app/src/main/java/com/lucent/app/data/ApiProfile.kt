@@ -89,8 +89,6 @@ object ApiProfiles {
         return if (list.isEmpty()) DEFAULT_PROFILES else list
     }
 
-    fun serializeForBackup(profiles: List<ApiProfile>): String = serialize(profiles, encryptKeys = true)
-
     fun nextDefaultName(existing: List<ApiProfile>): String {
         val taken = existing.mapNotNull { p ->
             Regex("^(?:API|方案)\\s*(\\d+)$").find(p.name.trim())?.groupValues?.get(1)?.toIntOrNull()

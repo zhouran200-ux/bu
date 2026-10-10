@@ -30,8 +30,6 @@ object CrashShield {
         }
     }
 
-    fun isInstalled(): Boolean = installed
-
     private fun installBackgroundHandler() {
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
             record("thread \"${thread.name}\"", throwable)

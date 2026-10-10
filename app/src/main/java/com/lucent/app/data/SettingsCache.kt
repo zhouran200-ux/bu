@@ -6,9 +6,6 @@ object SettingsCache {
     var assistantName: String? = null
 
     @Volatile
-    var sessionSnapshot: String? = null
-
-    @Volatile
     var appLockEnabled: Boolean = false
 
     @Volatile
@@ -66,13 +63,7 @@ object SettingsCache {
     var apiProfileSelected: Int = 0
 
     @Volatile
-    var noteHistoryEnabled: Boolean = true
-
-    @Volatile
     var crashShieldEnabled: Boolean = false
-
-    @Volatile
-    var blackoutEnabled: Boolean = false
 
     @Volatile
     var pwSelfDestructEnabled: Boolean = false
@@ -146,7 +137,6 @@ object SettingsCache {
 
     fun seed(prefs: SettingsRepository.StartupPrefs) {
         assistantName = prefs.assistantName
-        sessionSnapshot = prefs.sessionSnapshot.ifBlank { null }
         appLockEnabled = prefs.appLockEnabled
         startupLoggingEnabled = prefs.startupLoggingEnabled
         appLanguage = prefs.appLanguage
@@ -166,9 +156,7 @@ object SettingsCache {
         customUserAgent = prefs.customUserAgent
         apiProfilesJson = prefs.apiProfilesJson
         apiProfileSelected = prefs.apiProfileSelected
-        noteHistoryEnabled = prefs.noteHistoryEnabled
         crashShieldEnabled = prefs.crashShieldEnabled
-        blackoutEnabled = prefs.blackoutEnabled
         pwSelfDestructEnabled = prefs.pwSelfDestructEnabled
         pwFirstRoundLimit = prefs.pwFirstRoundLimit
         pwLaterRoundLimit = prefs.pwLaterRoundLimit

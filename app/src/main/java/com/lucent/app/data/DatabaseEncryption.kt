@@ -17,25 +17,6 @@ object DatabaseEncryption {
 
     @Volatile private var librariesLoaded = false
 
-    fun lockedNotice(context: Context): String? {
-        val marker = File(context.applicationContext.filesDir, LOCKED_MARKER)
-        return if (marker.exists()) marker.readText().ifBlank { null } else null
-    }
-
-    fun purgeSetAsideDatabases(context: Context) {
-        val appContext = context.applicationContext
-        val dbDir = appContext.getDatabasePath(DB_NAME).parentFile ?: return
-        dbDir.listFiles()?.forEach { f ->
-            if (f.name.startsWith("$DB_NAME.locked-") || f.name == "$DB_NAME.pre-encrypt") {
-                f.delete()
-            }
-        }
-    }
-
-    fun clearLockedNotice(context: Context) {
-        File(context.applicationContext.filesDir, LOCKED_MARKER).delete()
-    }
-
     private fun loadLibraries() {
         if (librariesLoaded) return
         synchronized(this) {

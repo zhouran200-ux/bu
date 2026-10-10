@@ -123,7 +123,6 @@ class MainActivity : ComponentActivity() {
         val startup = try {
             runBlocking { settingsRepo.startupPrefsOnce() }
                 .also { com.lucent.app.data.SettingsCache.seed(it) }
-                .also { com.lucent.app.data.SessionRestore.hydrate(it.sessionSnapshot) }
         } catch (t: Throwable) {
             SettingsRepository.StartupPrefs(
                 display = SettingsRepository.DisplayPrefs("system", "SUNSET", "system"),
@@ -207,7 +206,7 @@ class MainActivity : ComponentActivity() {
 
         AppScope.io.launch {
             TrashCleanup.purgeExpired(applicationContext)
-            settingsRepo.dropLegacyMemoryTierKey()
+            settingsRepo.dropRemovedFeatureKeys()
         }
 
         AppScope.io.launch { com.lucent.app.data.AttachmentAccess.clearPreviewCache(applicationContext) }

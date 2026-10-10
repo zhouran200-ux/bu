@@ -15,8 +15,6 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.chrisbanes.haze.HazeState
-import java.time.Instant
-import java.time.ZoneId
 
 val LocalHazeState = compositionLocalOf { HazeState() }
 val LocalOnGradient = compositionLocalOf { Color.White }
@@ -94,48 +92,6 @@ fun Modifier.frostedGlass(cornerRadius: Dp = 20.dp, tint: Color = Color.White): 
             if (tinted) Modifier.border(1.dp, tint.copy(alpha = if (darkTheme) 0.45f else 0.55f), shape)
             else Modifier.border(1.dp, lucentGlassRim(), shape)
         )
-}
-
-private val timestampFormatter get() = com.lucent.app.i18n.LDates.of(com.lucent.app.i18n.S.patternTimestamp)
-
-fun formatTimestamp(millis: Long): String {
-    val zoned = Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault())
-    return zoned.format(timestampFormatter)
-}
-
-@androidx.compose.runtime.Composable
-fun rememberFormattedTimestamp(millis: Long): String {
-    val language = com.lucent.app.i18n.L.current
-    return androidx.compose.runtime.remember(millis, language) { formatTimestamp(millis) }
-}
-
-private val dateFormatter get() = com.lucent.app.i18n.LDates.of(com.lucent.app.i18n.S.patternDateFull)
-
-fun formatDate(millis: Long): String {
-    val zoned = Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault())
-    return zoned.format(dateFormatter)
-}
-
-fun sameLocalDay(a: Long, b: Long): Boolean {
-    val zone = ZoneId.systemDefault()
-    return Instant.ofEpochMilli(a).atZone(zone).toLocalDate() ==
-        Instant.ofEpochMilli(b).atZone(zone).toLocalDate()
-}
-
-fun withinLocalDayRange(itemMillis: Long, startMillis: Long, endMillis: Long): Boolean {
-    val zone = ZoneId.systemDefault()
-    val day = Instant.ofEpochMilli(itemMillis).atZone(zone).toLocalDate()
-    val start = Instant.ofEpochMilli(startMillis).atZone(zone).toLocalDate()
-    val end = Instant.ofEpochMilli(endMillis).atZone(zone).toLocalDate()
-    val lo = if (start.isAfter(end)) end else start
-    val hi = if (start.isAfter(end)) start else end
-    return !day.isBefore(lo) && !day.isAfter(hi)
-}
-
-fun formatDateRange(startMillis: Long, endMillis: Long): String {
-    val start = formatDate(startMillis)
-    val end = formatDate(endMillis)
-    return if (start == end) start else "$start – $end"
 }
 
 enum class PaletteGroup { DAWN, BLOSSOM, EVERGREEN, AQUA, SUNFIRE, VIVID, EARTH, VELVET }

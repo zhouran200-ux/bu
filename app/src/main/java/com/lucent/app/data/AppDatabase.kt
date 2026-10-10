@@ -337,7 +337,6 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun chatDao(): ChatDao
     abstract fun chatConversationDao(): ChatConversationDao
     abstract fun notebookDao(): NotebookDao
-    abstract fun noteEmbeddingDao(): NoteEmbeddingDao
 
     companion object {
         @Volatile private var INSTANCE: AppDatabase? = null

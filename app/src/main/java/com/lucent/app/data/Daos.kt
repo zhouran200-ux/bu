@@ -3,7 +3,6 @@ package com.lucent.app.data
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
-import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
@@ -36,69 +35,13 @@ interface NoteDao {
 }
 
 @Dao
-interface NoteEmbeddingDao {
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun upsert(embedding: NoteEmbedding)
-
-    @Query("SELECT * FROM note_embeddings WHERE model = :model")
-    suspend fun getForModel(model: String): List<NoteEmbedding>
-
-    @Query("SELECT * FROM note_embeddings WHERE noteId = :noteId")
-    suspend fun getForNote(noteId: Long): List<NoteEmbedding>
-
-    @Query("DELETE FROM note_embeddings WHERE noteId = :noteId AND model = :model")
-    suspend fun delete(noteId: Long, model: String)
-
-    @Query("DELETE FROM note_embeddings WHERE model = :model")
-    suspend fun deleteAllForModel(model: String)
-
-    @Query("DELETE FROM note_embeddings")
-    suspend fun clearAll()
-}
-
-@Dao
 interface NoteVersionDao {
-    @Query("SELECT * FROM note_versions WHERE noteId = :noteId ORDER BY savedAt DESC")
-    fun getForNote(noteId: Long): Flow<List<NoteVersion>>
-
-    @Query("SELECT * FROM note_versions WHERE noteId = :noteId ORDER BY savedAt DESC")
-    suspend fun getForNoteOnce(noteId: Long): List<NoteVersion>
-
-    @Query("SELECT * FROM note_versions ORDER BY savedAt DESC")
-    suspend fun getAllOnce(): List<NoteVersion>
-
-    @Query("SELECT COUNT(*) FROM note_versions WHERE noteId = :noteId")
-    suspend fun countForNote(noteId: Long): Int
-
-    @Insert
-    suspend fun insert(version: NoteVersion): Long
-
-    @Delete
-    suspend fun delete(version: NoteVersion)
-
     @Query("DELETE FROM note_versions WHERE noteId = :noteId")
     suspend fun deleteForNote(noteId: Long)
 
-    @Query("DELETE FROM note_versions WHERE id = :id")
-    suspend fun deleteById(id: Long)
-
-    @Query(
-        "DELETE FROM note_versions WHERE noteId = :noteId AND id NOT IN (" +
-            "SELECT id FROM note_versions WHERE noteId = :noteId ORDER BY savedAt DESC LIMIT :keep)"
-    )
-    suspend fun trimTo(noteId: Long, keep: Int)
-
     @Query("DELETE FROM note_versions WHERE noteId NOT IN (SELECT id FROM notes)")
     suspend fun pruneOrphaned()
-
-    @Query("DELETE FROM note_versions")
-    suspend fun clearAll()
 }
-
-data class ConversationContent(
-    val conversationId: Long,
-    val content: String?
-)
 
 @Dao
 interface ChatDao {
@@ -109,16 +52,7 @@ interface ChatDao {
     suspend fun getAllOnce(): List<ChatMessage>
 
     @Query("SELECT * FROM chat_messages WHERE conversationId = :conversationId ORDER BY timestamp ASC")
-    fun getForConversation(conversationId: Long): Flow<List<ChatMessage>>
-
-    @Query("SELECT * FROM chat_messages WHERE conversationId = :conversationId ORDER BY timestamp ASC")
     suspend fun getForConversationOnce(conversationId: Long): List<ChatMessage>
-
-    @Query("SELECT COUNT(*) FROM chat_messages WHERE conversationId = :conversationId")
-    suspend fun countInConversation(conversationId: Long): Int
-
-    @Query("SELECT conversationId AS conversationId, GROUP_CONCAT(content, ' ') AS content FROM chat_messages GROUP BY conversationId")
-    suspend fun conversationContents(): List<ConversationContent>
 
     @Insert
     suspend fun insert(message: ChatMessage): Long
@@ -140,9 +74,6 @@ interface ChatConversationDao {
 
     @Query("SELECT * FROM chat_conversations ORDER BY updatedAt DESC")
     suspend fun getAllOnce(): List<ChatConversation>
-
-    @Query("SELECT * FROM chat_conversations WHERE id = :id")
-    suspend fun getById(id: Long): ChatConversation?
 
     @Insert
     suspend fun insert(conversation: ChatConversation): Long
@@ -174,19 +105,10 @@ interface NotebookDao {
     fun itemCounts(): Flow<List<NotebookCount>>
 
     @Query("SELECT * FROM notebook_items WHERE notebookId = :notebookId ORDER BY addedAt DESC")
-    fun getItems(notebookId: Long): Flow<List<NotebookItem>>
-
-    @Query("SELECT * FROM notebook_items WHERE notebookId = :notebookId ORDER BY addedAt DESC")
     suspend fun getItemsOnce(notebookId: Long): List<NotebookItem>
-
-    @Query("SELECT * FROM notebook_items WHERE itemKind = :kind")
-    suspend fun getItemsByKindOnce(kind: String): List<NotebookItem>
 
     @Query("SELECT * FROM notebook_items")
     suspend fun getAllItemsOnce(): List<NotebookItem>
-
-    @Query("SELECT COUNT(*) FROM notebook_items WHERE notebookId = :notebookId AND itemKind = :kind AND itemId = :itemId")
-    suspend fun membershipExistsOnce(notebookId: Long, kind: String, itemId: Long): Int
 
     @Insert
     suspend fun insert(notebook: Notebook): Long
@@ -215,14 +137,4 @@ interface NotebookDao {
     @Query("DELETE FROM notebooks")
     suspend fun clearAll()
 
-    @Query("DELETE FROM notebook_items")
-    suspend fun clearAllItems()
-}
-
-suspend fun NotebookDao.pruneOrphans(noteDao: NoteDao) {
-    val noteMembers = getItemsByKindOnce(NotebookItem.KIND_NOTE)
-    if (noteMembers.isNotEmpty()) {
-        val alive = noteDao.getByIds(noteMembers.map { it.itemId }.toSet().toList()).map { it.id }.toHashSet()
-        noteMembers.filter { it.itemId !in alive }.forEach { deleteItemById(it.id) }
-    }
 }

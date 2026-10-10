@@ -51,12 +51,6 @@ internal class BackgroundFramePolicy {
         return previousTier != tier
     }
 
-    fun resume() {
-        lastFrameNanos = null
-        slowFrames = 0
-        fastFrames = 0
-    }
-
     private companion object {
         val EDGES = intArrayOf(96, 80, 64, 48)
         val INTERVALS = longArrayOf(33_333_333L, 50_000_000L, 66_666_667L, 100_000_000L)

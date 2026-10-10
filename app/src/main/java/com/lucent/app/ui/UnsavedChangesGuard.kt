@@ -32,9 +32,6 @@ object UnsavedChangesGuard {
         pending.forEach { it.onSave() }
     }
 
-    fun autoDraft() {
-    }
-
     fun discard() {
         val pending = registrations.values.toList()
         registrations.clear()

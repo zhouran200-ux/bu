@@ -63,7 +63,6 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.dp
 import com.lucent.app.AppScope
-import com.lucent.app.data.AttachmentMigration
 import com.lucent.app.data.SettingsRepository
 import com.lucent.app.data.TrashCleanup
 import com.lucent.app.ui.FluidGlassBackground
@@ -142,17 +141,10 @@ class MainActivity : ComponentActivity() {
         val initialPalette = display.palette
         val initialFont = display.font
 
-
-        AppScope.io.launch {
-            AttachmentMigration.runIfNeeded(applicationContext)
-        }
-
         AppScope.io.launch {
             TrashCleanup.purgeExpired(applicationContext)
             settingsRepo.dropRemovedFeatureKeys()
         }
-
-        AppScope.io.launch { com.lucent.app.data.AttachmentAccess.clearPreviewCache(applicationContext) }
 
         AppScope.io.launch {
             try {

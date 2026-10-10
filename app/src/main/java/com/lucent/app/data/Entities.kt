@@ -92,11 +92,3 @@ object ChatScope {
 
     fun forNotebook(notebookId: Long): Long = NOTEBOOK_CONVERSATION_FLOOR + notebookId
 }
-
-@Entity(tableName = "chat_conversations")
-data class ChatConversation(
-    @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val title: String = "New conversation",
-    val createdAt: Long = System.currentTimeMillis(),
-    val updatedAt: Long = System.currentTimeMillis()
-)

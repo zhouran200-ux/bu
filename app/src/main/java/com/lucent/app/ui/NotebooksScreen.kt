@@ -167,7 +167,7 @@ fun NotebooksScreen(
                     val target = notebook
                     deleting = null
                     AppScope.io.launch {
-                        NotebookPurge.purge(context, db, target.id)
+                        NotebookPurge.purge(db, target.id)
                         LucentToast.show(context, com.lucent.app.i18n.S.notebookDeletedToast)
                     }
                 }) { Text(com.lucent.app.i18n.S.actionDelete) }
@@ -191,7 +191,7 @@ fun NotebooksScreen(
                     selectionMode = false
                     selectedIds = emptySet()
                     AppScope.io.launch {
-                        ids.forEach { id -> NotebookPurge.purge(context, db, id) }
+                        ids.forEach { id -> NotebookPurge.purge(db, id) }
                     }
                 }) { Text(com.lucent.app.i18n.S.actionDelete) }
             },

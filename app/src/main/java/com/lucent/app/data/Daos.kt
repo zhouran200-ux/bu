@@ -58,24 +58,6 @@ interface ChatDao {
     suspend fun clearConversation(conversationId: Long)
 }
 
-@Dao
-interface ChatConversationDao {
-    @Query("SELECT * FROM chat_conversations ORDER BY updatedAt DESC")
-    fun getAll(): Flow<List<ChatConversation>>
-
-    @Query("SELECT * FROM chat_conversations ORDER BY updatedAt DESC")
-    suspend fun getAllOnce(): List<ChatConversation>
-
-    @Insert
-    suspend fun insert(conversation: ChatConversation): Long
-
-    @Update
-    suspend fun update(conversation: ChatConversation)
-
-    @Delete
-    suspend fun delete(conversation: ChatConversation)
-}
-
 data class NotebookCount(val notebookId: Long, val count: Int)
 
 @Dao

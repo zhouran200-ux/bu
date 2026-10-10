@@ -612,4 +612,30 @@ class AppDatabaseMigrationTest {
             assertEquals(0, c.getInt(2))
         }
     }
+
+    @Test
+    fun migrate29To30_dropsRetiredChatConversationsRosterAndKeepsMessages() {
+        helper.createDatabase(TEST_DB, 29).apply {
+            execSQL(
+                "INSERT INTO chat_conversations (id, title, createdAt, updatedAt) " +
+                    "VALUES (1, 'Conversation', 1000, 1000)"
+            )
+            execSQL(
+                "INSERT INTO chat_messages (id, conversationId, role, content, timestamp) " +
+                    "VALUES (1, 1, 'user', 'Hello', 1000)"
+            )
+            close()
+        }
+
+        val db = helper.runMigrationsAndValidate(TEST_DB, 30, true, MIGRATION_29_30)
+
+        db.query("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'chat_conversations'").use { c ->
+            assertFalse("the retired conversation roster must be gone", c.moveToFirst())
+        }
+        db.query("SELECT conversationId, content FROM chat_messages WHERE id = 1").use { c ->
+            assertTrue(c.moveToFirst())
+            assertEquals(1L, c.getLong(0))
+            assertEquals("Hello", c.getString(1))
+        }
+    }
 }

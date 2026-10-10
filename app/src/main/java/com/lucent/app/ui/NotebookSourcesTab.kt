@@ -28,21 +28,13 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.automirrored.filled.NoteAdd
-import androidx.compose.material.icons.filled.UploadFile
 import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -71,10 +63,11 @@ fun NotebookSourcesTab(
     val onGradient = LocalOnGradient.current
     val onGradientMuted = LocalOnGradientMuted.current
 
-    var showAddDialog by remember { mutableStateOf(false) }
-    var showCreateNoteDialog by remember { mutableStateOf(false) }
-    var noteTitleInput by remember { mutableStateOf("") }
-    var noteBodyInput by remember { mutableStateOf("") }
+    val documentMimeTypes = arrayOf(
+        "text/plain",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    )
 
     val openDocumentLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
@@ -134,7 +127,7 @@ fun NotebookSourcesTab(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = "点击右下角 + 按钮上传本地 TXT/Word 文档或新建笔记，构建你的笔记本知识库。",
+                    text = "点击右下角 + 按钮，上传一份 TXT 或 Word 文档作为这个笔记本的资料。每个笔记本只保留一份文档，想换资料就先删掉它。",
                     fontSize = 14.sp,
                     color = onGradientMuted,
                     modifier = Modifier.padding(horizontal = 16.dp)
@@ -155,7 +148,7 @@ fun NotebookSourcesTab(
                         onOpen = { onOpenReader(note) },
                         onDelete = {
                             AppScope.io.launch {
-                                NotebookPurge.releaseNote(context, db, notebookId, note.id)
+                                NotebookPurge.releaseNote(db, notebookId, note.id)
                                 onReload()
                             }
                             LucentToast.show(context, "已删除该文档")
@@ -167,161 +160,28 @@ fun NotebookSourcesTab(
             }
         }
 
-        Surface(
-            shape = RoundedCornerShape(20.dp),
-            color = Color(0xFF0284C7),
-            shadowElevation = 8.dp,
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(20.dp)
-                .navigationBarsPadding()
-                .size(58.dp)
-                .clip(RoundedCornerShape(20.dp))
-                .clickable { showAddDialog = true }
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(
-                    Icons.Default.Add,
-                    contentDescription = "添加资料",
-                    tint = Color.White,
-                    modifier = Modifier.size(30.dp)
-                )
+        if (sourceNotes.isEmpty()) {
+            Surface(
+                shape = RoundedCornerShape(20.dp),
+                color = Color(0xFF0284C7),
+                shadowElevation = 8.dp,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(20.dp)
+                    .navigationBarsPadding()
+                    .size(58.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .clickable { openDocumentLauncher.launch(documentMimeTypes) }
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        Icons.Default.Add,
+                        contentDescription = "上传文档",
+                        tint = Color.White,
+                        modifier = Modifier.size(30.dp)
+                    )
+                }
             }
-        }
-
-        if (showAddDialog) {
-            AlertDialog(
-                onDismissRequest = { showAddDialog = false },
-                title = { Text("添加来源资料", fontSize = LucentTitles.SectionSize, fontWeight = LucentTitles.SectionWeight) },
-                text = {
-                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = Color(0xFF0284C7).copy(alpha = 0.20f),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .border(1.dp, Color(0xFF38BDF8).copy(alpha = 0.40f), RoundedCornerShape(12.dp))
-                                .clickable {
-                                    showAddDialog = false
-                                    openDocumentLauncher.launch(
-                                        arrayOf(
-                                            "text/plain",
-                                            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                                        )
-                                    )
-                                }
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(14.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    Icons.Default.UploadFile,
-                                    contentDescription = null,
-                                    tint = Color(0xFF38BDF8),
-                                    modifier = Modifier.size(24.dp)
-                                )
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Column {
-                                    Text(
-                                        "上传本地文档 (TXT / Word)",
-                                        fontSize = LucentTitles.ItemSize,
-                                        fontWeight = LucentTitles.ItemWeight,
-                                        color = onGradient
-                                    )
-                                    Text(
-                                        "仅支持 .txt 与 .docx，自动解析为 Markdown",
-                                        fontSize = 12.sp,
-                                        color = onGradientMuted
-                                    )
-                                }
-                            }
-                        }
-
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = onGradient.copy(alpha = 0.08f),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    showAddDialog = false
-                                    showCreateNoteDialog = true
-                                }
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(14.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    Icons.AutoMirrored.Filled.NoteAdd,
-                                    contentDescription = null,
-                                    tint = onGradient,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Column {
-                                    Text("新建笔记本文档", fontSize = LucentTitles.ItemSize, fontWeight = LucentTitles.ItemWeight, color = onGradient)
-                                    Text("手动输入标题与正文", fontSize = 12.sp, color = onGradientMuted)
-                                }
-                            }
-                        }
-
-                    }
-                },
-                confirmButton = {
-                    TextButton(onClick = { showAddDialog = false }) {
-                        Text("取消")
-                    }
-                }
-            )
-        }
-
-        if (showCreateNoteDialog) {
-            AlertDialog(
-                onDismissRequest = { showCreateNoteDialog = false },
-                title = { Text("新建笔记本文档", fontSize = LucentTitles.SectionSize, fontWeight = LucentTitles.SectionWeight) },
-                text = {
-                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        OutlinedTextField(
-                            value = noteTitleInput,
-                            onValueChange = { noteTitleInput = it },
-                            label = { Text("文档标题") },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        OutlinedTextField(
-                            value = noteBodyInput,
-                            onValueChange = { noteBodyInput = it },
-                            label = { Text("文档内容") },
-                            modifier = Modifier.fillMaxWidth(),
-                            minLines = 3
-                        )
-                    }
-                },
-                confirmButton = {
-                    TextButton(
-                        onClick = {
-                            val title = noteTitleInput.ifBlank { "未命名文档" }
-                            val body = noteBodyInput
-                            showCreateNoteDialog = false
-                            noteTitleInput = ""
-                            noteBodyInput = ""
-                            AppScope.io.launch {
-                                val newId = db.noteDao().insert(Note(title = title, body = body))
-                                NotebookPurge.linkNote(db, notebookId, newId)
-                                onReload()
-                            }
-                            LucentToast.show(context, "关联文档已添加")
-                        }
-                    ) {
-                        Text("保存")
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showCreateNoteDialog = false }) {
-                        Text("取消")
-                    }
-                }
-            )
         }
     }
 }

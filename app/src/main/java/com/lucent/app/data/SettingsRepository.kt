@@ -27,8 +27,6 @@ private object SettingsKeys {
     val MODEL = stringPreferencesKey("model")
     val CUSTOM_USER_AGENT = stringPreferencesKey("custom_user_agent")
 
-    val ATTACHMENTS_MIGRATED = booleanPreferencesKey("attachments_migrated_v1")
-
     val API_KEY = stringPreferencesKey("api_key")
     val API_PROFILES = stringPreferencesKey("api_profiles_json")
 
@@ -140,8 +138,6 @@ class SettingsRepository(context: Context) {
 
     val apiProfileSelected: Flow<Int> = context.settingsDataStore.data.map { it[SettingsKeys.API_PROFILE_SELECTED] ?: 0 }
 
-    val attachmentsMigrated: Flow<Boolean> = context.settingsDataStore.data.map { it[SettingsKeys.ATTACHMENTS_MIGRATED] ?: false }
-
     val backgroundAnimationEnabled: Flow<Boolean> = context.settingsDataStore.data.map { it[SettingsKeys.BACKGROUND_ANIMATION_ENABLED] ?: true }
     suspend fun setBackgroundAnimationEnabled(value: Boolean) {
         context.settingsDataStore.edit { it[SettingsKeys.BACKGROUND_ANIMATION_ENABLED] = value }
@@ -161,6 +157,7 @@ class SettingsRepository(context: Context) {
         "assistant_name_enc",
         "assistant_style",
         "assistant_style_enc",
+        "attachments_migrated_v1",
         "auto_backup_state",
         "auto_update_enabled",
         "backup_password_enc",
@@ -273,7 +270,6 @@ class SettingsRepository(context: Context) {
         context.settingsDataStore.edit { it[SettingsKeys.DYNAMIC_COLOR_ENABLED] = value }
         SettingsCache.dynamicColor = value
     }
-    suspend fun setAttachmentsMigrated(value: Boolean) { context.settingsDataStore.edit { it[SettingsKeys.ATTACHMENTS_MIGRATED] = value } }
 
     suspend fun notebookOpensOnce(): String {
         val prefs = context.settingsDataStore.data.first()

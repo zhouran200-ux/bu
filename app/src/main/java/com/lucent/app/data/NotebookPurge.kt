@@ -1,7 +1,5 @@
 package com.lucent.app.data
 
-import android.content.Context
-
 object NotebookPurge {
 
     fun noteIdsExclusiveTo(items: List<NotebookItem>, notebookId: Long): List<Long> {
@@ -23,17 +21,17 @@ object NotebookPurge {
         )
     }
 
-    suspend fun releaseNote(context: Context, db: AppDatabase, notebookId: Long, noteId: Long) {
+    suspend fun releaseNote(db: AppDatabase, notebookId: Long, noteId: Long) {
         val exclusive = noteIdsExclusiveTo(db.notebookDao().getAllItemsOnce(), notebookId).contains(noteId)
         db.notebookDao().removeItem(notebookId, NotebookItem.KIND_NOTE, noteId)
         if (!exclusive) return
-        db.noteDao().getByIdOnce(noteId)?.let { TrashCleanup.purgeNote(context, db, it) }
+        db.noteDao().getByIdOnce(noteId)?.let { TrashCleanup.purgeNote(db, it) }
     }
 
-    suspend fun purge(context: Context, db: AppDatabase, notebookId: Long) {
+    suspend fun purge(db: AppDatabase, notebookId: Long) {
         val doomed = noteIdsExclusiveTo(db.notebookDao().getAllItemsOnce(), notebookId)
         doomed.forEach { noteId ->
-            db.noteDao().getByIdOnce(noteId)?.let { TrashCleanup.purgeNote(context, db, it) }
+            db.noteDao().getByIdOnce(noteId)?.let { TrashCleanup.purgeNote(db, it) }
         }
         db.chatDao().clearConversation(ChatScope.forNotebook(notebookId))
         db.notebookDao().deleteItemsForNotebook(notebookId)

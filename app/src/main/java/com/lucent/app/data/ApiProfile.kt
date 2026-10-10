@@ -117,6 +117,19 @@ object ApiProfiles {
         }
     }
 
+    fun selectionFor(
+        profiles: List<ApiProfile>,
+        savedProfileName: String,
+        savedModel: String
+    ): Pair<String, String> {
+        val named = profiles.firstOrNull { it.name == savedProfileName }
+            ?: profiles.firstOrNull()
+            ?: return "" to ""
+        val model = named.selectedModels.firstOrNull { it == savedModel }
+            ?: named.model.ifBlank { named.selectedModels.firstOrNull().orEmpty() }
+        return named.name to model
+    }
+
     fun orderKeys(profiles: List<ApiProfile>): List<String> {
         val seen = mutableMapOf<String, Int>()
         return profiles.map { profile ->

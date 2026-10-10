@@ -166,7 +166,7 @@ fun NotebookSourcesTab(
                         },
                         onDelete = {
                             AppScope.io.launch {
-                                db.notebookDao().deleteItemsForNotebook(notebookId)
+                                db.notebookDao().removeItem(notebookId, NotebookItem.KIND_NOTE, note.id)
                                 onReload()
                             }
                             LucentToast.show(context, "已移除文档关联")

@@ -200,6 +200,9 @@ interface NotebookDao {
     @Query("DELETE FROM notebook_items WHERE id = :itemId")
     suspend fun deleteItemById(itemId: Long)
 
+    @Query("DELETE FROM notebook_items WHERE notebookId = :notebookId AND itemKind = :itemKind AND itemId = :itemId")
+    suspend fun removeItem(notebookId: Long, itemKind: String, itemId: Long)
+
     @Query("DELETE FROM notebook_items WHERE notebookId = :notebookId")
     suspend fun deleteItemsForNotebook(notebookId: Long)
 

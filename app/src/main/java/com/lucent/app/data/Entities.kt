@@ -123,6 +123,12 @@ data class ChatMessage(
     val quotedText: String? = null
 )
 
+object ChatScope {
+    const val NOTEBOOK_CONVERSATION_FLOOR = 100000L
+
+    fun forNotebook(notebookId: Long): Long = NOTEBOOK_CONVERSATION_FLOOR + notebookId
+}
+
 @Entity(tableName = "chat_conversations")
 data class ChatConversation(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,

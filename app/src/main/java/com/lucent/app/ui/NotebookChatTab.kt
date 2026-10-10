@@ -89,7 +89,6 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -100,12 +99,11 @@ import com.lucent.app.data.ApiProfile
 import com.lucent.app.data.ApiProfiles
 import com.lucent.app.data.AppDatabase
 import com.lucent.app.data.ChatMessage
+import com.lucent.app.data.ChatScope
 import com.lucent.app.data.ModelCapabilityRegistry
 import com.lucent.app.data.Note
-import com.lucent.app.data.ReasoningEffort
 import com.lucent.app.data.ReasoningPreset
 import com.lucent.app.data.ReasoningResolver
-import com.lucent.app.data.ResolvedReasoningConfig
 import com.lucent.app.data.SettingsCache
 import com.lucent.app.network.ApiSpec
 import com.lucent.app.network.ChatMessagePayload
@@ -142,11 +140,27 @@ fun NotebookChatTab(
     }
 
     var inputText by remember { mutableStateOf("") }
+    val savedProfiles = remember(SettingsCache.apiProfilesJson) {
+        ApiProfiles.parse(SettingsCache.apiProfilesJson).ifEmpty { ApiProfiles.DEFAULT_PROFILES }
+    }
     var selectedProfileName by remember {
-        mutableStateOf(prefs.getString("profile_name_$notebookId", "CC") ?: "CC")
+        mutableStateOf(prefs.getString("profile_name_$notebookId", "") ?: "")
     }
     var selectedModel by remember {
-        mutableStateOf(prefs.getString("model_$notebookId", "Gemini 3.5 Flash") ?: "Gemini 3.5 Flash")
+        mutableStateOf(prefs.getString("model_$notebookId", "") ?: "")
+    }
+
+    LaunchedEffect(notebookId, savedProfiles) {
+        val (name, model) = ApiProfiles.selectionFor(savedProfiles, selectedProfileName, selectedModel)
+        if (name.isEmpty()) return@LaunchedEffect
+        if (name != selectedProfileName || model != selectedModel) {
+            selectedProfileName = name
+            selectedModel = model
+            prefs.edit()
+                .putString("profile_name_$notebookId", name)
+                .putString("model_$notebookId", model)
+                .apply()
+        }
     }
     var reasoningPreset by remember {
         val savedKey = prefs.getString("reasoning_preset_$notebookId", null)
@@ -172,10 +186,8 @@ fun NotebookChatTab(
     val messages = remember { mutableStateListOf<UiChatMessage>() }
 
     LaunchedEffect(notebookId) {
-        val convId = 100000L + notebookId
-        val existing = db.chatDao().getForConversationOnce(convId).filterNot {
-            (it.id == 101L || it.id == 102L) && it.content.contains("105")
-        }
+        val convId = ChatScope.forNotebook(notebookId)
+        val existing = db.chatDao().getForConversationOnce(convId)
         messages.clear()
         if (existing.isNotEmpty()) {
             messages.addAll(existing.map { m ->
@@ -190,9 +202,16 @@ fun NotebookChatTab(
         }
     }
 
-    val onSendMessage: () -> Unit = {
+    val onSendMessage: () -> Unit = send@{
         val text = inputText.trim()
         if (text.isNotEmpty()) {
+            val matchedProfile = savedProfiles.find { it.name == selectedProfileName }
+                ?: savedProfiles.firstOrNull()
+            val targetModel = selectedModel.ifBlank { matchedProfile?.model.orEmpty() }
+            if (targetModel.isBlank()) {
+                LucentToast.show(context, "该方案还没有可用模型，请到设置-云端模型获取并保存模型")
+                return@send
+            }
             inputText = ""
             val userMsg = UiChatMessage(
                 id = System.currentTimeMillis(),
@@ -206,20 +225,12 @@ fun NotebookChatTab(
                 listState.animateScrollToItem((messages.size - 1).coerceAtLeast(0))
             }
 
-            val convId = 100000L + notebookId
+            val convId = ChatScope.forNotebook(notebookId)
             AppScope.io.launch {
                 db.chatDao().insert(ChatMessage(role = "user", content = text, conversationId = convId))
             }
 
             val aiMsgId = System.currentTimeMillis() + 1
-
-            val savedProfiles = runCatching {
-                val parsed = ApiProfiles.parse(SettingsCache.apiProfilesJson)
-                if (parsed.isNotEmpty()) parsed else ApiProfiles.DEFAULT_PROFILES
-            }.getOrElse { ApiProfiles.DEFAULT_PROFILES }
-
-            val matchedProfile = savedProfiles.find { it.name == selectedProfileName }
-                ?: savedProfiles.firstOrNull()
 
             val specStr = matchedProfile?.spec?.lowercase() ?: SettingsCache.apiSpec.lowercase()
             val spec = when {
@@ -230,7 +241,6 @@ fun NotebookChatTab(
 
             val baseUrl = matchedProfile?.baseUrl?.ifBlank { SettingsCache.baseUrl } ?: SettingsCache.baseUrl
             val apiKey = matchedProfile?.apiKey?.ifBlank { SettingsCache.apiKey } ?: SettingsCache.apiKey
-            val targetModel = selectedModel.ifBlank { matchedProfile?.model.orEmpty() }
             val customUa = matchedProfile?.customUserAgent.orEmpty()
 
             val resolvedReasoning = ReasoningResolver.resolve(
@@ -524,6 +534,7 @@ fun NotebookChatTab(
 
         if (showProfileModelPickerSheet) {
             ProfileModelPickerSheet(
+                profiles = savedProfiles,
                 currentProfileName = selectedProfileName,
                 currentModel = selectedModel,
                 onSelect = { profileName, modelName ->
@@ -1302,37 +1313,13 @@ private fun DialogueSettingsDialog(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ProfileModelPickerSheet(
+    profiles: List<ApiProfile>,
     currentProfileName: String,
     currentModel: String,
     onSelect: (profileName: String, modelName: String) -> Unit,
     onDismiss: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val savedProfiles = remember {
-        val parsed = ApiProfiles.parse(SettingsCache.apiProfilesJson)
-        if (parsed.isNotEmpty()) parsed else ApiProfiles.DEFAULT_PROFILES
-    }
-
-    val displayProfiles = remember(savedProfiles) {
-        val list = savedProfiles.toMutableList()
-        val defaultList = listOf(
-            ApiProfile(name = "gg", selectedModels = listOf("gemini-3.5-flash", "gemini-3.1-pro", "gemini-2.5-flash")),
-            ApiProfile(name = "CC", selectedModels = listOf("claude-3-7-sonnet", "claude-3-5-sonnet", "claude-3-haiku", "claude-3-5-opus", "claude-3-opus", "claude-2.1", "claude-2.0")),
-            ApiProfile(name = "昇腾", selectedModels = listOf("ascend-deepseek-r1", "ascend-deepseek-v3", "qwen-2.5-72b", "qwen-2.5-32b", "qwen-2.5-14b", "qwen-2.5-7b", "llama-3.3-70b", "llama-3.1-8b")),
-            ApiProfile(name = "基元", selectedModels = listOf("gpt-4o", "gpt-4o-mini", "o1-preview", "o1-mini", "o3-mini", "chatgpt-4o-latest", "gpt-4-turbo", "gpt-4", "gpt-3.5-turbo")),
-            ApiProfile(name = "商汤", selectedModels = listOf("SenseChat-5", "SenseChat-5-Vision", "SenseChat-128k", "SenseChat-32k", "SenseChat-4")),
-            ApiProfile(name = "天下", selectedModels = listOf("tianxia-chat-v2", "tianxia-code-v1")),
-            ApiProfile(name = "DeepSeek", selectedModels = listOf("deepseek-reasoner", "deepseek-chat")),
-            ApiProfile(name = "魔搭", selectedModels = listOf("qwen-plus", "qwen-max", "qwen-turbo", "baichuan2-7b", "chatglm3-6b")),
-            ApiProfile(name = "Longcat", selectedModels = listOf("longcat-ultra-128k", "longcat-pro-32k")),
-            ApiProfile(name = "Ag", selectedModels = listOf("ag-general-v1"))
-        )
-        if (list.size <= 1) {
-            defaultList
-        } else {
-            list
-        }
-    }
 
     var expandedProfileIndex by remember { mutableIntStateOf(-1) }
 
@@ -1372,10 +1359,10 @@ private fun ProfileModelPickerSheet(
                     .heightIn(max = 420.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                itemsIndexed(displayProfiles) { index, profile ->
+                itemsIndexed(profiles) { index, profile ->
                     val isExpanded = expandedProfileIndex == index
                     val isSelected = currentProfileName == profile.name
-                    val modelCount = profile.selectedModels.size.coerceAtLeast(1)
+                    val modelCount = profile.selectedModels.size
 
                     Column(
                         modifier = Modifier
@@ -1388,7 +1375,7 @@ private fun ProfileModelPickerSheet(
                                 .fillMaxWidth()
                                 .clickable {
                                     if (profile.selectedModels.size <= 1) {
-                                        val modelName = profile.selectedModels.firstOrNull() ?: profile.model.ifBlank { profile.name }
+                                        val modelName = profile.selectedModels.firstOrNull() ?: profile.model
                                         onSelect(profile.name, modelName)
                                     } else {
                                         expandedProfileIndex = if (isExpanded) -1 else index

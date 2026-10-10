@@ -175,4 +175,39 @@ class ApiProfileTest {
         assertEquals(1, ApiProfiles.orderKeys(named("only")).size)
         assertEquals(3, ApiProfiles.orderKeys(named("x", "x", "x")).size)
     }
+
+    private fun profileWithModels(name: String, vararg models: String) =
+        ApiProfile(name = name, model = models.firstOrNull().orEmpty(), selectedModels = models.toList())
+
+    @Test
+    fun testSelectionForKeepsAStillValidChoice() {
+        val profiles = listOf(
+            profileWithModels("甲", "m-a1", "m-a2"),
+            profileWithModels("乙", "m-b1")
+        )
+        assertEquals("乙" to "m-b1", ApiProfiles.selectionFor(profiles, "乙", "m-b1"))
+        assertEquals("甲" to "m-a2", ApiProfiles.selectionFor(profiles, "甲", "m-a2"))
+    }
+
+    @Test
+    fun testSelectionForFallsBackToTheFirstSavedProfile() {
+        val profiles = listOf(
+            profileWithModels("甲", "m-a1", "m-a2"),
+            profileWithModels("乙", "m-b1")
+        )
+        assertEquals("甲" to "m-a1", ApiProfiles.selectionFor(profiles, "已删除的方案", "已删除的模型"))
+        assertEquals("甲" to "m-a1", ApiProfiles.selectionFor(profiles, "", ""))
+        assertEquals("", ApiProfiles.selectionFor(emptyList(), "甲", "m-a1").first)
+    }
+
+    @Test
+    fun testSelectionForNeverReturnsAModelTheProfileDoesNotOffer() {
+        val profiles = listOf(
+            ApiProfile(name = "甲", model = "m-a1", selectedModels = listOf("m-a2")),
+            ApiProfile(name = "乙", model = "", selectedModels = emptyList())
+        )
+        assertEquals("甲" to "m-a1", ApiProfiles.selectionFor(profiles, "甲", "m-a1"))
+        assertEquals("乙" to "", ApiProfiles.selectionFor(profiles, "乙", "别的方案里的模型"))
+        assertEquals("乙" to "", ApiProfiles.selectionFor(profiles, "乙", ""))
+    }
 }

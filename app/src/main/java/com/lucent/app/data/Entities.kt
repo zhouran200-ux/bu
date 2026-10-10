@@ -78,6 +78,8 @@ data class ChatMessage(
     val attachmentList: String? = null,
     val conversationId: Long = 1,
     val tokens: Int = 0,
+    val cachedTokens: Int = 0,
+    val answerSeconds: Int = 0,
     val replyToId: Long = 0,
     val reasoningBlocks: String? = null,
     val reasoningText: String? = null,

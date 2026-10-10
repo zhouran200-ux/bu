@@ -9,6 +9,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -18,6 +19,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.animateScrollBy
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -48,6 +51,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Check
@@ -59,7 +63,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Memory
-import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Button
@@ -102,6 +106,8 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -130,8 +136,10 @@ data class UiChatMessage(
     val role: String,
     val content: String,
     val reasoningText: String? = null,
-    val reasoningDurationSec: Int = 18,
+    val reasoningDurationSec: Int = 0,
     val reasoningTag: String? = null,
+    val promptTokens: Int = 0,
+    val cachedTokens: Int = 0,
     val timestamp: Long = System.currentTimeMillis()
 )
 
@@ -195,6 +203,9 @@ fun NotebookChatTab(
 
     val messages = remember { mutableStateListOf<UiChatMessage>() }
     var streamingAnswerId by remember { mutableStateOf<Long?>(null) }
+    var messageToDelete by remember { mutableStateOf<UiChatMessage?>(null) }
+    var questionToEdit by remember { mutableStateOf<UiChatMessage?>(null) }
+    var answerToEdit by remember { mutableStateOf<UiChatMessage?>(null) }
     val streamingThought = remember { mutableStateOf("") }
 
     LaunchedEffect(notebookId) {
@@ -208,220 +219,306 @@ fun NotebookChatTab(
                     role = m.role,
                     content = m.content,
                     reasoningText = m.reasoningText,
-                    reasoningDurationSec = 18
+                    reasoningDurationSec = m.answerSeconds,
+                    promptTokens = m.tokens,
+                    cachedTokens = m.cachedTokens,
+                    timestamp = m.timestamp
                 )
             })
         }
     }
 
-    val onSendMessage: () -> Unit = send@{
-        val text = inputText.trim()
-        if (text.isNotEmpty()) {
-            val matchedProfile = savedProfiles.find { it.name == selectedProfileName }
-                ?: savedProfiles.firstOrNull()
-            val targetModel = selectedModel.ifBlank { matchedProfile?.model.orEmpty() }
-            if (targetModel.isBlank()) {
-                LucentToast.show(context, "该方案还没有可用模型，请到设置-API 配置获取并保存模型")
-                return@send
+    fun askModel(answerId: Long) {
+        val matchedProfile = savedProfiles.find { it.name == selectedProfileName }
+            ?: savedProfiles.firstOrNull()
+        val targetModel = selectedModel.ifBlank { matchedProfile?.model.orEmpty() }
+        val convId = ChatScope.forNotebook(notebookId)
+        val aiMsgId = answerId
+        val answerStamp = messages.firstOrNull { it.id == aiMsgId }?.timestamp ?: System.currentTimeMillis()
+        fun upsertAnswerSlot(msg: UiChatMessage) {
+            val slot = messages.indexOfFirst { it.id == msg.id }
+            if (slot >= 0) messages[slot] = msg else messages.add(msg)
+        }
+        if (targetModel.isBlank()) {
+            LucentToast.show(context, "该方案还没有可用模型，请到设置-API 配置获取并保存模型")
+            val blankIdx = messages.indexOfFirst { it.id == aiMsgId }
+            if (blankIdx >= 0) {
+                messages[blankIdx] = messages[blankIdx].copy(content = "【未配置可用模型】请先在设置-API 配置里获取并保存模型。")
             }
-            inputText = ""
-            val userMsg = UiChatMessage(
-                id = System.currentTimeMillis(),
-                role = "user",
-                content = text
+            streamingAnswerId = null
+            return
+        }
+
+        val specStr = matchedProfile?.spec?.lowercase() ?: SettingsCache.apiSpec.lowercase()
+        val spec = when {
+            specStr.contains("google") || specStr.contains("gemini") -> ApiSpec.GOOGLE
+            specStr.contains("anthropic") || specStr.contains("claude") -> ApiSpec.ANTHROPIC
+            else -> ApiSpec.OPENAI
+        }
+
+        val baseUrl = matchedProfile?.baseUrl?.ifBlank { SettingsCache.baseUrl } ?: SettingsCache.baseUrl
+        val apiKey = matchedProfile?.apiKey?.ifBlank { SettingsCache.apiKey } ?: SettingsCache.apiKey
+        val customUa = matchedProfile?.customUserAgent.orEmpty()
+
+        val resolvedReasoning = ReasoningResolver.resolve(
+            preset = reasoningPreset,
+            provider = specStr,
+            model = targetModel
+        )
+        val effortLabel = resolvedReasoning.displayTag
+
+        val knowledgeBasePrompt = buildString {
+            append("你是一个专业的笔记本知识库与对话助手。用户在此笔记本中上传了参考资料文档（已在本地转换为 Markdown 格式）。\n")
+            append("请严格基于以下参考资料的内容回答用户的问题。如果问题在参考资料中没有提及，请如实告知并结合通用常识客观回答。\n\n")
+            if (sourceNotes.isNotEmpty()) {
+                append("==================== 参考资料库开始 ====================\n")
+                sourceNotes.forEachIndexed { index, note ->
+                    val docTitle = note.title.ifBlank { "资料文档 ${index + 1}" }
+                    append("\n【文档 ${index + 1}：《$docTitle》】\n")
+                    append(note.body)
+                    append("\n")
+                }
+                append("\n==================== 参考资料库结束 ====================\n\n")
+            } else {
+                append("（当前笔记本暂无关联参考资料，请按通用笔记助手角色回答）\n\n")
+            }
+
+            if (systemPrompt.isNotBlank()) {
+                append("【自定义提示词与设定】\n")
+                append(systemPrompt.trim())
+                append("\n\n")
+            }
+
+            when (reasoningPreset) {
+                ReasoningPreset.FAST -> append("【思考规范】请进行简明精炼的快速推理后再作答。\n")
+                ReasoningPreset.BALANCED -> append("【思考规范】请进行条理清晰、层次分明的逻辑分析后再给出结论。\n")
+                ReasoningPreset.DEEP -> append("【思考规范】请进行深度、细致、详尽的逻辑推理，充分论证每一个要点后再给出最终结论。\n")
+                ReasoningPreset.MAXIMUM -> append("【思考规范】请调用最高复杂度逻辑推演与多角度攻坚，严格反思校验每一个假设后再给出结论。\n")
+                ReasoningPreset.AUTO -> {}
+            }
+        }
+
+        val historyPayload = messages.filter { it.id != aiMsgId }.takeLast(historyRounds * 2).map {
+            ChatMessagePayload(
+                role = if (it.role == "assistant") "assistant" else "user",
+                content = it.content
             )
-            messages.add(userMsg)
+        }
+
+        if (apiKey.isBlank()) {
+            val pendingAi = UiChatMessage(
+                id = aiMsgId,
+                role = "assistant",
+                content = "【未配置 API 密钥】\n当前所选方案未设置有效的 API Key。请点击底部右侧「模型选择」卡片中的「管理与添加 API 方案」，或前往「设置 -> API 配置」填入 API Key 与基础 URL，即可开始基于本地 Markdown 知识库与大模型对话。"
+            )
+            messages.add(pendingAi)
+        } else {
+            val pendingAi = UiChatMessage(
+                id = aiMsgId,
+                role = "assistant",
+                content = "",
+                reasoningTag = effortLabel
+            )
+            messages.add(pendingAi)
+            streamingThought.value = ""
+            streamingAnswerId = aiMsgId
 
             scope.launch {
-                delay(100)
-                listState.animateScrollToItem((messages.size - 1).coerceAtLeast(0))
-            }
-
-            val convId = ChatScope.forNotebook(notebookId)
-            AppScope.io.launch {
-                db.chatDao().insert(ChatMessage(role = "user", content = text, conversationId = convId))
-            }
-
-            val aiMsgId = System.currentTimeMillis() + 1
-
-            val specStr = matchedProfile?.spec?.lowercase() ?: SettingsCache.apiSpec.lowercase()
-            val spec = when {
-                specStr.contains("google") || specStr.contains("gemini") -> ApiSpec.GOOGLE
-                specStr.contains("anthropic") || specStr.contains("claude") -> ApiSpec.ANTHROPIC
-                else -> ApiSpec.OPENAI
-            }
-
-            val baseUrl = matchedProfile?.baseUrl?.ifBlank { SettingsCache.baseUrl } ?: SettingsCache.baseUrl
-            val apiKey = matchedProfile?.apiKey?.ifBlank { SettingsCache.apiKey } ?: SettingsCache.apiKey
-            val customUa = matchedProfile?.customUserAgent.orEmpty()
-
-            val resolvedReasoning = ReasoningResolver.resolve(
-                preset = reasoningPreset,
-                provider = specStr,
-                model = targetModel
-            )
-            val effortLabel = resolvedReasoning.displayTag
-
-            val knowledgeBasePrompt = buildString {
-                append("你是一个专业的笔记本知识库与对话助手。用户在此笔记本中上传了参考资料文档（已在本地转换为 Markdown 格式）。\n")
-                append("请严格基于以下参考资料的内容回答用户的问题。如果问题在参考资料中没有提及，请如实告知并结合通用常识客观回答。\n\n")
-                if (sourceNotes.isNotEmpty()) {
-                    append("==================== 参考资料库开始 ====================\n")
-                    sourceNotes.forEachIndexed { index, note ->
-                        val docTitle = note.title.ifBlank { "资料文档 ${index + 1}" }
-                        append("\n【文档 ${index + 1}：《$docTitle》】\n")
-                        append(note.body)
-                        append("\n")
-                    }
-                    append("\n==================== 参考资料库结束 ====================\n\n")
-                } else {
-                    append("（当前笔记本暂无关联参考资料，请按通用笔记助手角色回答）\n\n")
-                }
-
-                if (systemPrompt.isNotBlank()) {
-                    append("【自定义提示词与设定】\n")
-                    append(systemPrompt.trim())
-                    append("\n\n")
-                }
-
-                when (reasoningPreset) {
-                    ReasoningPreset.FAST -> append("【思考规范】请进行简明精炼的快速推理后再作答。\n")
-                    ReasoningPreset.BALANCED -> append("【思考规范】请进行条理清晰、层次分明的逻辑分析后再给出结论。\n")
-                    ReasoningPreset.DEEP -> append("【思考规范】请进行深度、细致、详尽的逻辑推理，充分论证每一个要点后再给出最终结论。\n")
-                    ReasoningPreset.MAXIMUM -> append("【思考规范】请调用最高复杂度逻辑推演与多角度攻坚，严格反思校验每一个假设后再给出结论。\n")
-                    ReasoningPreset.AUTO -> {}
-                }
-            }
-
-            val historyPayload = messages.filter { it.id != aiMsgId }.takeLast(historyRounds * 2).map {
-                ChatMessagePayload(
-                    role = if (it.role == "assistant") "assistant" else "user",
-                    content = it.content
-                )
-            }
-
-            if (apiKey.isBlank()) {
-                val pendingAi = UiChatMessage(
-                    id = aiMsgId,
-                    role = "assistant",
-                    content = "【未配置 API 密钥】\n当前所选方案未设置有效的 API Key。请点击底部右侧「模型选择」卡片中的「管理与添加 API 方案」，或前往「设置 -> API 配置」填入 API Key 与基础 URL，即可开始基于本地 Markdown 知识库与大模型对话。"
-                )
-                messages.add(pendingAi)
-            } else {
-                val pendingAi = UiChatMessage(
-                    id = aiMsgId,
-                    role = "assistant",
-                    content = "",
-                    reasoningTag = effortLabel
-                )
-                messages.add(pendingAi)
-                streamingThought.value = ""
-                streamingAnswerId = aiMsgId
-
-                scope.launch {
-                    val startTime = System.currentTimeMillis()
-                    val scheduler = StreamUiScheduler(
-                        timeWindowMs = 35L,
-                        charBurstThreshold = 48,
-                        thoughtWindowMs = 16L,
-                        thoughtBurstThreshold = 24,
-                        onFlush = { currentContent, _ ->
-                            val idx = messages.indexOfFirst { it.id == aiMsgId }
-                            if (idx >= 0) {
-                                messages[idx] = messages[idx].copy(content = currentContent)
-                            }
-                        },
-                        onThought = { reasoning -> streamingThought.value = reasoning }
-                    )
-
-                    val chatResult = LlmClient.chatStream(
-                        baseUrl = baseUrl,
-                        spec = spec,
-                        apiKey = apiKey,
-                        model = targetModel,
-                        messages = historyPayload,
-                        systemInstruction = knowledgeBasePrompt,
-                        temperature = temperature,
-                        customUserAgent = customUa,
-                        reasoningConfig = resolvedReasoning
-                    ) { deltaText, deltaThought ->
-                        scheduler.append(deltaText, deltaThought)
-                    }
-
-                    scheduler.forceFlush()
-
-                    val durationSec = ((System.currentTimeMillis() - startTime) / 1000).toInt().coerceAtLeast(1)
-
-                    chatResult.onSuccess { res ->
-                        val finalContent = res.content.ifBlank { scheduler.getFinalContent() }.ifBlank { "（模型返回了空回复）" }
-                        val finalReasoning = res.reasoningText ?: scheduler.getFinalReasoning()
-
-                        val finalAi = UiChatMessage(
-                            id = aiMsgId,
-                            role = "assistant",
-                            content = finalContent,
-                            reasoningText = finalReasoning,
-                            reasoningDurationSec = durationSec,
-                            reasoningTag = effortLabel
-                        )
+                val startTime = System.currentTimeMillis()
+                val scheduler = StreamUiScheduler(
+                    timeWindowMs = 35L,
+                    charBurstThreshold = 48,
+                    thoughtWindowMs = 16L,
+                    thoughtBurstThreshold = 24,
+                    onFlush = { currentContent, _ ->
                         val idx = messages.indexOfFirst { it.id == aiMsgId }
                         if (idx >= 0) {
-                            messages[idx] = finalAi
+                            messages[idx] = messages[idx].copy(content = currentContent)
                         }
+                    },
+                    onThought = { reasoning -> streamingThought.value = reasoning }
+                )
 
+                val chatResult = LlmClient.chatStream(
+                    baseUrl = baseUrl,
+                    spec = spec,
+                    apiKey = apiKey,
+                    model = targetModel,
+                    messages = historyPayload,
+                    systemInstruction = knowledgeBasePrompt,
+                    temperature = temperature,
+                    customUserAgent = customUa,
+                    reasoningConfig = resolvedReasoning
+                ) { deltaText, deltaThought ->
+                    scheduler.append(deltaText, deltaThought)
+                }
+
+                scheduler.forceFlush()
+
+                val durationSec = ((System.currentTimeMillis() - startTime) / 1000).toInt().coerceAtLeast(1)
+
+                chatResult.onSuccess { res ->
+                    val finalContent = res.content.ifBlank { scheduler.getFinalContent() }.ifBlank { "（模型返回了空回复）" }
+                    val finalReasoning = res.reasoningText ?: scheduler.getFinalReasoning()
+
+                    val finalAi = UiChatMessage(
+                        id = aiMsgId,
+                        role = "assistant",
+                        content = finalContent,
+                        reasoningText = finalReasoning,
+                        reasoningDurationSec = durationSec,
+                        reasoningTag = effortLabel,
+                        promptTokens = res.promptTokens,
+                        cachedTokens = res.cachedTokens,
+                        timestamp = answerStamp
+                    )
+                    val idx = messages.indexOfFirst { it.id == aiMsgId }
+                    if (idx >= 0) {
+                        messages[idx] = finalAi
+                    }
+
+                    AppScope.io.launch {
+                        db.chatDao().insert(
+                            ChatMessage(
+                                id = aiMsgId,
+                                role = "assistant",
+                                content = finalAi.content,
+                                reasoningText = finalAi.reasoningText,
+                                conversationId = convId
+                            )
+                        )
+                    }
+                }.onFailure { err ->
+                    val currentText = scheduler.getFinalContent()
+                    val errorDisplay = if (currentText.isNotBlank()) {
+                        "$currentText\n\n[网络中断：${err.message ?: "连接已关闭"}，已保留已生成内容]"
+                    } else {
+                        "【请求失败】${err.message ?: "网络或接口异常"}\n\n请检查网络连接、API 密钥与模型端点配置。"
+                    }
+
+                    val failedAi = UiChatMessage(
+                        id = aiMsgId,
+                        role = "assistant",
+                        content = errorDisplay,
+                        reasoningText = scheduler.getFinalReasoning(),
+                        reasoningDurationSec = durationSec,
+                        reasoningTag = effortLabel
+                    )
+                    val idx = messages.indexOfFirst { it.id == aiMsgId }
+                    if (idx >= 0) {
+                        messages[idx] = failedAi
+                    }
+
+                    if (currentText.isNotBlank()) {
                         AppScope.io.launch {
                             db.chatDao().insert(
                                 ChatMessage(
                                     id = aiMsgId,
                                     role = "assistant",
-                                    content = finalAi.content,
-                                    reasoningText = finalAi.reasoningText,
+                                    content = failedAi.content,
+                                    reasoningText = failedAi.reasoningText,
                                     conversationId = convId
                                 )
                             )
                         }
-                    }.onFailure { err ->
-                        val currentText = scheduler.getFinalContent()
-                        val errorDisplay = if (currentText.isNotBlank()) {
-                            "$currentText\n\n[网络中断：${err.message ?: "连接已关闭"}，已保留已生成内容]"
-                        } else {
-                            "【请求失败】${err.message ?: "网络或接口异常"}\n\n请检查网络连接、API 密钥与模型端点配置。"
-                        }
-
-                        val failedAi = UiChatMessage(
-                            id = aiMsgId,
-                            role = "assistant",
-                            content = errorDisplay,
-                            reasoningText = scheduler.getFinalReasoning(),
-                            reasoningDurationSec = durationSec,
-                            reasoningTag = effortLabel
-                        )
-                        val idx = messages.indexOfFirst { it.id == aiMsgId }
-                        if (idx >= 0) {
-                            messages[idx] = failedAi
-                        }
-
-                        if (currentText.isNotBlank()) {
-                            AppScope.io.launch {
-                                db.chatDao().insert(
-                                    ChatMessage(
-                                        id = aiMsgId,
-                                        role = "assistant",
-                                        content = failedAi.content,
-                                        reasoningText = failedAi.reasoningText,
-                                        conversationId = convId
-                                    )
-                                )
-                            }
-                        }
                     }
-
-                    streamingAnswerId = null
-                    delay(100)
-                    listState.animateScrollToItem((messages.size - 1).coerceAtLeast(0))
                 }
-            }
+
+                streamingAnswerId = null
+                delay(100)
+                listState.animateScrollToItem((messages.size - 1).coerceAtLeast(0))            }
         }
+    }
+
+    fun startAnswer(promptText: String) {
+        val userMsg = UiChatMessage(
+            id = System.currentTimeMillis(),
+            role = "user",
+            content = promptText
+        )
+        messages.add(userMsg)
+        val convId = ChatScope.forNotebook(notebookId)
+        AppScope.io.launch {
+            db.chatDao().insert(
+                ChatMessage(
+                    id = userMsg.id,
+                    role = "user",
+                    content = promptText,
+                    timestamp = userMsg.timestamp,
+                    conversationId = convId
+                )
+            )
+        }
+        val answerId = userMsg.id + 1
+        messages.add(UiChatMessage(id = answerId, role = "assistant", content = "", timestamp = answerId))
+        scope.launch {
+            delay(100)
+            listState.animateScrollToItem((messages.size - 1).coerceAtLeast(0))
+        }
+        askModel(answerId)
+    }
+
+    fun regenerateAnswer(answerId: Long) {
+        if (streamingAnswerId != null) {
+            LucentToast.show(context, "上一条回答还没有结束")
+            return
+        }
+        val idx = messages.indexOfFirst { it.id == answerId }
+        if (idx < 0) return
+        val question = messages.take(idx).lastOrNull { it.role == "user" }?.content.orEmpty()
+        if (question.isBlank()) {
+            LucentToast.show(context, "找不到这条回答对应的问题，无法重新生成")
+            return
+        }
+        messages[idx] = messages[idx].copy(
+            content = "",
+            reasoningText = null,
+            reasoningDurationSec = 0,
+            promptTokens = 0,
+            cachedTokens = 0
+        )
+        AppScope.io.launch { db.chatDao().deleteByIds(listOf(answerId)) }
+        askModel(answerId)
+    }
+
+    fun resendEditedQuestion(questionId: Long, newText: String) {
+        val idx = messages.indexOfFirst { it.id == questionId }
+        if (idx < 0) return
+        val followingIds = messages.drop(idx + 1).map { it.id }
+        while (messages.size > idx + 1) messages.removeAt(messages.size - 1)
+        messages[idx] = messages[idx].copy(content = newText)
+        AppScope.io.launch {
+            db.chatDao().updateContent(questionId, newText)
+            if (followingIds.isNotEmpty()) db.chatDao().deleteByIds(followingIds)
+        }
+        val answerId = System.currentTimeMillis() + 1
+        messages.add(UiChatMessage(id = answerId, role = "assistant", content = "", timestamp = answerId))
+        askModel(answerId)
+    }
+
+    fun saveAnswerEdit(answerId: Long, newText: String) {
+        val idx = messages.indexOfFirst { it.id == answerId }
+        if (idx < 0) return
+        messages[idx] = messages[idx].copy(content = newText)
+        AppScope.io.launch { db.chatDao().updateContent(answerId, newText) }
+    }
+
+    fun deleteMessage(messageId: Long) {
+        val idx = messages.indexOfFirst { it.id == messageId }
+        if (idx < 0) return
+        messages.removeAt(idx)
+        AppScope.io.launch { db.chatDao().deleteByIds(listOf(messageId)) }
+    }
+
+    val onSendMessage: () -> Unit = send@{
+        val text = inputText.trim()
+        if (text.isEmpty()) return@send
+        if (streamingAnswerId != null) {
+            LucentToast.show(context, "上一条回答还没有结束")
+            return@send
+        }
+        inputText = ""
+        startAnswer(text)
     }
 
     val focusManager = LocalFocusManager.current
@@ -459,22 +556,23 @@ fun NotebookChatTab(
                 item { Spacer(modifier = Modifier.height(8.dp)) }
 
                 itemsIndexed(messages, key = { _, msg -> msg.id }) { _, msg ->
+                    val actionsEnabled = streamingAnswerId == null
                     if (msg.role == "user") {
                         UserMessageCard(
                             message = msg,
-                            onEdit = { inputText = msg.content },
-                            onDelete = {
-                                messages.remove(msg)
-                                AppScope.io.launch {
-                                    db.chatDao().deleteByIds(listOf(msg.id))
-                                }
-                            }
+                            actionsEnabled = actionsEnabled,
+                            onEdit = { questionToEdit = msg },
+                            onDelete = { messageToDelete = msg }
                         )
                     } else {
                         AiMessageCard(
                             message = msg,
                             streaming = msg.id == streamingAnswerId,
-                            liveThought = if (msg.id == streamingAnswerId) streamingThought else null
+                            liveThought = if (msg.id == streamingAnswerId) streamingThought else null,
+                            actionsEnabled = actionsEnabled,
+                            onRegenerate = { regenerateAnswer(msg.id) },
+                            onEditAnswer = { answerToEdit = msg },
+                            onDelete = { messageToDelete = msg }
                         )
                     }
                 }
@@ -546,18 +644,71 @@ fun NotebookChatTab(
                 onDismiss = { showProfileModelPickerSheet = false }
             )
         }
+
+        questionToEdit?.let { target ->
+            EditMessageDialog(
+                title = "编辑提问",
+                subtitle = "保存后会删掉这条之后的对话，并用新文字重新提问。",
+                initial = target.content,
+                confirmLabel = "重新提问",
+                onConfirm = { text ->
+                    questionToEdit = null
+                    resendEditedQuestion(target.id, text)
+                },
+                onDismiss = { questionToEdit = null }
+            )
+        }
+
+        answerToEdit?.let { target ->
+            EditMessageDialog(
+                title = "编辑回答",
+                subtitle = "只改写这条回答的文字，不会重新提问。",
+                initial = target.content,
+                confirmLabel = "保存",
+                onConfirm = { text ->
+                    answerToEdit = null
+                    saveAnswerEdit(target.id, text)
+                },
+                onDismiss = { answerToEdit = null }
+            )
+        }
+
+        messageToDelete?.let { target ->
+            AlertDialog(
+                onDismissRequest = { messageToDelete = null },
+                title = { Text(if (target.role == "user") "删除这条提问？" else "删除这条回答？") },
+                text = {
+                    Text(
+                        text = ChatStats.preview(target.content),
+                        fontSize = 13.sp,
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        messageToDelete = null
+                        deleteMessage(target.id)
+                    }) {
+                        Text("删除", color = Color(0xFFEF5350))
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { messageToDelete = null }) { Text("取消") }
+                }
+            )
+        }
     }
 }
 
 @Composable
 private fun UserMessageCard(
     message: UiChatMessage,
+    actionsEnabled: Boolean,
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
     val context = LocalContext.current
-    var showMenu by remember { mutableStateOf(false) }
-
     val bubbleBg = Color(0xFF2563EB).copy(alpha = 0.30f)
     val bubbleBorder = Color(0xFF60A5FA).copy(alpha = 0.35f)
     val textColor = LocalOnGradient.current
@@ -582,72 +733,36 @@ private fun UserMessageCard(
                     fontSize = 15.sp,
                     lineHeight = 22.sp
                 )
-
-                Spacer(modifier = Modifier.height(6.dp))
-
-                Row(
-                    modifier = Modifier.align(Alignment.End),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(
-                        onClick = { copyTextToClipboard(context, message.content) },
-                        modifier = Modifier.size(28.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.ContentCopy,
-                            contentDescription = "复制",
-                            tint = textColor.copy(alpha = 0.7f),
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-
-                    Box {
-                        IconButton(
-                            onClick = { showMenu = true },
-                            modifier = Modifier.size(28.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.MoreVert,
-                                contentDescription = "更多",
-                                tint = textColor.copy(alpha = 0.7f),
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-
-                        DropdownMenu(
-                            expanded = showMenu,
-                            onDismissRequest = { showMenu = false }
-                        ) {
-                            DropdownMenuItem(
-                                text = {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Text("编辑问题")
-                                    }
-                                },
-                                onClick = {
-                                    showMenu = false
-                                    onEdit()
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(Icons.Default.Delete, contentDescription = null, tint = Color.Red, modifier = Modifier.size(16.dp))
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Text("删除记录", color = Color.Red)
-                                    }
-                                },
-                                onClick = {
-                                    showMenu = false
-                                    onDelete()
-                                }
-                            )
-                        }
-                    }
-                }
             }
+        }
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 2.dp, end = 2.dp),
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            BubbleAction(
+                icon = Icons.Default.ContentCopy,
+                label = "复制全文",
+                tint = textColor,
+                onClick = { copyTextToClipboard(context, message.content) }
+            )
+            BubbleAction(
+                icon = Icons.Default.Edit,
+                label = "编辑",
+                tint = textColor,
+                enabled = actionsEnabled,
+                onClick = onEdit
+            )
+            BubbleAction(
+                icon = Icons.Default.Delete,
+                label = "删除",
+                tint = Color(0xFFEF5350),
+                enabled = actionsEnabled,
+                onClick = onDelete
+            )
         }
     }
 }
@@ -656,8 +771,13 @@ private fun UserMessageCard(
 private fun AiMessageCard(
     message: UiChatMessage,
     streaming: Boolean = false,
-    liveThought: State<String>? = null
+    liveThought: State<String>? = null,
+    actionsEnabled: Boolean = true,
+    onRegenerate: () -> Unit = {},
+    onEditAnswer: () -> Unit = {},
+    onDelete: () -> Unit = {}
 ) {
+    val context = LocalContext.current
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -689,8 +809,170 @@ private fun AiMessageCard(
                     )
                 }
             }
+
+            if (!streaming) {
+                val stats = ChatStats.summary(
+                    seconds = message.reasoningDurationSec,
+                    cachedTokens = message.cachedTokens,
+                    promptTokens = message.promptTokens,
+                    chars = message.content.length
+                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp, start = 4.dp, end = 2.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (stats.isNotEmpty()) {
+                        Text(
+                            text = stats,
+                            color = LocalOnGradientMuted.current.copy(alpha = 0.75f),
+                            fontSize = 11.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(if (stats.isNotEmpty()) 6.dp else 0.dp))
+                    BubbleAction(
+                        icon = Icons.Default.ContentCopy,
+                        label = "复制",
+                        tint = LocalOnGradient.current,
+                        onClick = { copyTextToClipboard(context, message.content) }
+                    )
+                    BubbleAction(
+                        icon = Icons.Default.Refresh,
+                        label = "重新生成",
+                        tint = LocalOnGradient.current,
+                        enabled = actionsEnabled,
+                        onClick = onRegenerate
+                    )
+                    BubbleAction(
+                        icon = Icons.Default.Edit,
+                        label = "编辑",
+                        tint = LocalOnGradient.current,
+                        enabled = actionsEnabled,
+                        onClick = onEditAnswer
+                    )
+                    BubbleAction(
+                        icon = Icons.Default.Delete,
+                        label = "删除",
+                        tint = Color(0xFFEF5350),
+                        enabled = actionsEnabled,
+                        onClick = onDelete
+                    )
+                }
+            }
         }
     }
+}
+
+@Composable
+private fun BubbleAction(
+    icon: ImageVector,
+    label: String,
+    tint: Color,
+    enabled: Boolean = true,
+    onClick: () -> Unit
+) {
+    val context = LocalContext.current
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val alpha by animateFloatAsState(
+        targetValue = when {
+            !enabled -> 0.30f
+            pressed -> 1f
+            else -> 0.62f
+        },
+        animationSpec = tween(130),
+        label = "bubbleActionAlpha"
+    )
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .clip(RoundedCornerShape(9.dp))
+            .clickable(
+                interactionSource = interaction,
+                indication = null,
+                enabled = enabled
+            ) {
+                Haptics.tick(context)
+                onClick()
+            }
+            .padding(horizontal = 6.dp, vertical = 5.dp)
+    ) {
+        Icon(
+            icon,
+            contentDescription = label,
+            tint = tint.copy(alpha = alpha),
+            modifier = Modifier.size(14.dp)
+        )
+        Spacer(modifier = Modifier.width(3.dp))
+        Text(
+            text = label,
+            color = tint.copy(alpha = alpha),
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium
+        )
+    }
+}
+
+@Composable
+private fun EditMessageDialog(
+    title: String,
+    subtitle: String,
+    initial: String,
+    confirmLabel: String,
+    onConfirm: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val onGradient = LocalOnGradient.current
+    val onGradientMuted = LocalOnGradientMuted.current
+    var text by remember { mutableStateOf(initial) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title, fontSize = LucentTitles.SectionSize, fontWeight = LucentTitles.SectionWeight) },
+        text = {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                Text(subtitle, color = onGradientMuted, fontSize = 12.sp, lineHeight = 17.sp)
+                Spacer(modifier = Modifier.height(10.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(onGradient.copy(alpha = 0.06f))
+                        .padding(horizontal = 12.dp, vertical = 10.dp)
+                ) {
+                    BasicTextField(
+                        value = text,
+                        onValueChange = { text = it },
+                        textStyle = TextStyle(fontSize = 14.sp, color = onGradient, lineHeight = 21.sp),
+                        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 96.dp, max = 220.dp),
+                        decorationBox = { inner ->
+                            if (text.isEmpty()) {
+                                Text("在这里输入…", color = onGradientMuted.copy(alpha = 0.6f), fontSize = 14.sp)
+                            }
+                            inner()
+                        }
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { if (text.isNotBlank()) onConfirm(text.trim()) }) {
+                Text(confirmLabel, color = MaterialTheme.colorScheme.primary)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("取消") }
+        }
+    )
 }
 
 @Composable

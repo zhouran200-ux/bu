@@ -48,6 +48,12 @@ interface ChatDao {
     @Insert
     suspend fun insert(message: ChatMessage): Long
 
+    @Update
+    suspend fun update(message: ChatMessage)
+
+    @Query("UPDATE chat_messages SET content = :content WHERE id = :id")
+    suspend fun updateContent(id: Long, content: String)
+
     @Query("DELETE FROM chat_messages WHERE id IN (:ids)")
     suspend fun deleteByIds(ids: List<Long>)
 

@@ -596,4 +596,20 @@ class AppDatabaseMigrationTest {
             assertFalse("the two retired tables must be gone", c.moveToFirst())
         }
     }
+
+    @Test
+    fun migrate28To29_addsTokenAndSecondsColumnsDefaultingToZero() {
+        helper.createDatabase(TEST_DB, 28).apply {
+            execSQL("INSERT INTO chat_messages (id, conversationId, role, content, timestamp) VALUES (1, 1, 'assistant', 'Answer', 1000)")
+            close()
+        }
+
+        val db = helper.runMigrationsAndValidate(TEST_DB, 29, true, MIGRATION_28_29)
+
+        db.query("SELECT tokens, cachedTokens, answerSeconds FROM chat_messages WHERE id = 1").use { c ->
+            assertTrue(c.moveToFirst())
+            assertEquals(0, c.getInt(1))
+            assertEquals(0, c.getInt(2))
+        }
+    }
 }

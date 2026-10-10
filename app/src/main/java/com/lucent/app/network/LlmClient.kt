@@ -605,6 +605,9 @@ object LlmClient {
                     val payload = JSONObject().apply {
                         put("model", cleanModel)
                         put("stream", true)
+                        if (StreamUsageParser.wantsStreamOptions(url)) {
+                            put("stream_options", JSONObject().put("include_usage", true))
+                        }
                         val messagesArray = JSONArray()
                         if (systemInstruction.isNotBlank()) {
                             messagesArray.put(JSONObject().apply {
@@ -748,6 +751,7 @@ object LlmClient {
 
             val fullContent = StringBuilder()
             val fullReasoning = StringBuilder()
+            var usage = StreamUsage()
             val source = response.body?.source() ?: return@withContext Result.failure(Exception("响应数据为空"))
 
             while (!source.exhausted()) {
@@ -762,6 +766,7 @@ object LlmClient {
                         when (spec) {
                             ApiSpec.OPENAI -> {
                                 val json = JSONObject(data)
+                                StreamUsageParser.parse(spec, json)?.let { usage = it }
                                 val choices = json.optJSONArray("choices")
                                 val delta = choices?.optJSONObject(0)?.optJSONObject("delta")
                                 if (delta != null) {
@@ -778,6 +783,7 @@ object LlmClient {
                             }
                             ApiSpec.GOOGLE -> {
                                 val json = JSONObject(data)
+                                StreamUsageParser.parse(spec, json)?.let { usage = it }
                                 val candidates = json.optJSONArray("candidates")
                                 val contentObj = candidates?.optJSONObject(0)?.optJSONObject("content")
                                 val parts = contentObj?.optJSONArray("parts") ?: JSONArray()
@@ -798,6 +804,7 @@ object LlmClient {
                             }
                             ApiSpec.ANTHROPIC -> {
                                 val json = JSONObject(data)
+                                StreamUsageParser.parse(spec, json)?.let { usage = it }
                                 val delta = json.optJSONObject("delta")
                                 if (delta != null) {
                                     when (delta.optString("type")) {
@@ -827,7 +834,9 @@ object LlmClient {
             Result.success(
                 ChatCompletionResult(
                     content = fullContent.toString(),
-                    reasoningText = fullReasoning.toString().ifBlank { null }
+                    reasoningText = fullReasoning.toString().ifBlank { null },
+                    promptTokens = usage.promptTokens,
+                    cachedTokens = usage.cachedTokens
                 )
             )
         } catch (e: Exception) {
@@ -843,5 +852,7 @@ data class ChatMessagePayload(
 
 data class ChatCompletionResult(
     val content: String,
-    val reasoningText: String? = null
+    val reasoningText: String? = null,
+    val promptTokens: Int = 0,
+    val cachedTokens: Int = 0
 )

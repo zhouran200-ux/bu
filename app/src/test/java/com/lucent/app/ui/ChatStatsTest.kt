@@ -19,8 +19,8 @@ class ChatStatsTest {
     @Test
     fun secondsLabelSwitchesToMinutesPastAnHour() {
         assertNull(ChatStats.secondsLabel(0))
-        assertEquals("12秒", ChatStats.secondsLabel(12))
-        assertEquals("1分05秒", ChatStats.secondsLabel(65))
+        assertEquals("回复 12秒", ChatStats.secondsLabel(12))
+        assertEquals("回复 1分05秒", ChatStats.secondsLabel(65))
     }
 
     @Test
@@ -33,9 +33,9 @@ class ChatStatsTest {
     @Test
     fun summaryJoinsOnlyThePartsThatExist() {
         assertEquals("", ChatStats.summary(seconds = 0, cachedTokens = 0, promptTokens = 0, chars = 0))
-        assertEquals("9秒 · 1.4k字", ChatStats.summary(seconds = 9, cachedTokens = 0, promptTokens = 0, chars = 1380))
+        assertEquals("回复 9秒 · 1.4k字", ChatStats.summary(seconds = 9, cachedTokens = 0, promptTokens = 0, chars = 1380))
         assertEquals(
-            "9秒 · 缓存 6.1k/8.6k · 1.4k字",
+            "回复 9秒 · 缓存 6.1k/8.6k · 1.4k字",
             ChatStats.summary(seconds = 9, cachedTokens = 6100, promptTokens = 8600, chars = 1380)
         )
     }

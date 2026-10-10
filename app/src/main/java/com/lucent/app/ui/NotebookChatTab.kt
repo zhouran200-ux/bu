@@ -136,7 +136,7 @@ data class UiChatMessage(
     val role: String,
     val content: String,
     val reasoningText: String? = null,
-    val reasoningDurationSec: Int = 0,
+    val answerSeconds: Int = 0,
     val reasoningTag: String? = null,
     val promptTokens: Int = 0,
     val cachedTokens: Int = 0,
@@ -219,7 +219,7 @@ fun NotebookChatTab(
                     role = m.role,
                     content = m.content,
                     reasoningText = m.reasoningText,
-                    reasoningDurationSec = m.answerSeconds,
+                    answerSeconds = m.answerSeconds,
                     promptTokens = m.tokens,
                     cachedTokens = m.cachedTokens,
                     timestamp = m.timestamp
@@ -366,7 +366,7 @@ fun NotebookChatTab(
                         role = "assistant",
                         content = finalContent,
                         reasoningText = finalReasoning,
-                        reasoningDurationSec = durationSec,
+                        answerSeconds = durationSec,
                         reasoningTag = effortLabel,
                         promptTokens = res.promptTokens,
                         cachedTokens = res.cachedTokens,
@@ -401,7 +401,7 @@ fun NotebookChatTab(
                         role = "assistant",
                         content = errorDisplay,
                         reasoningText = scheduler.getFinalReasoning(),
-                        reasoningDurationSec = durationSec,
+                        answerSeconds = durationSec,
                         reasoningTag = effortLabel
                     )
                     val idx = messages.indexOfFirst { it.id == aiMsgId }
@@ -473,7 +473,7 @@ fun NotebookChatTab(
         messages[idx] = messages[idx].copy(
             content = "",
             reasoningText = null,
-            reasoningDurationSec = 0,
+            answerSeconds = 0,
             promptTokens = 0,
             cachedTokens = 0
         )
@@ -789,7 +789,6 @@ private fun AiMessageCard(
                 liveThought = liveThought,
                 storedThought = message.reasoningText.orEmpty(),
                 tag = message.reasoningTag,
-                durationSec = message.reasoningDurationSec,
                 streaming = streaming
             )
         }
@@ -812,7 +811,7 @@ private fun AiMessageCard(
 
             if (!streaming) {
                 val stats = ChatStats.summary(
-                    seconds = message.reasoningDurationSec,
+                    seconds = message.answerSeconds,
                     cachedTokens = message.cachedTokens,
                     promptTokens = message.promptTokens,
                     chars = message.content.length
@@ -981,7 +980,6 @@ private fun ThinkingLane(
     liveThought: State<String>?,
     storedThought: String,
     tag: String?,
-    durationSec: Int,
     streaming: Boolean
 ) {
     val accent = Color(0xFF38BDF8)
@@ -1011,7 +1009,7 @@ private fun ThinkingLane(
                 text = if (streaming) {
                     "正在思考"
                 } else {
-                    "已深度思考 · ${tag?.ifBlank { null } ?: "原厂自适应"} (用时 ${durationSec}秒)"
+                    "已深度思考 · ${tag?.ifBlank { null } ?: "原厂自适应"}"
                 },
                 color = accent,
                 fontSize = 13.sp,

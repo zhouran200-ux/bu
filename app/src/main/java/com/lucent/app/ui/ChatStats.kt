@@ -17,8 +17,12 @@ internal object ChatStats {
 
     fun secondsLabel(seconds: Int): String? {
         if (seconds <= 0) return null
-        if (seconds < 60) return "${seconds}秒"
-        return "%d分%02d秒".format(Locale.US, seconds / 60, seconds % 60)
+        val span = if (seconds < 60) {
+            "${seconds}秒"
+        } else {
+            "%d分%02d秒".format(Locale.US, seconds / 60, seconds % 60)
+        }
+        return "回复 $span"
     }
 
     fun cacheLabel(cachedTokens: Int, promptTokens: Int): String? {

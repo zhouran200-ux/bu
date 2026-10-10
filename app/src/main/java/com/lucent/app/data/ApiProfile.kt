@@ -100,9 +100,9 @@ object ApiProfiles {
         return "方案 $n"
     }
 
-    fun moved(profiles: List<ApiProfile>, from: Int, to: Int): List<ApiProfile> {
-        if (from == to || from !in profiles.indices || to !in profiles.indices) return profiles
-        val out = profiles.toMutableList()
+    fun <T> moved(items: List<T>, from: Int, to: Int): List<T> {
+        if (from == to || from !in items.indices || to !in items.indices) return items
+        val out = items.toMutableList()
         out.add(to, out.removeAt(from))
         return out
     }
@@ -117,14 +117,12 @@ object ApiProfiles {
         }
     }
 
-    fun orderKeys(profiles: List<ApiProfile>): List<String> = orderKeysFor(profiles.map { it.name })
-
-    fun orderKeysFor(names: List<String>): List<String> {
+    fun orderKeys(profiles: List<ApiProfile>): List<String> {
         val seen = mutableMapOf<String, Int>()
-        return names.map { name ->
-            val repeat = seen.getOrDefault(name, 0)
-            seen[name] = repeat + 1
-            if (repeat == 0) name else "$name#$repeat"
+        return profiles.map { profile ->
+            val repeat = seen.getOrDefault(profile.name, 0)
+            seen[profile.name] = repeat + 1
+            if (repeat == 0) profile.name else "${profile.name}#$repeat"
         }
     }
 }

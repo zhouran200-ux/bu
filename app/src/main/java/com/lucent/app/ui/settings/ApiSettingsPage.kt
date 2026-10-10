@@ -125,6 +125,26 @@ private const val HELD_SCALE = 1.02f
 private const val HELD_ALPHA = 0.94f
 private const val REORDER_COMMIT_TIMEOUT_MS = 1200L
 
+private data class ProfileDrag(
+    val order: List<ApiProfile>,
+    val keys: List<String>,
+    val selected: Int,
+    val held: Int,
+    val travel: Float
+)
+
+private fun ProfileDrag.stepped(step: Int): ProfileDrag {
+    val to = held + step
+    if (held !in order.indices || to !in order.indices) return this
+    return ProfileDrag(
+        order = ApiProfiles.moved(order, held, to),
+        keys = ApiProfiles.moved(keys, held, to),
+        selected = ApiProfiles.selectionAfterMove(selected, held, to),
+        held = to,
+        travel = travel
+    )
+}
+
 @Composable
 private fun DeleteWithConfirmButton(
     onDelete: () -> Unit,
@@ -245,61 +265,54 @@ internal fun CloudModelSettingsPage(
     var customModelInput by remember { mutableStateOf("") }
     val choices = modelChoices(fetchedModels, models)
 
-    var dragOrder by remember { mutableStateOf<List<ApiProfile>?>(null) }
-    var dragSelected by remember { mutableIntStateOf(selectedProfileIdx) }
-    var heldIndex by remember { mutableIntStateOf(-1) }
-    var heldTravel by remember { mutableFloatStateOf(0f) }
+    var drag by remember { mutableStateOf<ProfileDrag?>(null) }
     var rowStride by remember { mutableFloatStateOf(0f) }
-    val shownProfiles = dragOrder ?: profiles
-    val shownKeys = remember(shownProfiles) { ApiProfiles.orderKeys(shownProfiles) }
-    val activeProfileIdx = if (dragOrder == null) selectedProfileIdx else dragSelected
+    val baseKeys = remember(profiles) { ApiProfiles.orderKeys(profiles) }
+    val shownProfiles = drag?.order ?: profiles
+    val shownKeys = drag?.keys ?: baseKeys
+    val activeProfileIdx = drag?.selected ?: selectedProfileIdx
     val canReorder = shownProfiles.size > 1
-    val settled = dragOrder == null
+    val settled = drag == null
     val liveProfiles = rememberUpdatedState(profiles)
     val liveSelected = rememberUpdatedState(selectedProfileIdx)
     val liveReorder = rememberUpdatedState(onReorderProfiles)
 
-    fun stepHeldProfile(step: Int): Boolean {
-        val list = dragOrder ?: return false
-        val from = heldIndex
-        val to = from + step
-        if (from !in list.indices || to !in list.indices) return false
-        dragOrder = ApiProfiles.moved(list, from, to)
-        dragSelected = ApiProfiles.selectionAfterMove(dragSelected, from, to)
-        heldIndex = to
-        Haptics.tick(context)
-        return true
-    }
-
     fun beginDrag(idx: Int) {
-        val base = dragOrder
-        if (base == null) {
-            dragSelected = liveSelected.value
-            dragOrder = liveProfiles.value
-        }
-        heldIndex = idx
-        heldTravel = 0f
-    }
-
-    fun endDrag(commit: Boolean) {
-        heldIndex = -1
-        heldTravel = 0f
-        val order = dragOrder
-        if (!commit || order == null || order == liveProfiles.value) {
-            dragOrder = null
+        val current = drag
+        if (current != null && current.held >= 0) return
+        if (current != null) {
+            drag = current.copy(held = idx, travel = 0f)
         } else {
-            liveReorder.value(order, dragSelected)
+            val base = liveProfiles.value
+            drag = ProfileDrag(
+                order = base,
+                keys = ApiProfiles.orderKeys(base),
+                selected = liveSelected.value,
+                held = idx,
+                travel = 0f
+            )
         }
     }
 
-    LaunchedEffect(dragOrder, heldIndex, profiles) {
-        val pending = dragOrder ?: return@LaunchedEffect
-        if (heldIndex >= 0) return@LaunchedEffect
-        if (ApiProfiles.orderKeys(pending) == ApiProfiles.orderKeys(profiles)) {
-            dragOrder = null
+    fun endDrag() {
+        val current = drag ?: return
+        if (current.held < 0) return
+        if (current.order == liveProfiles.value) {
+            drag = null
+        } else {
+            drag = current.copy(held = -1)
+            liveReorder.value(current.order, current.selected)
+        }
+    }
+
+    LaunchedEffect(drag?.order, drag?.held, profiles) {
+        val pending = drag ?: return@LaunchedEffect
+        if (pending.held >= 0) return@LaunchedEffect
+        if (pending.order == profiles) {
+            drag = null
         } else {
             delay(REORDER_COMMIT_TIMEOUT_MS)
-            if (heldIndex < 0 && dragOrder == pending) dragOrder = null
+            if (drag === pending) drag = null
         }
     }
 
@@ -314,7 +327,7 @@ internal fun CloudModelSettingsPage(
     Column(modifier = Modifier.fillMaxWidth().frostedGlass().padding(12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(S.apiSelectionTitle, color = onGradient, modifier = Modifier.weight(1f))
-            Text("${profiles.size}/${ApiProfiles.MAX}", color = onGradientMuted, fontSize = 13.sp)
+            Text("${shownProfiles.size}/${ApiProfiles.MAX}", color = onGradientMuted, fontSize = 13.sp)
         }
         Spacer(modifier = Modifier.height(6.dp))
         if (profiles.isEmpty()) {
@@ -330,16 +343,24 @@ internal fun CloudModelSettingsPage(
                     var restingIdx by remember { mutableIntStateOf(idx) }
                     val slide = remember { Animatable(0f) }
                     val liveIdx = rememberUpdatedState(idx)
-                    val held = idx == heldIndex
+                    val held = drag?.held == idx
                     LaunchedEffect(idx, held) {
-                        if (restingIdx == idx) return@LaunchedEffect
-                        val shift = (restingIdx - idx) * rowStride
-                        restingIdx = idx
-                        if (held || rowStride <= 0f) {
-                            slide.snapTo(0f)
-                        } else {
-                            slide.snapTo(shift)
-                            slide.animateTo(0f, PROFILE_SLIDE_SPRING)
+                        val stride = rowStride
+                        if (restingIdx != idx) {
+                            val shift = (restingIdx - idx) * stride
+                            restingIdx = idx
+                            if (held || stride <= 0f) {
+                                slide.snapTo(0f)
+                            } else {
+                                slide.snapTo(shift)
+                                slide.animateTo(0f, PROFILE_SLIDE_SPRING)
+                            }
+                        } else if (!held) {
+                            val residual = drag?.travel ?: 0f
+                            if (residual != 0f && stride > 0f) {
+                                slide.snapTo(residual)
+                                slide.animateTo(0f, PROFILE_SLIDE_SPRING)
+                            }
                         }
                     }
                     Row(
@@ -350,7 +371,8 @@ internal fun CloudModelSettingsPage(
                             .onSizeChanged { if (it.height > 0) rowStride = it.height.toFloat() }
                             .padding(vertical = 1.dp)
                             .graphicsLayer {
-                                translationY = slide.value + (if (held) heldTravel else 0f)
+                                val carried = drag?.travel ?: 0f
+                                translationY = slide.value + (if (held) carried else 0f)
                                 scaleX = if (held) HELD_SCALE else 1f
                                 scaleY = if (held) HELD_SCALE else 1f
                                 alpha = if (held) HELD_ALPHA else 1f
@@ -370,21 +392,34 @@ internal fun CloudModelSettingsPage(
                                             onDrag = { change, delta ->
                                                 change.consume()
                                                 val stride = rowStride
-                                                if (stride > 0f) {
+                                                val current = drag
+                                                if (stride > 0f && current != null && current.held >= 0) {
                                                     travelled += delta.y
+                                                    var next: ProfileDrag = current
                                                     while (travelled >= stride) {
+                                                        val stepped = next.stepped(+1)
+                                                        if (stepped === next) {
+                                                            travelled = 0f
+                                                            break
+                                                        }
+                                                        next = stepped
                                                         travelled -= stride
-                                                        if (!stepHeldProfile(+1)) travelled = 0f
                                                     }
                                                     while (travelled <= -stride) {
+                                                        val stepped = next.stepped(-1)
+                                                        if (stepped === next) {
+                                                            travelled = 0f
+                                                            break
+                                                        }
+                                                        next = stepped
                                                         travelled += stride
-                                                        if (!stepHeldProfile(-1)) travelled = 0f
                                                     }
-                                                    heldTravel = travelled.coerceIn(-stride, stride)
+                                                    drag = next.copy(travel = travelled.coerceIn(-stride, stride))
+                                                    if (next !== current) Haptics.tick(context)
                                                 }
                                             },
-                                            onDragEnd = { endDrag(commit = true) },
-                                            onDragCancel = { endDrag(commit = false) }
+                                            onDragEnd = { endDrag() },
+                                            onDragCancel = { endDrag() }
                                         )
                                     },
                                 contentAlignment = Alignment.Center
@@ -440,7 +475,13 @@ internal fun CloudModelSettingsPage(
         }
         if (profiles.size < ApiProfiles.MAX) {
             Spacer(modifier = Modifier.height(4.dp))
-            GlassButton(text = S.apiAddButton, icon = Icons.Default.Add, compact = true, onClick = onAddProfile)
+            GlassButton(
+                text = S.apiAddButton,
+                icon = Icons.Default.Add,
+                compact = true,
+                enabled = settled,
+                onClick = onAddProfile
+            )
         }
     }
 
@@ -574,6 +615,7 @@ internal fun CloudModelSettingsPage(
             GlassButton(
                 text = S.saveApi,
                 compact = true,
+                enabled = settled,
                 onClick = {
                     val input = customModelInput.trim()
                     val finalModels = if (input.isNotBlank() && input !in models) {

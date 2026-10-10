@@ -84,7 +84,7 @@ class ApiProfileTest {
         assertEquals(list, ApiProfiles.moved(list, -1, 0))
         assertEquals(list, ApiProfiles.moved(list, 0, 3))
         assertEquals(list, ApiProfiles.moved(list, 4, 0))
-        assertEquals(emptyList<ApiProfile>(), ApiProfiles.moved(emptyList(), 0, 1))
+        assertEquals(emptyList<ApiProfile>(), ApiProfiles.moved(emptyList<ApiProfile>(), 0, 1))
     }
 
     @Test
@@ -97,6 +97,27 @@ class ApiProfileTest {
                 assertEquals(list.toSet(), moved.toSet())
             }
         }
+    }
+
+    @Test
+    fun testOrderKeysStayPairedWithTheirProfileThroughMoves() {
+        val list = named("A", "B", "A", "A", "C")
+        val pairsAtStart = ApiProfiles.orderKeys(list).mapIndexed { i, key -> key to list[i] }
+        var order = list
+        var keys = ApiProfiles.orderKeys(list)
+        for ((from, to) in listOf(0 to 1, 3 to 1, 4 to 0, 2 to 4, 1 to 0)) {
+            order = ApiProfiles.moved(order, from, to)
+            keys = ApiProfiles.moved(keys, from, to)
+        }
+        assertEquals(order.size, keys.size)
+        assertEquals(pairsAtStart.toSet(), keys.mapIndexed { i, key -> key to order[i] }.toSet())
+        assertEquals(pairsAtStart.size, keys.toSet().size)
+    }
+
+    @Test
+    fun testMovedWorksForAnyList() {
+        assertEquals(listOf("b", "a", "c"), ApiProfiles.moved(listOf("a", "b", "c"), 0, 1))
+        assertEquals(listOf(2, 3, 1), ApiProfiles.moved(listOf(1, 2, 3), 0, 2))
     }
 
     @Test

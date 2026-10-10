@@ -20,27 +20,12 @@ object AppNavigation {
     var requestedScreen by mutableStateOf<Screen?>(null)
         private set
 
-    var pendingNoteId by mutableStateOf<Long?>(null)
-        private set
-
-    var returnScreen by mutableStateOf<Screen?>(null)
-        private set
-
     internal var settingsRoute by mutableStateOf(SettingsRoute.Root)
-        private set
-
-    var composeNoteRequested by mutableStateOf(false)
-        private set
-
-    var requestedNotebookId by mutableStateOf<Long?>(null)
         private set
 
     var activeNotebookId by mutableStateOf<Long?>(null)
 
     var createNotebookRequested by mutableStateOf(false)
-        private set
-
-    var pendingEditNoteId by mutableStateOf<Long?>(null)
         private set
 
     fun requestCreateNotebook() {
@@ -54,31 +39,8 @@ object AppNavigation {
         return value
     }
 
-    fun openNote(id: Long, from: Screen? = null) {
-        pendingNoteId = id
-        returnScreen = from
-        requestedScreen = Screen.Notebooks
-    }
-
-    fun requestComposeNote() {
-        composeNoteRequested = true
-        requestedScreen = Screen.Notebooks
-    }
-
     fun requestScreen(screen: Screen) {
         requestedScreen = screen
-    }
-
-    fun openNotebook(id: Long) {
-        requestedNotebookId = id
-        requestedScreen = Screen.Notebooks
-    }
-
-    fun consumeNotebookId(): Long? = requestedNotebookId.also { requestedNotebookId = null }
-
-    fun editNote(id: Long) {
-        pendingEditNoteId = id
-        requestedScreen = Screen.Notebooks
     }
 
     internal fun rememberSettingsRoute(route: SettingsRoute) {
@@ -90,14 +52,6 @@ object AppNavigation {
     }
 
     fun consumeScreen(): Screen? = requestedScreen.also { requestedScreen = null }
-
-    fun consumeNoteId(): Long? = pendingNoteId.also { pendingNoteId = null }
-
-    fun consumeReturnScreen(): Screen? = returnScreen.also { returnScreen = null }
-
-    fun consumeComposeNote(): Boolean = composeNoteRequested.also { composeNoteRequested = false }
-
-    fun consumeEditNoteId(): Long? = pendingEditNoteId.also { pendingEditNoteId = null }
 
     private var backClaims by mutableStateOf(0)
 

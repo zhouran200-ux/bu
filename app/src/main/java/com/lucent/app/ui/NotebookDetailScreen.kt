@@ -46,8 +46,7 @@ enum class NotebookDetailTab {
 @Composable
 fun NotebookDetailScreen(
     notebookId: Long,
-    onBack: () -> Unit,
-    onOpenNote: (Note) -> Unit = {}
+    onBack: () -> Unit
 ) {
     val context = LocalContext.current
     val db = remember { AppDatabase.getInstance(context) }
@@ -115,7 +114,6 @@ fun NotebookDetailScreen(
                         NotebookSourcesTab(
                             notebookId = notebookId,
                             sourceNotes = sourceNotes,
-                            onOpenNote = onOpenNote,
                             onOpenReader = { readerNote = it },
                             onReload = { reloadCount++ },
                             modifier = Modifier.fillMaxSize()

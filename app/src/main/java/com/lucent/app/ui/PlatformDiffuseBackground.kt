@@ -2,7 +2,6 @@ package com.lucent.app.ui
 
 import android.animation.ValueAnimator
 import android.database.ContentObserver
-import android.graphics.Bitmap
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
@@ -12,15 +11,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-
-fun diffuseImageBitmap(pixels: IntArray, edge: Int): ImageBitmap =
-    Bitmap.createBitmap(pixels, edge, edge, Bitmap.Config.ARGB_8888).asImageBitmap()
 
 @Composable
 fun rememberBackgroundEnvironment(): BackgroundEnvironment {

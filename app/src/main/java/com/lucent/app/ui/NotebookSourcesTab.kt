@@ -29,7 +29,6 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.automirrored.filled.NoteAdd
-import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material.icons.filled.UploadFile
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.AlertDialog
@@ -63,7 +62,6 @@ import kotlinx.coroutines.launch
 fun NotebookSourcesTab(
     notebookId: Long,
     sourceNotes: List<Note>,
-    onOpenNote: (Note) -> Unit,
     onOpenReader: (Note) -> Unit,
     onReload: () -> Unit,
     modifier: Modifier = Modifier
@@ -155,9 +153,6 @@ fun NotebookSourcesTab(
                     SourceNoteCard(
                         note = note,
                         onOpen = { onOpenReader(note) },
-                        onTranslate = {
-                            LucentToast.show(context, "已切换为全编翻译解析模式")
-                        },
                         onDelete = {
                             AppScope.io.launch {
                                 NotebookPurge.releaseNote(context, db, notebookId, note.id)
@@ -345,7 +340,6 @@ internal fun previewExcerpt(body: String, limit: Int = 96): String {
 private fun SourceNoteCard(
     note: Note,
     onOpen: () -> Unit,
-    onTranslate: () -> Unit,
     onDelete: () -> Unit
 ) {
     val onGradient = LocalOnGradient.current
@@ -417,15 +411,6 @@ private fun SourceNoteCard(
                     )
                 }
 
-                IconButton(onClick = onTranslate, modifier = Modifier.size(36.dp)) {
-                    Icon(
-                        Icons.Default.Translate,
-                        contentDescription = "翻译/解析",
-                        tint = Color(0xFF38BDF8),
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-
                 IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
                     Icon(
                         Icons.Default.DeleteOutline,
@@ -463,8 +448,7 @@ fun SourceReaderOverlay(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 12.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = onDismiss) {
                     Icon(
@@ -478,7 +462,8 @@ fun SourceReaderOverlay(
                     shape = RoundedCornerShape(20.dp),
                     color = Color(0xFF0284C7).copy(alpha = 0.30f),
                     modifier = Modifier
-                        .padding(horizontal = 8.dp)
+                        .weight(1f)
+                        .padding(start = 4.dp)
                         .border(1.dp, Color(0xFF38BDF8).copy(alpha = 0.40f), RoundedCornerShape(20.dp))
                 ) {
                     Text(
@@ -486,15 +471,9 @@ fun SourceReaderOverlay(
                         color = Color(0xFF38BDF8),
                         fontSize = LucentTitles.SectionSize,
                         fontWeight = LucentTitles.SectionWeight,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
-                    )
-                }
-
-                IconButton(onClick = { LucentToast.show(context, "全篇解析与翻译模式已开启") }) {
-                    Icon(
-                        Icons.Default.Translate,
-                        contentDescription = "翻译",
-                        tint = Color(0xFF38BDF8)
                     )
                 }
             }

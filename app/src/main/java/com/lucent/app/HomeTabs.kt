@@ -156,7 +156,6 @@ internal fun KeepAliveTabs(active: Screen, pagerState: PagerState, modifier: Mod
                     when (tab) {
                         HomeTab.Notebooks -> NotebooksScreen(
                             onBack = { },
-                            onOpenNote = { note -> AppNavigation.openNote(note.id, from = Screen.Notebooks) },
                             showBack = false,
                             active = isActive
                         )

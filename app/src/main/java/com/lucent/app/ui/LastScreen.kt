@@ -15,11 +15,4 @@ object LastScreen {
         if (screen != Screen.Settings) home = screen
     }
 
-    fun hydrate(storedName: String?) {
-        if (storedName.isNullOrBlank()) return
-        current = Screen.entries.firstOrNull { it.name == storedName } ?: Screen.Notebooks
-        if (current != Screen.Settings) home = current
-    }
-
-    fun persistedName(): String = current.name
 }

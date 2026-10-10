@@ -52,7 +52,6 @@ import com.lucent.app.AppNavigation
 import com.lucent.app.AppScope
 import com.lucent.app.BackClaim
 import com.lucent.app.data.AppDatabase
-import com.lucent.app.data.Note
 import com.lucent.app.data.Notebook
 import com.lucent.app.data.NotebookPurge
 import com.lucent.app.data.SettingsRepository
@@ -67,7 +66,6 @@ import kotlinx.coroutines.launch
 @Composable
 fun NotebooksScreen(
     onBack: () -> Unit,
-    onOpenNote: (Note) -> Unit,
     showBack: Boolean = true,
     active: Boolean = true
 ) {
@@ -117,14 +115,6 @@ fun NotebooksScreen(
         }
     }
 
-    LaunchedEffect(AppNavigation.requestedNotebookId, active, notebooks) {
-        val requested = AppNavigation.requestedNotebookId ?: return@LaunchedEffect
-        if (!active || notebooks.none { it.id == requested }) return@LaunchedEffect
-        AppNavigation.consumeNotebookId()
-        openNotebookId = requested
-        recordNotebookOpen(requested)
-    }
-
     var creating by remember { mutableStateOf(false) }
     var coverForNew by remember { mutableStateOf(NotebookColor.DEFAULT) }
     var nameForNew by remember { mutableStateOf("") }
@@ -165,7 +155,6 @@ fun NotebooksScreen(
         NotebookDetailScreen(
             notebookId = open,
             onBack = { openNotebookId = null },
-            onOpenNote = onOpenNote
         )
         return
     }

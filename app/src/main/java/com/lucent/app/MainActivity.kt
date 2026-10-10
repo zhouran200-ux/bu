@@ -27,14 +27,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.ColorScheme
@@ -87,7 +85,6 @@ import com.lucent.app.ui.LucentPalette
 import com.lucent.app.ui.PALETTE_CYCLE
 import com.lucent.app.ui.rememberCyclingPaletteColors
 import com.lucent.app.ui.SettingsRoute
-import com.lucent.app.ui.UnsavedChangesGuard
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
@@ -126,7 +123,6 @@ class MainActivity : ComponentActivity() {
         } catch (t: Throwable) {
             SettingsRepository.StartupPrefs(
                 display = SettingsRepository.DisplayPrefs("system", "SUNSET", "system"),
-                appLockEnabled = false,
                 startupLoggingEnabled = false
             )
         }
@@ -244,7 +240,7 @@ class MainActivity : ComponentActivity() {
             )
 
             val autoUpdateOn by settingsRepo.autoUpdateEnabled.collectAsState(
-                initial = com.lucent.app.data.SettingsCache.autoUpdateEnabled
+                initial = startup.autoUpdateEnabled
             )
             LaunchedEffect(autoUpdateOn) {
                 if (!autoUpdateOn) return@LaunchedEffect
@@ -380,12 +376,8 @@ fun LucentApp(paletteColors: List<Color>, backdropColor: Color, backgroundAnimat
     )
     val tabScope = rememberCoroutineScope()
     val lastScreenContext = LocalContext.current
-    val lastScreenRepo = remember(lastScreenContext) {
-        com.lucent.app.data.SettingsRepository(lastScreenContext.applicationContext)
-    }
     LaunchedEffect(currentScreen) {
         LastScreen.remember(currentScreen)
-        lastScreenRepo.setLastScreen(LastScreen.persistedName())
         StartupLog.event(lastScreenContext, "nav: showing ${currentScreen.name.lowercase()}")
     }
     val hazeState = rememberHazeState()
@@ -416,36 +408,6 @@ fun LucentApp(paletteColors: List<Color>, backdropColor: Color, backgroundAnimat
         (c as? Activity)?.finish()
     }
 
-    var pendingNavigation by remember { mutableStateOf<(() -> Unit)?>(null) }
-    fun runOrConfirm(action: () -> Unit) {
-        if (UnsavedChangesGuard.dirty) pendingNavigation = action else action()
-    }
-
-    pendingNavigation?.let { action ->
-        AlertDialog(
-            onDismissRequest = { pendingNavigation = null },
-            title = { Text(com.lucent.app.i18n.S.unsavedChangesTitle) },
-            text = { Text(com.lucent.app.i18n.S.unsavedChangesBody) },
-            confirmButton = {
-                TextButton(onClick = {
-                    UnsavedChangesGuard.save()
-                    pendingNavigation = null
-                    action()
-                }) { Text(com.lucent.app.i18n.S.actionSave) }
-            },
-            dismissButton = {
-                Row {
-                    TextButton(onClick = {
-                        UnsavedChangesGuard.discard()
-                        pendingNavigation = null
-                        action()
-                    }) { Text(com.lucent.app.i18n.S.actionDiscard) }
-                    TextButton(onClick = { pendingNavigation = null }) { Text(com.lucent.app.i18n.S.actionCancel) }
-                }
-            }
-        )
-    }
-
     LaunchedEffect(AppNavigation.requestedScreen) {
         AppNavigation.consumeScreen()?.let { target ->
             if (target != currentScreen) currentScreen = target
@@ -454,16 +416,15 @@ fun LucentApp(paletteColors: List<Color>, backdropColor: Color, backgroundAnimat
 
     BackHandler(enabled = !AppNavigation.innerBackActive) {
         when {
-            currentScreen == Screen.Settings && AppNavigation.settingsRoute == SettingsRoute.Root ->
-                runOrConfirm {
-                    AppNavigation.resetSettingsRoute()
-                    currentScreen = Screen.Notebooks
-                }
+            currentScreen == Screen.Settings && AppNavigation.settingsRoute == SettingsRoute.Root -> {
+                AppNavigation.resetSettingsRoute()
+                currentScreen = Screen.Notebooks
+            }
             !backArmed -> {
                 backArmed = true
                 LucentToast.show(context, com.lucent.app.i18n.S.pressBackAgainToExit)
             }
-            else -> runOrConfirm { finishActivity() }
+            else -> finishActivity()
         }
     }
 

@@ -8,7 +8,6 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -16,7 +15,7 @@ class HomeNavigationTest {
 
     @BeforeTest
     fun setUp() {
-        L.apply("en")
+        L.apply("zh")
         drain()
         LastScreen.current = Screen.Notebooks
         LastScreen.home = Screen.Notebooks
@@ -29,35 +28,21 @@ class HomeNavigationTest {
 
     private fun drain() {
         AppNavigation.consumeScreen()
-        AppNavigation.consumeEditNoteId()
-        AppNavigation.consumeNoteId()
-        AppNavigation.consumeReturnScreen()
-        AppNavigation.consumeComposeNote()
     }
 
     @Test
-    fun editNoteRoutesToNotebooksWithThePendingId() {
-        AppNavigation.editNote(42L)
+    fun createNotebookRequestLandsOnNotebooksAndIsConsumedOnce() {
+        AppNavigation.requestCreateNotebook()
         assertEquals(Screen.Notebooks, AppNavigation.consumeScreen())
-        assertEquals(42L, AppNavigation.consumeEditNoteId())
-        assertNull(AppNavigation.consumeEditNoteId())
+        assertTrue(AppNavigation.consumeCreateNotebook())
+        assertEquals(false, AppNavigation.consumeCreateNotebook())
     }
 
     @Test
-    fun openNoteRemembersWhereToReturn() {
-        AppNavigation.openNote(5L, from = Screen.Settings)
-        assertEquals(Screen.Notebooks, AppNavigation.consumeScreen())
-        assertEquals(5L, AppNavigation.consumeNoteId())
-        assertEquals(Screen.Settings, AppNavigation.consumeReturnScreen())
-        assertNull(AppNavigation.consumeReturnScreen())
-    }
-
-    @Test
-    fun composeRequestsLandOnNotebooks() {
-        AppNavigation.requestComposeNote()
-        assertEquals(Screen.Notebooks, AppNavigation.consumeScreen())
-        assertTrue(AppNavigation.consumeComposeNote())
-        assertFalse(AppNavigation.consumeComposeNote())
+    fun requestedScreenIsDeliveredExactlyOnce() {
+        AppNavigation.requestScreen(Screen.Settings)
+        assertEquals(Screen.Settings, AppNavigation.consumeScreen())
+        assertNull(AppNavigation.consumeScreen())
     }
 
     @Test
@@ -67,17 +52,6 @@ class HomeNavigationTest {
         LastScreen.remember(Screen.Settings)
         assertEquals(Screen.Notebooks, LastScreen.home)
         assertEquals(Screen.Settings, LastScreen.current)
-    }
-
-    @Test
-    fun hydrateRestoresScreenAndIgnoresUnknownNames() {
-        LastScreen.hydrate("Settings")
-        assertEquals(Screen.Settings, LastScreen.current)
-        LastScreen.hydrate("NoSuchScreen")
-        assertEquals(Screen.Notebooks, LastScreen.current)
-        LastScreen.hydrate("")
-        assertEquals(Screen.Notebooks, LastScreen.current)
-        assertEquals(Screen.Notebooks.name, LastScreen.persistedName())
     }
 
     @Test

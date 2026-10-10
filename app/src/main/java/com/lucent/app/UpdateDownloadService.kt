@@ -17,7 +17,6 @@ import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import com.lucent.app.data.AutoUpdate
 import com.lucent.app.data.ReleaseAsset
-import com.lucent.app.data.SettingsCache
 import com.lucent.app.data.StartupLog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

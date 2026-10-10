@@ -53,7 +53,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.lucent.app.data.Attachment
 import com.lucent.app.data.AttachmentStore
-import com.lucent.app.data.Attachments
 import java.io.File
 
 private const val MAX_IMAGE_DIM = 1600

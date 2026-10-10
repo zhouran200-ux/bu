@@ -34,7 +34,6 @@ import androidx.compose.material.icons.filled.FormatSize
 import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material.icons.filled.TextFormat
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import com.lucent.app.data.RichSpan
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable

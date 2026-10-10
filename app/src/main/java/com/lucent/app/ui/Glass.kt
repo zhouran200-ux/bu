@@ -17,7 +17,6 @@ import androidx.compose.ui.unit.dp
 import dev.chrisbanes.haze.HazeState
 import java.time.Instant
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 
 val LocalHazeState = compositionLocalOf { HazeState() }
 val LocalOnGradient = compositionLocalOf { Color.White }

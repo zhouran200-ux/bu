@@ -52,17 +52,11 @@ object SettingsCache {
 
 
     @Volatile
-    var linksEnabled: Boolean = false
-
-    @Volatile
     var reasoning: String = com.lucent.app.data.ReasoningEffort.DEFAULT.key
 
 
 
 
-
-    @Volatile
-    var globalTextSelectionEnabled: Boolean = false
 
     fun seed(prefs: SettingsRepository.StartupPrefs) {
         themeMode = prefs.display.themeMode
@@ -80,10 +74,6 @@ object SettingsCache {
         customUserAgent = prefs.customUserAgent
         apiProfilesJson = prefs.apiProfilesJson
         apiProfileSelected = prefs.apiProfileSelected
-        linksEnabled = prefs.linksEnabled
         reasoning = prefs.reasoning
-
-        globalTextSelectionEnabled = prefs.globalTextSelectionEnabled
-
     }
 }

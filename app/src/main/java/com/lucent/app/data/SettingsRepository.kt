@@ -38,19 +38,11 @@ private object SettingsKeys {
 
 
 
-    val LINKS_ENABLED = booleanPreferencesKey("links_enabled")
-
     val BACKGROUND_ANIMATION_ENABLED = booleanPreferencesKey("background_animation_enabled")
 
 
 
     val REASONING_EFFORT = stringPreferencesKey("reasoning_effort")
-
-
-
-
-    val GLOBAL_TEXT_SELECTION_ENABLED = stringPreferencesKey("global_text_selection_enabled")
-
 }
 
 const val DEFAULT_ASSISTANT_STYLE = "lively and friendly, relaxed and natural."
@@ -107,10 +99,7 @@ class SettingsRepository(context: Context) {
         val customUserAgent: String = "",
         val apiProfilesJson: String = "",
         val apiProfileSelected: Int = 0,
-        val linksEnabled: Boolean = false,
-        val reasoning: String = com.lucent.app.data.ReasoningEffort.DEFAULT.key,
-
-        val globalTextSelectionEnabled: Boolean = false,
+        val reasoning: String = com.lucent.app.data.ReasoningEffort.DEFAULT.key
     )
 
     suspend fun startupPrefsOnce(): StartupPrefs {
@@ -133,10 +122,7 @@ class SettingsRepository(context: Context) {
             customUserAgent = setting(prefs, SettingsKeys.CUSTOM_USER_AGENT, ""),
             apiProfilesJson = setting(prefs, SettingsKeys.API_PROFILES, ""),
             apiProfileSelected = prefs[SettingsKeys.API_PROFILE_SELECTED] ?: 0,
-            linksEnabled = prefs[SettingsKeys.LINKS_ENABLED] ?: false,
             reasoning = prefs[SettingsKeys.REASONING_EFFORT] ?: com.lucent.app.data.ReasoningEffort.DEFAULT.key,
-
-            globalTextSelectionEnabled = setting(prefs, SettingsKeys.GLOBAL_TEXT_SELECTION_ENABLED, "false").toBooleanStrictOrNull() ?: false,
         )
     }
 
@@ -155,8 +141,6 @@ class SettingsRepository(context: Context) {
     val apiProfileSelected: Flow<Int> = context.settingsDataStore.data.map { it[SettingsKeys.API_PROFILE_SELECTED] ?: 0 }
 
     val attachmentsMigrated: Flow<Boolean> = context.settingsDataStore.data.map { it[SettingsKeys.ATTACHMENTS_MIGRATED] ?: false }
-
-    val linksEnabled: Flow<Boolean> = context.settingsDataStore.data.map { it[SettingsKeys.LINKS_ENABLED] ?: false }
 
     val backgroundAnimationEnabled: Flow<Boolean> = context.settingsDataStore.data.map { it[SettingsKeys.BACKGROUND_ANIMATION_ENABLED] ?: true }
     suspend fun setBackgroundAnimationEnabled(value: Boolean) {
@@ -194,11 +178,13 @@ class SettingsRepository(context: Context) {
         "custom_templates",
         "custom_user_agent_enc",
         "embedding_provider",
+        "global_text_selection_enabled",
         "global_text_selection_enabled_enc",
         "harness_config_enc",
         "hidden_templates",
         "installed_preview_identity",
         "last_screen",
+        "links_enabled",
         "markdown_enabled",
         "memory_tier",
         "model_enc",
@@ -249,15 +235,6 @@ class SettingsRepository(context: Context) {
         context.settingsDataStore.edit { it[SettingsKeys.CUSTOM_USER_AGENT] = trimmed }
     }
 
-    val globalTextSelectionEnabled: Flow<Boolean> = context.settingsDataStore.data.map {
-        setting(it, SettingsKeys.GLOBAL_TEXT_SELECTION_ENABLED, "false").toBooleanStrictOrNull() ?: false
-    }
-
-    suspend fun setGlobalTextSelectionEnabled(value: Boolean) {
-        SettingsCache.globalTextSelectionEnabled = value
-        context.settingsDataStore.edit { it[SettingsKeys.GLOBAL_TEXT_SELECTION_ENABLED] = value.toString() }
-    }
-
     suspend fun setThemeMode(value: String) {
         context.settingsDataStore.edit { it[SettingsKeys.THEME_MODE] = value }
         SettingsCache.themeMode = value
@@ -304,10 +281,6 @@ class SettingsRepository(context: Context) {
     }
     suspend fun setNotebookOpens(value: String) {
         context.settingsDataStore.edit { it[SettingsKeys.NOTEBOOK_OPENS] = value }
-    }
-    suspend fun setLinksEnabled(value: Boolean) {
-        context.settingsDataStore.edit { it[SettingsKeys.LINKS_ENABLED] = value }
-        SettingsCache.linksEnabled = value
     }
 
     suspend fun saveApiProfiles(profiles: List<ApiProfile>, selected: Int) {

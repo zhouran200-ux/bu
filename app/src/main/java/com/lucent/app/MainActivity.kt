@@ -164,7 +164,6 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-            val globalTextSelectionEnabled by settingsRepo.globalTextSelectionEnabled.collectAsState(initial = com.lucent.app.data.SettingsCache.globalTextSelectionEnabled)
             val themeMode by settingsRepo.themeMode.collectAsState(initial = initialThemeMode)
             val paletteName by settingsRepo.palette.collectAsState(initial = initialPalette)
             val fontKey by settingsRepo.font.collectAsState(initial = initialFont)
@@ -246,14 +245,12 @@ class MainActivity : ComponentActivity() {
                     LocalBackdropColor provides backdropColor,
                     LocalBackgroundEnvironment provides backgroundEnvironment
                 ) {
-                    com.lucent.app.ui.GlobalTextSelectionContainer(enabled = globalTextSelectionEnabled) {
-                        Box(modifier = Modifier.fillMaxSize()) {
-                            LucentApp(
-                                paletteColors = paletteColors,
-                                backdropColor = backdropColor,
-                                backgroundAnimated = appBackgroundAnimated
-                            )
-                        }
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        LucentApp(
+                            paletteColors = paletteColors,
+                            backdropColor = backdropColor,
+                            backgroundAnimated = appBackgroundAnimated
+                        )
                     }
                 }
             }

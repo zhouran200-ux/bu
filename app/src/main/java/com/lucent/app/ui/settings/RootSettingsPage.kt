@@ -13,7 +13,5 @@ import com.lucent.app.ui.SettingsRoute
 internal fun RootSettingsPage(onRoute: (SettingsRoute) -> Unit) {
     NavCard(S.settingsAppearanceTitle, S.settingsAppearanceSub) { onRoute(SettingsRoute.Appearance) }
     Spacer(modifier = Modifier.height(12.dp))
-    NavCard(S.settingsEditorTitle, S.settingsEditorSub) { onRoute(SettingsRoute.Editor) }
-    Spacer(modifier = Modifier.height(12.dp))
     NavCard(S.settingsApiConfigTitle, "选择与连接") { onRoute(SettingsRoute.Api) }
 }

@@ -5,7 +5,6 @@ enum class SettingsRoute {
     Appearance,
     Theme,
     Background,
-    Editor,
     Font,
     Api
 }

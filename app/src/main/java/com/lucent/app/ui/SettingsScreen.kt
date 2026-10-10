@@ -46,7 +46,6 @@ import com.lucent.app.i18n.S
 import com.lucent.app.ui.settings.ApiConfigSettingsPage
 import com.lucent.app.ui.settings.AppearanceSettingsPage
 import com.lucent.app.ui.settings.BackgroundSettingsPage
-import com.lucent.app.ui.settings.EditorSettingsPage
 import com.lucent.app.ui.settings.FontSettingsPage
 import com.lucent.app.ui.settings.RootSettingsPage
 import com.lucent.app.ui.settings.ThemeSettingsPage
@@ -343,11 +342,6 @@ fun SettingsScreen(active: Boolean = true) {
             SettingsRoute.Theme -> ThemeSettingsPage(repo = repo, onRoute = { navigate(it) })
 
             SettingsRoute.Background -> BackgroundSettingsPage(repo = repo, onRoute = { navigate(it) })
-
-            SettingsRoute.Editor -> EditorSettingsPage(
-                repo = repo,
-                onRoute = { navigate(it) }
-            )
 
             SettingsRoute.Font -> FontSettingsPage(
                 repo = repo,

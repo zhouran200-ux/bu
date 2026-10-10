@@ -150,7 +150,6 @@ internal object SettingsTrail {
         SettingsRoute.Appearance -> S.settingsAppearanceTitle
         SettingsRoute.Theme -> S.settingsThemeTitle
         SettingsRoute.Background -> S.settingsBackgroundTitle
-        SettingsRoute.Editor -> S.settingsEditorTitle
         SettingsRoute.Font -> S.fontTypographyTitle
         SettingsRoute.Api -> S.settingsApiConfigTitle
     }
@@ -417,14 +416,5 @@ internal fun ApiModelPickerDialog(
                 )
             }
         }
-    }
-}
-
-@androidx.compose.runtime.Composable
-fun GlobalTextSelectionContainer(enabled: Boolean, content: @androidx.compose.runtime.Composable () -> Unit) {
-    if (enabled) {
-        androidx.compose.foundation.text.selection.SelectionContainer { content() }
-    } else {
-        content()
     }
 }

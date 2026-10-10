@@ -107,6 +107,10 @@ jobs:
           status=${PIPESTATUS[0]}
           if [ "$status" != "0" ]; then
             WHY=$(awk '/\* What went wrong/{f=1} f{print} /^\* Try/{exit}' "$RUNNER_TEMP/gradle-release.log" | head -n 30)
+            NET=$(grep -E "Could not (GET|resolve|download)|status code|Connection (refused|reset)|Read timed out|UnknownHost|SSL|Certificate" "$RUNNER_TEMP/gradle-release.log" | head -n 12)
+            if [ -n "$NET" ]; then
+              WHY="$WHY [repo/network] $NET"
+            fi
             if [ -z "$WHY" ]; then
               WHY=$(grep -E "^e: |error:|FAILED" "$RUNNER_TEMP/gradle-release.log" | head -n 30)
             fi

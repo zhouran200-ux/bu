@@ -10,7 +10,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -50,7 +50,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -74,7 +73,6 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -84,11 +82,9 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Popup
 import androidx.compose.ui.zIndex
 import com.lucent.app.AppScope
 import com.lucent.app.collapseExcessBlankLines
@@ -121,6 +117,7 @@ private fun modelChoices(fetched: List<String>, saved: List<String>): List<Strin
 }
 
 private val PROFILE_SLIDE_SPRING = spring<Float>(dampingRatio = 0.62f, stiffness = Spring.StiffnessMediumLow)
+private val ROW_CARD_RADIUS = 14.dp
 private const val HELD_SCALE = 1.02f
 private const val HELD_ALPHA = 0.94f
 private const val REORDER_COMMIT_TIMEOUT_MS = 1200L
@@ -280,6 +277,7 @@ internal fun CloudModelSettingsPage(
     fun beginDrag(idx: Int) {
         val current = drag
         if (current != null && current.held >= 0) return
+        Haptics.tick(context)
         if (current != null) {
             drag = current.copy(held = idx, travel = 0f)
         } else {
@@ -344,6 +342,7 @@ internal fun CloudModelSettingsPage(
                     val slide = remember { Animatable(0f) }
                     val liveIdx = rememberUpdatedState(idx)
                     val held = drag?.held == idx
+                    val isActive = idx == activeProfileIdx
                     LaunchedEffect(idx, held) {
                         val stride = rowStride
                         if (restingIdx != idx) {
@@ -369,7 +368,7 @@ internal fun CloudModelSettingsPage(
                             .zIndex(if (held) 1f else 0f)
                             .fillMaxWidth()
                             .onSizeChanged { if (it.height > 0) rowStride = it.height.toFloat() }
-                            .padding(vertical = 1.dp)
+                            .padding(bottom = 6.dp)
                             .graphicsLayer {
                                 val carried = drag?.travel ?: 0f
                                 translationY = slide.value + (if (held) carried else 0f)
@@ -377,6 +376,11 @@ internal fun CloudModelSettingsPage(
                                 scaleY = if (held) HELD_SCALE else 1f
                                 alpha = if (held) HELD_ALPHA else 1f
                             }
+                            .frostedGlass(
+                                cornerRadius = ROW_CARD_RADIUS,
+                                tint = if (isActive) MaterialTheme.colorScheme.primary else Color.White
+                            )
+                            .padding(horizontal = 10.dp, vertical = 8.dp)
                     ) {
                         if (canReorder) {
                             Box(
@@ -384,7 +388,7 @@ internal fun CloudModelSettingsPage(
                                     .size(30.dp)
                                     .pointerInput(identity) {
                                         var travelled = 0f
-                                        detectDragGestures(
+                                        detectDragGesturesAfterLongPress(
                                             onDragStart = {
                                                 travelled = 0f
                                                 beginDrag(liveIdx.value)
@@ -432,12 +436,6 @@ internal fun CloudModelSettingsPage(
                                 )
                             }
                         }
-                        RadioButton(
-                            selected = idx == activeProfileIdx,
-                            onClick = { if (settled) onSelectProfile(idx) },
-                            modifier = Modifier.size(24.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
@@ -463,10 +461,10 @@ internal fun CloudModelSettingsPage(
                         DeleteWithConfirmButton(
                             onDelete = { if (settled) onRequestDeleteProfile(idx) },
                             tint = onGradientMuted,
-                            buttonSize = 34.dp,
-                            iconSize = 20.dp,
-                            confirmTextPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
-                            confirmTextSize = 12.sp,
+                            buttonSize = 30.dp,
+                            iconSize = 18.dp,
+                            confirmTextPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                            confirmTextSize = 11.sp,
                             contentDescription = S.apiDeleteA11y
                         )
                     }

@@ -20,7 +20,7 @@ data class ParsedDocument(
 
 object MarkdownDocumentParser {
 
-    private val SUPPORTED_EXTENSIONS = setOf("txt", "docx")
+    private val SUPPORTED_EXTENSIONS = setOf("txt", "docx", "doc")
 
     fun isSupported(name: String): Boolean {
         val ext = extensionOf(name)
@@ -31,7 +31,7 @@ object MarkdownDocumentParser {
         val fileName = queryDisplayName(context, uri) ?: "未命名文档"
         val ext = extensionOf(fileName)
         if (ext !in SUPPORTED_EXTENSIONS) {
-            error("仅支持导入 TXT 与 Word (DOCX) 格式文档")
+            error("仅支持导入 TXT 与 Word (DOC、DOCX) 格式文档")
         }
 
         val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
@@ -40,6 +40,7 @@ object MarkdownDocumentParser {
         val title = fileName.substringBeforeLast(".").ifBlank { "导入文档" }
         val markdown = when (ext) {
             "docx" -> parseDocxToMarkdown(bytes)
+            "doc" -> parseDocToMarkdown(bytes)
             "txt" -> parseTxtToMarkdown(bytes)
             else -> error("暂不支持该格式")
         }
@@ -56,6 +57,8 @@ object MarkdownDocumentParser {
         val text = decodeText(bytes)
         return text.replace("\r\n", "\n").replace("\r", "\n").trim()
     }
+
+    fun parseDocToMarkdown(bytes: ByteArray): String = DocTextExtractor.extract(bytes)
 
     fun parseDocxToMarkdown(bytes: ByteArray): String {
         val documentXml = extractZipEntry(bytes, "word/document.xml")

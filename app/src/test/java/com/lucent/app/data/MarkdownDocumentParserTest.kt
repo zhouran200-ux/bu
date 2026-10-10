@@ -15,10 +15,11 @@ class MarkdownDocumentParserTest {
         assertTrue(MarkdownDocumentParser.isSupported("document.txt"))
         assertTrue(MarkdownDocumentParser.isSupported("REPORT.DOCX"))
         assertTrue(MarkdownDocumentParser.isSupported("my_file.docx"))
+        assertTrue(MarkdownDocumentParser.isSupported("legacy.doc"))
+        assertTrue(MarkdownDocumentParser.isSupported("旧文档.DOC"))
 
         assertFalse(MarkdownDocumentParser.isSupported("document.pdf"))
         assertFalse(MarkdownDocumentParser.isSupported("archive.zip"))
-        assertFalse(MarkdownDocumentParser.isSupported("legacy.doc"))
         assertFalse(MarkdownDocumentParser.isSupported("image.png"))
     }
 

@@ -45,6 +45,7 @@ private object SettingsKeys {
 
     val LEGACY_API_KEY = stringPreferencesKey("api_key")
     val LEGACY_API_PROFILES = stringPreferencesKey("api_profiles_json")
+    val LEGACY_MEMORY_TIER = stringPreferencesKey("memory_tier")
 
     val API_PROFILE_SELECTED = intPreferencesKey("api_profile_selected")
 
@@ -587,6 +588,12 @@ class SettingsRepository(context: Context) {
     suspend fun setStartupLoggingEnabled(value: Boolean) {
         context.settingsDataStore.edit { it[SettingsKeys.STARTUP_LOGGING_ENABLED] = value }
         SettingsCache.startupLoggingEnabled = value
+    }
+
+    suspend fun dropLegacyMemoryTierKey() {
+        val present = context.settingsDataStore.data.first()[SettingsKeys.LEGACY_MEMORY_TIER] != null
+        if (!present) return
+        context.settingsDataStore.edit { it.remove(SettingsKeys.LEGACY_MEMORY_TIER) }
     }
 
     private suspend fun putSecret(

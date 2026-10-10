@@ -207,6 +207,12 @@ class MainActivity : ComponentActivity() {
 
         AppScope.io.launch { TrashCleanup.purgeExpired(applicationContext) }
 
+        AppScope.io.launch {
+            val legacyDb = com.lucent.app.data.AppDatabase.getInstance(applicationContext)
+            com.lucent.app.data.LegacyPurge.purgeSampleDocuments(applicationContext, legacyDb)
+            settingsRepo.dropLegacyMemoryTierKey()
+        }
+
         AppScope.io.launch { com.lucent.app.data.AttachmentAccess.clearPreviewCache(applicationContext) }
 
         AppScope.io.launch {

@@ -99,4 +99,32 @@ object ApiProfiles {
         while (n in taken) n++
         return "方案 $n"
     }
+
+    fun moved(profiles: List<ApiProfile>, from: Int, to: Int): List<ApiProfile> {
+        if (from == to || from !in profiles.indices || to !in profiles.indices) return profiles
+        val out = profiles.toMutableList()
+        out.add(to, out.removeAt(from))
+        return out
+    }
+
+    fun selectionAfterMove(selected: Int, from: Int, to: Int): Int {
+        if (from == to) return selected
+        return when {
+            selected == from -> to
+            from < selected && to >= selected -> selected - 1
+            from > selected && to <= selected -> selected + 1
+            else -> selected
+        }
+    }
+
+    fun orderKeys(profiles: List<ApiProfile>): List<String> = orderKeysFor(profiles.map { it.name })
+
+    fun orderKeysFor(names: List<String>): List<String> {
+        val seen = mutableMapOf<String, Int>()
+        return names.map { name ->
+            val repeat = seen.getOrDefault(name, 0)
+            seen[name] = repeat + 1
+            if (repeat == 0) name else "$name#$repeat"
+        }
+    }
 }

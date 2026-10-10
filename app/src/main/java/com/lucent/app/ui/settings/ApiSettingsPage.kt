@@ -1,12 +1,16 @@
 package com.lucent.app.ui.settings
 
 import android.content.ClipData
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,6 +35,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Visibility
@@ -52,14 +57,20 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key as itemKey
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
@@ -78,6 +89,7 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
+import androidx.compose.ui.zIndex
 import com.lucent.app.AppScope
 import com.lucent.app.collapseExcessBlankLines
 import com.lucent.app.data.ApiProfile
@@ -107,6 +119,11 @@ private fun modelChoices(fetched: List<String>, saved: List<String>): List<Strin
     saved.sorted().forEach { if (it.isNotBlank()) out.add(it.trim()) }
     return out.toList()
 }
+
+private val PROFILE_SLIDE_SPRING = spring<Float>(dampingRatio = 0.62f, stiffness = Spring.StiffnessMediumLow)
+private const val HELD_SCALE = 1.02f
+private const val HELD_ALPHA = 0.94f
+private const val REORDER_COMMIT_TIMEOUT_MS = 1200L
 
 @Composable
 private fun DeleteWithConfirmButton(
@@ -207,6 +224,7 @@ internal fun CloudModelSettingsPage(
     onErrorTextChange: (String) -> Unit,
     onRequestDeleteProfile: (Int) -> Unit,
     onSelectProfile: (Int) -> Unit,
+    onReorderProfiles: (List<ApiProfile>, Int) -> Unit,
     onAddProfile: () -> Unit,
     onSaveProfile: () -> Unit,
     onRoute: (SettingsRoute) -> Unit
@@ -226,6 +244,64 @@ internal fun CloudModelSettingsPage(
     var copiedRawHint by remember { mutableStateOf(false) }
     var customModelInput by remember { mutableStateOf("") }
     val choices = modelChoices(fetchedModels, models)
+
+    var dragOrder by remember { mutableStateOf<List<ApiProfile>?>(null) }
+    var dragSelected by remember { mutableIntStateOf(selectedProfileIdx) }
+    var heldIndex by remember { mutableIntStateOf(-1) }
+    var heldTravel by remember { mutableFloatStateOf(0f) }
+    var rowStride by remember { mutableFloatStateOf(0f) }
+    val shownProfiles = dragOrder ?: profiles
+    val shownKeys = remember(shownProfiles) { ApiProfiles.orderKeys(shownProfiles) }
+    val activeProfileIdx = if (dragOrder == null) selectedProfileIdx else dragSelected
+    val canReorder = shownProfiles.size > 1
+    val settled = dragOrder == null
+    val liveProfiles = rememberUpdatedState(profiles)
+    val liveSelected = rememberUpdatedState(selectedProfileIdx)
+    val liveReorder = rememberUpdatedState(onReorderProfiles)
+
+    fun stepHeldProfile(step: Int): Boolean {
+        val list = dragOrder ?: return false
+        val from = heldIndex
+        val to = from + step
+        if (from !in list.indices || to !in list.indices) return false
+        dragOrder = ApiProfiles.moved(list, from, to)
+        dragSelected = ApiProfiles.selectionAfterMove(dragSelected, from, to)
+        heldIndex = to
+        Haptics.tick(context)
+        return true
+    }
+
+    fun beginDrag(idx: Int) {
+        val base = dragOrder
+        if (base == null) {
+            dragSelected = liveSelected.value
+            dragOrder = liveProfiles.value
+        }
+        heldIndex = idx
+        heldTravel = 0f
+    }
+
+    fun endDrag(commit: Boolean) {
+        heldIndex = -1
+        heldTravel = 0f
+        val order = dragOrder
+        if (!commit || order == null || order == liveProfiles.value) {
+            dragOrder = null
+        } else {
+            liveReorder.value(order, dragSelected)
+        }
+    }
+
+    LaunchedEffect(dragOrder, heldIndex, profiles) {
+        val pending = dragOrder ?: return@LaunchedEffect
+        if (heldIndex >= 0) return@LaunchedEffect
+        if (ApiProfiles.orderKeys(pending) == ApiProfiles.orderKeys(profiles)) {
+            dragOrder = null
+        } else {
+            delay(REORDER_COMMIT_TIMEOUT_MS)
+            if (heldIndex < 0 && dragOrder == pending) dragOrder = null
+        }
+    }
 
     LaunchedEffect(selectedProfileIdx, selectedModel) {
         lastTestResult = null
@@ -248,46 +324,117 @@ internal fun CloudModelSettingsPage(
             Spacer(modifier = Modifier.height(3.dp))
         }
         CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 0.dp) {
-            profiles.forEachIndexed { idx, p ->
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 1.dp)
-                ) {
-                    RadioButton(
-                        selected = idx == selectedProfileIdx,
-                        onClick = { onSelectProfile(idx) },
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
+            shownProfiles.forEachIndexed { idx, p ->
+                val identity = shownKeys[idx]
+                itemKey(identity) {
+                    var restingIdx by remember { mutableIntStateOf(idx) }
+                    val slide = remember { Animatable(0f) }
+                    val liveIdx = rememberUpdatedState(idx)
+                    val held = idx == heldIndex
+                    LaunchedEffect(idx, held) {
+                        if (restingIdx == idx) return@LaunchedEffect
+                        val shift = (restingIdx - idx) * rowStride
+                        restingIdx = idx
+                        if (held || rowStride <= 0f) {
+                            slide.snapTo(0f)
+                        } else {
+                            slide.snapTo(shift)
+                            slide.animateTo(0f, PROFILE_SLIDE_SPRING)
+                        }
+                    }
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
-                            .weight(1f)
-                            .clickable { onSelectProfile(idx) }
+                            .zIndex(if (held) 1f else 0f)
+                            .fillMaxWidth()
+                            .onSizeChanged { if (it.height > 0) rowStride = it.height.toFloat() }
+                            .padding(vertical = 1.dp)
+                            .graphicsLayer {
+                                translationY = slide.value + (if (held) heldTravel else 0f)
+                                scaleX = if (held) HELD_SCALE else 1f
+                                scaleY = if (held) HELD_SCALE else 1f
+                                alpha = if (held) HELD_ALPHA else 1f
+                            }
                     ) {
-                        Text(
-                            text = p.name.ifBlank { "方案 ${idx + 1}" },
-                            color = onGradient,
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.SemiBold
+                        if (canReorder) {
+                            Box(
+                                modifier = Modifier
+                                    .size(30.dp)
+                                    .pointerInput(identity) {
+                                        var travelled = 0f
+                                        detectDragGestures(
+                                            onDragStart = {
+                                                travelled = 0f
+                                                beginDrag(liveIdx.value)
+                                            },
+                                            onDrag = { change, delta ->
+                                                change.consume()
+                                                val stride = rowStride
+                                                if (stride > 0f) {
+                                                    travelled += delta.y
+                                                    while (travelled >= stride) {
+                                                        travelled -= stride
+                                                        if (!stepHeldProfile(+1)) travelled = 0f
+                                                    }
+                                                    while (travelled <= -stride) {
+                                                        travelled += stride
+                                                        if (!stepHeldProfile(-1)) travelled = 0f
+                                                    }
+                                                    heldTravel = travelled.coerceIn(-stride, stride)
+                                                }
+                                            },
+                                            onDragEnd = { endDrag(commit = true) },
+                                            onDragCancel = { endDrag(commit = false) }
+                                        )
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    Icons.Default.DragHandle,
+                                    contentDescription = S.a11yDragToReorder,
+                                    tint = onGradientMuted.copy(alpha = onGradientMuted.alpha * 0.7f),
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                        RadioButton(
+                            selected = idx == activeProfileIdx,
+                            onClick = { if (settled) onSelectProfile(idx) },
+                            modifier = Modifier.size(24.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
-                        val modelCount = if (idx == selectedProfileIdx) models.size else p.selectedModels.size
-                        Text(
-                            text = "· $modelCount 个模型",
-                            color = onGradientMuted,
-                            fontSize = 12.sp
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable(enabled = settled) { onSelectProfile(idx) }
+                        ) {
+                            Text(
+                                text = p.name.ifBlank { "方案 ${idx + 1}" },
+                                color = onGradient,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            val modelCount = if (idx == activeProfileIdx) models.size else p.selectedModels.size
+                            Text(
+                                text = "· $modelCount 个模型",
+                                color = onGradientMuted,
+                                fontSize = 12.sp
+                            )
+                        }
+                        DeleteWithConfirmButton(
+                            onDelete = { if (settled) onRequestDeleteProfile(idx) },
+                            tint = onGradientMuted,
+                            buttonSize = 34.dp,
+                            iconSize = 20.dp,
+                            confirmTextPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                            confirmTextSize = 12.sp,
+                            contentDescription = S.apiDeleteA11y
                         )
                     }
-                    DeleteWithConfirmButton(
-                        onDelete = { onRequestDeleteProfile(idx) },
-                        tint = onGradientMuted,
-                        buttonSize = 34.dp,
-                        iconSize = 20.dp,
-                        confirmTextPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
-                        confirmTextSize = 12.sp,
-                        contentDescription = S.apiDeleteA11y
-                    )
                 }
             }
         }

@@ -175,6 +175,11 @@ fun SettingsScreen(active: Boolean = true) {
         AppScope.io.launch { repo.saveApiProfiles(newList, newSelected) }
     }
 
+    fun reorderProfiles(order: List<com.lucent.app.data.ApiProfile>, selected: Int) {
+        if (order.size != profiles.size) return
+        AppScope.io.launch { repo.saveApiProfiles(order, selected) }
+    }
+
     fun saveActiveProfile(idx: Int, selectedModels: List<String>) {
         val updated = profiles.toMutableList()
         val typedModel = selectedModel.trim()
@@ -482,6 +487,7 @@ fun SettingsScreen(active: Boolean = true) {
                 onErrorTextChange = { errorText = it },
                 onRequestDeleteProfile = { deleteProfile(it) },
                 onSelectProfile = { selectProfile(it) },
+                onReorderProfiles = { order, selected -> reorderProfiles(order, selected) },
                 onAddProfile = { addProfile() },
                 onSaveProfile = { saveActiveProfile(selectedProfileIdx, models) },
                 onRoute = { navigate(it) }

@@ -106,7 +106,7 @@ def emit(entries, path):
     out.append("")
     out.append("object Zh : Tr()")
     out.append("")
-    with open(path, "w", encoding="utf-8") as f:
+    with open(path, "w", encoding="utf-8", newline="\n") as f:
         f.write("\n".join(out))
     n = sum(1 for e in entries if not isinstance(e, str))
     print(f"Wrote {path}: {n} entries")

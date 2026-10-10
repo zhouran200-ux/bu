@@ -29,9 +29,6 @@ interface NoteDao {
 
     @Delete
     suspend fun delete(note: Note)
-
-    @Query("DELETE FROM notes")
-    suspend fun clearAll()
 }
 
 @Dao
@@ -59,9 +56,6 @@ interface ChatDao {
 
     @Query("DELETE FROM chat_messages WHERE conversationId = :conversationId")
     suspend fun clearConversation(conversationId: Long)
-
-    @Query("DELETE FROM chat_messages")
-    suspend fun clearAll()
 }
 
 @Dao
@@ -80,9 +74,6 @@ interface ChatConversationDao {
 
     @Delete
     suspend fun delete(conversation: ChatConversation)
-
-    @Query("DELETE FROM chat_conversations")
-    suspend fun clearAll()
 }
 
 data class NotebookCount(val notebookId: Long, val count: Int)
@@ -130,8 +121,5 @@ interface NotebookDao {
 
     @Query("DELETE FROM notebooks WHERE id = :id")
     suspend fun deleteById(id: Long)
-
-    @Query("DELETE FROM notebooks")
-    suspend fun clearAll()
 
 }

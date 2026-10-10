@@ -311,6 +311,4 @@ class SettingsRepository(context: Context) {
             }
         }
     }
-
-    suspend fun clearAll() { context.settingsDataStore.edit { it.clear() } }
 }

@@ -85,17 +85,6 @@ object Attachments {
         }
     }
 
-    fun upsert(context: Context, list: List<Attachment>, attachment: Attachment): List<Attachment> {
-        val idx = list.indexOfFirst { it.name.equals(attachment.name, ignoreCase = true) }
-        return if (idx >= 0) {
-            val displaced = list[idx]
-            if (AttachmentStore.looksLikeId(displaced.data) && displaced.data != attachment.data) {
-                AttachmentStore.delete(context, displaced.data)
-            }
-            list.toMutableList().also { it[idx] = attachment }
-        } else list + attachment
-    }
-
     fun idsFromJson(json: String?): Set<String> {
         if (json.isNullOrBlank()) return emptySet()
         return parse(json)

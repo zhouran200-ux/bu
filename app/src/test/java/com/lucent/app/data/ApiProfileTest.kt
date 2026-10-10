@@ -32,7 +32,7 @@ class ApiProfileTest {
             )
         )
 
-        val serialized = ApiProfiles.serialize(original, encryptKeys = false)
+        val serialized = ApiProfiles.serialize(original)
         val parsed = ApiProfiles.parse(serialized)
 
         assertEquals(2, parsed.size)
@@ -40,6 +40,7 @@ class ApiProfileTest {
         assertEquals(UserAgentPresets.SILLY_TAVERN_NODE_FETCH, parsed[0].customUserAgent)
         assertEquals("Default Profile", parsed[1].name)
         assertEquals("", parsed[1].customUserAgent)
+        assertEquals("sk-default", parsed[1].apiKey)
     }
 
     @Test

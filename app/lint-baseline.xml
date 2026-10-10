@@ -545,16 +545,7 @@
             column="8"/>
     </issue>
 
-    <issue
-        id="NewerVersionAvailable"
-        message="A newer version of net.zetetic:sqlcipher-android than 4.6.1 is available: 4.18.0"
-        errorLine1="sqlcipher = &quot;4.6.1&quot;"
-        errorLine2="            ~~~~~~~">
-        <location
-            file="$HOME/work/Lucent/Lucent/gradle/libs.versions.toml"
-            line="34"
-            column="13"/>
-    </issue>
+    
 
     <issue
         id="NewerVersionAvailable"
@@ -910,5 +901,4 @@
             line="39"
             column="13"/>
     </issue>
-
 </issues>

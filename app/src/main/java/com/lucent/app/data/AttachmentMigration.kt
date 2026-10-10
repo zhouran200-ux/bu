@@ -60,20 +60,6 @@ object AttachmentMigration {
         return (if (changed) Attachments.serialize(migrated) else attachmentsJson) to remaining
     }
 
-    suspend fun encryptExistingAttachments(context: Context) {
-        val appContext = context.applicationContext
-        val db = AppDatabase.getInstance(appContext)
-        val referenced = buildSet {
-            db.noteDao().getAllOnce().forEach { addAll(Attachments.idsFromJson(it.attachments)) }
-        }
-        referenced.forEach { id ->
-            try {
-                AttachmentStore.encryptExistingFile(appContext, id)
-            } catch (t: Throwable) {
-            }
-        }
-    }
-
     suspend fun pruneOrphans(context: Context) {
         val db = AppDatabase.getInstance(context)
         val notes = db.noteDao().getAllOnce()

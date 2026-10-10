@@ -12,7 +12,6 @@ import java.util.UUID
 object AttachmentStore {
 
     private const val DIR_NAME = "attachments"
-    private const val COPY_BUFFER = 64 * 1024
 
     fun baseDir(context: Context): File {
         val root = context.getExternalFilesDir(null) ?: context.filesDir
@@ -43,22 +42,14 @@ object AttachmentStore {
     }
 
     fun openOutputStream(context: Context, id: String): OutputStream? = try {
-        val key = DataKeys.attachmentKey(context)
-        val dest = fileFor(context, id)
-        FileCrypto.encryptingStream(dest.outputStream(), key)
+        fileFor(context, id).outputStream()
     } catch (t: Throwable) {
         null
     }
 
     fun openInputStream(context: Context, id: String): InputStream? = try {
         val file = fileFor(context, id)
-        if (!file.exists()) {
-            null
-        } else if (FileCrypto.isEncrypted(file)) {
-            FileCrypto.decryptingStream(file.inputStream(), DataKeys.attachmentKey(context))
-        } else {
-            file.inputStream()
-        }
+        if (!file.exists()) null else file.inputStream()
     } catch (t: Throwable) {
         null
     }
@@ -74,34 +65,7 @@ object AttachmentStore {
 
     fun exists(context: Context, id: String): Boolean = fileFor(context, id).exists()
 
-    fun sizeOf(context: Context, id: String): Long {
-        val f = fileFor(context, id)
-        if (!f.exists()) return 0L
-        return if (FileCrypto.isEncrypted(f)) FileCrypto.plaintextSizeOf(f) else f.length()
-    }
-
-    fun encryptExistingFile(context: Context, id: String): Boolean {
-        val file = fileFor(context, id)
-        if (!file.exists() || FileCrypto.isEncrypted(file)) return false
-        val temp = File(file.parentFile, "$id.enc-tmp")
-        return try {
-            val key = DataKeys.attachmentKey(context)
-            file.inputStream().use { input ->
-                FileCrypto.encryptingStream(temp.outputStream(), key).use { output ->
-                    copyStream(input, output)
-                }
-            }
-            if (temp.renameTo(file)) {
-                true
-            } else {
-                temp.delete()
-                false
-            }
-        } catch (t: Throwable) {
-            temp.delete()
-            false
-        }
-    }
+    fun sizeOf(context: Context, id: String): Long = fileFor(context, id).length()
 
     fun delete(context: Context, id: String): Boolean {
         val f = fileFor(context, id)
@@ -123,18 +87,5 @@ object AttachmentStore {
             }
     } catch (e: Exception) {
         null
-    }
-
-    private fun copyStream(input: InputStream, output: java.io.OutputStream): Long {
-        val buffer = ByteArray(COPY_BUFFER)
-        var total = 0L
-        while (true) {
-            val read = input.read(buffer)
-            if (read == -1) break
-            output.write(buffer, 0, read)
-            total += read
-        }
-        output.flush()
-        return total
     }
 }

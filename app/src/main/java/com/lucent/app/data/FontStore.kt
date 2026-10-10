@@ -37,10 +37,7 @@ object FontStore {
         if (!indexFile.exists()) return FontIndex(emptyList())
 
         return try {
-            val raw = indexFile.readText()
-            val decrypted = LocalSecrets.decrypt(raw)
-            if (decrypted.isEmpty() && raw.isNotEmpty()) return rebuildFromFiles(context)
-            val root = JSONObject(decrypted)
+            val root = JSONObject(indexFile.readText())
             val arr = root.optJSONArray("fonts") ?: JSONArray()
             val slots = (0 until arr.length()).mapNotNull { i ->
                 val o = arr.optJSONObject(i) ?: return@mapNotNull null
@@ -85,7 +82,7 @@ object FontStore {
             arr.put(JSONObject().put("id", s.id).put("name", s.name).put("file", s.fileName))
         }
         val root = JSONObject().put("fonts", arr)
-        File(dir, INDEX_FILE).writeText(LocalSecrets.encrypt(root.toString()))
+        File(dir, INDEX_FILE).writeText(root.toString())
     }
 
 

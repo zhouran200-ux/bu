@@ -1,13 +1,4 @@
 
--keep class com.lucent.app.nativebridge.LucentNative { *; }
--keepclasseswithmembernames,includedescriptorclasses class * {
-    native <methods>;
-}
-
--keep class net.sqlcipher.** { *; }
--keep interface net.sqlcipher.** { *; }
--dontwarn net.sqlcipher.**
-
 -keep class * extends androidx.room.RoomDatabase { *; }
 -dontwarn androidx.room.paging.**
 

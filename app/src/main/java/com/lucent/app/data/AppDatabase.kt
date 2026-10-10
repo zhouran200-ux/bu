@@ -6,7 +6,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
-import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
+import java.io.File
 
 val MIGRATION_2_3 = object : Migration(2, 3) {
     override fun migrate(db: SupportSQLiteDatabase) {
@@ -359,6 +359,9 @@ abstract class AppDatabase : RoomDatabase() {
     companion object {
         @Volatile private var INSTANCE: AppDatabase? = null
 
+        private const val DB_NAME = "lucent.db"
+        private val PLAINTEXT_HEADER = "SQLite format 3".toByteArray(Charsets.ISO_8859_1)
+
         fun getInstance(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 INSTANCE ?: build(context.applicationContext).also { INSTANCE = it }
@@ -366,12 +369,12 @@ abstract class AppDatabase : RoomDatabase() {
         }
 
         private fun build(appContext: Context): AppDatabase {
-            val passphrase = DatabaseEncryption.ensureReady(appContext)
+            discardUnreadableDatabase(appContext.getDatabasePath(DB_NAME))
 
-            val builder = Room.databaseBuilder(
+            return Room.databaseBuilder(
                 appContext,
                 AppDatabase::class.java,
-                DatabaseEncryption.DB_NAME
+                DB_NAME
             )
                 .addMigrations(
                     MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7,
@@ -382,11 +385,23 @@ abstract class AppDatabase : RoomDatabase() {
                     MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29
                 )
                 .fallbackToDestructiveMigration(dropAllTables = true)
+                .build()
+        }
 
-            if (passphrase != null) {
-                builder.openHelperFactory(SupportOpenHelperFactory(passphrase.toByteArray(Charsets.UTF_8)))
+        private fun discardUnreadableDatabase(dbFile: File) {
+            runCatching {
+                if (!dbFile.exists()) return
+                val header = ByteArray(PLAINTEXT_HEADER.size)
+                val read = dbFile.inputStream().use { it.read(header) }
+                if (read == header.size && header.contentEquals(PLAINTEXT_HEADER)) return
+                dbFile.delete()
+                listOf("-wal", "-shm", ".encrypting", ".pre-encrypt").forEach { suffix ->
+                    File(dbFile.parentFile, dbFile.name + suffix).delete()
+                }
+                dbFile.parentFile?.listFiles()
+                    ?.filter { it.name.startsWith("${dbFile.name}.locked-") }
+                    ?.forEach { it.delete() }
             }
-            return builder.build()
         }
     }
 }

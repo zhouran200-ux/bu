@@ -14,7 +14,6 @@ EXPECTED_AREAS = {
     "data": "com.lucent.app.data",
     "ui": "com.lucent.app.ui",
     "network": "com.lucent.app.network",
-    "nativebridge": "com.lucent.app.nativebridge",
 }
 
 

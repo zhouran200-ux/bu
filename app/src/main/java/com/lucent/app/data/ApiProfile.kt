@@ -34,7 +34,7 @@ object ApiProfiles {
         )
     )
 
-    fun serialize(profiles: List<ApiProfile>, encryptKeys: Boolean = true): String {
+    fun serialize(profiles: List<ApiProfile>): String {
         val arr = JSONArray()
         profiles.take(MAX).forEach { p ->
             val models = JSONArray()
@@ -44,7 +44,7 @@ object ApiProfiles {
                     .put("name", p.name)
                     .put("spec", p.spec)
                     .put("baseUrl", p.baseUrl)
-                    .put("keyEnc", if (encryptKeys) CryptoUtil.encrypt(p.apiKey) else p.apiKey)
+                    .put("apiKey", p.apiKey)
                     .put("model", p.model)
                     .put("provider", p.provider)
                     .put("selectedModels", models)
@@ -76,7 +76,7 @@ object ApiProfiles {
                     name = o.optString("name", "方案 ${i + 1}"),
                     spec = spec,
                     baseUrl = baseUrl,
-                    apiKey = CryptoUtil.decrypt(o.optString("keyEnc", "")),
+                    apiKey = o.optString("apiKey", ""),
                     model = model,
                     provider = ApiProviders.resolve(o.optString("provider", ""), spec, baseUrl),
                     selectedModels = selectedModels,

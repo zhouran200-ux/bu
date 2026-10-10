@@ -145,7 +145,6 @@ class MainActivity : ComponentActivity() {
 
         AppScope.io.launch {
             AttachmentMigration.runIfNeeded(applicationContext)
-            AttachmentMigration.encryptExistingAttachments(applicationContext)
         }
 
         AppScope.io.launch {

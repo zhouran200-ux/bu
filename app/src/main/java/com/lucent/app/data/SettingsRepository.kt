@@ -22,28 +22,19 @@ private object SettingsKeys {
     val LETTER_SPACING = floatPreferencesKey("letter_spacing")
     val DYNAMIC_COLOR_ENABLED = booleanPreferencesKey("dynamic_color_enabled")
 
-    val BASE_URL_ENC = stringPreferencesKey("base_url_enc")
-    val API_SPEC_ENC = stringPreferencesKey("api_spec_enc")
-    val MODEL_ENC = stringPreferencesKey("model_enc")
-    val CUSTOM_USER_AGENT_ENC = stringPreferencesKey("custom_user_agent_enc")
-
-    val LEGACY_BASE_URL = stringPreferencesKey("base_url")
-    val LEGACY_API_SPEC = stringPreferencesKey("api_spec")
-    val LEGACY_MODEL = stringPreferencesKey("model")
-    val LEGACY_CUSTOM_USER_AGENT = stringPreferencesKey("custom_user_agent")
+    val BASE_URL = stringPreferencesKey("base_url")
+    val API_SPEC = stringPreferencesKey("api_spec")
+    val MODEL = stringPreferencesKey("model")
+    val CUSTOM_USER_AGENT = stringPreferencesKey("custom_user_agent")
 
     val ATTACHMENTS_MIGRATED = booleanPreferencesKey("attachments_migrated_v1")
 
-    val API_KEY_ENC = stringPreferencesKey("api_key_enc")
-    val API_PROFILES_ENC = stringPreferencesKey("api_profiles_json_enc")
-
-    val LEGACY_API_KEY = stringPreferencesKey("api_key")
-    val LEGACY_API_PROFILES = stringPreferencesKey("api_profiles_json")
+    val API_KEY = stringPreferencesKey("api_key")
+    val API_PROFILES = stringPreferencesKey("api_profiles_json")
 
     val API_PROFILE_SELECTED = intPreferencesKey("api_profile_selected")
 
-    val NOTEBOOK_OPENS_ENC = stringPreferencesKey("notebook_opens_enc")
-    val NOTEBOOK_OPENS_LEGACY = stringPreferencesKey("notebook_opens")
+    val NOTEBOOK_OPENS = stringPreferencesKey("notebook_opens")
 
 
 
@@ -58,8 +49,7 @@ private object SettingsKeys {
 
 
 
-    val GLOBAL_TEXT_SELECTION_ENABLED_ENC = stringPreferencesKey("global_text_selection_enabled_enc")
-    val LEGACY_GLOBAL_TEXT_SELECTION_ENABLED = stringPreferencesKey("global_text_selection_enabled")
+    val GLOBAL_TEXT_SELECTION_ENABLED = stringPreferencesKey("global_text_selection_enabled")
 
 }
 
@@ -68,27 +58,23 @@ const val DEFAULT_ASSISTANT_STYLE = "lively and friendly, relaxed and natural."
 class SettingsRepository(context: Context) {
     private val context: Context = context.applicationContext
 
-    private fun secret(
+    private fun setting(
         prefs: androidx.datastore.preferences.core.Preferences,
-        encrypted: androidx.datastore.preferences.core.Preferences.Key<String>,
-        legacy: androidx.datastore.preferences.core.Preferences.Key<String>,
+        key: androidx.datastore.preferences.core.Preferences.Key<String>,
         default: String
-    ): String {
-        val stored = prefs[encrypted] ?: prefs[legacy] ?: return default
-        return LocalSecrets.decrypt(stored).ifEmpty { default }
-    }
+    ): String = prefs[key]?.ifEmpty { default } ?: default
 
     val baseUrl: Flow<String> = context.settingsDataStore.data.map {
-        secret(it, SettingsKeys.BASE_URL_ENC, SettingsKeys.LEGACY_BASE_URL, "")
+        setting(it, SettingsKeys.BASE_URL, "")
     }
     val apiSpec: Flow<String> = context.settingsDataStore.data.map {
-        secret(it, SettingsKeys.API_SPEC_ENC, SettingsKeys.LEGACY_API_SPEC, "openai")
+        setting(it, SettingsKeys.API_SPEC, "openai")
     }
     val model: Flow<String> = context.settingsDataStore.data.map {
-        secret(it, SettingsKeys.MODEL_ENC, SettingsKeys.LEGACY_MODEL, "")
+        setting(it, SettingsKeys.MODEL, "")
     }
     val customUserAgent: Flow<String> = context.settingsDataStore.data.map {
-        secret(it, SettingsKeys.CUSTOM_USER_AGENT_ENC, SettingsKeys.LEGACY_CUSTOM_USER_AGENT, "")
+        setting(it, SettingsKeys.CUSTOM_USER_AGENT, "")
     }
 
     val themeMode: Flow<String> = context.settingsDataStore.data.map { it[SettingsKeys.THEME_MODE] ?: "system" }
@@ -140,19 +126,17 @@ class SettingsRepository(context: Context) {
             ),
             backgroundAnimationEnabled = prefs[SettingsKeys.BACKGROUND_ANIMATION_ENABLED] ?: true,
             dynamicColor = prefs[SettingsKeys.DYNAMIC_COLOR_ENABLED] ?: false,
-            baseUrl = secret(prefs, SettingsKeys.BASE_URL_ENC, SettingsKeys.LEGACY_BASE_URL, ""),
-            apiSpec = secret(prefs, SettingsKeys.API_SPEC_ENC, SettingsKeys.LEGACY_API_SPEC, "openai"),
-            apiKey = LocalSecrets.decrypt(prefs[SettingsKeys.API_KEY_ENC] ?: prefs[SettingsKeys.LEGACY_API_KEY] ?: ""),
-            model = secret(prefs, SettingsKeys.MODEL_ENC, SettingsKeys.LEGACY_MODEL, ""),
-            customUserAgent = secret(prefs, SettingsKeys.CUSTOM_USER_AGENT_ENC, SettingsKeys.LEGACY_CUSTOM_USER_AGENT, ""),
-            apiProfilesJson = LocalSecrets.decrypt(
-                prefs[SettingsKeys.API_PROFILES_ENC] ?: prefs[SettingsKeys.LEGACY_API_PROFILES] ?: ""
-            ),
+            baseUrl = setting(prefs, SettingsKeys.BASE_URL, ""),
+            apiSpec = setting(prefs, SettingsKeys.API_SPEC, "openai"),
+            apiKey = setting(prefs, SettingsKeys.API_KEY, ""),
+            model = setting(prefs, SettingsKeys.MODEL, ""),
+            customUserAgent = setting(prefs, SettingsKeys.CUSTOM_USER_AGENT, ""),
+            apiProfilesJson = setting(prefs, SettingsKeys.API_PROFILES, ""),
             apiProfileSelected = prefs[SettingsKeys.API_PROFILE_SELECTED] ?: 0,
             linksEnabled = prefs[SettingsKeys.LINKS_ENABLED] ?: false,
             reasoning = prefs[SettingsKeys.REASONING_EFFORT] ?: com.lucent.app.data.ReasoningEffort.DEFAULT.key,
 
-            globalTextSelectionEnabled = secret(prefs, SettingsKeys.GLOBAL_TEXT_SELECTION_ENABLED_ENC, SettingsKeys.LEGACY_GLOBAL_TEXT_SELECTION_ENABLED, "false").toBooleanStrictOrNull() ?: false,
+            globalTextSelectionEnabled = setting(prefs, SettingsKeys.GLOBAL_TEXT_SELECTION_ENABLED, "false").toBooleanStrictOrNull() ?: false,
         )
     }
 
@@ -161,13 +145,11 @@ class SettingsRepository(context: Context) {
     }
 
     val apiKey: Flow<String> = context.settingsDataStore.data.map { prefs ->
-        val stored = prefs[SettingsKeys.API_KEY_ENC] ?: prefs[SettingsKeys.LEGACY_API_KEY] ?: ""
-        LocalSecrets.decrypt(stored)
+        prefs[SettingsKeys.API_KEY] ?: ""
     }
 
     val apiProfilesJson: Flow<String> = context.settingsDataStore.data.map { prefs ->
-        val stored = prefs[SettingsKeys.API_PROFILES_ENC] ?: prefs[SettingsKeys.LEGACY_API_PROFILES] ?: ""
-        LocalSecrets.decrypt(stored)
+        prefs[SettingsKeys.API_PROFILES] ?: ""
     }
 
     val apiProfileSelected: Flow<Int> = context.settingsDataStore.data.map { it[SettingsKeys.API_PROFILE_SELECTED] ?: 0 }
@@ -183,6 +165,9 @@ class SettingsRepository(context: Context) {
     }
 
     private val removedPreferenceNames: Set<String> = setOf(
+        "api_key_enc",
+        "api_profiles_json_enc",
+        "api_spec_enc",
         "app_language",
         "app_lock_credentials_enc",
         "app_lock_enabled",
@@ -195,6 +180,7 @@ class SettingsRepository(context: Context) {
         "auto_backup_state",
         "auto_update_enabled",
         "backup_password_enc",
+        "base_url_enc",
         "blackout_enabled",
         "cloud_agent_mode",
         "cloud_auto_backup",
@@ -206,15 +192,19 @@ class SettingsRepository(context: Context) {
         "cloud_user",
         "crash_shield_enabled",
         "custom_templates",
+        "custom_user_agent_enc",
         "embedding_provider",
+        "global_text_selection_enabled_enc",
         "harness_config_enc",
         "hidden_templates",
         "installed_preview_identity",
         "last_screen",
         "markdown_enabled",
         "memory_tier",
+        "model_enc",
         "model_recents",
         "note_history_enabled",
+        "notebook_opens_enc",
         "open_links_externally",
         "pending_update_version",
         "privileged_enabled",
@@ -253,31 +243,19 @@ class SettingsRepository(context: Context) {
         }
     }
 
-    private suspend fun putSecret(
-        encrypted: androidx.datastore.preferences.core.Preferences.Key<String>,
-        legacy: androidx.datastore.preferences.core.Preferences.Key<String>,
-        value: String
-    ) {
-        val sealed = LocalSecrets.encrypt(value)
-        context.settingsDataStore.edit { prefs ->
-            prefs[encrypted] = sealed
-            prefs.remove(legacy)
-        }
-    }
-
     suspend fun setCustomUserAgent(value: String) {
         val trimmed = value.trim()
         SettingsCache.customUserAgent = trimmed
-        putSecret(SettingsKeys.CUSTOM_USER_AGENT_ENC, SettingsKeys.LEGACY_CUSTOM_USER_AGENT, trimmed)
+        context.settingsDataStore.edit { it[SettingsKeys.CUSTOM_USER_AGENT] = trimmed }
     }
 
     val globalTextSelectionEnabled: Flow<Boolean> = context.settingsDataStore.data.map {
-        secret(it, SettingsKeys.GLOBAL_TEXT_SELECTION_ENABLED_ENC, SettingsKeys.LEGACY_GLOBAL_TEXT_SELECTION_ENABLED, "false").toBooleanStrictOrNull() ?: false
+        setting(it, SettingsKeys.GLOBAL_TEXT_SELECTION_ENABLED, "false").toBooleanStrictOrNull() ?: false
     }
 
     suspend fun setGlobalTextSelectionEnabled(value: Boolean) {
         SettingsCache.globalTextSelectionEnabled = value
-        putSecret(SettingsKeys.GLOBAL_TEXT_SELECTION_ENABLED_ENC, SettingsKeys.LEGACY_GLOBAL_TEXT_SELECTION_ENABLED, value.toString())
+        context.settingsDataStore.edit { it[SettingsKeys.GLOBAL_TEXT_SELECTION_ENABLED] = value.toString() }
     }
 
     suspend fun setThemeMode(value: String) {
@@ -322,10 +300,10 @@ class SettingsRepository(context: Context) {
 
     suspend fun notebookOpensOnce(): String {
         val prefs = context.settingsDataStore.data.first()
-        return prefs[SettingsKeys.NOTEBOOK_OPENS_ENC]?.let { LocalSecrets.decrypt(it) } ?: "{}"
+        return prefs[SettingsKeys.NOTEBOOK_OPENS] ?: "{}"
     }
     suspend fun setNotebookOpens(value: String) {
-        putSecret(SettingsKeys.NOTEBOOK_OPENS_ENC, SettingsKeys.NOTEBOOK_OPENS_LEGACY, value)
+        context.settingsDataStore.edit { it[SettingsKeys.NOTEBOOK_OPENS] = value }
     }
     suspend fun setLinksEnabled(value: Boolean) {
         context.settingsDataStore.edit { it[SettingsKeys.LINKS_ENABLED] = value }
@@ -337,41 +315,26 @@ class SettingsRepository(context: Context) {
         val idx = if (safe.isEmpty()) 0 else selected.coerceIn(0, safe.size - 1)
         val active = safe.getOrNull(idx)
         val profilesJson = ApiProfiles.serialize(safe)
-        val profilesEnc = LocalSecrets.encrypt(profilesJson)
         SettingsCache.apiProfilesJson = profilesJson
         SettingsCache.apiProfileSelected = idx
         SettingsCache.baseUrl = active?.baseUrl ?: ""
         SettingsCache.apiSpec = active?.spec ?: "openai"
         SettingsCache.model = active?.model ?: ""
         active?.apiKey?.let { SettingsCache.apiKey = it }
-        val activeKeyEnc = active?.let { LocalSecrets.encrypt(it.apiKey) }
-        val activeBaseUrlEnc = LocalSecrets.encrypt(active?.baseUrl ?: "")
-        val activeSpecEnc = LocalSecrets.encrypt(active?.spec ?: "openai")
-        val activeModelEnc = LocalSecrets.encrypt(active?.model ?: "")
 
         context.settingsDataStore.edit { prefs ->
-            prefs[SettingsKeys.API_PROFILES_ENC] = profilesEnc
+            prefs[SettingsKeys.API_PROFILES] = profilesJson
             prefs[SettingsKeys.API_PROFILE_SELECTED] = idx
-            prefs.remove(SettingsKeys.LEGACY_API_PROFILES)
             if (active != null) {
-                prefs[SettingsKeys.BASE_URL_ENC] = activeBaseUrlEnc
-                prefs[SettingsKeys.API_SPEC_ENC] = activeSpecEnc
-                prefs[SettingsKeys.MODEL_ENC] = activeModelEnc
-                if (activeKeyEnc != null) prefs[SettingsKeys.API_KEY_ENC] = activeKeyEnc
-                prefs.remove(SettingsKeys.LEGACY_API_KEY)
-                prefs.remove(SettingsKeys.LEGACY_BASE_URL)
-                prefs.remove(SettingsKeys.LEGACY_API_SPEC)
-                prefs.remove(SettingsKeys.LEGACY_MODEL)
-                prefs.remove(SettingsKeys.LEGACY_CUSTOM_USER_AGENT)
+                prefs[SettingsKeys.BASE_URL] = active.baseUrl
+                prefs[SettingsKeys.API_SPEC] = active.spec
+                prefs[SettingsKeys.MODEL] = active.model
+                prefs[SettingsKeys.API_KEY] = active.apiKey
             } else {
-                prefs.remove(SettingsKeys.BASE_URL_ENC)
-                prefs.remove(SettingsKeys.MODEL_ENC)
-                prefs.remove(SettingsKeys.API_KEY_ENC)
-                prefs.remove(SettingsKeys.CUSTOM_USER_AGENT_ENC)
-                prefs.remove(SettingsKeys.LEGACY_API_KEY)
-                prefs.remove(SettingsKeys.LEGACY_BASE_URL)
-                prefs.remove(SettingsKeys.LEGACY_MODEL)
-                prefs.remove(SettingsKeys.LEGACY_CUSTOM_USER_AGENT)
+                prefs.remove(SettingsKeys.BASE_URL)
+                prefs.remove(SettingsKeys.MODEL)
+                prefs.remove(SettingsKeys.API_KEY)
+                prefs.remove(SettingsKeys.CUSTOM_USER_AGENT)
             }
         }
     }

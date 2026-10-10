@@ -11,7 +11,6 @@ import com.lucent.app.ui.BackHeader
 import com.lucent.app.ui.DynamicColorRow
 import com.lucent.app.ui.NavCard
 import com.lucent.app.ui.SettingsRoute
-import com.lucent.app.ui.rememberDynamicColorActive
 
 @Composable
 internal fun AppearanceSettingsPage(repo: SettingsRepository, onRoute: (SettingsRoute) -> Unit) {

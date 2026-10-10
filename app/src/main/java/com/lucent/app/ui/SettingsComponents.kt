@@ -150,14 +150,18 @@ internal fun NavCard(
 }
 
 @Composable
-internal fun BackHeader(onBack: () -> Unit) {
+internal fun BackHeader(onBack: () -> Unit, note: String = "") {
     val onGradient = LocalOnGradient.current
+    val onGradientMuted = LocalOnGradientMuted.current
     Row(
         modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         IconButton(onClick = onBack) {
             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = S.actionBack, tint = onGradient)
+        }
+        if (note.isNotBlank()) {
+            Text(note, color = onGradientMuted, fontSize = 13.sp)
         }
     }
     Spacer(modifier = Modifier.height(8.dp))

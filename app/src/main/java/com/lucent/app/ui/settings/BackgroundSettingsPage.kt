@@ -51,9 +51,25 @@ internal fun BackgroundSettingsPage(repo: SettingsRepository, onRoute: (Settings
         initial = SettingsCache.backgroundAnimationEnabled
     )
     val savedPalette by repo.palette.collectAsState(initial = SettingsCache.palette)
-    val dynamicColorActive = rememberDynamicColorActive(repo)
+    val locked = rememberDynamicColorActive(repo)
+    val lockAlpha = if (locked) 0.5f else 1f
+    val motionAlpha = lockAlpha * if (backgroundAnimationEnabled) 1f else 0.38f
 
-    BackHeader(onBack = { onRoute(SettingsRoute.Appearance) })
+    fun pickPalette(name: String) {
+        if (locked) return
+        val motionGated = !backgroundAnimationEnabled && (name == PALETTE_CYCLE || name == PALETTE_RANDOM)
+        if (motionGated) {
+            LucentToast.show(context, S.backgroundPaletteDisabledHint)
+            return
+        }
+        SettingsCache.palette = name
+        AppScope.io.launch { repo.setPalette(name) }
+    }
+
+    BackHeader(
+        onBack = { onRoute(SettingsRoute.Appearance) },
+        note = if (locked) S.dynamicThemeLockedHint else ""
+    )
 
     Column(modifier = Modifier.fillMaxWidth().frostedGlass().padding(16.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
@@ -71,84 +87,79 @@ internal fun BackgroundSettingsPage(repo: SettingsRepository, onRoute: (Settings
         }
     }
     Spacer(modifier = Modifier.height(12.dp))
-    if (!dynamicColorActive) {
-        val paletteEnabled = backgroundAnimationEnabled
-        val paletteAlpha = if (paletteEnabled) 1f else 0.38f
-        fun pickPalette(name: String) {
-            if (paletteEnabled) {
-                SettingsCache.palette = name
-                AppScope.io.launch { repo.setPalette(name) }
-            } else {
-                LucentToast.show(context, S.backgroundPaletteDisabledHint)
+
+    Column(modifier = Modifier.fillMaxWidth().frostedGlass().padding(16.dp)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(enabled = !locked && backgroundAnimationEnabled) { pickPalette(PALETTE_CYCLE) }
+        ) {
+            RadioButton(
+                selected = savedPalette == PALETTE_CYCLE,
+                enabled = !locked && backgroundAnimationEnabled,
+                onClick = { pickPalette(PALETTE_CYCLE) }
+            )
+            Box(modifier = Modifier.alpha(motionAlpha)) {
+                PaletteSwatch(LucentPalette.pickerEntries.map { it.colors.first() })
             }
+            Text(
+                S.paletteCycleAuto,
+                color = onGradient.copy(alpha = onGradient.alpha * motionAlpha),
+                modifier = Modifier.padding(start = 10.dp)
+            )
         }
-        Column(modifier = Modifier.fillMaxWidth().frostedGlass().padding(16.dp)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth().clickable { pickPalette(PALETTE_CYCLE) }
-            ) {
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(enabled = !locked && backgroundAnimationEnabled) { pickPalette(PALETTE_RANDOM) }
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                 RadioButton(
-                    selected = savedPalette == PALETTE_CYCLE,
-                    enabled = paletteEnabled,
-                    onClick = { pickPalette(PALETTE_CYCLE) }
+                    selected = savedPalette == PALETTE_RANDOM,
+                    enabled = !locked && backgroundAnimationEnabled,
+                    onClick = { pickPalette(PALETTE_RANDOM) }
                 )
-                Box(modifier = Modifier.alpha(paletteAlpha)) {
-                    PaletteSwatch(LucentPalette.pickerEntries.map { it.colors.first() })
+                Box(modifier = Modifier.alpha(motionAlpha)) {
+                    PaletteSwatch(LucentPalette.pickerEntries.shuffled().take(4).flatMap { it.colors })
                 }
                 Text(
-                    S.paletteCycleAuto,
-                    color = onGradient.copy(alpha = onGradient.alpha * paletteAlpha),
+                    S.paletteRandomAuto,
+                    color = onGradient.copy(alpha = onGradient.alpha * motionAlpha),
                     modifier = Modifier.padding(start = 10.dp)
                 )
             }
+        }
 
-            Column(
-                modifier = Modifier.fillMaxWidth().clickable { pickPalette(PALETTE_RANDOM) }
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+        PaletteGroup.entries.forEach { group ->
+            val heading = group.title()
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                heading,
+                color = onGradientMuted.copy(alpha = onGradientMuted.alpha * lockAlpha),
+                fontSize = 13.sp
+            )
+            LucentPalette.pickerEntries.filter { it.group == group }.forEach { p ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(enabled = !locked) { pickPalette(p.name) }
+                ) {
                     RadioButton(
-                        selected = savedPalette == PALETTE_RANDOM,
-                        enabled = paletteEnabled,
-                        onClick = { pickPalette(PALETTE_RANDOM) }
+                        selected = savedPalette == p.name,
+                        enabled = !locked,
+                        onClick = { pickPalette(p.name) }
                     )
-                    Box(modifier = Modifier.alpha(paletteAlpha)) {
-                        PaletteSwatch(LucentPalette.pickerEntries.shuffled().take(4).flatMap { it.colors })
+                    Box(modifier = Modifier.alpha(lockAlpha)) {
+                        PaletteSwatch(p.colors)
                     }
                     Text(
-                        S.paletteRandomAuto,
-                        color = onGradient.copy(alpha = onGradient.alpha * paletteAlpha),
+                        p.label,
+                        color = onGradient.copy(alpha = onGradient.alpha * lockAlpha),
                         modifier = Modifier.padding(start = 10.dp)
                     )
-                }
-            }
-
-            PaletteGroup.entries.forEach { group ->
-                val heading = group.title()
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    heading,
-                    color = onGradientMuted.copy(alpha = onGradientMuted.alpha * paletteAlpha),
-                    fontSize = 13.sp
-                )
-                LucentPalette.pickerEntries.filter { it.group == group }.forEach { p ->
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth().clickable { pickPalette(p.name) }
-                    ) {
-                        RadioButton(
-                            selected = savedPalette == p.name,
-                            enabled = paletteEnabled,
-                            onClick = { pickPalette(p.name) }
-                        )
-                        Box(modifier = Modifier.alpha(paletteAlpha)) {
-                            PaletteSwatch(p.colors)
-                        }
-                        Text(
-                            p.label,
-                            color = onGradient.copy(alpha = onGradient.alpha * paletteAlpha),
-                            modifier = Modifier.padding(start = 10.dp)
-                        )
-                    }
                 }
             }
         }

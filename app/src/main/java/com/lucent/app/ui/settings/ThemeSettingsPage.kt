@@ -2,6 +2,7 @@ package com.lucent.app.ui.settings
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -15,6 +16,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.lucent.app.AppScope
@@ -37,41 +39,48 @@ internal fun ThemeSettingsPage(repo: SettingsRepository, onRoute: (SettingsRoute
     val onGradient = LocalOnGradient.current
     val onGradientMuted = LocalOnGradientMuted.current
     val savedTheme by repo.themeMode.collectAsState(initial = SettingsCache.themeMode)
-    val dynamicColorActive = rememberDynamicColorActive(repo)
+    val locked = rememberDynamicColorActive(repo)
+    val lockAlpha = if (locked) 0.5f else 1f
 
-    BackHeader(onBack = { onRoute(SettingsRoute.Appearance) })
+    BackHeader(
+        onBack = { onRoute(SettingsRoute.Appearance) },
+        note = if (locked) S.dynamicThemeLockedHint else ""
+    )
 
-    if (!dynamicColorActive) {
-        val systemDark = isSystemInDarkTheme()
-        val offered = LucentThemeMode.pickerEntries
-        LucentThemeSection.entries.forEachIndexed { index, section ->
-            if (index > 0) Spacer(modifier = Modifier.height(12.dp))
-            Column(modifier = Modifier.fillMaxWidth().frostedGlass().padding(16.dp)) {
-                Text(section.label, color = onGradient, fontSize = 16.sp)
-                Spacer(modifier = Modifier.height(8.dp))
-                offered.filter { it.section == section }.forEach { mode ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                SettingsCache.themeMode = mode.key
-                                AppScope.io.launch { repo.setThemeMode(mode.key) }
-                            }
-                            .padding(vertical = 2.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        RadioButton(
-                            selected = savedTheme == mode.key,
-                            onClick = {
-                                SettingsCache.themeMode = mode.key
-                                AppScope.io.launch { repo.setThemeMode(mode.key) }
-                            }
-                        )
-                        PaletteSwatch(mode.swatch(systemDark))
-                        Column(modifier = Modifier.padding(start = 10.dp)) {
-                            Text(mode.label, color = onGradient)
-                            Text(mode.detail, color = onGradientMuted, fontSize = 12.sp)
+    val systemDark = isSystemInDarkTheme()
+    val offered = LucentThemeMode.pickerEntries
+    LucentThemeSection.entries.forEachIndexed { index, section ->
+        if (index > 0) Spacer(modifier = Modifier.height(12.dp))
+        Column(modifier = Modifier.fillMaxWidth().frostedGlass().padding(16.dp)) {
+            Text(section.label, color = onGradient, fontSize = 16.sp)
+            Spacer(modifier = Modifier.height(8.dp))
+            offered.filter { it.section == section }.forEach { mode ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(enabled = !locked) {
+                            SettingsCache.themeMode = mode.key
+                            AppScope.io.launch { repo.setThemeMode(mode.key) }
                         }
+                        .padding(vertical = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    RadioButton(
+                        selected = savedTheme == mode.key,
+                        enabled = !locked,
+                        onClick = {
+                            if (!locked) {
+                                SettingsCache.themeMode = mode.key
+                                AppScope.io.launch { repo.setThemeMode(mode.key) }
+                            }
+                        }
+                    )
+                    Box(modifier = Modifier.alpha(lockAlpha)) {
+                        PaletteSwatch(mode.swatch(systemDark))
+                    }
+                    Column(modifier = Modifier.padding(start = 10.dp).alpha(lockAlpha)) {
+                        Text(mode.label, color = onGradient)
+                        Text(mode.detail, color = onGradientMuted, fontSize = 12.sp)
                     }
                 }
             }

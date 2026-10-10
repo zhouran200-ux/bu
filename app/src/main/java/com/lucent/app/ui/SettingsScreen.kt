@@ -13,10 +13,8 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.ScrollState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -44,7 +42,6 @@ import com.lucent.app.data.AppDatabase
 import com.lucent.app.data.FontStore
 import com.lucent.app.data.SettingsCache
 import com.lucent.app.data.SettingsRepository
-import com.lucent.app.data.StartupLog
 import com.lucent.app.i18n.S
 import com.lucent.app.ui.settings.ApiConfigSettingsPage
 import com.lucent.app.ui.settings.AppearanceSettingsPage
@@ -174,35 +171,6 @@ fun SettingsScreen(active: Boolean = true) {
         }
     }
 
-    var backupStatus by remember { mutableStateOf("") }
-
-    var showOpenLinksWarning by remember { mutableStateOf(false) }
-    LaunchedEffect(backupStatus) {
-        if (backupStatus.isNotBlank()) {
-            kotlinx.coroutines.delay(8000)
-            backupStatus = ""
-        }
-    }
-
-    val logsExportLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.CreateDocument("text/plain")
-    ) { uri: Uri? ->
-        if (uri != null) {
-            scope.launch {
-                val ok = withContext(Dispatchers.IO) {
-                    try {
-                        context.contentResolver.openOutputStream(uri)?.use { out ->
-                            out.write(StartupLog.buildExport(context).toByteArray())
-                        } != null
-                    } catch (e: Exception) {
-                        false
-                    }
-                }
-                backupStatus = if (ok) S.logsExported else S.logsExportFailed
-            }
-        }
-    }
-
     var fontRefresh by remember { mutableStateOf(0) }
     val importedFonts = remember(fontRefresh) { FontStore.index(context) }.slots
     val fontCanImportMore = importedFonts.size < FontStore.MAX_FONTS
@@ -304,35 +272,6 @@ fun SettingsScreen(active: Boolean = true) {
     }
     val keyVisible = manualReveal || typingReveal
 
-
-
-    @Composable
-    @NonRestartableComposable
-    fun OpenLinksWarningDialog() {
-        AlertDialog(
-            onDismissRequest = { showOpenLinksWarning = false },
-            title = { Text(S.openLinksWarnTitle, fontSize = LucentTitles.SectionSize, fontWeight = LucentTitles.SectionWeight) },
-            text = {
-                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                    Text(S.openLinksWarnBody)
-                }
-            },
-            confirmButton = {
-                Button(onClick = {
-                    showOpenLinksWarning = false
-                    scope.launch {
-                        repo.setOpenLinksExternally(true)
-                        SettingsCache.openLinksExternally = true
-                    }
-                }) { Text(S.turnOn) }
-            },
-            dismissButton = {
-                TextButton(onClick = { showOpenLinksWarning = false }) { Text(S.actionCancel) }
-            }
-        )
-    }
-    if (showOpenLinksWarning) { OpenLinksWarningDialog() }
-
     @Composable
     @NonRestartableComposable
     fun DeleteImportedFontDialog(slot: FontStore.FontSlot) {
@@ -407,7 +346,6 @@ fun SettingsScreen(active: Boolean = true) {
 
             SettingsRoute.Editor -> EditorSettingsPage(
                 repo = repo,
-                onRequestOpenLinksWarning = { showOpenLinksWarning = true },
                 onRoute = { navigate(it) }
             )
 

@@ -1,9 +1,6 @@
 package com.lucent.app.ui
 
-import android.net.Uri
 import android.os.Build
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -18,7 +15,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.lucent.app.AppScope
@@ -26,9 +22,6 @@ import com.lucent.app.data.SettingsCache
 import com.lucent.app.data.SettingsRepository
 import com.lucent.app.i18n.S
 import kotlinx.coroutines.launch
-
-const val crashShieldLocksStartupLogging: Boolean = true
-
 
 private val dynamicColorSupported: Boolean = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
 
@@ -75,28 +68,4 @@ fun rememberDynamicColorActive(repo: SettingsRepository): Boolean {
         initial = SettingsCache.dynamicColor && dynamicColorSupported
     )
     return dynamicColorOn && dynamicColorSupported
-}
-
-@Composable
-fun DesktopIntegrationRows(repo: SettingsRepository) {
-}
-
-@Composable
-fun rememberBackupFolderPicker(onFolderPicked: (String) -> Unit): () -> Unit {
-    val context = LocalContext.current
-    val launcher = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenDocumentTree()
-    ) { uri: Uri? ->
-        if (uri != null) {
-            runCatching {
-                context.contentResolver.takePersistableUriPermission(
-                    uri,
-                    android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or
-                        android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-                )
-            }
-            onFolderPicked(uri.toString())
-        }
-    }
-    return { launcher.launch(null) }
 }

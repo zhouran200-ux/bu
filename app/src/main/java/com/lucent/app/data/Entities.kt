@@ -32,44 +32,6 @@ data class Note(
     val formatOverride: String? = null
 )
 
-@Entity(tableName = "note_embeddings", primaryKeys = ["noteId", "model"])
-data class NoteEmbedding(
-    val noteId: Long,
-    val model: String,
-    val dim: Int,
-    val vec: ByteArray,
-    val updatedAt: Long
-) {
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (other !is NoteEmbedding) return false
-        return noteId == other.noteId && model == other.model && dim == other.dim &&
-            vec.contentEquals(other.vec) && updatedAt == other.updatedAt
-    }
-
-    override fun hashCode(): Int {
-        var result = noteId.hashCode()
-        result = 31 * result + model.hashCode()
-        result = 31 * result + dim
-        result = 31 * result + vec.contentHashCode()
-        result = 31 * result + updatedAt.hashCode()
-        return result
-    }
-}
-
-@Entity(
-    tableName = "note_versions",
-    indices = [Index(value = ["noteId"])]
-)
-data class NoteVersion(
-    @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val noteId: Long,
-    val title: String,
-    val body: String,
-    val tags: String = "",
-    val savedAt: Long = System.currentTimeMillis()
-)
-
 @Entity(
     tableName = "notebooks",
     indices = [Index(value = ["updatedAt"])]

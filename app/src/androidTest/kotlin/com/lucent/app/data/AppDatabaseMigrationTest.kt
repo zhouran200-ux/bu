@@ -4,6 +4,7 @@ import androidx.room.testing.MigrationTestHelper
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -574,6 +575,25 @@ class AppDatabaseMigrationTest {
         db.query("SELECT * FROM chat_messages WHERE id = 1").use { c ->
             assertTrue(c.moveToFirst())
             assertTrue(c.getColumnIndex("agentTrace") == -1)
+        }
+    }
+
+    @Test
+    fun migrate27To28_dropsNoteVersionAndEmbeddingTables() {
+        helper.createDatabase(TEST_DB, 27).apply {
+            execSQL("INSERT INTO notes (id, title, body, updatedAt) VALUES (1, 'Keep me', 'Body', 1000)")
+            execSQL("INSERT INTO note_versions (id, noteId, title, body, savedAt) VALUES (1, 1, 'Old', 'Old body', 900)")
+            close()
+        }
+
+        val db = helper.runMigrationsAndValidate(TEST_DB, 28, true, MIGRATION_27_28)
+
+        db.query("SELECT title FROM notes WHERE id = 1").use { c ->
+            assertTrue(c.moveToFirst())
+            assertEquals("Keep me", c.getString(0))
+        }
+        db.query("SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('note_versions', 'note_embeddings')").use { c ->
+            assertFalse("the two retired tables must be gone", c.moveToFirst())
         }
     }
 }

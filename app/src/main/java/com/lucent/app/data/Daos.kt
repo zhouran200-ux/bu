@@ -35,15 +35,6 @@ interface NoteDao {
 }
 
 @Dao
-interface NoteVersionDao {
-    @Query("DELETE FROM note_versions WHERE noteId = :noteId")
-    suspend fun deleteForNote(noteId: Long)
-
-    @Query("DELETE FROM note_versions WHERE noteId NOT IN (SELECT id FROM notes)")
-    suspend fun pruneOrphaned()
-}
-
-@Dao
 interface ChatDao {
     @Query("SELECT * FROM chat_messages ORDER BY timestamp ASC")
     fun getAll(): Flow<List<ChatMessage>>

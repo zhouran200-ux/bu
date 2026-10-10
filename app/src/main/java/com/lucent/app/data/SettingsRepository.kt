@@ -45,31 +45,18 @@ private object SettingsKeys {
     val NOTEBOOK_OPENS_ENC = stringPreferencesKey("notebook_opens_enc")
     val NOTEBOOK_OPENS_LEGACY = stringPreferencesKey("notebook_opens")
 
-    val MARKDOWN_ENABLED = booleanPreferencesKey("markdown_enabled")
 
-    val RICH_TEXT_ENABLED = booleanPreferencesKey("rich_text_enabled")
 
     val LINKS_ENABLED = booleanPreferencesKey("links_enabled")
 
     val BACKGROUND_ANIMATION_ENABLED = booleanPreferencesKey("background_animation_enabled")
 
 
-    val STARTUP_LOGGING_ENABLED = booleanPreferencesKey("startup_logging_enabled")
 
     val REASONING_EFFORT = stringPreferencesKey("reasoning_effort")
 
-    val CRASH_SHIELD_ENABLED = booleanPreferencesKey("crash_shield_enabled")
 
-    val OPEN_LINKS_EXTERNALLY = booleanPreferencesKey("open_links_externally")
 
-    val UPDATE_CHANNEL_ENC = stringPreferencesKey("update_channel_enc")
-    val LEGACY_UPDATE_CHANNEL = stringPreferencesKey("update_channel")
-    val INSTALLED_PREVIEW_IDENTITY = stringPreferencesKey("installed_preview_identity")
-    val STAGED_UPDATE_IDENTITY = stringPreferencesKey("staged_update_identity")
-    val AUTO_UPDATE_ENABLED = booleanPreferencesKey("auto_update_enabled")
-    val PENDING_UPDATE_VERSION = stringPreferencesKey("pending_update_version")
-    val STAGED_UPDATE_TAG = stringPreferencesKey("staged_update_tag")
-    val STAGED_UPDATE_FILES = stringPreferencesKey("staged_update_files")
 
     val GLOBAL_TEXT_SELECTION_ENABLED_ENC = stringPreferencesKey("global_text_selection_enabled_enc")
     val LEGACY_GLOBAL_TEXT_SELECTION_ENABLED = stringPreferencesKey("global_text_selection_enabled")
@@ -125,7 +112,6 @@ class SettingsRepository(context: Context) {
 
     data class StartupPrefs(
         val display: DisplayPrefs,
-        val startupLoggingEnabled: Boolean,
         val backgroundAnimationEnabled: Boolean = true,
         val dynamicColor: Boolean = false,
         val baseUrl: String = "",
@@ -135,20 +121,10 @@ class SettingsRepository(context: Context) {
         val customUserAgent: String = "",
         val apiProfilesJson: String = "",
         val apiProfileSelected: Int = 0,
-        val openLinksExternally: Boolean = false,
-        val markdownEnabled: Boolean = false,
-        val richTextEnabled: Boolean = false,
         val linksEnabled: Boolean = false,
         val reasoning: String = com.lucent.app.data.ReasoningEffort.DEFAULT.key,
 
         val globalTextSelectionEnabled: Boolean = false,
-        val updateChannel: String = "stable",
-        val installedPreviewIdentity: String = "",
-        val stagedUpdateIdentity: String = "",
-        val autoUpdateEnabled: Boolean = false,
-        val pendingUpdateVersion: String = "",
-        val stagedUpdateTag: String = "",
-        val stagedUpdateFiles: String = ""
     )
 
     suspend fun startupPrefsOnce(): StartupPrefs {
@@ -162,7 +138,6 @@ class SettingsRepository(context: Context) {
                 lineSpacing = prefs[SettingsKeys.LINE_SPACING] ?: 1.2f,
                 letterSpacing = prefs[SettingsKeys.LETTER_SPACING] ?: 0.0f
             ),
-            startupLoggingEnabled = prefs[SettingsKeys.STARTUP_LOGGING_ENABLED] ?: false,
             backgroundAnimationEnabled = prefs[SettingsKeys.BACKGROUND_ANIMATION_ENABLED] ?: true,
             dynamicColor = prefs[SettingsKeys.DYNAMIC_COLOR_ENABLED] ?: false,
             baseUrl = secret(prefs, SettingsKeys.BASE_URL_ENC, SettingsKeys.LEGACY_BASE_URL, ""),
@@ -174,31 +149,11 @@ class SettingsRepository(context: Context) {
                 prefs[SettingsKeys.API_PROFILES_ENC] ?: prefs[SettingsKeys.LEGACY_API_PROFILES] ?: ""
             ),
             apiProfileSelected = prefs[SettingsKeys.API_PROFILE_SELECTED] ?: 0,
-            openLinksExternally = prefs[SettingsKeys.OPEN_LINKS_EXTERNALLY] ?: false,
-            markdownEnabled = prefs[SettingsKeys.MARKDOWN_ENABLED] ?: false,
-            richTextEnabled = prefs[SettingsKeys.RICH_TEXT_ENABLED] ?: false,
             linksEnabled = prefs[SettingsKeys.LINKS_ENABLED] ?: false,
             reasoning = prefs[SettingsKeys.REASONING_EFFORT] ?: com.lucent.app.data.ReasoningEffort.DEFAULT.key,
 
             globalTextSelectionEnabled = secret(prefs, SettingsKeys.GLOBAL_TEXT_SELECTION_ENABLED_ENC, SettingsKeys.LEGACY_GLOBAL_TEXT_SELECTION_ENABLED, "false").toBooleanStrictOrNull() ?: false,
-            updateChannel = secret(prefs, SettingsKeys.UPDATE_CHANNEL_ENC, SettingsKeys.LEGACY_UPDATE_CHANNEL, "stable"),
-            installedPreviewIdentity = prefs[SettingsKeys.INSTALLED_PREVIEW_IDENTITY] ?: "",
-            stagedUpdateIdentity = prefs[SettingsKeys.STAGED_UPDATE_IDENTITY] ?: "",
-            autoUpdateEnabled = prefs[SettingsKeys.AUTO_UPDATE_ENABLED] ?: false,
-            pendingUpdateVersion = prefs[SettingsKeys.PENDING_UPDATE_VERSION] ?: "",
-            stagedUpdateTag = prefs[SettingsKeys.STAGED_UPDATE_TAG] ?: "",
-            stagedUpdateFiles = prefs[SettingsKeys.STAGED_UPDATE_FILES] ?: ""
         )
-    }
-
-    suspend fun crashShieldEnabledOnce(): Boolean =
-        context.settingsDataStore.data.first()[SettingsKeys.CRASH_SHIELD_ENABLED] ?: false
-
-    val openLinksExternally: Flow<Boolean> =
-        context.settingsDataStore.data.map { it[SettingsKeys.OPEN_LINKS_EXTERNALLY] ?: false }
-    suspend fun setOpenLinksExternally(value: Boolean) {
-        context.settingsDataStore.edit { it[SettingsKeys.OPEN_LINKS_EXTERNALLY] = value }
-        SettingsCache.openLinksExternally = value
     }
 
     val reasoning: Flow<String> = context.settingsDataStore.data.map {
@@ -219,46 +174,6 @@ class SettingsRepository(context: Context) {
 
     val attachmentsMigrated: Flow<Boolean> = context.settingsDataStore.data.map { it[SettingsKeys.ATTACHMENTS_MIGRATED] ?: false }
 
-    val updateChannel: Flow<String> = context.settingsDataStore.data.map {
-        secret(it, SettingsKeys.UPDATE_CHANNEL_ENC, SettingsKeys.LEGACY_UPDATE_CHANNEL, "stable")
-    }
-    val installedPreviewIdentity: Flow<String> = context.settingsDataStore.data.map { it[SettingsKeys.INSTALLED_PREVIEW_IDENTITY] ?: "" }
-    suspend fun setInstalledPreviewIdentity(value: String) {
-        SettingsCache.installedPreviewIdentity = value
-        context.settingsDataStore.edit { it[SettingsKeys.INSTALLED_PREVIEW_IDENTITY] = value }
-    }
-
-    suspend fun setStagedUpdateIdentity(value: String) {
-        SettingsCache.stagedUpdateIdentity = value
-        context.settingsDataStore.edit { it[SettingsKeys.STAGED_UPDATE_IDENTITY] = value }
-    }
-
-    val autoUpdateEnabled: Flow<Boolean> = context.settingsDataStore.data.map { it[SettingsKeys.AUTO_UPDATE_ENABLED] ?: false }
-    val pendingUpdateVersion: Flow<String> = context.settingsDataStore.data.map {
-        it[SettingsKeys.PENDING_UPDATE_VERSION] ?: ""
-    }
-    suspend fun setPendingUpdateVersion(value: String) {
-        context.settingsDataStore.edit {
-            if (value.isBlank()) it.remove(SettingsKeys.PENDING_UPDATE_VERSION)
-            else it[SettingsKeys.PENDING_UPDATE_VERSION] = value
-        }
-    }
-
-    suspend fun setStagedUpdate(tag: String, files: List<String>) {
-        context.settingsDataStore.edit {
-            if (tag.isBlank()) {
-                it.remove(SettingsKeys.STAGED_UPDATE_TAG)
-                it.remove(SettingsKeys.STAGED_UPDATE_FILES)
-            } else {
-                it[SettingsKeys.STAGED_UPDATE_TAG] = tag
-                it[SettingsKeys.STAGED_UPDATE_FILES] = files.joinToString(",")
-            }
-        }
-    }
-
-    val markdownEnabled: Flow<Boolean> = context.settingsDataStore.data.map { it[SettingsKeys.MARKDOWN_ENABLED] ?: false }
-    val richTextEnabled: Flow<Boolean> = context.settingsDataStore.data.map { it[SettingsKeys.RICH_TEXT_ENABLED] ?: false }
-
     val linksEnabled: Flow<Boolean> = context.settingsDataStore.data.map { it[SettingsKeys.LINKS_ENABLED] ?: false }
 
     val backgroundAnimationEnabled: Flow<Boolean> = context.settingsDataStore.data.map { it[SettingsKeys.BACKGROUND_ANIMATION_ENABLED] ?: true }
@@ -267,7 +182,6 @@ class SettingsRepository(context: Context) {
         SettingsCache.backgroundAnimationEnabled = value
     }
 
-    val startupLoggingEnabled: Flow<Boolean> = context.settingsDataStore.data.map { it[SettingsKeys.STARTUP_LOGGING_ENABLED] ?: false }
     private val removedPreferenceNames: Set<String> = setOf(
         "app_language",
         "app_lock_credentials_enc",
@@ -279,6 +193,7 @@ class SettingsRepository(context: Context) {
         "assistant_style",
         "assistant_style_enc",
         "auto_backup_state",
+        "auto_update_enabled",
         "backup_password_enc",
         "blackout_enabled",
         "cloud_agent_mode",
@@ -289,28 +204,40 @@ class SettingsRepository(context: Context) {
         "cloud_provider",
         "cloud_url",
         "cloud_user",
+        "crash_shield_enabled",
         "custom_templates",
         "embedding_provider",
         "harness_config_enc",
         "hidden_templates",
+        "installed_preview_identity",
         "last_screen",
+        "markdown_enabled",
         "memory_tier",
         "model_recents",
         "note_history_enabled",
+        "open_links_externally",
+        "pending_update_version",
         "privileged_enabled",
         "pw_attempt_state",
         "pw_first_round_limit",
         "pw_later_round_limit",
         "pw_self_destruct_enabled",
         "pw_self_destruct_threshold",
+        "rich_text_enabled",
         "session_snapshot",
         "small_model_mode",
+        "staged_update_files",
+        "staged_update_identity",
+        "staged_update_tag",
+        "startup_logging_enabled",
         "template_draft",
         "terminal_font_size",
         "terminal_font_size_enc",
         "terminal_key_bar_visible",
         "terminal_key_bar_visible_enc",
         "typing_haptics",
+        "update_channel",
+        "update_channel_enc",
     )
 
     suspend fun dropRemovedFeatureKeys() {
@@ -399,15 +326,6 @@ class SettingsRepository(context: Context) {
     }
     suspend fun setNotebookOpens(value: String) {
         putSecret(SettingsKeys.NOTEBOOK_OPENS_ENC, SettingsKeys.NOTEBOOK_OPENS_LEGACY, value)
-    }
-    suspend fun setMarkdownEnabled(value: Boolean) {
-        context.settingsDataStore.edit { it[SettingsKeys.MARKDOWN_ENABLED] = value }
-        SettingsCache.markdownEnabled = value
-    }
-
-    suspend fun setRichTextEnabled(value: Boolean) {
-        context.settingsDataStore.edit { it[SettingsKeys.RICH_TEXT_ENABLED] = value }
-        SettingsCache.richTextEnabled = value
     }
     suspend fun setLinksEnabled(value: Boolean) {
         context.settingsDataStore.edit { it[SettingsKeys.LINKS_ENABLED] = value }

@@ -52,7 +52,6 @@ object DatabaseEncryption {
             EncryptionStatus.reportDatabase(
                 EncryptionStatus.State.PLAINTEXT, "SQLCipher unavailable: ${t.message}"
             )
-            StartupLog.event(appContext, "db: SQLCipher unavailable; opening unencrypted")
             Log.e(TAG, "SQLCipher unavailable; the database will stay unencrypted", t)
             return null
         }
@@ -68,7 +67,6 @@ object DatabaseEncryption {
                 EncryptionStatus.reportDatabase(
                     EncryptionStatus.State.PLAINTEXT, "plaintext -> encrypted migration failed"
                 )
-                StartupLog.event(appContext, "db: encryption migration failed; opening unencrypted")
                 Log.e(TAG, "Could not encrypt the database; continuing unencrypted")
                 return null
             }

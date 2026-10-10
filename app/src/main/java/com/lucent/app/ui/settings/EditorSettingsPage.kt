@@ -20,9 +20,7 @@ import com.lucent.app.data.SettingsCache
 import com.lucent.app.data.SettingsRepository
 import com.lucent.app.i18n.S
 import com.lucent.app.ui.BackHeader
-import com.lucent.app.ui.DesktopIntegrationRows
 import com.lucent.app.ui.LocalOnGradient
-import com.lucent.app.ui.LocalOnGradientMuted
 import com.lucent.app.ui.LucentTitles
 import com.lucent.app.ui.SettingsRoute
 import com.lucent.app.ui.frostedGlass
@@ -31,49 +29,15 @@ import kotlinx.coroutines.launch
 @Composable
 internal fun EditorSettingsPage(
     repo: SettingsRepository,
-    onRequestOpenLinksWarning: () -> Unit,
     onRoute: (SettingsRoute) -> Unit
 ) {
     val onGradient = LocalOnGradient.current
-    val onGradientMuted = LocalOnGradientMuted.current
     val scope = rememberCoroutineScope()
-    val markdownEnabled by repo.markdownEnabled.collectAsState(initial = SettingsCache.markdownEnabled)
-    val richTextEnabled by repo.richTextEnabled.collectAsState(initial = SettingsCache.richTextEnabled)
     val linksEnabled by repo.linksEnabled.collectAsState(initial = SettingsCache.linksEnabled)
-    val openLinksExternallyOn by repo.openLinksExternally.collectAsState(initial = SettingsCache.openLinksExternally)
     val globalTextSelectionEnabled by repo.globalTextSelectionEnabled.collectAsState(initial = SettingsCache.globalTextSelectionEnabled)
 
     BackHeader(onBack = { onRoute(SettingsRoute.Root) })
     Column(modifier = Modifier.fillMaxWidth().frostedGlass().padding(16.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(S.markdownFormattingTitle, color = onGradient, fontSize = LucentTitles.ItemSize, fontWeight = LucentTitles.ItemWeight)
-            }
-            Spacer(modifier = Modifier.width(12.dp))
-            Switch(
-                checked = markdownEnabled,
-                onCheckedChange = { checked ->
-                    scope.launch { repo.setMarkdownEnabled(checked) }
-                    SettingsCache.markdownEnabled = checked
-                }
-            )
-        }
-        Spacer(modifier = Modifier.height(12.dp))
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(S.richTextTitle, color = onGradient, fontSize = LucentTitles.ItemSize, fontWeight = LucentTitles.ItemWeight)
-            }
-            Spacer(modifier = Modifier.width(12.dp))
-            Switch(
-                checked = richTextEnabled,
-                onCheckedChange = { checked ->
-                    scope.launch { repo.setRichTextEnabled(checked) }
-                    SettingsCache.richTextEnabled = checked
-                }
-            )
-        }
-        Spacer(modifier = Modifier.height(12.dp))
-        DesktopIntegrationRows(repo)
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(S.linksTitle, color = onGradient, fontSize = LucentTitles.ItemSize, fontWeight = LucentTitles.ItemWeight)
@@ -98,23 +62,6 @@ internal fun EditorSettingsPage(
                 onCheckedChange = { checked ->
                     scope.launch { repo.setGlobalTextSelectionEnabled(checked) }
                     SettingsCache.globalTextSelectionEnabled = checked
-                }
-            )
-        }
-        Spacer(modifier = Modifier.height(12.dp))
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(S.openLinksTitle, color = onGradient, fontSize = LucentTitles.ItemSize, fontWeight = LucentTitles.ItemWeight)
-            }
-            Spacer(modifier = Modifier.width(12.dp))
-            Switch(
-                checked = openLinksExternallyOn,
-                onCheckedChange = { turnOn ->
-                    if (turnOn) onRequestOpenLinksWarning()
-                    else {
-                        scope.launch { repo.setOpenLinksExternally(false) }
-                        SettingsCache.openLinksExternally = false
-                    }
                 }
             )
         }

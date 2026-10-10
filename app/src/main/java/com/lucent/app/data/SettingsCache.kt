@@ -2,8 +2,6 @@ package com.lucent.app.data
 
 object SettingsCache {
 
-    @Volatile
-    var startupLoggingEnabled: Boolean = false
 
     @Volatile
     var themeMode: String = "system"
@@ -50,14 +48,8 @@ object SettingsCache {
     @Volatile
     var apiProfileSelected: Int = 0
 
-    @Volatile
-    var openLinksExternally: Boolean = false
 
-    @Volatile
-    var markdownEnabled: Boolean = false
 
-    @Volatile
-    var richTextEnabled: Boolean = false
 
     @Volatile
     var linksEnabled: Boolean = false
@@ -65,21 +57,14 @@ object SettingsCache {
     @Volatile
     var reasoning: String = com.lucent.app.data.ReasoningEffort.DEFAULT.key
 
-    @Volatile
-    var updateChannel: String = "stable"
 
-    @Volatile
-    var installedPreviewIdentity: String = ""
 
-    @Volatile
-    var stagedUpdateIdentity: String = ""
 
 
     @Volatile
     var globalTextSelectionEnabled: Boolean = false
 
     fun seed(prefs: SettingsRepository.StartupPrefs) {
-        startupLoggingEnabled = prefs.startupLoggingEnabled
         themeMode = prefs.display.themeMode
         palette = prefs.display.palette
         font = prefs.display.font
@@ -95,16 +80,10 @@ object SettingsCache {
         customUserAgent = prefs.customUserAgent
         apiProfilesJson = prefs.apiProfilesJson
         apiProfileSelected = prefs.apiProfileSelected
-        openLinksExternally = prefs.openLinksExternally
-        markdownEnabled = prefs.markdownEnabled
-        richTextEnabled = prefs.richTextEnabled
         linksEnabled = prefs.linksEnabled
         reasoning = prefs.reasoning
 
         globalTextSelectionEnabled = prefs.globalTextSelectionEnabled
 
-        updateChannel = prefs.updateChannel
-        installedPreviewIdentity = prefs.installedPreviewIdentity
-        stagedUpdateIdentity = prefs.stagedUpdateIdentity
     }
 }

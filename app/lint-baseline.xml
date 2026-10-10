@@ -1,27 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <issues format="6" by="lint 9.4.0" type="baseline" client="gradle" dependencies="false" name="AGP (9.4.0)" variant="all" version="9.4.0">
 
-    <issue
-        id="DefaultLocale"
-        message="Implicitly using the default locale is a common source of bugs: Use `String.format(Locale, ...)` instead"
-        errorLine1="        if (mb >= 1024) return String.format(&quot;%.1f GB&quot;, mb / 1024)"
-        errorLine2="                               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="${:app*release*MAIN*sourceProvider*0*javaDir*3}/com/lucent/app/data/AttachmentLimits.kt"
-            line="33"
-            column="32"/>
-    </issue>
 
-    <issue
-        id="DefaultLocale"
-        message="Implicitly using the default locale is a common source of bugs: Use `String.format(Locale, ...)` instead"
-        errorLine1="        else String.format(&quot;%.1f MB&quot;, mb)"
-        errorLine2="             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="${:app*release*MAIN*sourceProvider*0*javaDir*3}/com/lucent/app/data/AttachmentLimits.kt"
-            line="35"
-            column="14"/>
-    </issue>
 
 
     <issue
@@ -421,16 +401,6 @@
             column="5"/>
     </issue>
 
-    <issue
-        id="DefaultUncaughtExceptionDelegation"
-        message="Must call `getDefaultUncaughtExceptionHandler()` to get the existing handler, and call `existingHandler.uncaughtException(thread, throwable)` from your new handler"
-        errorLine1="        Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->"
-        errorLine2="        ^">
-        <location
-            file="src/main/java/com/lucent/app/data/CrashShield.kt"
-            line="92"
-            column="9"/>
-    </issue>
 
     <issue
         id="GradleDependency"
@@ -667,71 +637,11 @@
 
 
 
-    <issue
-        id="AutoboxingStateCreation"
-        message="Prefer `mutableIntStateOf` instead of `mutableStateOf`"
-        errorLine1="                var lastPosition by remember { mutableStateOf(position) }"
-        errorLine2="                                               ~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/com/lucent/app/ui/AttachmentUi.kt"
-            line="357"
-            column="48"/>
-    </issue>
 
-    <issue
-        id="AutoboxingStateCreation"
-        message="Prefer `mutableFloatStateOf` instead of `mutableStateOf`"
-        errorLine1="    var scale by remember { mutableStateOf(1f) }"
-        errorLine2="                            ~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/com/lucent/app/ui/AttachmentViewer.kt"
-            line="455"
-            column="29"/>
-    </issue>
 
-    <issue
-        id="AutoboxingStateCreation"
-        message="Prefer `mutableFloatStateOf` instead of `mutableStateOf`"
-        errorLine1="    var offsetX by remember { mutableStateOf(0f) }"
-        errorLine2="                              ~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/com/lucent/app/ui/AttachmentViewer.kt"
-            line="456"
-            column="31"/>
-    </issue>
 
-    <issue
-        id="AutoboxingStateCreation"
-        message="Prefer `mutableFloatStateOf` instead of `mutableStateOf`"
-        errorLine1="    var offsetY by remember { mutableStateOf(0f) }"
-        errorLine2="                              ~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/com/lucent/app/ui/AttachmentViewer.kt"
-            line="457"
-            column="31"/>
-    </issue>
 
-    <issue
-        id="AutoboxingStateCreation"
-        message="Prefer `mutableFloatStateOf` instead of `mutableStateOf`"
-        errorLine1="    var speed by remember(att.data) { mutableStateOf(1f) }"
-        errorLine2="                                      ~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/com/lucent/app/ui/AttachmentViewer.kt"
-            line="570"
-            column="39"/>
-    </issue>
 
-    <issue
-        id="AutoboxingStateCreation"
-        message="Prefer `mutableFloatStateOf` instead of `mutableStateOf`"
-        errorLine1="    var scrubMs by remember(att.data) { mutableStateOf(0f) }"
-        errorLine2="                                        ~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/com/lucent/app/ui/AttachmentViewer.kt"
-            line="580"
-            column="41"/>
-    </issue>
 
 
 
@@ -901,45 +811,15 @@
             column="9"/>
     </issue>
 
-    <issue
-        id="UseKtx"
-        message="Use the KTX extension function `Bitmap.scale` instead?"
-        errorLine1="            Bitmap.createScaledBitmap("
-        errorLine2="            ^">
-        <location
-            file="src/main/java/com/lucent/app/ui/AttachmentUi.kt"
-            line="124"
-            column="13"/>
-    </issue>
-
-
-
-
-    <issue
-        id="UseKtx"
-        message="Use the KTX extension function `Bitmap.get` instead?"
-        errorLine1="            val c = bmp.getPixel(xx, yy)"
-        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/com/lucent/app/ui/ImageEditor.kt"
-            line="429"
-            column="21"/>
-    </issue>
 
 
 
 
 
-    <issue
-        id="UseKtx"
-        message="Use the KTX function `createBitmap` instead?"
-        errorLine1="                        val bmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)"
-        errorLine2="                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/com/lucent/app/ui/PdfViewer.kt"
-            line="79"
-            column="35"/>
-    </issue>
+
+
+
+
 
 
 

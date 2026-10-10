@@ -63,13 +63,9 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.dp
 import com.lucent.app.AppScope
-import com.lucent.app.data.AndroidUpdateInstaller
 import com.lucent.app.data.AttachmentMigration
-import com.lucent.app.data.AutoUpdate
 import com.lucent.app.data.SettingsRepository
-import com.lucent.app.data.StartupLog
 import com.lucent.app.data.TrashCleanup
-import com.lucent.app.ui.AutoUpdateDialog
 import com.lucent.app.ui.FluidGlassBackground
 import com.lucent.app.ui.LocalBackgroundEnvironment
 import com.lucent.app.ui.rememberBackgroundEnvironment
@@ -104,14 +100,7 @@ enum class Screen {
         }
 }
 
-private const val UPDATE_CHECK_INTERVAL_MS = 10L * 60L * 1000L
-
 class MainActivity : ComponentActivity() {
-
-    private val runningVersion: String by lazy {
-        runCatching { packageManager.getPackageInfo(packageName, 0).versionName }.getOrNull()
-            ?: com.lucent.app.LucentBuild.VERSION
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -122,8 +111,7 @@ class MainActivity : ComponentActivity() {
                 .also { com.lucent.app.data.SettingsCache.seed(it) }
         } catch (t: Throwable) {
             SettingsRepository.StartupPrefs(
-                display = SettingsRepository.DisplayPrefs("system", "SUNSET", "system"),
-                startupLoggingEnabled = false
+                display = SettingsRepository.DisplayPrefs("system", "SUNSET", "system")
             )
         }
         val display = startup.display
@@ -151,49 +139,9 @@ class MainActivity : ComponentActivity() {
             )
         )
 
-        val updateInstaller = AndroidUpdateInstaller(applicationContext)
-        AutoUpdate.installer = updateInstaller
-        val crashShieldWanted = try {
-            runBlocking { settingsRepo.crashShieldEnabledOnce() }
-        } catch (t: Throwable) {
-            StartupLog.event(applicationContext, "crash shield: preference read failed at startup (${t::class.simpleName}) - shield not installed this launch")
-            false
-        }
-        if (crashShieldWanted) com.lucent.app.data.CrashShield.install(applicationContext)
-
         val initialPalette = display.palette
         val initialFont = display.font
 
-        StartupLog.setEnabled(startup.startupLoggingEnabled)
-        AppScope.appContext = applicationContext
-
-        AutoUpdate.restorePending(startup.pendingUpdateVersion)
-        AutoUpdate.restoreStaged(
-            startup.stagedUpdateTag,
-            startup.stagedUpdateFiles.split(",").filter { it.isNotBlank() }
-        )
-        AutoUpdate.onPendingChange = { version ->
-            AppScope.io.launch { settingsRepo.setPendingUpdateVersion(version.orEmpty()) }
-        }
-        AutoUpdate.onStagedChange = { tag, files ->
-            AppScope.io.launch { settingsRepo.setStagedUpdate(tag.orEmpty(), files) }
-        }
-        AutoUpdate.onPreviewInstalled = { identity ->
-            AppScope.io.launch { settingsRepo.setInstalledPreviewIdentity(identity) }
-        }
-        AutoUpdate.onStagedIdentityChange = { identity ->
-            AppScope.io.launch { settingsRepo.setStagedUpdateIdentity(identity) }
-        }
-        AppScope.io.launch {
-            val keepTag = AutoUpdate.stagedTagFor(runningVersion) ?: AutoUpdate.pendingVersion
-            updateInstaller.purgeStale(runningVersion, keepTag)
-            val cleared = AutoUpdate.cleanUpAfterUpdate(runningVersion)
-            if (cleared > 0) {
-                StartupLog.event(applicationContext, "update: $cleared installer file(s) removed after a successful update")
-            }
-        }
-
-        StartupLog.event(applicationContext, "App starting (lock=off)")
 
         AppScope.io.launch {
             AttachmentMigration.runIfNeeded(applicationContext)
@@ -213,13 +161,8 @@ class MainActivity : ComponentActivity() {
                 com.lucent.app.data.DataCache.warm(db)
             } catch (t: Throwable) {
                 android.util.Log.e("LucentStartup", "database init failed at startup", t)
-                StartupLog.event(
-                    applicationContext,
-                    "db: startup init failed (${t::class.simpleName}: ${t.message})"
-                )
             }
         }
-        StartupLog.event(applicationContext, "Startup tasks dispatched; composing UI")
 
         setContent {
             val globalTextSelectionEnabled by settingsRepo.globalTextSelectionEnabled.collectAsState(initial = com.lucent.app.data.SettingsCache.globalTextSelectionEnabled)
@@ -238,34 +181,6 @@ class MainActivity : ComponentActivity() {
             val dynamicColorOn by settingsRepo.dynamicColorEnabled.collectAsState(
                 initial = startup.dynamicColor
             )
-
-            val autoUpdateOn by settingsRepo.autoUpdateEnabled.collectAsState(
-                initial = startup.autoUpdateEnabled
-            )
-            LaunchedEffect(autoUpdateOn) {
-                if (!autoUpdateOn) return@LaunchedEffect
-                com.lucent.app.data.AutoUpdate.report(null)
-                if (com.lucent.app.data.AutoUpdate.check(runningVersion) != null) {
-                    com.lucent.app.data.AutoUpdate.downloadOffered()
-                }
-                while (true) {
-                    delay(UPDATE_CHECK_INTERVAL_MS)
-                    if (com.lucent.app.data.AutoUpdate.phase != com.lucent.app.data.AutoUpdate.Phase.IDLE) continue
-                    if (com.lucent.app.data.AutoUpdate.offered != null) continue
-                    val found = com.lucent.app.data.AutoUpdate.check(runningVersion)
-                    if (found != null && found.tag != com.lucent.app.data.AutoUpdate.pendingVersion) {
-                        com.lucent.app.data.AutoUpdate.downloadOffered()
-                    }
-                }
-            }
-
-            LaunchedEffect(Unit) {
-                if (!autoUpdateOn && com.lucent.app.data.AutoUpdate.pendingVersion != null) {
-                    if (com.lucent.app.data.AutoUpdate.check(runningVersion) != null) {
-                        com.lucent.app.data.AutoUpdate.downloadOffered()
-                    }
-                }
-            }
 
             val systemDark = isSystemInDarkTheme()
             val themeChoice = com.lucent.app.ui.LucentThemeMode.fromKey(themeMode)
@@ -378,19 +293,10 @@ fun LucentApp(paletteColors: List<Color>, backdropColor: Color, backgroundAnimat
     val lastScreenContext = LocalContext.current
     LaunchedEffect(currentScreen) {
         LastScreen.remember(currentScreen)
-        StartupLog.event(lastScreenContext, "nav: showing ${currentScreen.name.lowercase()}")
     }
     val hazeState = rememberHazeState()
     val onGradient = LocalOnGradient.current
     val context = LocalContext.current
-    val updateRepo = remember {
-        com.lucent.app.data.SettingsRepository(context.applicationContext)
-    }
-    val requestNotificationPermission = rememberNotificationPermissionRequester()
-    LaunchedEffect(AutoUpdate.phase) {
-        if (AutoUpdate.phase == AutoUpdate.Phase.DOWNLOADING) requestNotificationPermission()
-    }
-
     val pinnedScrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     val scrollBehavior = pinnedScrollBehavior
 
@@ -571,41 +477,6 @@ fun LucentApp(paletteColors: List<Color>, backdropColor: Color, backgroundAnimat
                 CompositionLocalProvider(LocalBottomBarInset provides bottomInset) {
                     KeepAliveTabs(active = currentScreen, pagerState = pagerState, modifier = contentModifier)
                 }
-            }
-
-            AutoUpdateDialog(
-                repo = updateRepo,
-                onOpenUrl = { url ->
-                    runCatching {
-                        var owner: android.content.Context = context
-                        while (owner is android.content.ContextWrapper && owner !is Activity) owner = owner.baseContext
-                        (owner as? Activity)?.startActivity(
-                            android.content.Intent(
-                                android.content.Intent.ACTION_VIEW,
-                                android.net.Uri.parse(url)
-                            )
-                        )
-                    }
-                }
-            )
-        }
-    }
-}
-
-@Composable
-fun rememberNotificationPermissionRequester(): () -> Unit {
-    val context = androidx.compose.ui.platform.LocalContext.current
-    val launcher = androidx.activity.compose.rememberLauncherForActivityResult(
-        androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
-    ) { }
-    return {
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-            if (androidx.core.content.ContextCompat.checkSelfPermission(
-                    context,
-                    android.Manifest.permission.POST_NOTIFICATIONS
-                ) != android.content.pm.PackageManager.PERMISSION_GRANTED
-            ) {
-                launcher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
             }
         }
     }

@@ -11,7 +11,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
@@ -21,7 +20,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInspectionMode
-import com.lucent.app.data.StartupLog
 
 data class BackgroundEnvironment(val active: Boolean = true, val motionEnabled: Boolean = true)
 
@@ -38,16 +36,6 @@ fun FluidGlassBackground(
     val environment = LocalBackgroundEnvironment.current
     val inspection = LocalInspectionMode.current
     val moving = animated && environment.motionEnabled && !inspection
-
-    LaunchedEffect(animated, environment.active, moving) {
-        val mode = when {
-            !animated -> "flat"
-            !environment.active -> "paused"
-            !moving -> "static gradient"
-            else -> "gpu accelerated gradient"
-        }
-        StartupLog.event(context, "Background: $mode")
-    }
 
     val primary = palette.getOrNull(0) ?: MaterialTheme.colorScheme.primary
     val secondary = palette.getOrNull(1) ?: MaterialTheme.colorScheme.secondary

@@ -55,7 +55,6 @@ import com.lucent.app.data.AppDatabase
 import com.lucent.app.data.Notebook
 import com.lucent.app.data.NotebookPurge
 import com.lucent.app.data.SettingsRepository
-import com.lucent.app.data.StartupLog
 import dev.chrisbanes.haze.hazeSource
 import java.time.Instant
 import java.time.ZoneId
@@ -88,8 +87,7 @@ fun NotebooksScreen(
                     .put("last", System.currentTimeMillis())
                     .put("count", previous.optInt("count", 0) + 1))
                 settingsRepo.setNotebookOpens(data.toString())
-                StartupLog.event(context, "notebooks: opened notebook $id")
-            }.onFailure { StartupLog.event(context, "notebooks: open tracking failed: ${it.message}") }
+            }
         }
     }
 

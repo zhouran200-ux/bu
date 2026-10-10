@@ -18,11 +18,11 @@ internal fun AppearanceSettingsPage(repo: SettingsRepository, onRoute: (Settings
 
     DynamicColorRow(repo)
 
-    NavCard(S.fontTypographyTitle, S.fontTypographySub) { onRoute(SettingsRoute.Font) }
+    NavCard(depth = 2, title = S.fontTypographyTitle, subtitle = S.fontTypographySub) { onRoute(SettingsRoute.Font) }
     Spacer(modifier = Modifier.height(12.dp))
 
-    NavCard(S.settingsThemeTitle, S.settingsThemeSub) { onRoute(SettingsRoute.Theme) }
+    NavCard(depth = 2, title = S.settingsThemeTitle, subtitle = S.settingsThemeSub) { onRoute(SettingsRoute.Theme) }
     Spacer(modifier = Modifier.height(12.dp))
 
-    NavCard(S.settingsBackgroundTitle, S.settingsBackgroundSub) { onRoute(SettingsRoute.Background) }
+    NavCard(depth = 2, title = S.settingsBackgroundTitle, subtitle = S.settingsBackgroundSub) { onRoute(SettingsRoute.Background) }
 }

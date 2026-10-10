@@ -242,7 +242,7 @@ fun ImageEditorDialog(att: Attachment, onDismiss: () -> Unit, onSaved: () -> Uni
                             tint = Color.White,
                             modifier = Modifier.size(26.dp).clickable { onDismiss() }
                         )
-                        Text(com.lucent.app.i18n.S.editImageTitle, color = Color.White, fontSize = LucentTitles.ScreenSize, fontWeight = LucentTitles.ScreenWeight, modifier = Modifier.weight(1f).padding(start = 12.dp))
+                        Text(com.lucent.app.i18n.S.editImageTitle, color = Color.White, fontSize = LucentTitles.SectionSize, fontWeight = LucentTitles.SectionWeight, modifier = Modifier.weight(1f).padding(start = 12.dp))
                         Icon(
                             Icons.AutoMirrored.Filled.Undo,
                             contentDescription = if (canUndo) com.lucent.app.i18n.S.a11yUndoLastEdit else com.lucent.app.i18n.S.a11yNothingToUndo,

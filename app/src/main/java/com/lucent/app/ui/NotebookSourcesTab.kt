@@ -203,7 +203,7 @@ fun NotebookSourcesTab(
         if (showAddDialog) {
             AlertDialog(
                 onDismissRequest = { showAddDialog = false },
-                title = { Text("添加来源资料", fontSize = LucentTitles.EntrySize, fontWeight = LucentTitles.EntryWeight) },
+                title = { Text("添加来源资料", fontSize = LucentTitles.SectionSize, fontWeight = LucentTitles.SectionWeight) },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Surface(
@@ -333,7 +333,7 @@ fun NotebookSourcesTab(
         if (showCreateNoteDialog) {
             AlertDialog(
                 onDismissRequest = { showCreateNoteDialog = false },
-                title = { Text("新建笔记本文档", fontSize = LucentTitles.EntrySize, fontWeight = LucentTitles.EntryWeight) },
+                title = { Text("新建笔记本文档", fontSize = LucentTitles.SectionSize, fontWeight = LucentTitles.SectionWeight) },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         OutlinedTextField(
@@ -428,8 +428,8 @@ private fun SourceNoteCard(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = note.title.ifBlank { "用户预置文档" },
-                    fontSize = LucentTitles.EntrySize,
-                    fontWeight = LucentTitles.EntryWeight,
+                    fontSize = LucentTitles.SectionSize,
+                    fontWeight = LucentTitles.SectionWeight,
                     color = onGradient
                 )
 
@@ -510,8 +510,8 @@ fun SourceReaderOverlay(
                     Text(
                         text = note.title.ifBlank { "〔CH:1〕 第一百零三章 拥抱" },
                         color = Color(0xFF38BDF8),
-                        fontSize = LucentTitles.EntrySize,
-                        fontWeight = LucentTitles.EntryWeight,
+                        fontSize = LucentTitles.SectionSize,
+                        fontWeight = LucentTitles.SectionWeight,
                         modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
                     )
                 }

@@ -123,6 +123,7 @@ internal fun StepperRow(
 internal fun NavCard(
     title: String,
     subtitle: String,
+    depth: Int = 1,
     trailing: @Composable (() -> Unit)? = null,
     onClick: () -> Unit
 ) {
@@ -137,7 +138,12 @@ internal fun NavCard(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(title, color = onGradient, fontSize = LucentTitles.EntrySize, fontWeight = LucentTitles.EntryWeight)
+            Text(
+                title,
+                color = onGradient,
+                fontSize = LucentTitles.sizeForDepth(depth + 1),
+                fontWeight = LucentTitles.weightForDepth(depth + 1)
+            )
             Spacer(modifier = Modifier.height(4.dp))
             Text(subtitle, color = onGradientMuted, fontSize = 13.sp)
         }
@@ -212,10 +218,9 @@ internal fun SettingsBreadcrumb(
     BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
         val titles = crumbs.map { SettingsTrail.title(it) }
         val rootValue = LucentTitles.ScreenSize.value.toDouble()
-        val leafValue = LucentTitles.EntrySize.value.toDouble()
+        val crumbValues = titles.indices.map { LucentTitles.sizeForDepth(it + 1).value.toDouble() }
         val textWidth = titles.sumIndexed { index, title ->
-            val value = if (index == titles.lastIndex) leafValue else rootValue
-            title.sumOf { ch -> if (ch.code > 0x2E7F) 1.0 else 0.52 } * value
+            title.sumOf { ch -> if (ch.code > 0x2E7F) 1.0 else 0.52 } * crumbValues[index]
         } + (crumbs.size - 1).coerceAtLeast(0) * (0.3 * rootValue + 8.0)
         val available = (maxWidth.value - 28f).coerceAtLeast(1f).toDouble()
         val scale = if (textWidth > 0.0) {
@@ -242,8 +247,8 @@ internal fun SettingsBreadcrumb(
                 Text(
                     text = titles[index],
                     color = if (isLast) onGradient else onGradientMuted,
-                    fontSize = (if (isLast) LucentTitles.EntrySize else LucentTitles.ScreenSize) * scale,
-                    fontWeight = if (isLast) LucentTitles.EntryWeight else LucentTitles.ScreenWeight,
+                    fontSize = LucentTitles.sizeForDepth(index + 1) * scale,
+                    fontWeight = LucentTitles.weightForDepth(index + 1),
                     maxLines = 1,
                     modifier = Modifier
                         .alignByBaseline()

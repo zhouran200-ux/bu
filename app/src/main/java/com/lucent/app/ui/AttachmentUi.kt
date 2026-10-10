@@ -406,7 +406,7 @@ private fun AttachmentRenameDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(com.lucent.app.i18n.S.attachmentRenameTitle, fontSize = LucentTitles.EntrySize, fontWeight = LucentTitles.EntryWeight) },
+        title = { Text(com.lucent.app.i18n.S.attachmentRenameTitle, fontSize = LucentTitles.SectionSize, fontWeight = LucentTitles.SectionWeight) },
         text = {
             Column {
                 OutlinedTextField(

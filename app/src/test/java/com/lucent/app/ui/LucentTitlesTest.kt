@@ -2,6 +2,7 @@ package com.lucent.app.ui
 
 import androidx.compose.ui.unit.TextUnit
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class LucentTitlesTest {
@@ -35,5 +36,21 @@ class LucentTitlesTest {
         for (size in sizes) {
             assertTrue(size.value in 12.0..24.0, "${size} is outside 12..24sp")
         }
+    }
+
+    @Test
+    fun depthMapsToTheExpectedLevel() {
+        assertEquals(LucentTitles.ScreenSize, LucentTitles.sizeForDepth(1))
+        assertEquals(LucentTitles.EntrySize, LucentTitles.sizeForDepth(2))
+        assertEquals(LucentTitles.SectionSize, LucentTitles.sizeForDepth(3))
+        assertEquals(LucentTitles.ItemSize, LucentTitles.sizeForDepth(4))
+    }
+
+    @Test
+    fun depthBeyondTheFourthLevelStopsShrinking() {
+        for (depth in 4..9) {
+            assertEquals(LucentTitles.ItemSize, LucentTitles.sizeForDepth(depth), "depth $depth")
+        }
+        assertEquals(LucentTitles.ScreenSize, LucentTitles.sizeForDepth(0))
     }
 }

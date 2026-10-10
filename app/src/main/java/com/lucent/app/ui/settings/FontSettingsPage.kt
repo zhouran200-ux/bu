@@ -490,7 +490,7 @@ internal fun FontSettingsPage(
         AlertDialog(
             onDismissRequest = { pendingImportUri = null },
             shape = RoundedCornerShape(20.dp),
-            title = { Text(S.fontNameTitle, fontSize = LucentTitles.EntrySize, fontWeight = LucentTitles.EntryWeight) },
+            title = { Text(S.fontNameTitle, fontSize = LucentTitles.ItemSize, fontWeight = LucentTitles.ItemWeight) },
             text = {
                 Column {
                     Text(S.fontNameBody, style = MaterialTheme.typography.bodySmall)
@@ -527,7 +527,7 @@ internal fun FontSettingsPage(
         AlertDialog(
             onDismissRequest = { fontPendingDelete = null },
             shape = RoundedCornerShape(20.dp),
-            title = { Text(S.fontDeleteTitle, fontSize = LucentTitles.EntrySize, fontWeight = LucentTitles.EntryWeight) },
+            title = { Text(S.fontDeleteTitle, fontSize = LucentTitles.ItemSize, fontWeight = LucentTitles.ItemWeight) },
             text = { Text(S.fontDeleteBody(slot.name)) },
             confirmButton = {
                 TextButton(

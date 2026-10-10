@@ -18,6 +18,19 @@ object LucentTitles {
     val SectionWeight = FontWeight.SemiBold
     val ItemWeight = FontWeight.Medium
 
+    fun sizeForDepth(depth: Int): TextUnit = when {
+        depth <= 1 -> ScreenSize
+        depth == 2 -> EntrySize
+        depth == 3 -> SectionSize
+        else -> ItemSize
+    }
+
+    fun weightForDepth(depth: Int): FontWeight = when {
+        depth <= 2 -> ScreenWeight
+        depth == 3 -> SectionWeight
+        else -> ItemWeight
+    }
+
     @Composable
     fun screen(): TextStyle = TextStyle(fontSize = ScreenSize, fontWeight = ScreenWeight)
 

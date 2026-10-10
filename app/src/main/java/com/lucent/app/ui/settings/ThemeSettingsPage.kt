@@ -53,7 +53,7 @@ internal fun ThemeSettingsPage(repo: SettingsRepository, onRoute: (SettingsRoute
     LucentThemeSection.entries.forEachIndexed { index, section ->
         if (index > 0) Spacer(modifier = Modifier.height(12.dp))
         Column(modifier = Modifier.fillMaxWidth().frostedGlass().padding(16.dp)) {
-            Text(section.label, color = onGradient, fontSize = LucentTitles.SectionSize, fontWeight = LucentTitles.SectionWeight)
+            Text(section.label, color = onGradient, fontSize = LucentTitles.ItemSize, fontWeight = LucentTitles.ItemWeight)
             Spacer(modifier = Modifier.height(8.dp))
             offered.filter { it.section == section }.forEach { mode ->
                 Row(

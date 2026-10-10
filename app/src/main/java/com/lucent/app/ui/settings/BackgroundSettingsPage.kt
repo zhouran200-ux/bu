@@ -142,8 +142,8 @@ internal fun BackgroundSettingsPage(repo: SettingsRepository, onRoute: (Settings
             Text(
                 heading,
                 color = onGradientMuted.copy(alpha = onGradientMuted.alpha * lockAlpha),
-                fontSize = LucentTitles.SectionSize,
-                fontWeight = LucentTitles.SectionWeight
+                fontSize = LucentTitles.ItemSize,
+                fontWeight = LucentTitles.ItemWeight
             )
             LucentPalette.pickerEntries.filter { it.group == group }.forEach { p ->
                 Row(

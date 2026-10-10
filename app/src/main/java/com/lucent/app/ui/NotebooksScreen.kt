@@ -15,13 +15,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.items as listItems
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Book
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
@@ -49,7 +46,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -59,6 +55,7 @@ import com.lucent.app.BackClaim
 import com.lucent.app.data.AppDatabase
 import com.lucent.app.data.Note
 import com.lucent.app.data.Notebook
+import com.lucent.app.data.NotebookPurge
 import com.lucent.app.data.SettingsRepository
 import com.lucent.app.data.StartupLog
 import dev.chrisbanes.haze.hazeSource
@@ -184,8 +181,7 @@ fun NotebooksScreen(
                     val target = notebook
                     deleting = null
                     AppScope.io.launch {
-                        db.notebookDao().deleteItemsForNotebook(target.id)
-                        db.notebookDao().deleteById(target.id)
+                        NotebookPurge.purge(context, db, target.id)
                         LucentToast.show(context, com.lucent.app.i18n.S.notebookDeletedToast)
                     }
                 }) { Text(com.lucent.app.i18n.S.actionDelete) }
@@ -209,10 +205,7 @@ fun NotebooksScreen(
                     selectionMode = false
                     selectedIds = emptySet()
                     AppScope.io.launch {
-                        ids.forEach { id ->
-                            db.notebookDao().deleteItemsForNotebook(id)
-                            db.notebookDao().deleteById(id)
-                        }
+                        ids.forEach { id -> NotebookPurge.purge(context, db, id) }
                     }
                 }) { Text(com.lucent.app.i18n.S.actionDelete) }
             },

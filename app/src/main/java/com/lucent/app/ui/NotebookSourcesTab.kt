@@ -57,6 +57,7 @@ import com.lucent.app.data.AppDatabase
 import com.lucent.app.data.MarkdownDocumentParser
 import com.lucent.app.data.Note
 import com.lucent.app.data.NotebookItem
+import com.lucent.app.data.NotebookPurge
 import kotlinx.coroutines.launch
 
 @Composable
@@ -166,10 +167,10 @@ fun NotebookSourcesTab(
                         },
                         onDelete = {
                             AppScope.io.launch {
-                                db.notebookDao().removeItem(notebookId, NotebookItem.KIND_NOTE, note.id)
+                                NotebookPurge.releaseNote(context, db, notebookId, note.id)
                                 onReload()
                             }
-                            LucentToast.show(context, "已移除文档关联")
+                            LucentToast.show(context, "已删除该文档")
                         }
                     )
                 }

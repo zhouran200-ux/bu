@@ -198,13 +198,12 @@ open class Tr {
     open val fontSizeScaleTitle: String = "字体大小"
     open val lineSpacingTitle: String = "行间距"
     open val letterSpacingTitle: String = "字间距"
-    open val globalNetworkTitle: String = "全局网络"
+    open val userAgentSectionTitle: String = "User-Agent"
     open val userAgentSaveButton: String = "保存"
     open val userAgentSavedToast: String = "User-Agent 已保存"
     open val userAgentPresetDefault: String = "默认"
     open val userAgentPresetSillyTavern: String = "SillyTavern 伪装"
     open val fieldUserAgent: String = "自定义 User-Agent"
-    open val userAgentCustomPlaceholder: String = "留空则使用默认客户端标识"
 }
 
 object Zh : Tr()

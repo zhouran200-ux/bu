@@ -292,6 +292,7 @@ fun NotebookChatTab(
 
         val baseUrl = matchedProfile?.baseUrl.orEmpty()
         val apiKey = matchedProfile?.apiKey.orEmpty()
+        val rawEndpoint = specStr == "custom"
 
         val resolvedReasoning = ReasoningResolver.resolve(
             preset = reasoningPreset,
@@ -381,7 +382,8 @@ fun NotebookChatTab(
                     messages = historyPayload,
                     systemInstruction = knowledgeBasePrompt,
                     reasoningConfig = resolvedReasoning,
-                    handle = streamHandle
+                    handle = streamHandle,
+                    rawEndpoint = rawEndpoint
                 ) { deltaText, deltaThought ->
                     scheduler.append(deltaText, deltaThought)
                 }

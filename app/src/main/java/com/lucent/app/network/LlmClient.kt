@@ -166,11 +166,12 @@ object LlmClient {
     suspend fun fetchModels(
         baseUrl: String,
         spec: ApiSpec,
-        apiKey: String
+        apiKey: String,
+        rawEndpoint: Boolean = false
     ): Result<List<String>> = withContext(Dispatchers.IO) {
         try {
             val trimmed = baseUrl.trim().trimEnd('/')
-            val url = when (spec) {
+            val url = if (rawEndpoint) trimmed else when (spec) {
                 ApiSpec.GOOGLE -> {
                     val base = if (trimmed.endsWith("/models")) trimmed else "$trimmed/models"
                     if (apiKey.isNotBlank() && !base.contains("key=")) {
@@ -238,7 +239,8 @@ object LlmClient {
         baseUrl: String,
         spec: ApiSpec,
         apiKey: String,
-        model: String = ""
+        model: String = "",
+        rawEndpoint: Boolean = false
     ): Result<TestConnectionResult> = withContext(Dispatchers.IO) {
         val start = System.currentTimeMillis()
         var resolvedUrl = ""
@@ -257,7 +259,7 @@ object LlmClient {
             if (isModelSpecified) {
                 when (spec) {
                     ApiSpec.OPENAI -> {
-                        url = if (trimmed.endsWith("/chat/completions")) trimmed else "$trimmed/chat/completions"
+                        url = if (rawEndpoint || trimmed.endsWith("/chat/completions")) trimmed else "$trimmed/chat/completions"
                         val payload = JSONObject().apply {
                             put("model", model.trim())
                             put("messages", JSONArray().put(JSONObject().apply {
@@ -299,7 +301,7 @@ object LlmClient {
                     }
                 }
             } else {
-                url = when (spec) {
+                url = if (rawEndpoint) trimmed else when (spec) {
                     ApiSpec.GOOGLE -> {
                         val base = if (trimmed.endsWith("/models")) trimmed else "$trimmed/models"
                         if (apiKey.isNotBlank() && !base.contains("key=")) {
@@ -376,6 +378,7 @@ object LlmClient {
         systemInstruction: String = "",
         reasoningConfig: com.lucent.app.data.ResolvedReasoningConfig? = null,
         handle: StreamCallHandle? = null,
+        rawEndpoint: Boolean = false,
         onChunk: suspend (deltaContent: String, deltaReasoning: String?) -> Unit
     ): Result<ChatCompletionResult> = withContext(Dispatchers.IO) {
         try {
@@ -393,7 +396,7 @@ object LlmClient {
             when (spec) {
                 ApiSpec.OPENAI -> {
                     val defaultUrl = if (trimmed.isBlank()) "https://api.openai.com/v1" else trimmed
-                    val url = if (defaultUrl.endsWith("/chat/completions")) defaultUrl else "$defaultUrl/chat/completions"
+                    val url = if (rawEndpoint || defaultUrl.endsWith("/chat/completions")) defaultUrl else "$defaultUrl/chat/completions"
                     val payload = JSONObject().apply {
                         put("model", cleanModel)
                         put("stream", true)

@@ -197,11 +197,10 @@ ENTRIES = [
     ("fontSizeScaleTitle", "字体大小"),
     ("lineSpacingTitle", "行间距"),
     ("letterSpacingTitle", "字间距"),
-    ("globalNetworkTitle", "全局网络"),
+    ("userAgentSectionTitle", "User-Agent"),
     ("userAgentSaveButton", "保存"),
     ("userAgentSavedToast", "User-Agent 已保存"),
     ("userAgentPresetDefault", "默认"),
     ("userAgentPresetSillyTavern", "SillyTavern 伪装"),
     ("fieldUserAgent", "自定义 User-Agent"),
-    ("userAgentCustomPlaceholder", "留空则使用默认客户端标识"),
 ]

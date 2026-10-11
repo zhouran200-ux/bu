@@ -104,6 +104,20 @@ data class TestConnectionResult(
     }
 }
 
+class StreamCallHandle {
+    @Volatile
+    private var call: okhttp3.Call? = null
+
+    fun attach(value: okhttp3.Call) {
+        call = value
+    }
+
+    fun cancel() {
+        call?.cancel()
+        call = null
+    }
+}
+
 object LlmClient {
     private val client by lazy {
         OkHttpClient.Builder()
@@ -573,6 +587,7 @@ object LlmClient {
         systemInstruction: String = "",
         customUserAgent: String = "",
         reasoningConfig: com.lucent.app.data.ResolvedReasoningConfig? = null,
+        handle: StreamCallHandle? = null,
         onChunk: suspend (deltaContent: String, deltaReasoning: String?) -> Unit
     ): Result<ChatCompletionResult> = withContext(Dispatchers.IO) {
         try {
@@ -716,7 +731,9 @@ object LlmClient {
             requestBuilder.header("Accept", "text/event-stream")
             applyHeaders(requestBuilder, spec, apiKey, customUserAgent)
 
-            val response = streamClient.newCall(requestBuilder.build()).execute()
+            val call = streamClient.newCall(requestBuilder.build())
+            handle?.attach(call)
+            val response = call.execute()
             if (!response.isSuccessful) {
                 val bodyStr = response.body?.string().orEmpty()
                 val errMsg = try {

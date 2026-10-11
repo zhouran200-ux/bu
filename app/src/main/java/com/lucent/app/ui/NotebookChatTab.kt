@@ -38,7 +38,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.imeNestedScroll
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -68,6 +67,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.DropdownMenu
@@ -81,6 +81,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -98,6 +99,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.onSizeChanged
@@ -126,6 +130,7 @@ import com.lucent.app.data.SettingsCache
 import com.lucent.app.network.ApiSpec
 import com.lucent.app.network.ChatMessagePayload
 import com.lucent.app.network.LlmClient
+import com.lucent.app.network.StreamCallHandle
 import com.lucent.app.ui.SettingsRoute
 import kotlin.math.abs
 import kotlinx.coroutines.delay
@@ -155,6 +160,13 @@ fun NotebookChatTab(
     val db = remember { AppDatabase.getInstance(context) }
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
+    val atBottom by remember {
+        derivedStateOf {
+            val info = listState.layoutInfo
+            val last = info.visibleItemsInfo.lastOrNull()
+            last == null || last.index >= info.totalItemsCount - 2
+        }
+    }
 
     val prefs = remember(notebookId) {
         context.getSharedPreferences("lucent_notebook_chat_prefs", Context.MODE_PRIVATE)
@@ -200,6 +212,8 @@ fun NotebookChatTab(
     val messages = remember { mutableStateListOf<UiChatMessage>() }
     val placementSpec = rememberReorderPlacementSpec()
     var streamingAnswerId by remember { mutableStateOf<Long?>(null) }
+    val streamHandle = remember { StreamCallHandle() }
+    var stoppedByUser by remember { mutableStateOf(false) }
     var pendingDelete by remember { mutableStateOf<PendingChatDelete?>(null) }
     var questionToEdit by remember { mutableStateOf<UiChatMessage?>(null) }
     var answerToEdit by remember { mutableStateOf<UiChatMessage?>(null) }
@@ -335,6 +349,7 @@ fun NotebookChatTab(
             upsertAnswerSlot(pendingAi)
             streamingThought.value = ""
             streamingAnswerId = aiMsgId
+            stoppedByUser = false
 
             scope.launch {
                 val startTime = System.currentTimeMillis()
@@ -360,7 +375,8 @@ fun NotebookChatTab(
                     messages = historyPayload,
                     systemInstruction = knowledgeBasePrompt,
                     customUserAgent = customUa,
-                    reasoningConfig = resolvedReasoning
+                    reasoningConfig = resolvedReasoning,
+                    handle = streamHandle
                 ) { deltaText, deltaThought ->
                     scheduler.append(deltaText, deltaThought)
                 }
@@ -402,10 +418,11 @@ fun NotebookChatTab(
                     }
                 }.onFailure { err ->
                     val currentText = scheduler.getFinalContent()
-                    val errorDisplay = if (currentText.isNotBlank()) {
-                        "$currentText\n\n[网络中断：${err.message ?: "连接已关闭"}，已保留已生成内容]"
-                    } else {
-                        "【请求失败】${err.message ?: "网络或接口异常"}\n\n请检查网络连接、API 密钥与模型端点配置。"
+                    val errorDisplay = when {
+                        stoppedByUser -> currentText.ifBlank { "（已停止生成）" }
+                        currentText.isNotBlank() ->
+                            "$currentText\n\n[网络中断：${err.message ?: "连接已关闭"}，已保留已生成内容]"
+                        else -> "【请求失败】${err.message ?: "网络或接口异常"}\n\n请检查网络连接、API 密钥与模型端点配置。"
                     }
 
                     val failedAi = UiChatMessage(
@@ -438,7 +455,10 @@ fun NotebookChatTab(
 
                 streamingAnswerId = null
                 delay(100)
-                listState.animateScrollToItem((messages.size - 1).coerceAtLeast(0))            }
+                if (atBottom) {
+                    listState.animateScrollToItem((messages.size - 1).coerceAtLeast(0))
+                }
+            }
         }
     }
 
@@ -534,21 +554,31 @@ fun NotebookChatTab(
         }
     }
 
-    val onSendMessage: () -> Unit = send@{
-        val text = inputText.trim()
-        if (text.isEmpty()) return@send
-        if (streamingAnswerId != null) {
-            LucentToast.show(context, "上一条回答还没有结束")
-            return@send
-        }
-        inputText = ""
-        startAnswer(text)
-    }
-
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val isImeVisible = WindowInsets.isImeVisible
     val barMotionOn = LocalBackgroundEnvironment.current.motionEnabled
+
+    fun stopStreaming() {
+        if (streamingAnswerId == null) return
+        stoppedByUser = true
+        Haptics.tick(context)
+        streamHandle.cancel()
+    }
+
+    val onSendMessage: () -> Unit = send@{
+        val text = inputText.trim()
+        if (text.isEmpty()) return@send
+        if (streamingAnswerId != null) {
+            LucentToast.show(context, "正在回答，点右下角的方块可以停止")
+            return@send
+        }
+        inputText = ""
+        Haptics.tick(context)
+        focusManager.clearFocus()
+        keyboardController?.hide()
+        startAnswer(text)
+    }
 
     LaunchedEffect(isImeVisible) {
         if (isImeVisible && messages.isNotEmpty()) {
@@ -568,7 +598,6 @@ fun NotebookChatTab(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
-                    .imeNestedScroll()
                     .pointerInput(Unit) {
                         detectTapGestures(onTap = {
                             focusManager.clearFocus()
@@ -650,8 +679,44 @@ fun NotebookChatTab(
                 selectedProfileName = selectedProfileName,
                 selectedModel = selectedModel,
                 onOpenModelPicker = { showProfileModelPickerSheet = true },
-                onSend = onSendMessage
+                streaming = streamingAnswerId != null,
+                onSend = onSendMessage,
+                onStop = { stopStreaming() }
             )
+        }
+
+        AnimatedVisibility(
+            visible = !atBottom && !isImeVisible && messages.isNotEmpty(),
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .navigationBarsPadding()
+                .padding(end = 16.dp, bottom = 118.dp),
+            enter = if (barMotionOn) fadeIn(tween(160)) + slideInVertically(tween(160)) { it } else fadeIn(tween(0)),
+            exit = if (barMotionOn) fadeOut(tween(120)) + slideOutVertically(tween(120)) { it } else fadeOut(tween(0))
+        ) {
+            Surface(
+                shape = CircleShape,
+                color = LocalOnGradient.current.copy(alpha = 0.10f),
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .clickable {
+                        scope.launch {
+                            listState.animateScrollToItem(
+                                (listState.layoutInfo.totalItemsCount - 1).coerceAtLeast(0)
+                            )
+                        }
+                    }
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        Icons.Default.KeyboardArrowDown,
+                        contentDescription = "回到底部",
+                        tint = LocalOnGradient.current,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+            }
         }
 
         if (showDialogueSettingsDialog) {
@@ -978,6 +1043,7 @@ private fun DeleteUndoBar(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .semantics { liveRegion = LiveRegionMode.Polite }
             .padding(horizontal = 12.dp, vertical = 4.dp)
             .onSizeChanged { barWidth = it.width.toFloat() }
             .graphicsLayer {
@@ -1213,7 +1279,9 @@ private fun BottomGlassComposer(
     selectedProfileName: String,
     selectedModel: String,
     onOpenModelPicker: () -> Unit,
-    onSend: () -> Unit
+    streaming: Boolean,
+    onSend: () -> Unit,
+    onStop: () -> Unit
 ) {
     val onGradient = LocalOnGradient.current
     val onGradientMuted = LocalOnGradientMuted.current
@@ -1413,19 +1481,33 @@ private fun BottomGlassComposer(
 
                 Surface(
                     shape = CircleShape,
-                    color = if (inputText.isNotBlank()) Color(0xFF0284C7) else onGradient.copy(alpha = 0.15f),
+                    color = when {
+                        streaming || inputText.isNotBlank() -> Color(0xFF0284C7)
+                        else -> onGradient.copy(alpha = 0.15f)
+                    },
                     modifier = Modifier
-                        .size(38.dp)
+                        .size(44.dp)
                         .clip(CircleShape)
-                        .clickable(enabled = inputText.isNotBlank()) { onSend() }
+                        .clickable(enabled = streaming || inputText.isNotBlank()) {
+                            if (streaming) onStop() else onSend()
+                        }
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.Send,
-                            contentDescription = "发送",
-                            tint = if (inputText.isNotBlank()) Color.White else onGradient.copy(alpha = 0.4f),
-                            modifier = Modifier.size(18.dp)
-                        )
+                        if (streaming) {
+                            Icon(
+                                Icons.Rounded.Stop,
+                                contentDescription = "停止生成",
+                                tint = Color.White,
+                                modifier = Modifier.size(19.dp)
+                            )
+                        } else {
+                            Icon(
+                                Icons.AutoMirrored.Filled.Send,
+                                contentDescription = "发送",
+                                tint = if (inputText.isNotBlank()) Color.White else onGradient.copy(alpha = 0.4f),
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
                     }
                 }
             }

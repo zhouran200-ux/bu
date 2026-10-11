@@ -33,6 +33,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -44,6 +45,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -637,26 +639,6 @@ fun NotebookChatTab(
                 item { Spacer(modifier = Modifier.height(8.dp)) }
             }
 
-            AnimatedVisibility(
-                visible = pendingDelete != null,
-                enter = if (barMotionOn) slideInVertically(
-                    animationSpec = LucentMotion.toIntOffset(LucentMotion.Sheet)
-                ) { it } + fadeIn(tween(180)) else fadeIn(tween(0)),
-                exit = if (barMotionOn) slideOutVertically(
-                    animationSpec = LucentMotion.toIntOffset(LucentMotion.Firm)
-                ) { it } + fadeOut(tween(150)) else fadeOut(tween(0))
-            ) {
-                lastDelete.value?.let { pending ->
-                    DeleteUndoBar(
-                        messageId = pending.message.id,
-                        label = if (pending.message.role == "user") "已删除这条提问" else "已删除这条回答",
-                        excerpt = ChatStats.preview(pending.message.content, limit = 24),
-                        onUndo = { undoDelete() },
-                        onDismiss = { settlePendingDelete() }
-                    )
-                }
-            }
-
             BottomGlassComposer(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -683,6 +665,33 @@ fun NotebookChatTab(
                 onSend = onSendMessage,
                 onStop = { stopStreaming() }
             )
+        }
+
+        AnimatedVisibility(
+            visible = pendingDelete != null,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .imePadding()
+                .then(
+                    if (!isImeVisible) Modifier.navigationBarsPadding()
+                    else Modifier
+                )
+                .padding(bottom = 112.dp),
+            enter = if (barMotionOn) slideInVertically(
+                animationSpec = LucentMotion.toIntOffset(LucentMotion.Sheet)
+            ) { it } + fadeIn(tween(180)) else fadeIn(tween(0)),
+            exit = if (barMotionOn) slideOutVertically(
+                animationSpec = LucentMotion.toIntOffset(LucentMotion.Firm)
+            ) { it } + fadeOut(tween(150)) else fadeOut(tween(0))
+        ) {
+            lastDelete.value?.let { pending ->
+                DeleteUndoBar(
+                    messageId = pending.message.id,
+                    label = if (pending.message.role == "user") "已删除提问" else "已删除回答",
+                    onUndo = { undoDelete() },
+                    onDismiss = { settlePendingDelete() }
+                )
+            }
         }
 
         AnimatedVisibility(
@@ -1024,7 +1033,6 @@ private const val FLING_VELOCITY = 1200f
 private fun DeleteUndoBar(
     messageId: Long,
     label: String,
-    excerpt: String,
     onUndo: () -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -1042,9 +1050,8 @@ private fun DeleteUndoBar(
 
     Row(
         modifier = Modifier
-            .fillMaxWidth()
+            .wrapContentWidth()
             .semantics { liveRegion = LiveRegionMode.Polite }
-            .padding(horizontal = 12.dp, vertical = 4.dp)
             .onSizeChanged { barWidth = it.width.toFloat() }
             .graphicsLayer {
                 translationX = slide.value
@@ -1075,30 +1082,24 @@ private fun DeleteUndoBar(
                     }
                 }
             )
-            .frostedGlass(cornerRadius = 16.dp)
-            .padding(horizontal = 14.dp, vertical = 10.dp),
+            .frostedGlass(cornerRadius = 22.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = label,
-                color = LocalOnGradient.current,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Medium
-            )
-            Text(
-                text = excerpt,
-                color = LocalOnGradientMuted.current,
-                fontSize = 11.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-        TextButton(onClick = {
-            Haptics.tick(context)
-            onUndo()
-        }) {
-            Text(text = "撤销", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+        Text(
+            text = label,
+            color = LocalOnGradient.current,
+            fontSize = 12.sp,
+            modifier = Modifier.padding(start = 14.dp)
+        )
+        TextButton(
+            onClick = {
+                Haptics.tick(context)
+                onUndo()
+            },
+            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+            modifier = Modifier.padding(start = 4.dp)
+        ) {
+            Text(text = "撤销", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
         }
     }
 }

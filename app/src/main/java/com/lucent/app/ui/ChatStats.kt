@@ -35,12 +35,6 @@ internal object ChatStats {
         return "${compactCount(chars)}字"
     }
 
-    fun preview(text: String, limit: Int = 90): String {
-        val flat = text.replace("\r", " ").replace("\n", " ").trim()
-        if (flat.isEmpty()) return "（空）"
-        return if (flat.length <= limit) flat else flat.take(limit).trimEnd() + "…"
-    }
-
     fun summary(seconds: Int, cachedTokens: Int, promptTokens: Int, chars: Int): String =
         listOfNotNull(
             secondsLabel(seconds),

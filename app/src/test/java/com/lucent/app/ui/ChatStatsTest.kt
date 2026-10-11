@@ -39,11 +39,4 @@ class ChatStatsTest {
             ChatStats.summary(seconds = 9, cachedTokens = 6100, promptTokens = 8600, chars = 1380)
         )
     }
-
-    @Test
-    fun previewFlattensNewlinesAndTruncates() {
-        assertEquals("第一行 第二行", ChatStats.preview("第一行\n第二行"))
-        assertEquals("（空）", ChatStats.preview("   "))
-        assertEquals("abc…", ChatStats.preview("abcdef", limit = 3))
-    }
 }

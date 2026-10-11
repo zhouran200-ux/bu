@@ -83,6 +83,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -129,6 +130,7 @@ import com.lucent.app.data.Note
 import com.lucent.app.data.ReasoningPreset
 import com.lucent.app.data.ReasoningResolver
 import com.lucent.app.data.SettingsCache
+import com.lucent.app.data.SettingsRepository
 import com.lucent.app.network.ApiSpec
 import com.lucent.app.network.ChatMessagePayload
 import com.lucent.app.network.LlmClient
@@ -175,8 +177,10 @@ fun NotebookChatTab(
     }
 
     var inputText by remember { mutableStateOf("") }
-    val savedProfiles = remember(SettingsCache.apiProfilesJson) {
-        ApiProfiles.parse(SettingsCache.apiProfilesJson).ifEmpty { ApiProfiles.DEFAULT_PROFILES }
+    val settingsRepo = remember { SettingsRepository(context) }
+    val profilesJson by settingsRepo.apiProfilesJson.collectAsState(initial = SettingsCache.apiProfilesJson)
+    val savedProfiles = remember(profilesJson) {
+        ApiProfiles.parse(profilesJson).ifEmpty { ApiProfiles.DEFAULT_PROFILES }
     }
     var selectedProfileName by remember {
         mutableStateOf(prefs.getString("profile_name_$notebookId", "") ?: "")
@@ -835,7 +839,7 @@ private fun UserMessageCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 2.dp, end = 2.dp),
-            horizontalArrangement = Arrangement.spacedBy(2.dp, Alignment.End),
+            horizontalArrangement = Arrangement.End,
             verticalAlignment = Alignment.CenterVertically
         ) {
             BubbleAction(
@@ -912,52 +916,45 @@ private fun AiMessageCard(
                     promptTokens = message.promptTokens,
                     chars = message.content.length
                 )
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 4.dp, start = 4.dp, end = 2.dp),
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                Row(
+                    modifier = Modifier.padding(top = 2.dp, start = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
+                    BubbleAction(
+                        icon = Icons.Rounded.ContentCopy,
+                        label = "复制",
+                        tint = LocalOnGradient.current,
+                        onClick = { copyTextToClipboard(context, message.content) }
+                    )
+                    BubbleAction(
+                        icon = Icons.Rounded.Refresh,
+                        label = "重新生成",
+                        tint = LocalOnGradient.current,
+                        enabled = actionsEnabled,
+                        onClick = onRegenerate
+                    )
+                    BubbleAction(
+                        icon = Icons.Rounded.Edit,
+                        label = "编辑",
+                        tint = LocalOnGradient.current,
+                        enabled = actionsEnabled,
+                        onClick = onEditAnswer
+                    )
+                    BubbleAction(
+                        icon = Icons.Rounded.Delete,
+                        label = "删除",
+                        tint = LocalOnGradient.current,
+                        enabled = actionsEnabled,
+                        onClick = onDelete
+                    )
                     if (stats.isNotEmpty()) {
                         Text(
                             text = stats,
                             color = LocalOnGradientMuted.current.copy(alpha = 0.75f),
                             fontSize = 11.sp,
                             maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(2.dp, Alignment.End),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        BubbleAction(
-                            icon = Icons.Rounded.ContentCopy,
-                            label = "复制",
-                            tint = LocalOnGradient.current,
-                            onClick = { copyTextToClipboard(context, message.content) }
-                        )
-                        BubbleAction(
-                            icon = Icons.Rounded.Refresh,
-                            label = "重新生成",
-                            tint = LocalOnGradient.current,
-                            enabled = actionsEnabled,
-                            onClick = onRegenerate
-                        )
-                        BubbleAction(
-                            icon = Icons.Rounded.Edit,
-                            label = "编辑",
-                            tint = LocalOnGradient.current,
-                            enabled = actionsEnabled,
-                            onClick = onEditAnswer
-                        )
-                        BubbleAction(
-                            icon = Icons.Rounded.Delete,
-                            label = "删除",
-                            tint = LocalOnGradient.current,
-                            enabled = actionsEnabled,
-                            onClick = onDelete
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.padding(start = 6.dp)
                         )
                     }
                 }
@@ -995,8 +992,8 @@ private fun BubbleAction(
 
     Box(
         modifier = Modifier
-            .size(48.dp)
-            .clip(RoundedCornerShape(14.dp))
+            .size(40.dp)
+            .clip(RoundedCornerShape(12.dp))
             .clickable(
                 interactionSource = interaction,
                 indication = null,
@@ -1192,11 +1189,7 @@ private fun ThinkingLane(
                 .padding(horizontal = 8.dp, vertical = 6.dp)
         ) {
             Text(
-                text = if (streaming) {
-                    "正在思考"
-                } else {
-                    "已深度思考 · ${tag?.ifBlank { null } ?: "原厂自适应"}"
-                },
+                text = if (streaming) "思考中" else "已思考",
                 color = accent,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium
@@ -1230,6 +1223,14 @@ private fun ThinkingLane(
                     }
                     .padding(start = 10.dp)
             ) {
+                if (!tag.isNullOrBlank()) {
+                    Text(
+                        text = tag,
+                        color = onGradientMuted.copy(alpha = 0.75f),
+                        fontSize = 11.sp,
+                        modifier = Modifier.padding(bottom = 4.dp)
+                    )
+                }
                 Text(
                     text = thought.ifBlank { "等待模型给出推理内容…" },
                     color = if (thought.isBlank()) onGradientMuted.copy(alpha = 0.7f) else onGradientMuted,

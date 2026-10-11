@@ -42,7 +42,6 @@ import androidx.compose.foundation.layout.imeNestedScroll
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -82,6 +81,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -93,7 +93,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
@@ -111,7 +110,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.lucent.app.AppScope
@@ -130,7 +128,6 @@ import com.lucent.app.network.ChatMessagePayload
 import com.lucent.app.network.LlmClient
 import com.lucent.app.ui.SettingsRoute
 import kotlin.math.abs
-import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -207,8 +204,24 @@ fun NotebookChatTab(
     var questionToEdit by remember { mutableStateOf<UiChatMessage?>(null) }
     var answerToEdit by remember { mutableStateOf<UiChatMessage?>(null) }
     val streamingThought = remember { mutableStateOf("") }
+    val lastDelete = remember { mutableStateOf<PendingChatDelete?>(null) }
+
+    fun settlePendingDelete() {
+        val pending = pendingDelete ?: return
+        pendingDelete = null
+        AppScope.io.launch { db.chatDao().deleteByIds(listOf(pending.message.id)) }
+    }
+
+    DisposableEffect(notebookId) {
+        onDispose { settlePendingDelete() }
+    }
+
+    LaunchedEffect(pendingDelete) {
+        pendingDelete?.let { lastDelete.value = it }
+    }
 
     LaunchedEffect(notebookId) {
+        settlePendingDelete()
         val convId = ChatScope.forNotebook(notebookId)
         val existing = db.chatDao().getForConversationOnce(convId)
         messages.clear()
@@ -476,6 +489,7 @@ fun NotebookChatTab(
             promptTokens = 0,
             cachedTokens = 0
         )
+        settlePendingDelete()
         AppScope.io.launch { db.chatDao().deleteByIds(listOf(answerId)) }
         askModel(answerId)
     }
@@ -483,6 +497,7 @@ fun NotebookChatTab(
     fun resendEditedQuestion(questionId: Long, newText: String) {
         val idx = messages.indexOfFirst { it.id == questionId }
         if (idx < 0) return
+        settlePendingDelete()
         val followingIds = messages.drop(idx + 1).map { it.id }
         while (messages.size > idx + 1) messages.removeAt(messages.size - 1)
         messages[idx] = messages[idx].copy(content = newText)
@@ -505,20 +520,18 @@ fun NotebookChatTab(
     fun deleteMessage(target: UiChatMessage) {
         val idx = messages.indexOfFirst { it.id == target.id }
         if (idx < 0) return
+        if (pendingDelete != null) LucentToast.show(context, "上一条删除已生效")
+        settlePendingDelete()
         messages.removeAt(idx)
-        scope.launch {
-            val row = db.chatDao().getByIdOnce(target.id)
-            if (row != null) db.chatDao().deleteByIds(listOf(target.id))
-            pendingDelete = PendingChatDelete(row = row, message = target, index = idx)
-        }
+        pendingDelete = PendingChatDelete(message = target, index = idx)
     }
 
     fun undoDelete() {
         val pending = pendingDelete ?: return
         pendingDelete = null
-        messages.add(pending.index.coerceIn(0, messages.size), pending.message)
-        val row = pending.row
-        if (row != null) AppScope.io.launch { db.chatDao().restore(row) }
+        if (messages.none { it.id == pending.message.id }) {
+            messages.add(pending.index.coerceIn(0, messages.size), pending.message)
+        }
     }
 
     val onSendMessage: () -> Unit = send@{
@@ -535,6 +548,7 @@ fun NotebookChatTab(
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val isImeVisible = WindowInsets.isImeVisible
+    val barMotionOn = LocalBackgroundEnvironment.current.motionEnabled
 
     LaunchedEffect(isImeVisible) {
         if (isImeVisible && messages.isNotEmpty()) {
@@ -596,20 +610,20 @@ fun NotebookChatTab(
 
             AnimatedVisibility(
                 visible = pendingDelete != null,
-                enter = slideInVertically(
+                enter = if (barMotionOn) slideInVertically(
                     animationSpec = LucentMotion.toIntOffset(LucentMotion.Sheet)
-                ) { it } + fadeIn(tween(180)),
-                exit = slideOutVertically(
+                ) { it } + fadeIn(tween(180)) else fadeIn(tween(0)),
+                exit = if (barMotionOn) slideOutVertically(
                     animationSpec = LucentMotion.toIntOffset(LucentMotion.Firm)
-                ) { it } + fadeOut(tween(150))
+                ) { it } + fadeOut(tween(150)) else fadeOut(tween(0))
             ) {
-                pendingDelete?.let { pending ->
+                lastDelete.value?.let { pending ->
                     DeleteUndoBar(
                         messageId = pending.message.id,
                         label = if (pending.message.role == "user") "已删除这条提问" else "已删除这条回答",
                         excerpt = ChatStats.preview(pending.message.content, limit = 24),
                         onUndo = { undoDelete() },
-                        onDismiss = { pendingDelete = null }
+                        onDismiss = { settlePendingDelete() }
                     )
                 }
             }
@@ -889,6 +903,7 @@ private fun BubbleAction(
     val context = LocalContext.current
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
+    val motionOn = LocalBackgroundEnvironment.current.motionEnabled
     val alpha by animateFloatAsState(
         targetValue = when {
             !enabled -> 0.30f
@@ -898,9 +913,8 @@ private fun BubbleAction(
         animationSpec = tween(130),
         label = "bubbleActionAlpha"
     )
-
     val scale by animateFloatAsState(
-        targetValue = if (pressed) 0.96f else 1f,
+        targetValue = if (pressed && motionOn) 0.96f else 1f,
         animationSpec = LucentMotion.toSpring(LucentMotion.Control),
         label = "bubbleActionScale"
     )
@@ -934,7 +948,6 @@ private fun BubbleAction(
 }
 
 private data class PendingChatDelete(
-    val row: ChatMessage?,
     val message: UiChatMessage,
     val index: Int
 )
@@ -954,7 +967,7 @@ private fun DeleteUndoBar(
     val scope = rememberCoroutineScope()
     val slide = remember { Animatable(0f) }
     var barWidth by remember { mutableStateOf(0f) }
-    val reduced = LucentMotion.reduced(context)
+    val motionOn = LocalBackgroundEnvironment.current.motionEnabled
 
     LaunchedEffect(messageId) {
         slide.snapTo(0f)
@@ -967,29 +980,35 @@ private fun DeleteUndoBar(
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 4.dp)
             .onSizeChanged { barWidth = it.width.toFloat() }
-            .offset { IntOffset(slide.value.roundToInt(), 0) }
-            .alpha((1f - abs(slide.value) / barWidth.coerceAtLeast(1f)).coerceIn(0f, 1f))
+            .graphicsLayer {
+                translationX = slide.value
+                alpha = (1f - abs(slide.value) / barWidth.coerceAtLeast(1f)).coerceIn(0f, 1f)
+            }
             .draggable(
                 state = rememberDraggableState { delta ->
                     scope.launch { slide.snapTo(slide.value + delta) }
                 },
                 orientation = Orientation.Horizontal,
                 onDragStopped = { velocity ->
+                    val travel = barWidth.coerceAtLeast(1f)
                     val distance = abs(slide.value)
-                    val kept = distance < barWidth * SWIPE_FRACTION && abs(velocity) < FLING_VELOCITY
+                    val kept = distance < travel * SWIPE_FRACTION && abs(velocity) < FLING_VELOCITY
                     val direction = if (distance > 1f) slide.value else velocity
                     scope.launch {
                         if (kept) {
-                            if (reduced) slide.snapTo(0f) else slide.animateTo(0f, LucentMotion.toSpring(LucentMotion.Settle))
+                            if (motionOn) slide.animateTo(0f, LucentMotion.toSpring(LucentMotion.Settle)) else slide.snapTo(0f)
                         } else {
-                            val target = if (direction >= 0f) barWidth else -barWidth
-                            if (reduced) slide.snapTo(target) else slide.animateTo(target, LucentMotion.toSpring(LucentMotion.Firm))
+                            val target = if (direction >= 0f) travel else -travel
+                            if (motionOn) {
+                                slide.animateTo(target, LucentMotion.toSpring(LucentMotion.Firm))
+                            } else {
+                                slide.snapTo(target)
+                            }
                             onDismiss()
                         }
                     }
                 }
             )
-            .clip(RoundedCornerShape(16.dp))
             .frostedGlass(cornerRadius = 16.dp)
             .padding(horizontal = 14.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically

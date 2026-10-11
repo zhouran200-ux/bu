@@ -32,13 +32,7 @@ object LucentGlass {
 
     const val BLURRED_FILL_DARK = 0.06f
     const val BLURRED_FILL_LIGHT = 0.14f
-
-    const val NAV_FILL_DARK = 0.07f
-    const val NAV_FILL_LIGHT = 0.11f
 }
-
-val DANGER_RED = Color(0xFFD92D20)
-val DANGER_RED_RIM = Color(0xFF9B1C14)
 
 @Composable
 fun isDarkGlass(): Boolean = LocalOnGradient.current.luminance() > 0.5f

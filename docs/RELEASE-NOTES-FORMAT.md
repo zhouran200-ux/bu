@@ -42,56 +42,40 @@ the notes it is given, and refuses to build a release whose notes do not match.
 
 ---
 
-The example below is the shipped 3.0.0 body, kept as a reference.
+The example below is the shape of the shipped 3.1.2 body, with the build numbers left as placeholders.
 
-# Third Hand: The Notebook Becomes a Workshop
+# The Notebook Goes Native, and Lighter
 
-Lucent 3.0.0 turns the assistant from a well-mannered conversationalist into something with a workshop, a key to it, and a written record of everything it does in there. Nothing about the notes and tasks you already keep has changed; there is simply a great deal more behind the door now.
+Lucent 3.1.2 is a clean Android release: one `app/` module holding every screen, one `baselineprofile/` module that only warms the first frame, and a single interface that speaks careful Simplified Chinese throughout. What follows is what the release does on the phone.
 
-**A toolkit, not a toybox.** The assistant gets a workspace folder of your choosing and real tools: list, search, read, write, edit with a proper diff, copy, move, delete, zip, and a snapshot of every file before it is touched, so any mistake can be walked back. Long jobs become background tasks you can poll and stop, and commands run with a working directory and a timeout.
+**A knowledge base that is ready when you open the notebook.** Each notebook keeps one local document as its source, and the assistant reads every note inside that notebook as living context. Nothing is indexed in advance; edit a note and the next answer already knows. A source may be `.txt`, `.doc` or `.docx` — parsed into Markdown on the device, the old binary Word format included, written with Lucent's own reader so nothing is uploaded and no office library is asked to help.
 
-**Documents, made properly.** Word, Excel and PowerPoint files are now created and edited on your device, in formats written by Lucent itself — no office library, no upload, no conversion service. Word documents get styles, tables, images, headers, footers, page numbers and a table of contents; spreadsheets get formulas, formats, merges, frozen panes, filters, conditional colours and charts; presentations get masters, layouts, themes, speaker notes and editable charts. PDFs can be read, searched, split, merged and drawn as pictures — and a rendered page is something the assistant can look at, which is how it notices that slide seven has spilled its text.
+**The models stay yours.** Bring your own key: ChatGPT, Gemini, Claude, DeepSeek and Kimi arrive as one-tap presets, and any compatible endpoint can be typed in by hand. Profiles are saved as a list, reordered by long press and drag, refreshed for their model names and tested for connectivity from the settings page itself. A custom User-Agent, with a SillyTavern disguise among the presets, rides on every request.
 
-**Code, kept honest.** Git has a full set of guarded tools — status, diff, log, blame, branch, commit, stash, merge, rebase, patch, fetch, pull and push — and the dangerous corners are refused rather than regretted. GitHub follows: repositories, files, issues, pull requests, diffs, branches, releases, code search, workflow runs and CI logs, so a failing build can be read and fixed rather than merely described.
+**Thinking you can watch.** Reasoning models stream their chain of thought into a lane that unfolds as it arrives and folds away when you want the prose. Every notebook keeps its own reasoning level, its own number of history turns and its own prompt, so changing notebooks changes the whole character of the conversation.
 
-**A workshop with a rulebook.** Permissions are their own page: read, write, delete, commands, network, Git, GitHub, browsing, the world outside the workspace and the device itself, each set to allow, ask or block. Deleting and installing ask first by default. Every call lands in an activity log with what was asked, what happened and how long it took, and the log is yours to read or clear.
+**Quiet, and quick.** Gradients drift behind frosted Haze panels; light, dark, system and a wide family of Monet palettes are joined by wallpaper-derived colour on Android 12 and later. Every screen scrolls on its own, remembers its position, and keeps the capsule navigation to the root pages. The APK carries arm64-v8a and x86_64 — the silicon in a modern phone and in the emulator.
 
-**Heavy things stay outside.** The installer is not asked to carry a Linux userland, Python, LibreOffice, Node.js, a browser engine, OCR or media tools. They are plugins, listed with their size and licence, downloaded only when you want them, from the project's own servers or a fast mirror, whichever answers first. The assistant can install them too, once it has told you how big they are.
-
-**Sub-agents, for the heavy days.** A switch in Personalisation lets the assistant call for helpers: independent tasks go to sub-agents that work in the background with their own context and report back, so a long investigation no longer eats the conversation you are having.
-
-**Three kinds of memory, and a plan.** This conversation, this project and you are remembered separately. Anything with more than two steps gets a plan you can watch, and skills are written down, so your conventions are learned once.
-
-**On the phone, the workshop reaches the device.** Read the screen, tap, type, swipe, take a screenshot, list and open apps, read notifications, use the clipboard, the flashlight and the sensors. Termux handles real command-line tools, and MCP lets you bolt on anything else.
-
-The Android download is now one universal build for arm64-v8a, armeabi-v7a and x86_64.
+Push to `main` and `build-apk.yml` returns a signed release APK; `release.yml` drafts the release and checks these notes on the way out.
 
 ---
 
 <details>
 <summary>简体中文</summary>
 
-# 第三只手：笔记本变成了一间工作室
+# 单模块安卓，更轻，也更快
 
-Lucent 3.0.0 把助手从一位彬彬有礼的聊天对象，变成了一间工作室的主人：有钥匙，也有把里面每件事都记下来的账本。你原有的笔记与任务没有任何变化，只是那扇门后面丰富了许多。
+Lucent 3.1.2 是一份干净的 Android 版本：所有界面收在 `app/` 一个模块里，`baselineprofile/` 只负责把首屏预热好，界面语言仍是一丝不苟的简体中文，且只此一种。下面写的是它在手机上真正做的事。
 
-**工具箱，不是玩具箱。** 助手得到你指定的工作区文件夹和一套真正的工具：列目录、搜索、读取、写入、带差异对比的编辑、复制、移动、删除、打包，以及每次改动前的自动快照，出错随时退回。耗时的工作变成后台任务，可以随时查看和终止；命令带工作目录、超时和完整输出。
+**翻开笔记本，知识库就在。** 每本笔记本保存一份本地文档作为来源，助手实时取用该笔记本内的全部笔记作为上下文，无需预先建立索引；笔记一改，下一句回答即刻知道。来源可以是 `.txt`、`.doc` 或 `.docx`，由 Lucent 自己的解析器在设备上读成 Markdown——老二进制 Word 也在内，不依赖任何 Office 库，不上传，不经过转换服务。
 
-**文档，正经地做。** Word、Excel、PowerPoint 现在由 Lucent 本机生成和修改，文件格式由 Lucent 自己写出——不依赖任何 Office 库，不上传，不经过转换服务。Word 有样式、表格、图片、页眉页脚、页码和目录；表格有公式、格式、合并、冻结窗格、筛选、条件颜色和图表；演示文稿有母版、版式、主题、备注和可编辑图表。PDF 可以读取、搜索、拆分、合并并渲染成图片，而渲染出来的页面助手能亲眼看——第七页文字溢出来了，它看得见。
+**模型由你决定。** 自带服务商：ChatGPT、Claude、Gemini、DeepSeek、Kimi 都是一键套用的预设，任意兼容地址也能手填。方案成组保存，长按拖动排序，模型列表就地获取，连通性在设置里直接测试。自定义 User-Agent 随每次请求一同发出，预设里有 SillyTavern 伪装一档。
 
-**代码，规规矩矩。** Git 工具齐备：状态、差异、日志、追溯、分支、提交、暂存、合并、变基、补丁、拉取、推送，危险的动作直接拒绝而不是事后道歉。GitHub 亦然：仓库、文件、议题、拉取请求、差异、分支、发布、代码搜索、流水线与构建日志，失败的构建可以读、可以修。
+**思考过程看得见。** 推理模型的思考链会实时流式展开，想读就摊开，想安静就折起。思考强度、携带的历史轮数与自定义提示词都按笔记本各自保存，换一本即刻换一套，绝不串台。
 
-**有规矩的工作室。** 权限自成一面：读取、写入、删除、命令、网络、Git、GitHub、浏览、工作区之外、以及设备本身，每项都可以设为允许、询问或禁止。删除与安装默认先问。每次调用都会写入操作记录，写了什么、结果如何、花了多久，随时可看可清。
+**安静，也快。** 渐变色在毛玻璃高斯模糊面板后方漂移；浅色、深色、跟随系统之外，还有一整排 Monet 配色，Android 12+ 可跟随壁纸取色。每面各自滚动、各自记住位置，底部胶囊导航只在根级出现。安装包只带 arm64-v8a 与 x86_64 两种架构——真机与模拟器所用的那两种。
 
-**重的东西留在门外。** 安装包不背 Linux 环境、Python、LibreOffice、Node.js、浏览器内核、OCR 和媒体工具。它们是插件，标明体积与许可证，只在你需要时下载，官方地址与国内镜像自动测速取快。助手也可以自己装，前提是先告诉你要下多大。
-
-**子助手，忙的时候用。** 个性化里有一个开关：打开后助手可以召唤帮手，独立的任务交给在后台用自己上下文工作的子助手，完成后汇报，长时间调查不再占用你正在聊的这一段。
-
-**三种记忆，一份计划。** 本次对话、这个项目、以及你本人，分开记住。超过两步的任务会给出可实时查看的计划；技能会被写下来，你的习惯只需要教一次。
-
-**在手机上，工作室延伸到设备。** 读屏、点击、输入、滑动、截图、列出并打开应用、读取通知，以及剪贴板、手电筒和传感器。Termux 负责真正的命令行工具，MCP 还能把别的能力接进来。
-
-安卓版现在是一个通用包，同时支持 arm64-v8a、armeabi-v7a 与 x86_64。
+推送到 `main`，`build-apk.yml` 就交出签好名的 Release APK；`release.yml` 起草发布单，并在这段说明不合格式时拒绝发布。
 
 </details>
 
@@ -99,7 +83,6 @@ Lucent 3.0.0 把助手从一位彬彬有礼的聊天对象，变成了一间工�
 
 **Build info**
 
-- Android APK: 58.73 MiB
-- Windows installer: 165.37 MiB
-- Built from commit `ba4dfd072069b4f7d95978063c327da79dead64e`
-- Build log: https://github.com/zhouran200-ux/bu/actions/runs/36127855604
+- Android APK: `<size>` MiB
+- Built from commit `<sha>`
+- Build log: `<run url>`

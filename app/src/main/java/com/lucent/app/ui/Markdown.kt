@@ -213,8 +213,7 @@ internal class IncrementalMarkdownParser {
 }
 
 private val INLINE = Regex(
-    """\[\[([^\[\]]+)]]""" +
-        """|\[([^\]]+)]\(([^)\s]+)\)""" +
+    """\[([^\]]+)]\(([^)\s]+)\)""" +
         """|`([^`]+)`""" +
         """|\*\*([^*]+)\*\*""" +
         """|__([^_]+)__""" +
@@ -227,11 +226,8 @@ private val INLINE = Regex(
 private fun inlineAnnotated(
     line: String,
     textColor: Color,
-    accent: Color,
-    brokenLinks: Set<String>,
-    onWikiLink: (String) -> Unit
+    accent: Color
 ): AnnotatedString {
-    val brokenStyle = SpanStyle(color = OverdueColor, textDecoration = TextDecoration.Underline)
     val linkStyle = SpanStyle(color = accent, textDecoration = TextDecoration.Underline)
 
     return buildAnnotatedString {
@@ -242,29 +238,17 @@ private fun inlineAnnotated(
             }
             val g = match.groupValues
             when {
-                g[1].isNotEmpty() -> {
-                    val target = g[1].trim()
-                    val broken = target.lowercase() in brokenLinks
-                    withLink(
-                        LinkAnnotation.Clickable(
-                            tag = "note:$target",
-                            styles = TextLinkStyles(style = if (broken) brokenStyle else linkStyle)
-                        ) { onWikiLink(target) }
-                    ) {
-                        append(target)
-                    }
-                }
-                g[2].isNotEmpty() && g[3].isNotEmpty() -> withLink(
-                    LinkAnnotation.Url(url = g[3], styles = TextLinkStyles(style = linkStyle))
-                ) { append(g[2]) }
-                g[4].isNotEmpty() -> withStyle(
+                g[1].isNotEmpty() && g[2].isNotEmpty() -> withLink(
+                    LinkAnnotation.Url(url = g[2], styles = TextLinkStyles(style = linkStyle))
+                ) { append(g[1]) }
+                g[3].isNotEmpty() -> withStyle(
                     SpanStyle(fontFamily = FontFamily.Monospace, background = textColor.copy(alpha = 0.10f))
-                ) { append(g[4]) }
+                ) { append(g[3]) }
+                g[4].isNotEmpty() -> withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(g[4]) }
                 g[5].isNotEmpty() -> withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(g[5]) }
-                g[6].isNotEmpty() -> withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(g[6]) }
-                g[7].isNotEmpty() -> withStyle(SpanStyle(textDecoration = TextDecoration.LineThrough)) { append(g[7]) }
+                g[6].isNotEmpty() -> withStyle(SpanStyle(textDecoration = TextDecoration.LineThrough)) { append(g[6]) }
+                g[7].isNotEmpty() -> withStyle(SpanStyle(fontStyle = FontStyle.Italic)) { append(g[7]) }
                 g[8].isNotEmpty() -> withStyle(SpanStyle(fontStyle = FontStyle.Italic)) { append(g[8]) }
-                g[9].isNotEmpty() -> withStyle(SpanStyle(fontStyle = FontStyle.Italic)) { append(g[9]) }
             }
             cursor = match.range.last + 1
         }
@@ -275,9 +259,7 @@ private fun inlineAnnotated(
 @Composable
 fun MarkdownText(
     text: String,
-    modifier: Modifier = Modifier,
-    brokenLinks: Set<String> = emptySet(),
-    onWikiLink: (String) -> Unit = {}
+    modifier: Modifier = Modifier
 ) {
     val onGradient = LocalOnGradient.current
     val onGradientMuted = LocalOnGradientMuted.current
@@ -289,7 +271,7 @@ fun MarkdownText(
             if (index > 0) Spacer(modifier = Modifier.height(6.dp))
             when (block) {
                 is MdBlock.Heading -> Text(
-                    inlineAnnotated(block.text, onGradient, onGradient, brokenLinks, onWikiLink),
+                    inlineAnnotated(block.text, onGradient, onGradient),
                     color = onGradient,
                     fontSize = when (block.level) {
                         1 -> 22.sp
@@ -301,14 +283,14 @@ fun MarkdownText(
                 )
 
                 is MdBlock.Paragraph -> Text(
-                    inlineAnnotated(block.text, onGradient, onGradient, brokenLinks, onWikiLink),
+                    inlineAnnotated(block.text, onGradient, onGradient),
                     color = onGradient
                 )
 
                 is MdBlock.Bullet -> Row(modifier = Modifier.fillMaxWidth()) {
                     Text("•", color = onGradientMuted, modifier = Modifier.padding(end = 8.dp))
                     Text(
-                        inlineAnnotated(block.text, onGradient, onGradient, brokenLinks, onWikiLink),
+                        inlineAnnotated(block.text, onGradient, onGradient),
                         color = onGradient,
                         modifier = Modifier.weight(1f)
                     )
@@ -317,7 +299,7 @@ fun MarkdownText(
                 is MdBlock.Numbered -> Row(modifier = Modifier.fillMaxWidth()) {
                     Text("${block.marker}.", color = onGradientMuted, modifier = Modifier.padding(end = 8.dp))
                     Text(
-                        inlineAnnotated(block.text, onGradient, onGradient, brokenLinks, onWikiLink),
+                        inlineAnnotated(block.text, onGradient, onGradient),
                         color = onGradient,
                         modifier = Modifier.weight(1f)
                     )
@@ -331,7 +313,7 @@ fun MarkdownText(
                             .background(onGradientMuted)
                     )
                     Text(
-                        inlineAnnotated(block.text, onGradientMuted, onGradient, brokenLinks, onWikiLink),
+                        inlineAnnotated(block.text, onGradientMuted, onGradient),
                         color = onGradientMuted,
                         fontStyle = FontStyle.Italic,
                         modifier = Modifier.padding(start = 8.dp)

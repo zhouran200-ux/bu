@@ -1,7 +1,6 @@
 package com.lucent.app
 
 import android.app.Activity
-import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.compose.BackHandler
@@ -148,8 +147,7 @@ class MainActivity : ComponentActivity() {
 
         AppScope.io.launch {
             try {
-                val db = com.lucent.app.data.AppDatabase.getInstance(applicationContext)
-                com.lucent.app.data.DataCache.warm(db)
+                com.lucent.app.data.AppDatabase.getInstance(applicationContext)
             } catch (t: Throwable) {
                 android.util.Log.e("LucentStartup", "database init failed at startup", t)
             }
@@ -248,23 +246,6 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
-
-    override fun onStart() {
-        super.onStart()
-    }
-
-    override fun onStop() {
-        super.onStop()
-    }
-
-    override fun onNewIntent(intent: Intent) {
-        super.onNewIntent(intent)
-        setIntent(intent)
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalHazeMaterialsApi::class)
@@ -278,7 +259,6 @@ fun LucentApp(paletteColors: List<Color>, backdropColor: Color, backgroundAnimat
         pageCount = { tabs.size }
     )
     val tabScope = rememberCoroutineScope()
-    val lastScreenContext = LocalContext.current
     LaunchedEffect(currentScreen) {
         LastScreen.remember(currentScreen)
     }

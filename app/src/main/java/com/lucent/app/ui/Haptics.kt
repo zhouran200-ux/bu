@@ -1,33 +1,15 @@
 package com.lucent.app.ui
 
 import android.content.Context
-import android.media.AudioAttributes
 import android.os.Build
-import android.os.VibrationAttributes
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
-import androidx.compose.foundation.clickable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.composed
-import androidx.compose.ui.platform.LocalContext
 
 object Haptics {
 
     private const val TICK_MS = 18L
     private const val TICK_AMPLITUDE = 90
-
-    private const val TYPING_TICK_MS = 14L
-    private const val TYPING_AMPLITUDE = 255
-    private const val TYPING_MIN_GAP_MS = 24L
-
-    private const val MAX_AMPLITUDE = 255
-    private val FINISH_TIMINGS = longArrayOf(0L, 120L, 55L, 260L)
-    private val FINISH_AMPLITUDES = intArrayOf(0, MAX_AMPLITUDE, 0, MAX_AMPLITUDE)
-
-    private const val SETTLE_MS = 10L
-
-    @Volatile private var lastTypingTickAt = 0L
 
     private fun vibrator(context: Context): Vibrator? {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -55,30 +37,4 @@ object Haptics {
     }
 
     fun tick(context: Context) = oneShot(context, TICK_MS, TICK_AMPLITUDE)
-
-    private fun vibrateStrong(vib: Vibrator, effect: VibrationEffect) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            val attrs = VibrationAttributes.Builder()
-                .setUsage(VibrationAttributes.USAGE_NOTIFICATION)
-                .build()
-            vib.vibrate(effect, attrs)
-        } else {
-            @Suppress("DEPRECATION")
-            val attrs = AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_NOTIFICATION_EVENT)
-                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                .build()
-            @Suppress("DEPRECATION")
-            vib.vibrate(effect, attrs)
-        }
-    }
-
-}
-
-fun Modifier.hapticClickable(onClick: () -> Unit): Modifier = composed {
-    val context = LocalContext.current
-    clickable {
-        Haptics.tick(context)
-        onClick()
-    }
 }

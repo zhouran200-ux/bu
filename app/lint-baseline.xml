@@ -1,481 +1,58 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<issues format="6" by="lint 9.4.0" type="baseline" client="gradle" dependencies="false" name="AGP (9.4.0)" variant="all" version="9.4.0">
-
-
-
+<issues format="6" by="lint 9.1.1" type="baseline" client="gradle" dependencies="false" name="AGP (9.1.1)" variant="all" version="9.1.1">
 
     <issue
-        id="OldTargetApi"
-        message="Not targeting the latest versions of Android; compatibility modes apply. Consider testing and updating this version. Consult the `android.os.Build.VERSION_CODES` javadoc for details."
-        errorLine1="        targetSdk = 36"
-        errorLine2="        ~~~~~~~~~~~~~~">
+        id="DefaultLocale"
+        message="Implicitly using the default locale is a common source of bugs: Use `String.format(Locale, ...)` instead"
+        errorLine1="            valueLabel = String.format(&quot;%.2fx&quot;, activeLineSpacing),"
+        errorLine2="                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="build.gradle.kts"
-            line="108"
-            column="9"/>
-    </issue>
-
-
-    <issue
-        id="UnusedAttribute"
-        message="Attribute `maxResizeWidth` is only used in API level 31 and higher (current min is 28)"
-        errorLine1="    android:maxResizeWidth=&quot;306dp&quot;"
-        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/xml/widget_assistant_info.xml"
-            line="11"
-            column="5"/>
+            file="src/main/java/com/lucent/app/ui/settings/FontSettingsPage.kt"
+            line="231"
+            column="26"/>
     </issue>
 
     <issue
-        id="UnusedAttribute"
-        message="Attribute `maxResizeHeight` is only used in API level 31 and higher (current min is 28)"
-        errorLine1="    android:maxResizeHeight=&quot;140dp&quot;"
-        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        id="DefaultLocale"
+        message="Implicitly using the default locale is a common source of bugs: Use `String.format(Locale, ...)` instead"
+        errorLine1="            valueLabel = String.format(&quot;%+.1fsp&quot;, activeLetterSpacing),"
+        errorLine2="                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/res/xml/widget_assistant_info.xml"
-            line="12"
-            column="5"/>
-    </issue>
-
-    <issue
-        id="UnusedAttribute"
-        message="Attribute `targetCellWidth` is only used in API level 31 and higher (current min is 28)"
-        errorLine1="    android:targetCellWidth=&quot;3&quot;"
-        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/xml/widget_assistant_info.xml"
-            line="13"
-            column="5"/>
-    </issue>
-
-    <issue
-        id="UnusedAttribute"
-        message="Attribute `targetCellHeight` is only used in API level 31 and higher (current min is 28)"
-        errorLine1="    android:targetCellHeight=&quot;1&quot;"
-        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/xml/widget_assistant_info.xml"
-            line="14"
-            column="5"/>
-    </issue>
-
-    <issue
-        id="UnusedAttribute"
-        message="Attribute `previewLayout` is only used in API level 31 and higher (current min is 28)"
-        errorLine1="    android:previewLayout=&quot;@layout/widget_assistant&quot;"
-        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/xml/widget_assistant_info.xml"
-            line="19"
-            column="5"/>
-    </issue>
-
-    <issue
-        id="UnusedAttribute"
-        message="Attribute `maxResizeWidth` is only used in API level 31 and higher (current min is 28)"
-        errorLine1="    android:maxResizeWidth=&quot;306dp&quot;"
-        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/xml/widget_new_note_info.xml"
-            line="11"
-            column="5"/>
-    </issue>
-
-    <issue
-        id="UnusedAttribute"
-        message="Attribute `maxResizeHeight` is only used in API level 31 and higher (current min is 28)"
-        errorLine1="    android:maxResizeHeight=&quot;140dp&quot;"
-        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/xml/widget_new_note_info.xml"
-            line="12"
-            column="5"/>
-    </issue>
-
-    <issue
-        id="UnusedAttribute"
-        message="Attribute `targetCellWidth` is only used in API level 31 and higher (current min is 28)"
-        errorLine1="    android:targetCellWidth=&quot;2&quot;"
-        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/xml/widget_new_note_info.xml"
-            line="13"
-            column="5"/>
-    </issue>
-
-    <issue
-        id="UnusedAttribute"
-        message="Attribute `targetCellHeight` is only used in API level 31 and higher (current min is 28)"
-        errorLine1="    android:targetCellHeight=&quot;1&quot;"
-        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/xml/widget_new_note_info.xml"
-            line="14"
-            column="5"/>
-    </issue>
-
-    <issue
-        id="UnusedAttribute"
-        message="Attribute `previewLayout` is only used in API level 31 and higher (current min is 28)"
-        errorLine1="    android:previewLayout=&quot;@layout/widget_new_note&quot;"
-        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/xml/widget_new_note_info.xml"
-            line="19"
-            column="5"/>
-    </issue>
-
-    <issue
-        id="UnusedAttribute"
-        message="Attribute `maxResizeWidth` is only used in API level 31 and higher (current min is 28)"
-        errorLine1="    android:maxResizeWidth=&quot;306dp&quot;"
-        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/xml/widget_new_task_info.xml"
-            line="11"
-            column="5"/>
-    </issue>
-
-    <issue
-        id="UnusedAttribute"
-        message="Attribute `maxResizeHeight` is only used in API level 31 and higher (current min is 28)"
-        errorLine1="    android:maxResizeHeight=&quot;140dp&quot;"
-        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/xml/widget_new_task_info.xml"
-            line="12"
-            column="5"/>
-    </issue>
-
-    <issue
-        id="UnusedAttribute"
-        message="Attribute `targetCellWidth` is only used in API level 31 and higher (current min is 28)"
-        errorLine1="    android:targetCellWidth=&quot;2&quot;"
-        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/xml/widget_new_task_info.xml"
-            line="13"
-            column="5"/>
-    </issue>
-
-    <issue
-        id="UnusedAttribute"
-        message="Attribute `targetCellHeight` is only used in API level 31 and higher (current min is 28)"
-        errorLine1="    android:targetCellHeight=&quot;1&quot;"
-        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/xml/widget_new_task_info.xml"
-            line="14"
-            column="5"/>
-    </issue>
-
-    <issue
-        id="UnusedAttribute"
-        message="Attribute `previewLayout` is only used in API level 31 and higher (current min is 28)"
-        errorLine1="    android:previewLayout=&quot;@layout/widget_new_task&quot;"
-        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/xml/widget_new_task_info.xml"
-            line="19"
-            column="5"/>
-    </issue>
-
-    <issue
-        id="UnusedAttribute"
-        message="Attribute `maxResizeWidth` is only used in API level 31 and higher (current min is 28)"
-        errorLine1="    android:maxResizeWidth=&quot;306dp&quot;"
-        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/xml/widget_pinned_note_info.xml"
-            line="16"
-            column="5"/>
-    </issue>
-
-    <issue
-        id="UnusedAttribute"
-        message="Attribute `maxResizeHeight` is only used in API level 31 and higher (current min is 28)"
-        errorLine1="    android:maxResizeHeight=&quot;210dp&quot;"
-        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/xml/widget_pinned_note_info.xml"
-            line="17"
-            column="5"/>
-    </issue>
-
-    <issue
-        id="UnusedAttribute"
-        message="Attribute `targetCellWidth` is only used in API level 31 and higher (current min is 28)"
-        errorLine1="    android:targetCellWidth=&quot;3&quot;"
-        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/xml/widget_pinned_note_info.xml"
-            line="18"
-            column="5"/>
-    </issue>
-
-    <issue
-        id="UnusedAttribute"
-        message="Attribute `targetCellHeight` is only used in API level 31 and higher (current min is 28)"
-        errorLine1="    android:targetCellHeight=&quot;2&quot;"
-        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/xml/widget_pinned_note_info.xml"
-            line="19"
-            column="5"/>
-    </issue>
-
-    <issue
-        id="UnusedAttribute"
-        message="Attribute `previewLayout` is only used in API level 31 and higher (current min is 28)"
-        errorLine1="    android:previewLayout=&quot;@layout/widget_pinned_note_preview&quot;"
-        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/xml/widget_pinned_note_info.xml"
-            line="24"
-            column="5"/>
-    </issue>
-
-    <issue
-        id="UnusedAttribute"
-        message="Attribute `maxResizeWidth` is only used in API level 31 and higher (current min is 28)"
-        errorLine1="    android:maxResizeWidth=&quot;306dp&quot;"
-        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/xml/widget_quick_actions_info.xml"
-            line="16"
-            column="5"/>
-    </issue>
-
-    <issue
-        id="UnusedAttribute"
-        message="Attribute `maxResizeHeight` is only used in API level 31 and higher (current min is 28)"
-        errorLine1="    android:maxResizeHeight=&quot;140dp&quot;"
-        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/xml/widget_quick_actions_info.xml"
-            line="17"
-            column="5"/>
-    </issue>
-
-    <issue
-        id="UnusedAttribute"
-        message="Attribute `targetCellWidth` is only used in API level 31 and higher (current min is 28)"
-        errorLine1="    android:targetCellWidth=&quot;3&quot;"
-        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/xml/widget_quick_actions_info.xml"
-            line="18"
-            column="5"/>
-    </issue>
-
-    <issue
-        id="UnusedAttribute"
-        message="Attribute `targetCellHeight` is only used in API level 31 and higher (current min is 28)"
-        errorLine1="    android:targetCellHeight=&quot;1&quot;"
-        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/xml/widget_quick_actions_info.xml"
-            line="19"
-            column="5"/>
-    </issue>
-
-    <issue
-        id="UnusedAttribute"
-        message="Attribute `previewLayout` is only used in API level 31 and higher (current min is 28)"
-        errorLine1="    android:previewLayout=&quot;@layout/widget_quick_actions_preview&quot;"
-        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/xml/widget_quick_actions_info.xml"
-            line="24"
-            column="5"/>
-    </issue>
-
-    <issue
-        id="UnusedAttribute"
-        message="Attribute `maxResizeWidth` is only used in API level 31 and higher (current min is 28)"
-        errorLine1="    android:maxResizeWidth=&quot;306dp&quot;"
-        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/xml/widget_task_summary_info.xml"
-            line="11"
-            column="5"/>
-    </issue>
-
-    <issue
-        id="UnusedAttribute"
-        message="Attribute `maxResizeHeight` is only used in API level 31 and higher (current min is 28)"
-        errorLine1="    android:maxResizeHeight=&quot;140dp&quot;"
-        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/xml/widget_task_summary_info.xml"
-            line="12"
-            column="5"/>
-    </issue>
-
-    <issue
-        id="UnusedAttribute"
-        message="Attribute `targetCellWidth` is only used in API level 31 and higher (current min is 28)"
-        errorLine1="    android:targetCellWidth=&quot;2&quot;"
-        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/xml/widget_task_summary_info.xml"
-            line="13"
-            column="5"/>
-    </issue>
-
-    <issue
-        id="UnusedAttribute"
-        message="Attribute `targetCellHeight` is only used in API level 31 and higher (current min is 28)"
-        errorLine1="    android:targetCellHeight=&quot;2&quot;"
-        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/xml/widget_task_summary_info.xml"
-            line="14"
-            column="5"/>
-    </issue>
-
-    <issue
-        id="UnusedAttribute"
-        message="Attribute `previewLayout` is only used in API level 31 and higher (current min is 28)"
-        errorLine1="    android:previewLayout=&quot;@layout/widget_task_summary&quot;"
-        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/xml/widget_task_summary_info.xml"
-            line="19"
-            column="5"/>
-    </issue>
-
-    <issue
-        id="UnusedAttribute"
-        message="Attribute `maxResizeWidth` is only used in API level 31 and higher (current min is 28)"
-        errorLine1="    android:maxResizeWidth=&quot;306dp&quot;"
-        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/xml/widget_today_tasks_info.xml"
-            line="16"
-            column="5"/>
-    </issue>
-
-    <issue
-        id="UnusedAttribute"
-        message="Attribute `maxResizeHeight` is only used in API level 31 and higher (current min is 28)"
-        errorLine1="    android:maxResizeHeight=&quot;280dp&quot;"
-        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/xml/widget_today_tasks_info.xml"
-            line="17"
-            column="5"/>
-    </issue>
-
-    <issue
-        id="UnusedAttribute"
-        message="Attribute `targetCellWidth` is only used in API level 31 and higher (current min is 28)"
-        errorLine1="    android:targetCellWidth=&quot;3&quot;"
-        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/xml/widget_today_tasks_info.xml"
-            line="18"
-            column="5"/>
-    </issue>
-
-    <issue
-        id="UnusedAttribute"
-        message="Attribute `targetCellHeight` is only used in API level 31 and higher (current min is 28)"
-        errorLine1="    android:targetCellHeight=&quot;3&quot;"
-        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/xml/widget_today_tasks_info.xml"
-            line="19"
-            column="5"/>
-    </issue>
-
-    <issue
-        id="UnusedAttribute"
-        message="Attribute `previewLayout` is only used in API level 31 and higher (current min is 28)"
-        errorLine1="    android:previewLayout=&quot;@layout/widget_today_tasks_preview&quot;"
-        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/xml/widget_today_tasks_info.xml"
-            line="24"
-            column="5"/>
-    </issue>
-
-
-    <issue
-        id="GradleDependency"
-        message="A newer version of `compileSdk` than 36 is available: 37"
-        errorLine1="    compileSdk = 36"
-        errorLine2="    ~~~~~~~~~~~~~~~">
-        <location
-            file="build.gradle.kts"
-            line="92"
-            column="5"/>
+            file="src/main/java/com/lucent/app/ui/settings/FontSettingsPage.kt"
+            line="246"
+            column="26"/>
     </issue>
 
     <issue
         id="GradleDependency"
-        message="A newer version of androidx.compose:compose-bom than 2026.04.01 is available: 2026.08.00"
-        errorLine1="composeBom = &quot;2026.04.01&quot;"
-        errorLine2="             ~~~~~~~~~~~~">
-        <location
-            file="$HOME/work/Lucent/Lucent/gradle/libs.versions.toml"
-            line="28"
-            column="14"/>
-    </issue>
-
-    <issue
-        id="GradleDependency"
-        message="A newer version of androidx.activity:activity-compose than 1.9.3 is available: 1.13.0"
+        message="A newer version of androidx.activity:activity-compose than 1.9.3 is available: 1.12.2"
         errorLine1="activityCompose = &quot;1.9.3&quot;"
         errorLine2="                  ~~~~~~~">
         <location
-            file="$HOME/work/Lucent/Lucent/gradle/libs.versions.toml"
-            line="29"
+            file="../gradle/libs.versions.toml"
+            line="9"
             column="19"/>
     </issue>
 
     <issue
         id="GradleDependency"
-        message="A newer version of androidx.core:core-ktx than 1.15.0 is available: 1.19.0"
+        message="A newer version of androidx.core:core-ktx than 1.15.0 is available: 1.16.0"
         errorLine1="coreKtx = &quot;1.15.0&quot;"
         errorLine2="          ~~~~~~~~">
         <location
-            file="$HOME/work/Lucent/Lucent/gradle/libs.versions.toml"
-            line="30"
+            file="../gradle/libs.versions.toml"
+            line="10"
             column="11"/>
     </issue>
 
     <issue
         id="GradleDependency"
-        message="A newer version of androidx.fragment:fragment-ktx than 1.8.5 is available: 1.9.0"
-        errorLine1="fragmentKtx = &quot;1.8.5&quot;"
-        errorLine2="              ~~~~~~~">
-        <location
-            file="$HOME/work/Lucent/Lucent/gradle/libs.versions.toml"
-            line="32"
-            column="15"/>
-    </issue>
-
-    <issue
-        id="GradleDependency"
-        message="A newer version of androidx.sqlite:sqlite-ktx than 2.4.0 is available: 2.7.0"
+        message="A newer version of androidx.sqlite:sqlite-ktx than 2.4.0 is available: 2.6.2"
         errorLine1="sqliteKtx = &quot;2.4.0&quot;"
         errorLine2="            ~~~~~~~">
         <location
-            file="$HOME/work/Lucent/Lucent/gradle/libs.versions.toml"
-            line="35"
-            column="13"/>
-    </issue>
-
-    <issue
-        id="GradleDependency"
-        message="A newer version of androidx.datastore:datastore-preferences than 1.1.7 is available: 1.2.1"
-        errorLine1="datastore = &quot;1.1.7&quot;"
-        errorLine2="            ~~~~~~~">
-        <location
-            file="$HOME/work/Lucent/Lucent/gradle/libs.versions.toml"
-            line="36"
+            file="../gradle/libs.versions.toml"
+            line="12"
             column="13"/>
     </issue>
 
@@ -485,8 +62,8 @@
         errorLine1="okhttp = &quot;4.12.0&quot;"
         errorLine2="         ~~~~~~~~">
         <location
-            file="$HOME/work/Lucent/Lucent/gradle/libs.versions.toml"
-            line="21"
+            file="../gradle/libs.versions.toml"
+            line="3"
             column="10"/>
     </issue>
 
@@ -496,8 +73,8 @@
         errorLine1="coroutines = &quot;1.8.1&quot;"
         errorLine2="             ~~~~~~~">
         <location
-            file="$HOME/work/Lucent/Lucent/gradle/libs.versions.toml"
-            line="23"
+            file="../gradle/libs.versions.toml"
+            line="4"
             column="14"/>
     </issue>
 
@@ -507,30 +84,19 @@
         errorLine1="coroutines = &quot;1.8.1&quot;"
         errorLine2="             ~~~~~~~">
         <location
-            file="$HOME/work/Lucent/Lucent/gradle/libs.versions.toml"
-            line="23"
+            file="../gradle/libs.versions.toml"
+            line="4"
             column="14"/>
     </issue>
 
     <issue
         id="NewerVersionAvailable"
-        message="A newer version of org.jetbrains.kotlinx:kotlinx-coroutines-swing than 1.8.1 is available: 1.11.0"
-        errorLine1="coroutines = &quot;1.8.1&quot;"
-        errorLine2="             ~~~~~~~">
-        <location
-            file="$HOME/work/Lucent/Lucent/gradle/libs.versions.toml"
-            line="23"
-            column="14"/>
-    </issue>
-
-    <issue
-        id="NewerVersionAvailable"
-        message="A newer version of dev.chrisbanes.haze:haze than 1.7.2 is available: 1.7.3"
+        message="A newer version of dev.chrisbanes.haze:haze than 1.7.2 is available: 2.0.1"
         errorLine1="haze = &quot;1.7.2&quot;"
         errorLine2="       ~~~~~~~">
         <location
-            file="$HOME/work/Lucent/Lucent/gradle/libs.versions.toml"
-            line="24"
+            file="../gradle/libs.versions.toml"
+            line="5"
             column="8"/>
     </issue>
 
@@ -540,36 +106,31 @@
         errorLine1="haze = &quot;1.7.2&quot;"
         errorLine2="       ~~~~~~~">
         <location
-            file="$HOME/work/Lucent/Lucent/gradle/libs.versions.toml"
-            line="24"
+            file="../gradle/libs.versions.toml"
+            line="5"
             column="8"/>
     </issue>
 
-
     <issue
-        id="NewerVersionAvailable"
-        message="A newer version of net.java.dev.jna:jna-platform than 5.19.0 is available: 5.19.1"
-        errorLine1="jnaPlatform = &quot;5.19.0&quot;"
-        errorLine2="              ~~~~~~~~">
+        id="ModifierParameter"
+        message="Modifier parameter should be the first optional parameter"
+        errorLine1="    modifier: Modifier = Modifier,"
+        errorLine2="    ~~~~~~~~">
         <location
-            file="$HOME/work/Lucent/Lucent/gradle/libs.versions.toml"
-            line="41"
-            column="15"/>
+            file="src/main/java/com/lucent/app/ui/settings/ApiSettingsPage.kt"
+            line="154"
+            column="5"/>
     </issue>
 
-
-
-
-
     <issue
-        id="MissingTranslation"
-        message="&quot;app_name&quot; is not translated in &quot;ko&quot; (Korean), &quot;ja&quot; (Japanese), &quot;zh&quot; (Chinese)"
-        errorLine1="    &lt;string name=&quot;app_name&quot;>𝓛𝓾𝓬𝓮𝓷𝓽&lt;/string>"
-        errorLine2="            ~~~~~~~~~~~~~~~">
+        id="ModifierParameter"
+        message="Modifier parameter should be named modifier"
+        errorLine1="    itemModifier: Modifier,"
+        errorLine2="    ~~~~~~~~~~~~">
         <location
-            file="src/main/res/values/strings.xml"
-            line="4"
-            column="13"/>
+            file="src/main/java/com/lucent/app/ui/NotebooksScreen.kt"
+            line="260"
+            column="5"/>
     </issue>
 
     <issue
@@ -579,18 +140,7 @@
         errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/java/com/lucent/app/ui/Haptics.kt"
-            line="105"
-            column="17"/>
-    </issue>
-
-    <issue
-        id="ObsoleteSdkInt"
-        message="Unnecessary; `SDK_INT` is always >= 28"
-        errorLine1="            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {"
-        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/com/lucent/app/ui/Haptics.kt"
-            line="172"
+            line="28"
             column="17"/>
     </issue>
 
@@ -602,75 +152,47 @@
     </issue>
 
     <issue
-        id="UseCompoundDrawables"
-        message="This tag and its children can be replaced by one `&lt;TextView/>` and a compound drawable"
-        errorLine1="    &lt;LinearLayout"
-        errorLine2="     ~~~~~~~~~~~~">
+        id="AutoboxingStateCreation"
+        message="Prefer `mutableIntStateOf` instead of `mutableStateOf`"
+        errorLine1="    private var backClaims by mutableStateOf(0)"
+        errorLine2="                              ~~~~~~~~~~~~~~">
         <location
-            file="src/main/res/layout/widget_task_summary_wide.xml"
-            line="14"
-            column="6"/>
+            file="src/main/java/com/lucent/app/AppNavigation.kt"
+            line="56"
+            column="31"/>
     </issue>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     <issue
         id="AutoboxingStateCreation"
-        message="Prefer `mutableLongStateOf` instead of `mutableStateOf`"
-        errorLine1="    var gateTick by remember { mutableStateOf(0L) }"
+        message="Prefer `mutableIntStateOf` instead of `mutableStateOf`"
+        errorLine1="    var fontRefreshIndex by remember { mutableStateOf(0) }"
+        errorLine2="                                       ~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/lucent/app/ui/settings/FontSettingsPage.kt"
+            line="68"
+            column="40"/>
+    </issue>
+
+    <issue
+        id="AutoboxingStateCreation"
+        message="Prefer `mutableFloatStateOf` instead of `mutableStateOf`"
+        errorLine1="    var barWidth by remember { mutableStateOf(0f) }"
         errorLine2="                               ~~~~~~~~~~~~~~">
         <location
-            file="src/main/java/com/lucent/app/ui/SettingsScreen.kt"
-            line="271"
+            file="src/main/java/com/lucent/app/ui/NotebookChatTab.kt"
+            line="1038"
             column="32"/>
     </issue>
 
     <issue
         id="AutoboxingStateCreation"
         message="Prefer `mutableIntStateOf` instead of `mutableStateOf`"
-        errorLine1="    var lmRefresh by remember { mutableStateOf(0) }"
-        errorLine2="                                ~~~~~~~~~~~~~~">
+        errorLine1="    internal var dragToken: Int by mutableStateOf(0)"
+        errorLine2="                                   ~~~~~~~~~~~~~~">
         <location
-            file="src/main/java/com/lucent/app/ui/SettingsScreen.kt"
-            line="670"
-            column="33"/>
-    </issue>
-
-    <issue
-        id="AutoboxingStateCreation"
-        message="Prefer `mutableIntStateOf` instead of `mutableStateOf`"
-        errorLine1="    var fontRefresh by remember { mutableStateOf(0) }"
-        errorLine2="                                  ~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/com/lucent/app/ui/SettingsScreen.kt"
-            line="825"
-            column="35"/>
+            file="src/main/java/com/lucent/app/ui/ReorderDrag.kt"
+            line="64"
+            column="36"/>
     </issue>
 
     <issue
@@ -680,23 +202,8 @@
         errorLine2="                                   ~~~~~~~~~~~~~~">
         <location
             file="src/main/java/com/lucent/app/ui/SettingsScreen.kt"
-            line="1123"
+            line="164"
             column="36"/>
-    </issue>
-
-
-
-
-
-    <issue
-        id="DisableBaselineAlignment"
-        message="Set `android:baselineAligned=&quot;false&quot;` on this element for better performance"
-        errorLine1="&lt;LinearLayout xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;"
-        errorLine2=" ~~~~~~~~~~~~">
-        <location
-            file="src/main/res/layout/widget_today_tasks_item.xml"
-            line="6"
-            column="2"/>
     </issue>
 
     <issue
@@ -708,50 +215,6 @@
             file="src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml"
             line="2"
             column="1"/>
-    </issue>
-
-    <issue
-        id="UnusedResources"
-        message="The resource `R.string.widget_new_note` appears to be unused"
-        errorLine1="    &lt;string name=&quot;widget_new_note&quot;>New note&lt;/string>"
-        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/values/strings.xml"
-            line="10"
-            column="13"/>
-    </issue>
-
-    <issue
-        id="UnusedResources"
-        message="The resource `R.string.widget_new_task` appears to be unused"
-        errorLine1="    &lt;string name=&quot;widget_new_task&quot;>New task&lt;/string>"
-        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/values/strings.xml"
-            line="11"
-            column="13"/>
-    </issue>
-
-    <issue
-        id="UnusedResources"
-        message="The resource `R.string.widget_open_tasks` appears to be unused"
-        errorLine1="    &lt;string name=&quot;widget_open_tasks&quot;>open tasks&lt;/string>"
-        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/values/strings.xml"
-            line="16"
-            column="13"/>
-    </issue>
-
-    <issue
-        id="UnusedResources"
-        message="The resource `R.string.widget_open_task_one` appears to be unused"
-        errorLine1="    &lt;string name=&quot;widget_open_task_one&quot;>open task&lt;/string>"
-        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/values/strings.xml"
-            line="17"
-            column="13"/>
     </issue>
 
     <issue
@@ -780,125 +243,80 @@
     </issue>
 
     <issue
-        id="SmallSp"
-        message="Avoid using sizes smaller than `11sp`: `10sp`"
-        errorLine1="        android:textSize=&quot;10sp&quot;"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~">
+        id="UseKtx"
+        message="Use the KTX extension function `Int.toDrawable` instead?"
+        errorLine1="        window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(initialBackdropColor.toArgb()))"
+        errorLine2="                                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/res/layout/widget_pinned_note_preview.xml"
-            line="21"
-            column="9"/>
+            file="src/main/java/com/lucent/app/MainActivity.kt"
+            line="127"
+            column="38"/>
     </issue>
 
     <issue
-        id="SmallSp"
-        message="Avoid using sizes smaller than `11sp`: `10sp`"
-        errorLine1="        android:textSize=&quot;10sp&quot;"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~">
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="            prefs.edit()"
+        errorLine2="            ~~~~~~~~~~~~">
         <location
-            file="src/main/res/layout/widget_today_tasks_preview.xml"
-            line="18"
-            column="9"/>
+            file="src/main/java/com/lucent/app/ui/NotebookChatTab.kt"
+            line="199"
+            column="13"/>
     </issue>
 
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="                    prefs.edit()"
+        errorLine2="                    ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/lucent/app/ui/NotebookChatTab.kt"
+            line="658"
+            column="21"/>
+    </issue>
 
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="                    prefs.edit()"
+        errorLine2="                    ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/lucent/app/ui/NotebookChatTab.kt"
+            line="741"
+            column="21"/>
+    </issue>
 
-
-
-
-
-
-
-
-
-
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="                    prefs.edit()"
+        errorLine2="                    ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/lucent/app/ui/NotebookChatTab.kt"
+            line="761"
+            column="21"/>
+    </issue>
 
     <issue
         id="UseTomlInstead"
         message="Use version catalog instead"
-        errorLine1="    testImplementation(&quot;org.jetbrains.kotlin:kotlin-test-junit:2.4.0&quot;)"
-        errorLine2="                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        errorLine1="    testImplementation(&quot;org.jetbrains.kotlin:kotlin-test-junit&quot;)"
+        errorLine2="                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="build.gradle.kts"
-            line="352"
+            line="138"
             column="24"/>
     </issue>
 
     <issue
-        id="HardcodedText"
-        message="Hardcoded string &quot;New note&quot;, should use `@string` resource"
-        errorLine1="            android:contentDescription=&quot;New note&quot; />"
-        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        id="ConstantLocale"
+        message="Assigning `Locale.getDefault()` to a final static field is suspicious; this code will not work correctly if the user changes locale while the app is running"
+        errorLine1="    DateTimeFormatter.ofPattern(&quot;M月d日 · HH:mm&quot;, Locale.getDefault())"
+        errorLine2="                                                ~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/res/layout/widget_quick_actions.xml"
-            line="43"
-            column="13"/>
-    </issue>
-
-    <issue
-        id="HardcodedText"
-        message="Hardcoded string &quot;New task&quot;, should use `@string` resource"
-        errorLine1="            android:contentDescription=&quot;New task&quot; />"
-        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/layout/widget_quick_actions.xml"
-            line="73"
-            column="13"/>
-    </issue>
-
-    <issue
-        id="HardcodedText"
-        message="Hardcoded string &quot;Ask the assistant&quot;, should use `@string` resource"
-        errorLine1="            android:contentDescription=&quot;Ask the assistant&quot; />"
-        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/layout/widget_quick_actions.xml"
-            line="103"
-            column="13"/>
-    </issue>
-
-    <issue
-        id="HardcodedText"
-        message="Hardcoded string &quot;—&quot;, should use `@string` resource"
-        errorLine1="        android:text=&quot;—&quot;"
-        errorLine2="        ~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/layout/widget_task_summary.xml"
-            line="25"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="HardcodedText"
-        message="Hardcoded string &quot;—&quot;, should use `@string` resource"
-        errorLine1="        android:text=&quot;—&quot;"
-        errorLine2="        ~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/layout/widget_task_summary_small.xml"
-            line="15"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="HardcodedText"
-        message="Hardcoded string &quot;—&quot;, should use `@string` resource"
-        errorLine1="        android:text=&quot;—&quot;"
-        errorLine2="        ~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/layout/widget_task_summary_wide.xml"
-            line="41"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="HardcodedText"
-        message="Hardcoded string &quot;+&quot;, should use `@string` resource"
-        errorLine1="            android:text=&quot;+&quot;"
-        errorLine2="            ~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/layout/widget_today_tasks.xml"
-            line="39"
-            column="13"/>
+            file="src/main/java/com/lucent/app/ui/NotebooksScreen.kt"
+            line="249"
+            column="49"/>
     </issue>
 
 </issues>

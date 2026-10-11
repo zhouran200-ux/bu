@@ -1,7 +1,5 @@
 package com.lucent.app.ui
 
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
@@ -30,16 +28,4 @@ object LucentTitles {
         depth == 3 -> SectionWeight
         else -> ItemWeight
     }
-
-    @Composable
-    fun screen(): TextStyle = TextStyle(fontSize = ScreenSize, fontWeight = ScreenWeight)
-
-    @Composable
-    fun entry(): TextStyle = TextStyle(fontSize = EntrySize, fontWeight = EntryWeight)
-
-    @Composable
-    fun section(): TextStyle = TextStyle(fontSize = SectionSize, fontWeight = SectionWeight)
-
-    @Composable
-    fun item(): TextStyle = TextStyle(fontSize = ItemSize, fontWeight = ItemWeight)
 }

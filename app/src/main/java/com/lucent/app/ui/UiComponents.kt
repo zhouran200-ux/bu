@@ -24,18 +24,10 @@ import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-const val SWIPE_EXIT_MS = 160
-
-const val SWIPE_ENTER_MS = 220
-
-const val SWIPE_RESIST = 0.33f
-
 private val CapsuleLabelLineHeight = LineHeightStyle(
     alignment = LineHeightStyle.Alignment.Center,
     trim = LineHeightStyle.Trim.Both
 )
-
-val COMPOSER_ACTION_HEIGHT = 52.dp
 
 @Composable
 fun GlassButton(
@@ -44,7 +36,6 @@ fun GlassButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     icon: ImageVector? = null,
-    danger: Boolean = false,
     compact: Boolean = false
 ) {
     val onGradient = LocalOnGradient.current
@@ -58,24 +49,19 @@ fun GlassButton(
     val iconGap = if (compact) 6.dp else 8.dp
     val labelSize = if (compact) 13.sp else 15.sp
 
-    val dangerFill = DANGER_RED
-    val dangerRim = DANGER_RED_RIM
-    val fill = when {
-        danger -> dangerFill
-        glassDark -> Color.White.copy(alpha = LucentGlass.CARD_FILL_DARK)
-        else -> Color.White.copy(alpha = LucentGlass.CARD_FILL_LIGHT)
+    val fill = if (glassDark) {
+        Color.White.copy(alpha = LucentGlass.CARD_FILL_DARK)
+    } else {
+        Color.White.copy(alpha = LucentGlass.CARD_FILL_LIGHT)
     }
-    val label = if (danger) Color.White else onGradient
+    val label = onGradient
     val fade = if (enabled) 1f else 0.38f
 
     Row(
         modifier = modifier
             .clip(shape)
             .background(fill.copy(alpha = fill.alpha * fade))
-            .then(
-                if (danger) Modifier.border(1.dp, dangerRim.copy(alpha = dangerRim.alpha * fade), shape)
-                else Modifier.border(1.dp, lucentGlassRim(strong = true), shape)
-            )
+            .border(1.dp, lucentGlassRim(strong = true), shape)
             .clickable(enabled = enabled) {
                 Haptics.tick(context)
                 onClick()

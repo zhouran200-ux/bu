@@ -1,45 +1,30 @@
 package com.lucent.app.ui
 
-import android.net.Uri
 import androidx.activity.compose.BackHandler
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.NonRestartableComposable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.lucent.app.AppNavigation
 import com.lucent.app.BackClaim
 import com.lucent.app.AppScope
-import com.lucent.app.data.AppDatabase
-import com.lucent.app.data.FontStore
 import com.lucent.app.data.SettingsCache
 import com.lucent.app.data.SettingsRepository
 import com.lucent.app.i18n.S
@@ -52,34 +37,16 @@ import com.lucent.app.ui.settings.ThemeSettingsPage
 import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-
-private const val WRONG_PASSWORD = "__wrong_password__"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(active: Boolean = true) {
     val context = LocalContext.current
     val repo = remember { SettingsRepository(context) }
-    val db = remember { AppDatabase.getInstance(context) }
-    val scope = rememberCoroutineScope()
-    val onGradient = LocalOnGradient.current
-    val onGradientMuted = LocalOnGradientMuted.current
-
-    val appVersionName = remember {
-        runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull()
-            ?: com.lucent.app.LucentBuild.VERSION
-    }
-    val appBuildNumber = remember {
-        runCatching {
-            context.packageManager.getPackageInfo(context.packageName, 0).longVersionCode.toString()
-        }.getOrNull() ?: com.lucent.app.LucentBuild.BUILD_NUMBER
-    }
 
     val appContext = context.applicationContext
-    val savedFont by repo.font.collectAsState(initial = SettingsCache.font)
     val savedProfilesJson by repo.apiProfilesJson.collectAsState(initial = SettingsCache.apiProfilesJson)
     val savedSelectedIdx by repo.apiProfileSelected.collectAsState(initial = SettingsCache.apiProfileSelected)
     val profiles = remember(savedProfilesJson) {
@@ -170,68 +137,6 @@ fun SettingsScreen(active: Boolean = true) {
         }
     }
 
-    var fontRefresh by remember { mutableStateOf(0) }
-    val importedFonts = remember(fontRefresh) { FontStore.index(context) }.slots
-    val fontCanImportMore = importedFonts.size < FontStore.MAX_FONTS
-    var fontImporting by remember { mutableStateOf(false) }
-    var fontError by remember { mutableStateOf("") }
-    var fontPendingDelete by remember { mutableStateOf<FontStore.FontSlot?>(null) }
-    var fontPendingImportUri by remember { mutableStateOf<Uri?>(null) }
-    var fontImportName by remember { mutableStateOf("") }
-
-    val fontImportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
-        if (uri != null && !fontImporting) {
-            fontError = ""
-            val picked = try {
-                context.contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
-                    if (c.moveToFirst()) c.getString(0) else null
-                }
-            } catch (_: Throwable) { null }
-            fontImportName = (picked ?: "").substringBeforeLast('.').take(60)
-            fontPendingImportUri = uri
-        }
-    }
-
-    fun startFontImport(uri: Uri, name: String) {
-        if (fontImporting) return
-        fontImporting = true
-        fontError = ""
-        scope.launch {
-            var importedId: String? = null
-            val error = withContext(Dispatchers.IO) {
-                try {
-                    importedId = FontStore.import(context, uri, name).id
-                    null
-                } catch (e: FontStore.TooManyFontsException) {
-                    S.fontImportFailedTooMany(FontStore.MAX_FONTS)
-                } catch (e: FontStore.NotFontException) {
-                    S.fontImportFailedNotFont
-                } catch (e: Exception) {
-                    S.fontImportFailedGeneric(e.message ?: "")
-                }
-            }
-            fontImporting = false
-            if (error == null) {
-                importedId?.let { id -> AppScope.io.launch { repo.setFont(id) } }
-                fontRefresh++
-                LucentToast.show(context.applicationContext, S.fontImportedToast)
-            } else {
-                fontError = error
-            }
-        }
-    }
-
-    fun deleteImportedFont(slot: FontStore.FontSlot) {
-        scope.launch {
-            withContext(Dispatchers.IO) {
-                if (savedFont == slot.id) repo.setFont(SYSTEM_FONT_KEY)
-                FontStore.delete(context, slot.id)
-            }
-            LucentFontResolver.evict(slot.id)
-            fontRefresh++
-        }
-    }
-
     val route = AppNavigation.settingsRoute
 
     fun setRoute(next: SettingsRoute) {
@@ -270,54 +175,6 @@ fun SettingsScreen(active: Boolean = true) {
         }
     }
     val keyVisible = manualReveal || typingReveal
-
-    @Composable
-    @NonRestartableComposable
-    fun DeleteImportedFontDialog(slot: FontStore.FontSlot) {
-        AlertDialog(
-            onDismissRequest = { fontPendingDelete = null },
-            title = { Text(S.fontDeleteTitle, fontSize = LucentTitles.ItemSize, fontWeight = LucentTitles.ItemWeight) },
-            text = { Text(S.fontDeleteBody(slot.name.ifBlank { slot.fileName })) },
-            confirmButton = {
-                TextButton(onClick = {
-                    deleteImportedFont(slot)
-                    fontPendingDelete = null
-                }) { Text(S.actionDelete) }
-            },
-            dismissButton = { TextButton(onClick = { fontPendingDelete = null }) { Text(S.actionCancel) } }
-        )
-    }
-    fontPendingDelete?.let { DeleteImportedFontDialog(it) }
-
-    @Composable
-    @NonRestartableComposable
-    fun NameImportedFontDialog(uri: Uri) {
-        AlertDialog(
-            onDismissRequest = { fontPendingImportUri = null },
-            title = { Text(S.fontNameTitle, fontSize = LucentTitles.ItemSize, fontWeight = LucentTitles.ItemWeight) },
-            text = {
-                Column {
-                    Text(S.fontNameBody, color = onGradientMuted, fontSize = 13.sp)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    OutlinedTextField(
-                        value = fontImportName,
-                        onValueChange = { fontImportName = it.take(60) },
-                        label = { Text(S.fontNameField) },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    fontPendingImportUri = null
-                    startFontImport(uri, fontImportName)
-                }) { Text(S.actionConfirm) }
-            },
-            dismissButton = { TextButton(onClick = { fontPendingImportUri = null }) { Text(S.actionCancel) } }
-        )
-    }
-    fontPendingImportUri?.let { NameImportedFontDialog(it) }
 
     val routeScrolls = remember { mutableMapOf<SettingsRoute, ScrollState>() }
     val rootScroll = routeScrolls.getOrPut(route) { ScrollState(SettingsScrollMemory.of(route)) }

@@ -22,28 +22,16 @@ private object SettingsKeys {
     val LETTER_SPACING = floatPreferencesKey("letter_spacing")
     val DYNAMIC_COLOR_ENABLED = booleanPreferencesKey("dynamic_color_enabled")
 
-    val BASE_URL = stringPreferencesKey("base_url")
-    val API_SPEC = stringPreferencesKey("api_spec")
-    val MODEL = stringPreferencesKey("model")
     val CUSTOM_USER_AGENT = stringPreferencesKey("custom_user_agent")
 
-    val API_KEY = stringPreferencesKey("api_key")
     val API_PROFILES = stringPreferencesKey("api_profiles_json")
 
     val API_PROFILE_SELECTED = intPreferencesKey("api_profile_selected")
 
     val NOTEBOOK_OPENS = stringPreferencesKey("notebook_opens")
 
-
-
     val BACKGROUND_ANIMATION_ENABLED = booleanPreferencesKey("background_animation_enabled")
-
-
-
-    val REASONING_EFFORT = stringPreferencesKey("reasoning_effort")
 }
-
-const val DEFAULT_ASSISTANT_STYLE = "lively and friendly, relaxed and natural."
 
 class SettingsRepository(context: Context) {
     private val context: Context = context.applicationContext
@@ -54,15 +42,6 @@ class SettingsRepository(context: Context) {
         default: String
     ): String = prefs[key]?.ifEmpty { default } ?: default
 
-    val baseUrl: Flow<String> = context.settingsDataStore.data.map {
-        setting(it, SettingsKeys.BASE_URL, "")
-    }
-    val apiSpec: Flow<String> = context.settingsDataStore.data.map {
-        setting(it, SettingsKeys.API_SPEC, "openai")
-    }
-    val model: Flow<String> = context.settingsDataStore.data.map {
-        setting(it, SettingsKeys.MODEL, "")
-    }
     val customUserAgent: Flow<String> = context.settingsDataStore.data.map {
         setting(it, SettingsKeys.CUSTOM_USER_AGENT, "")
     }
@@ -90,14 +69,9 @@ class SettingsRepository(context: Context) {
         val display: DisplayPrefs,
         val backgroundAnimationEnabled: Boolean = true,
         val dynamicColor: Boolean = false,
-        val baseUrl: String = "",
-        val apiSpec: String = "openai",
-        val apiKey: String = "",
-        val model: String = "",
         val customUserAgent: String = "",
         val apiProfilesJson: String = "",
-        val apiProfileSelected: Int = 0,
-        val reasoning: String = com.lucent.app.data.ReasoningEffort.DEFAULT.key
+        val apiProfileSelected: Int = 0
     )
 
     suspend fun startupPrefsOnce(): StartupPrefs {
@@ -113,23 +87,10 @@ class SettingsRepository(context: Context) {
             ),
             backgroundAnimationEnabled = prefs[SettingsKeys.BACKGROUND_ANIMATION_ENABLED] ?: true,
             dynamicColor = prefs[SettingsKeys.DYNAMIC_COLOR_ENABLED] ?: false,
-            baseUrl = setting(prefs, SettingsKeys.BASE_URL, ""),
-            apiSpec = setting(prefs, SettingsKeys.API_SPEC, "openai"),
-            apiKey = setting(prefs, SettingsKeys.API_KEY, ""),
-            model = setting(prefs, SettingsKeys.MODEL, ""),
             customUserAgent = setting(prefs, SettingsKeys.CUSTOM_USER_AGENT, ""),
             apiProfilesJson = setting(prefs, SettingsKeys.API_PROFILES, ""),
-            apiProfileSelected = prefs[SettingsKeys.API_PROFILE_SELECTED] ?: 0,
-            reasoning = prefs[SettingsKeys.REASONING_EFFORT] ?: com.lucent.app.data.ReasoningEffort.DEFAULT.key,
+            apiProfileSelected = prefs[SettingsKeys.API_PROFILE_SELECTED] ?: 0
         )
-    }
-
-    val reasoning: Flow<String> = context.settingsDataStore.data.map {
-        it[SettingsKeys.REASONING_EFFORT] ?: com.lucent.app.data.ReasoningEffort.DEFAULT.key
-    }
-
-    val apiKey: Flow<String> = context.settingsDataStore.data.map { prefs ->
-        prefs[SettingsKeys.API_KEY] ?: ""
     }
 
     val apiProfilesJson: Flow<String> = context.settingsDataStore.data.map { prefs ->
@@ -145,8 +106,10 @@ class SettingsRepository(context: Context) {
     }
 
     private val removedPreferenceNames: Set<String> = setOf(
+        "api_key",
         "api_key_enc",
         "api_profiles_json_enc",
+        "api_spec",
         "api_spec_enc",
         "app_language",
         "app_lock_credentials_enc",
@@ -161,6 +124,7 @@ class SettingsRepository(context: Context) {
         "auto_backup_state",
         "auto_update_enabled",
         "backup_password_enc",
+        "base_url",
         "base_url_enc",
         "blackout_enabled",
         "cloud_agent_mode",
@@ -184,6 +148,7 @@ class SettingsRepository(context: Context) {
         "links_enabled",
         "markdown_enabled",
         "memory_tier",
+        "model",
         "model_enc",
         "model_recents",
         "note_history_enabled",
@@ -196,6 +161,7 @@ class SettingsRepository(context: Context) {
         "pw_later_round_limit",
         "pw_self_destruct_enabled",
         "pw_self_destruct_threshold",
+        "reasoning_effort",
         "rich_text_enabled",
         "session_snapshot",
         "small_model_mode",
@@ -282,29 +248,13 @@ class SettingsRepository(context: Context) {
     suspend fun saveApiProfiles(profiles: List<ApiProfile>, selected: Int) {
         val safe = profiles.take(ApiProfiles.MAX)
         val idx = if (safe.isEmpty()) 0 else selected.coerceIn(0, safe.size - 1)
-        val active = safe.getOrNull(idx)
         val profilesJson = ApiProfiles.serialize(safe)
         SettingsCache.apiProfilesJson = profilesJson
         SettingsCache.apiProfileSelected = idx
-        SettingsCache.baseUrl = active?.baseUrl ?: ""
-        SettingsCache.apiSpec = active?.spec ?: "openai"
-        SettingsCache.model = active?.model ?: ""
-        active?.apiKey?.let { SettingsCache.apiKey = it }
 
         context.settingsDataStore.edit { prefs ->
             prefs[SettingsKeys.API_PROFILES] = profilesJson
             prefs[SettingsKeys.API_PROFILE_SELECTED] = idx
-            if (active != null) {
-                prefs[SettingsKeys.BASE_URL] = active.baseUrl
-                prefs[SettingsKeys.API_SPEC] = active.spec
-                prefs[SettingsKeys.MODEL] = active.model
-                prefs[SettingsKeys.API_KEY] = active.apiKey
-            } else {
-                prefs.remove(SettingsKeys.BASE_URL)
-                prefs.remove(SettingsKeys.MODEL)
-                prefs.remove(SettingsKeys.API_KEY)
-                prefs.remove(SettingsKeys.CUSTOM_USER_AGENT)
-            }
         }
     }
 }

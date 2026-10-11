@@ -46,15 +46,12 @@ enum class ReasoningControl {
 data class ReasoningCapability(
     val supported: Boolean,
     val control: ReasoningControl,
-    val supportedPresets: List<ReasoningPreset> = if (supported) ReasoningPreset.entries else listOf(ReasoningPreset.AUTO),
-    val defaultPreset: ReasoningPreset = ReasoningPreset.AUTO,
     val isAdaptive: Boolean = true
 ) {
     companion object {
         val NONE = ReasoningCapability(
             supported = false,
-            control = ReasoningControl.NONE,
-            supportedPresets = listOf(ReasoningPreset.AUTO)
+            control = ReasoningControl.NONE
         )
     }
 }
@@ -286,7 +283,6 @@ object ModelCapabilityRegistry {
         val capability = ReasoningCapability(
             supported = inferredControl != ReasoningControl.NONE,
             control = inferredControl,
-            supportedPresets = if (inferredControl != ReasoningControl.NONE) ReasoningPreset.entries else listOf(ReasoningPreset.AUTO),
             isAdaptive = true
         )
         val created = ModelDefinition(id = clean, provider = provider, reasoning = capability)

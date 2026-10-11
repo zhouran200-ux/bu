@@ -136,12 +136,9 @@ object LlmClient {
     private fun applyHeaders(
         builder: Request.Builder,
         spec: ApiSpec,
-        apiKey: String,
-        customUserAgent: String = ""
+        apiKey: String
     ): String {
-        val effectiveUa = customUserAgent.trim().ifBlank {
-            com.lucent.app.data.SettingsCache.customUserAgent.trim()
-        }
+        val effectiveUa = com.lucent.app.data.SettingsCache.customUserAgent.trim()
         if (effectiveUa.isNotBlank()) {
             builder.header("User-Agent", effectiveUa)
             if (effectiveUa.contains("node-fetch", ignoreCase = true)) {
@@ -169,8 +166,7 @@ object LlmClient {
     suspend fun fetchModels(
         baseUrl: String,
         spec: ApiSpec,
-        apiKey: String,
-        customUserAgent: String = ""
+        apiKey: String
     ): Result<List<String>> = withContext(Dispatchers.IO) {
         try {
             val trimmed = baseUrl.trim().trimEnd('/')
@@ -187,7 +183,7 @@ object LlmClient {
             }
 
             val requestBuilder = Request.Builder().url(url).get()
-            applyHeaders(requestBuilder, spec, apiKey, customUserAgent)
+            applyHeaders(requestBuilder, spec, apiKey)
 
             val response = client.newCall(requestBuilder.build()).execute()
             val bodyStr = response.body?.string() ?: ""
@@ -242,8 +238,7 @@ object LlmClient {
         baseUrl: String,
         spec: ApiSpec,
         apiKey: String,
-        model: String = "",
-        customUserAgent: String = ""
+        model: String = ""
     ): Result<TestConnectionResult> = withContext(Dispatchers.IO) {
         val start = System.currentTimeMillis()
         var resolvedUrl = ""
@@ -318,7 +313,7 @@ object LlmClient {
                 requestBuilder.url(url).get()
             }
             resolvedUrl = url
-            usedUa = applyHeaders(requestBuilder, spec, apiKey, customUserAgent).ifBlank { null }
+            usedUa = applyHeaders(requestBuilder, spec, apiKey).ifBlank { null }
 
             val response = client.newCall(requestBuilder.build()).execute()
             val latency = System.currentTimeMillis() - start
@@ -372,212 +367,6 @@ object LlmClient {
         }
     }
 
-    suspend fun chat(
-        baseUrl: String,
-        spec: ApiSpec,
-        apiKey: String,
-        model: String,
-        messages: List<ChatMessagePayload>,
-        systemInstruction: String = "",
-        customUserAgent: String = "",
-        reasoningConfig: com.lucent.app.data.ResolvedReasoningConfig? = null
-    ): Result<ChatCompletionResult> = withContext(Dispatchers.IO) {
-        try {
-            val trimmed = baseUrl.trim().trimEnd('/')
-            val jsonMediaType = "application/json; charset=utf-8".toMediaType()
-            val requestBuilder = Request.Builder()
-            val cleanModel = model.trim().ifBlank {
-                when (spec) {
-                    ApiSpec.GOOGLE -> "gemini-3.5-flash"
-                    ApiSpec.ANTHROPIC -> "claude-3-5-sonnet"
-                    ApiSpec.OPENAI -> "gpt-4o"
-                }
-            }
-
-            when (spec) {
-                ApiSpec.OPENAI -> {
-                    val defaultUrl = if (trimmed.isBlank()) "https://api.openai.com/v1" else trimmed
-                    val url = if (defaultUrl.endsWith("/chat/completions")) defaultUrl else "$defaultUrl/chat/completions"
-                    val payload = JSONObject().apply {
-                        put("model", cleanModel)
-                        val messagesArray = JSONArray()
-                        if (systemInstruction.isNotBlank()) {
-                            messagesArray.put(JSONObject().apply {
-                                put("role", "system")
-                                put("content", systemInstruction)
-                            })
-                        }
-                        messages.forEach { m ->
-                            messagesArray.put(JSONObject().apply {
-                                put("role", m.role)
-                                put("content", m.content)
-                            })
-                        }
-                        put("messages", messagesArray)
-                        if (reasoningConfig != null && !reasoningConfig.isAuto) {
-                            if (reasoningConfig.openAiMode != null) {
-                                put("reasoning", JSONObject().apply {
-                                    put("mode", reasoningConfig.openAiMode)
-                                    if (reasoningConfig.openAiEffort != null) {
-                                        put("effort", reasoningConfig.openAiEffort)
-                                    }
-                                })
-                            } else if (reasoningConfig.openAiEffort != null) {
-                                put("reasoning_effort", reasoningConfig.openAiEffort)
-                            }
-                        }
-                    }
-                    requestBuilder.url(url).post(payload.toString().toRequestBody(jsonMediaType))
-                }
-                ApiSpec.ANTHROPIC -> {
-                    val defaultUrl = if (trimmed.isBlank()) "https://api.anthropic.com/v1" else trimmed
-                    val url = if (defaultUrl.endsWith("/messages")) defaultUrl
-                    else if (defaultUrl.endsWith("/v1")) "$defaultUrl/messages"
-                    else "$defaultUrl/v1/messages"
-                    val payload = JSONObject().apply {
-                        put("model", cleanModel)
-                        put("max_tokens", 8192)
-                        if (systemInstruction.isNotBlank()) {
-                            put("system", systemInstruction)
-                        }
-                        val messagesArray = JSONArray()
-                        messages.forEach { m ->
-                            messagesArray.put(JSONObject().apply {
-                                put("role", if (m.role == "assistant") "assistant" else "user")
-                                put("content", m.content)
-                            })
-                        }
-                        put("messages", messagesArray)
-                        if (reasoningConfig != null && !reasoningConfig.isAuto) {
-                            if (reasoningConfig.claudeEffort != null) {
-                                put("output_config", JSONObject().apply {
-                                    put("effort", reasoningConfig.claudeEffort)
-                                })
-                            } else if (reasoningConfig.claudeBudgetTokens != null) {
-                                put("thinking", JSONObject().apply {
-                                    put("type", "enabled")
-                                    put("budget_tokens", reasoningConfig.claudeBudgetTokens)
-                                })
-                            }
-                        }
-                    }
-                    requestBuilder.url(url).post(payload.toString().toRequestBody(jsonMediaType))
-                }
-                ApiSpec.GOOGLE -> {
-                    val defaultUrl = if (trimmed.isBlank()) "https://generativelanguage.googleapis.com/v1beta" else trimmed
-                    val base = if (defaultUrl.endsWith("/models")) defaultUrl.removeSuffix("/models") else defaultUrl
-                    val targetModel = cleanModel.removePrefix("models/")
-                    val endpoint = "$base/models/$targetModel:generateContent"
-                    val url = if (apiKey.isNotBlank() && !endpoint.contains("key=")) {
-                        if (endpoint.contains("?")) "$endpoint&key=$apiKey" else "$endpoint?key=$apiKey"
-                    } else endpoint
-
-                    val payload = JSONObject().apply {
-                        if (systemInstruction.isNotBlank()) {
-                            put("system_instruction", JSONObject().apply {
-                                put("parts", JSONArray().put(JSONObject().apply {
-                                    put("text", systemInstruction)
-                                }))
-                            })
-                        }
-                        val contentsArray = JSONArray()
-                        messages.forEach { m ->
-                            contentsArray.put(JSONObject().apply {
-                                put("role", if (m.role == "assistant") "model" else "user")
-                                put("parts", JSONArray().put(JSONObject().apply {
-                                    put("text", m.content)
-                                }))
-                            })
-                        }
-                        put("contents", contentsArray)
-                        val genConfig = JSONObject()
-                        if (reasoningConfig != null && !reasoningConfig.isAuto) {
-                            val thinkingConfig = JSONObject()
-                            if (reasoningConfig.geminiThinkingLevel != null) {
-                                thinkingConfig.put("thinkingLevel", reasoningConfig.geminiThinkingLevel)
-                            }
-                            if (reasoningConfig.geminiThinkingBudget != null) {
-                                thinkingConfig.put("thinkingBudget", reasoningConfig.geminiThinkingBudget)
-                            }
-                            if (thinkingConfig.length() > 0) {
-                                genConfig.put("thinkingConfig", thinkingConfig)
-                            }
-                        }
-                        if (genConfig.length() > 0) {
-                            put("generationConfig", genConfig)
-                        }
-                    }
-                    requestBuilder.url(url).post(payload.toString().toRequestBody(jsonMediaType))
-                }
-            }
-
-            applyHeaders(requestBuilder, spec, apiKey, customUserAgent)
-            val response = client.newCall(requestBuilder.build()).execute()
-            val bodyStr = response.body?.string().orEmpty()
-
-            if (!response.isSuccessful) {
-                val errMsg = try {
-                    val json = JSONObject(bodyStr)
-                    val errorObj = json.optJSONObject("error")
-                    errorObj?.optString("message") ?: bodyStr.take(200)
-                } catch (_: Exception) {
-                    bodyStr.take(200)
-                }
-                return@withContext Result.failure(Exception("HTTP ${response.code}: ${errMsg.ifBlank { response.message }}"))
-            }
-
-            val json = JSONObject(bodyStr)
-            val parsedResult = when (spec) {
-                ApiSpec.OPENAI -> {
-                    val choices = json.optJSONArray("choices")
-                    val firstChoice = choices?.optJSONObject(0)
-                    val msgObj = firstChoice?.optJSONObject("message")
-                    val content = msgObj?.optString("content", "").orEmpty()
-                    val reasoning = msgObj?.optString("reasoning_content", "")
-                        ?.ifBlank { msgObj.optString("reasoning", "") }
-                        ?.ifBlank { null }
-                    ChatCompletionResult(content = content, reasoningText = reasoning)
-                }
-                ApiSpec.ANTHROPIC -> {
-                    val contentArray = json.optJSONArray("content") ?: JSONArray()
-                    val textBuilder = StringBuilder()
-                    var reasoning: String? = null
-                    for (i in 0 until contentArray.length()) {
-                        val part = contentArray.optJSONObject(i) ?: continue
-                        when (part.optString("type")) {
-                            "text" -> textBuilder.append(part.optString("text"))
-                            "thinking" -> reasoning = part.optString("thinking")
-                        }
-                    }
-                    ChatCompletionResult(content = textBuilder.toString(), reasoningText = reasoning)
-                }
-                ApiSpec.GOOGLE -> {
-                    val candidates = json.optJSONArray("candidates")
-                    val firstCandidate = candidates?.optJSONObject(0)
-                    val contentObj = firstCandidate?.optJSONObject("content")
-                    val parts = contentObj?.optJSONArray("parts") ?: JSONArray()
-                    val textBuilder = StringBuilder()
-                    var reasoning: String? = null
-                    for (i in 0 until parts.length()) {
-                        val part = parts.optJSONObject(i) ?: continue
-                        val isThought = part.optBoolean("thought", false) || part.has("thought")
-                        val text = part.optString("text")
-                        if (isThought) {
-                            reasoning = text
-                        } else {
-                            textBuilder.append(text)
-                        }
-                    }
-                    ChatCompletionResult(content = textBuilder.toString(), reasoningText = reasoning)
-                }
-            }
-
-            Result.success(parsedResult)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
     suspend fun chatStream(
         baseUrl: String,
         spec: ApiSpec,
@@ -585,7 +374,6 @@ object LlmClient {
         model: String,
         messages: List<ChatMessagePayload>,
         systemInstruction: String = "",
-        customUserAgent: String = "",
         reasoningConfig: com.lucent.app.data.ResolvedReasoningConfig? = null,
         handle: StreamCallHandle? = null,
         onChunk: suspend (deltaContent: String, deltaReasoning: String?) -> Unit
@@ -729,7 +517,7 @@ object LlmClient {
             }
 
             requestBuilder.header("Accept", "text/event-stream")
-            applyHeaders(requestBuilder, spec, apiKey, customUserAgent)
+            applyHeaders(requestBuilder, spec, apiKey)
 
             val call = streamClient.newCall(requestBuilder.build())
             handle?.attach(call)

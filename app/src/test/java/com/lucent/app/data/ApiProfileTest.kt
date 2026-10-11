@@ -1,6 +1,7 @@
 package com.lucent.app.data
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Test
 
 class ApiProfileTest {
@@ -12,7 +13,7 @@ class ApiProfileTest {
     }
 
     @Test
-    fun testApiProfileCustomUserAgentRoundTrip() {
+    fun testApiProfileRoundTripKeepsEveryField() {
         val original = listOf(
             ApiProfile(
                 name = "SillyTavern Profile",
@@ -20,15 +21,14 @@ class ApiProfileTest {
                 baseUrl = "https://api.example.com/v1",
                 apiKey = "test-key-123",
                 model = "gpt-4o",
-                customUserAgent = UserAgentPresets.SILLY_TAVERN_NODE_FETCH
+                selectedModels = listOf("gpt-4o", "gpt-4o-mini")
             ),
             ApiProfile(
                 name = "Default Profile",
                 spec = "openai",
                 baseUrl = "https://api.openai.com/v1",
                 apiKey = "sk-default",
-                model = "gpt-3.5-turbo",
-                customUserAgent = ""
+                model = "gpt-3.5-turbo"
             )
         )
 
@@ -37,31 +37,33 @@ class ApiProfileTest {
 
         assertEquals(2, parsed.size)
         assertEquals("SillyTavern Profile", parsed[0].name)
-        assertEquals(UserAgentPresets.SILLY_TAVERN_NODE_FETCH, parsed[0].customUserAgent)
+        assertEquals(listOf("gpt-4o", "gpt-4o-mini"), parsed[0].selectedModels)
         assertEquals("Default Profile", parsed[1].name)
-        assertEquals("", parsed[1].customUserAgent)
         assertEquals("sk-default", parsed[1].apiKey)
     }
 
     @Test
-    fun testLegacyJsonWithoutCustomUserAgentParsesGracefully() {
-        val legacyJson = """
+    fun testStoredJsonWithRemovedUserAgentFieldStillParses() {
+        val storedJson = """
             [
                 {
                     "name": "Legacy Profile",
                     "spec": "openai",
                     "baseUrl": "https://legacy.example.com",
+                    "apiKey": "k",
                     "model": "model-1",
                     "provider": "custom",
-                    "selectedModels": ["model-1"]
+                    "selectedModels": ["model-1"],
+                    "customUserAgent": "node-fetch (+https://github.com/node-fetch/node-fetch)"
                 }
             ]
         """.trimIndent()
 
-        val parsed = ApiProfiles.parse(legacyJson)
+        val parsed = ApiProfiles.parse(storedJson)
         assertEquals(1, parsed.size)
         assertEquals("Legacy Profile", parsed[0].name)
-        assertEquals("", parsed[0].customUserAgent)
+        assertEquals(listOf("model-1"), parsed[0].selectedModels)
+        assertFalse(parsed[0].toString().contains("node-fetch"))
     }
 
     private fun named(vararg names: String): List<ApiProfile> = names.map { ApiProfile(name = it) }

@@ -154,11 +154,7 @@ internal fun KeepAliveTabs(active: Screen, pagerState: PagerState, modifier: Mod
                     LocalHazeState provides (if (isActive) sharedHaze else dummyHaze)
                 ) {
                     when (tab) {
-                        HomeTab.Notebooks -> NotebooksScreen(
-                            onBack = { },
-                            showBack = false,
-                            active = isActive
-                        )
+                        HomeTab.Notebooks -> NotebooksScreen(active = isActive)
                         HomeTab.Settings -> SettingsScreen(active = isActive)
                     }
                 }

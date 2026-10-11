@@ -2,7 +2,6 @@ package com.lucent.app.ui
 
 import com.lucent.app.AppNavigation
 import com.lucent.app.Screen
-import com.lucent.app.i18n.L
 import com.lucent.app.i18n.S
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
@@ -15,7 +14,6 @@ class HomeNavigationTest {
 
     @BeforeTest
     fun setUp() {
-        L.apply("zh")
         drain()
         LastScreen.current = Screen.Notebooks
         LastScreen.home = Screen.Notebooks
@@ -56,10 +54,8 @@ class HomeNavigationTest {
 
     @Test
     fun newStringsExistInEveryLanguage() {
-        L.apply("zh")
         assertTrue(S.screenNotebooks.isNotBlank())
-        assertTrue(S.notebooksTotal(3).contains("3"))
-        assertTrue(S.notebooksTotal(1).contains("1"))
-        assertTrue(S.notebooksTotal(2).contains("2"))
+        assertTrue(S.notebookNew.isNotBlank())
+        assertTrue(S.actionCancel.isNotBlank())
     }
 }

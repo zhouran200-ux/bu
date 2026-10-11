@@ -119,7 +119,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.lucent.app.AppNavigation
 import com.lucent.app.AppScope
+import com.lucent.app.Screen
 import com.lucent.app.SettingsNav
 import com.lucent.app.data.ApiProfile
 import com.lucent.app.data.ApiProfiles
@@ -156,7 +158,6 @@ data class UiChatMessage(
 @Composable
 fun NotebookChatTab(
     notebookId: Long,
-    notebookTitle: String,
     sourceNotes: List<Note>,
     modifier: Modifier = Modifier
 ) {
@@ -282,16 +283,15 @@ fun NotebookChatTab(
             return
         }
 
-        val specStr = matchedProfile?.spec?.lowercase() ?: SettingsCache.apiSpec.lowercase()
+        val specStr = matchedProfile?.spec?.lowercase().orEmpty()
         val spec = when {
             specStr.contains("google") || specStr.contains("gemini") -> ApiSpec.GOOGLE
             specStr.contains("anthropic") || specStr.contains("claude") -> ApiSpec.ANTHROPIC
             else -> ApiSpec.OPENAI
         }
 
-        val baseUrl = matchedProfile?.baseUrl?.ifBlank { SettingsCache.baseUrl } ?: SettingsCache.baseUrl
-        val apiKey = matchedProfile?.apiKey?.ifBlank { SettingsCache.apiKey } ?: SettingsCache.apiKey
-        val customUa = matchedProfile?.customUserAgent.orEmpty()
+        val baseUrl = matchedProfile?.baseUrl.orEmpty()
+        val apiKey = matchedProfile?.apiKey.orEmpty()
 
         val resolvedReasoning = ReasoningResolver.resolve(
             preset = reasoningPreset,
@@ -380,7 +380,6 @@ fun NotebookChatTab(
                     model = targetModel,
                     messages = historyPayload,
                     systemInstruction = knowledgeBasePrompt,
-                    customUserAgent = customUa,
                     reasoningConfig = resolvedReasoning,
                     handle = streamHandle
                 ) { deltaText, deltaThought ->
@@ -1837,6 +1836,7 @@ private fun ProfileModelPickerSheet(
                     .clip(RoundedCornerShape(12.dp))
                     .clickable {
                         onDismiss()
+                        AppNavigation.requestScreen(Screen.Settings)
                         SettingsNav.go(SettingsRoute.Api)
                     }
             ) {

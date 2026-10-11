@@ -1,51 +1,5 @@
 package com.lucent.app.i18n
 
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
-
-enum class AppLanguage(val key: String, val label: String) {
-    SYSTEM("system", "系统默认"),
-    ZH("zh", "中文");
-
-    companion object {
-        fun fromKey(key: String?): AppLanguage = ZH
-
-        fun systemDefault(): AppLanguage = ZH
-    }
-}
-
-object L {
-    var current: Tr by mutableStateOf(Zh)
-        private set
-
-    var language: AppLanguage = AppLanguage.ZH
-        private set
-
-    fun apply(key: String?) {
-        language = AppLanguage.ZH
-        current = Zh
-    }
-}
-
-val S: Tr get() = L.current
-
-fun lucentLocale(): java.util.Locale = java.util.Locale.SIMPLIFIED_CHINESE
-
-object LDates {
-    private var cachedFor: Tr? = null
-    private val cache = HashMap<String, java.time.format.DateTimeFormatter>()
-
-    fun of(pattern: String): java.time.format.DateTimeFormatter {
-        val now = L.current
-        if (cachedFor !== now) {
-            cache.clear()
-            cachedFor = now
-        }
-        return cache.getOrPut(pattern) { java.time.format.DateTimeFormatter.ofPattern(pattern, lucentLocale()) }
-    }
-}
-
 open class Tr {
     open val paletteAmber: String = "琥珀"
     open val paletteCrimson: String = "绯红"
@@ -72,7 +26,6 @@ open class Tr {
     open val actionCancel: String = "取消"
     open val actionDelete: String = "删除"
     open val actionBack: String = "返回"
-    open val actionConfirm: String = "确认"
     open val untitled: String = "无标题"
     open val themeSystem: String = "跟随系统"
     open val themeSystemDesc: String = "跟随设备的浅色/深色设置"
@@ -100,7 +53,6 @@ open class Tr {
     open val themeMonetEmber: String = "余烬"
     open val themeMonetEmberDesc: String = "深邃的麦垛琥珀"
     open val selectAll: String = "全选"
-    open fun nSelected(count: Int): String = "已选择 ${count} 项"
     open val noDetails: String = "无详细信息"
     open val paletteSunset: String = "日落"
     open val paletteOcean: String = "海洋"
@@ -117,8 +69,6 @@ open class Tr {
     open val paletteAurora: String = "极光"
     open val palettePeachDusk: String = "蜜桃暮色"
     open val paletteCosmic: String = "星穹"
-    open val a11yCancelSelection: String = "取消选择"
-    open val a11yDeleteSelected: String = "删除所选"
     open val a11yMoreOptions: String = "更多选项"
     open val settingsAppearanceTitle: String = "外观"
     open val settingsAppearanceSub: String = "主题、背景配色与字体"
@@ -165,7 +115,6 @@ open class Tr {
     open val dynamicColorUnsupported: String = "此设备的 Android 版本不支持动态取色。"
     open val dynamicThemeLockedHint: String = "动态取色中，主题/背景暂不可用"
     open val clearAllSelection: String = "取消全选"
-    open val a11ySelected: String = "已选中"
     open val apiNoneTitle: String = "尚无已保存的 API"
     open val apiNoneBody: String = "你已删除全部已保存的 API。添加一个即可使用云端助手。"
     open val a11yDragToReorder: String = "拖拽以调整顺序"
@@ -245,16 +194,7 @@ open class Tr {
     open val themeMonetUmberDesc: String = "深邃的焦赭色"
     open val themeMonetWalnut: String = "胡桃"
     open val themeMonetWalnutDesc: String = "浓郁的胡桃棕"
-    open fun notebooksTotal(count: Int): String = "$count 个笔记本"
     open val settingsApiConfigTitle: String = "API 配置"
-    open val notebookCoverTitle: String = "封面"
-    open fun notebookCoverA11y(name: String): String = "${name} 的封面"
-    open val coverCrimson: String = "绯红"
-    open val coverOcean: String = "海洋蓝"
-    open val coverForest: String = "森林绿"
-    open val coverAmber: String = "琥珀"
-    open val coverPlum: String = "李子紫"
-    open val notebookPinA11y: String = "置顶或取消置顶所选笔记本"
     open val fontTypographyTitle: String = "字体与排版"
     open val fontTypographySub: String = "调整字体、字号、行距与字间距"
     open val typographyPreviewTitle: String = "效果预览"
@@ -270,8 +210,8 @@ open class Tr {
     open val userAgentPresetSillyTavern: String = "SillyTavern 伪装"
     open val fieldUserAgent: String = "自定义 User-Agent"
     open val userAgentCustomPlaceholder: String = "留空则使用默认客户端标识"
-    open fun notebookBatchDeleteBody(count: Int): String = "确定删除所选 ${count} 个笔记本？里面的文档和聊天记录会一并删除，无法恢复。"
-    open val copiedToast: String = "已复制"
 }
 
 object Zh : Tr()
+
+val S: Tr = Zh

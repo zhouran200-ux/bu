@@ -36,7 +36,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.lucent.app.data.AppDatabase
 import com.lucent.app.data.Note
-import com.lucent.app.data.Notebook
 
 enum class NotebookDetailTab {
     CHAT,
@@ -52,7 +51,6 @@ fun NotebookDetailScreen(
     val db = remember { AppDatabase.getInstance(context) }
 
     var selectedTab by remember { mutableStateOf(NotebookDetailTab.CHAT) }
-    var notebook by remember { mutableStateOf<Notebook?>(null) }
     var sourceNotes by remember { mutableStateOf<List<Note>>(emptyList()) }
     var readerNote by remember { mutableStateOf<Note?>(null) }
     var reloadCount by remember { mutableIntStateOf(0) }
@@ -69,7 +67,6 @@ fun NotebookDetailScreen(
     }
 
     LaunchedEffect(notebookId, reloadCount) {
-        notebook = db.notebookDao().getByIdOnce(notebookId)
         val items = db.notebookDao().getItemsOnce(notebookId)
         val itemIds = items.map { it.itemId }
         sourceNotes = if (itemIds.isNotEmpty()) {
@@ -78,8 +75,6 @@ fun NotebookDetailScreen(
             emptyList()
         }
     }
-
-    val title = notebook?.title?.ifBlank { "未命名笔记本" } ?: "笔记本"
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -105,7 +100,6 @@ fun NotebookDetailScreen(
                     NotebookDetailTab.CHAT -> {
                         NotebookChatTab(
                             notebookId = notebookId,
-                            notebookTitle = title,
                             sourceNotes = sourceNotes,
                             modifier = Modifier.fillMaxSize()
                         )

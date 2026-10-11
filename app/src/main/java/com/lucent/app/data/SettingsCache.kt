@@ -28,18 +28,6 @@ object SettingsCache {
     var backgroundAnimationEnabled: Boolean = true
 
     @Volatile
-    var baseUrl: String = ""
-
-    @Volatile
-    var apiSpec: String = "openai"
-
-    @Volatile
-    var apiKey: String = ""
-
-    @Volatile
-    var model: String = ""
-
-    @Volatile
     var customUserAgent: String = ""
 
     @Volatile
@@ -47,16 +35,6 @@ object SettingsCache {
 
     @Volatile
     var apiProfileSelected: Int = 0
-
-
-
-
-    @Volatile
-    var reasoning: String = com.lucent.app.data.ReasoningEffort.DEFAULT.key
-
-
-
-
 
     fun seed(prefs: SettingsRepository.StartupPrefs) {
         themeMode = prefs.display.themeMode
@@ -67,13 +45,8 @@ object SettingsCache {
         letterSpacing = prefs.display.letterSpacing
         dynamicColor = prefs.dynamicColor
         backgroundAnimationEnabled = prefs.backgroundAnimationEnabled
-        baseUrl = prefs.baseUrl
-        apiSpec = prefs.apiSpec
-        apiKey = prefs.apiKey
-        model = prefs.model
         customUserAgent = prefs.customUserAgent
         apiProfilesJson = prefs.apiProfilesJson
         apiProfileSelected = prefs.apiProfileSelected
-        reasoning = prefs.reasoning
     }
 }

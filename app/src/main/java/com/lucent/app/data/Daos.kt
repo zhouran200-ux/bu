@@ -9,9 +9,6 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface NoteDao {
-    @Query("SELECT * FROM notes WHERE archived = 0 AND trashedAt IS NULL AND isDraft = 0 AND hidden = 0 ORDER BY updatedAt DESC")
-    fun getAll(): Flow<List<Note>>
-
     @Query("SELECT * FROM notes ORDER BY updatedAt DESC")
     suspend fun getAllOnce(): List<Note>
 
@@ -24,29 +21,17 @@ interface NoteDao {
     @Insert
     suspend fun insert(note: Note): Long
 
-    @Update
-    suspend fun update(note: Note)
-
     @Delete
     suspend fun delete(note: Note)
 }
 
 @Dao
 interface ChatDao {
-    @Query("SELECT * FROM chat_messages ORDER BY timestamp ASC")
-    fun getAll(): Flow<List<ChatMessage>>
-
-    @Query("SELECT * FROM chat_messages ORDER BY timestamp ASC")
-    suspend fun getAllOnce(): List<ChatMessage>
-
     @Query("SELECT * FROM chat_messages WHERE conversationId = :conversationId ORDER BY timestamp ASC")
     suspend fun getForConversationOnce(conversationId: Long): List<ChatMessage>
 
     @Insert
     suspend fun insert(message: ChatMessage): Long
-
-    @Update
-    suspend fun update(message: ChatMessage)
 
     @Query("UPDATE chat_messages SET content = :content WHERE id = :id")
     suspend fun updateContent(id: Long, content: String)
@@ -62,14 +47,11 @@ data class NotebookCount(val notebookId: Long, val count: Int)
 
 @Dao
 interface NotebookDao {
-    @Query("SELECT * FROM notebooks ORDER BY updatedAt DESC")
+    @Query("SELECT * FROM notebooks ORDER BY manualOrder ASC, updatedAt DESC")
     fun getAll(): Flow<List<Notebook>>
 
-    @Query("SELECT * FROM notebooks ORDER BY updatedAt DESC")
+    @Query("SELECT * FROM notebooks ORDER BY manualOrder ASC, updatedAt DESC")
     suspend fun getAllOnce(): List<Notebook>
-
-    @Query("SELECT * FROM notebooks WHERE id = :id")
-    suspend fun getByIdOnce(id: Long): Notebook?
 
     @Query("SELECT notebookId AS notebookId, COUNT(*) AS count FROM notebook_items GROUP BY notebookId")
     fun itemCounts(): Flow<List<NotebookCount>>
@@ -85,6 +67,9 @@ interface NotebookDao {
 
     @Update
     suspend fun update(notebook: Notebook)
+
+    @Update
+    suspend fun updateAll(notebooks: List<Notebook>)
 
     @Insert
     suspend fun insertItem(item: NotebookItem): Long

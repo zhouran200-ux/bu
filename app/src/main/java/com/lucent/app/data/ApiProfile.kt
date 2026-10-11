@@ -10,8 +10,7 @@ data class ApiProfile(
     val apiKey: String = "",
     val model: String = "",
     val provider: String = ApiProviders.CUSTOM,
-    val selectedModels: List<String> = emptyList(),
-    val customUserAgent: String = ""
+    val selectedModels: List<String> = emptyList()
 )
 
 object UserAgentPresets {
@@ -48,7 +47,6 @@ object ApiProfiles {
                     .put("model", p.model)
                     .put("provider", p.provider)
                     .put("selectedModels", models)
-                    .put("customUserAgent", p.customUserAgent)
             )
         }
         return arr.toString()
@@ -79,8 +77,7 @@ object ApiProfiles {
                     apiKey = o.optString("apiKey", ""),
                     model = model,
                     provider = ApiProviders.resolve(o.optString("provider", ""), spec, baseUrl),
-                    selectedModels = selectedModels,
-                    customUserAgent = o.optString("customUserAgent", "")
+                    selectedModels = selectedModels
                 )
             }.take(MAX)
         } catch (e: Exception) {

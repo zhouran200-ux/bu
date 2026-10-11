@@ -381,7 +381,9 @@ fun LucentApp(paletteColors: List<Color>, backdropColor: Color, backgroundAnimat
                     }
                 },
                 bottomBar = {
-                    if (AppNavigation.activeNotebookId == null) {
+                    if (AppNavigation.activeNotebookId == null &&
+                        AppNavigation.settingsRoute == SettingsRoute.Root
+                    ) {
                         val capsuleShape = RoundedCornerShape(percent = 50)
                         val glassDark = onGradient.luminance() > 0.5f
                         val capsuleFill = Color.White.copy(

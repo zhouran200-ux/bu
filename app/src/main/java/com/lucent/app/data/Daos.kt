@@ -3,6 +3,7 @@ package com.lucent.app.data
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
@@ -42,8 +43,14 @@ interface ChatDao {
     @Query("SELECT * FROM chat_messages WHERE conversationId = :conversationId ORDER BY timestamp ASC")
     suspend fun getForConversationOnce(conversationId: Long): List<ChatMessage>
 
+    @Query("SELECT * FROM chat_messages WHERE id = :id LIMIT 1")
+    suspend fun getByIdOnce(id: Long): ChatMessage?
+
     @Insert
     suspend fun insert(message: ChatMessage): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun restore(message: ChatMessage)
 
     @Update
     suspend fun update(message: ChatMessage)

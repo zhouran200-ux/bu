@@ -7,7 +7,10 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.RepeatMode
@@ -18,10 +21,13 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,6 +42,7 @@ import androidx.compose.foundation.layout.imeNestedScroll
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -55,13 +62,13 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.rounded.ContentCopy
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Memory
-import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.DropdownMenu
@@ -86,12 +93,15 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -101,6 +111,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.lucent.app.AppScope
@@ -118,6 +129,8 @@ import com.lucent.app.network.ApiSpec
 import com.lucent.app.network.ChatMessagePayload
 import com.lucent.app.network.LlmClient
 import com.lucent.app.ui.SettingsRoute
+import kotlin.math.abs
+import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -188,8 +201,9 @@ fun NotebookChatTab(
     var showProfileModelPickerSheet by remember { mutableStateOf(false) }
 
     val messages = remember { mutableStateListOf<UiChatMessage>() }
+    val placementSpec = rememberReorderPlacementSpec()
     var streamingAnswerId by remember { mutableStateOf<Long?>(null) }
-    var messageToDelete by remember { mutableStateOf<UiChatMessage?>(null) }
+    var pendingDelete by remember { mutableStateOf<PendingChatDelete?>(null) }
     var questionToEdit by remember { mutableStateOf<UiChatMessage?>(null) }
     var answerToEdit by remember { mutableStateOf<UiChatMessage?>(null) }
     val streamingThought = remember { mutableStateOf("") }
@@ -488,11 +502,23 @@ fun NotebookChatTab(
         AppScope.io.launch { db.chatDao().updateContent(answerId, newText) }
     }
 
-    fun deleteMessage(messageId: Long) {
-        val idx = messages.indexOfFirst { it.id == messageId }
+    fun deleteMessage(target: UiChatMessage) {
+        val idx = messages.indexOfFirst { it.id == target.id }
         if (idx < 0) return
         messages.removeAt(idx)
-        AppScope.io.launch { db.chatDao().deleteByIds(listOf(messageId)) }
+        scope.launch {
+            val row = db.chatDao().getByIdOnce(target.id)
+            if (row != null) db.chatDao().deleteByIds(listOf(target.id))
+            pendingDelete = PendingChatDelete(row = row, message = target, index = idx)
+        }
+    }
+
+    fun undoDelete() {
+        val pending = pendingDelete ?: return
+        pendingDelete = null
+        messages.add(pending.index.coerceIn(0, messages.size), pending.message)
+        val row = pending.row
+        if (row != null) AppScope.io.launch { db.chatDao().restore(row) }
     }
 
     val onSendMessage: () -> Unit = send@{
@@ -542,27 +568,50 @@ fun NotebookChatTab(
 
                 itemsIndexed(messages, key = { _, msg -> msg.id }) { _, msg ->
                     val actionsEnabled = streamingAnswerId == null
+                    val itemModifier = Modifier.animateItem(placementSpec = placementSpec)
                     if (msg.role == "user") {
                         UserMessageCard(
+                            modifier = itemModifier,
                             message = msg,
                             actionsEnabled = actionsEnabled,
                             onEdit = { questionToEdit = msg },
-                            onDelete = { messageToDelete = msg }
+                            onDelete = { deleteMessage(msg) }
                         )
                     } else {
                         AiMessageCard(
+                            modifier = itemModifier,
                             message = msg,
                             streaming = msg.id == streamingAnswerId,
                             liveThought = if (msg.id == streamingAnswerId) streamingThought else null,
                             actionsEnabled = actionsEnabled,
                             onRegenerate = { regenerateAnswer(msg.id) },
                             onEditAnswer = { answerToEdit = msg },
-                            onDelete = { messageToDelete = msg }
+                            onDelete = { deleteMessage(msg) }
                         )
                     }
                 }
 
                 item { Spacer(modifier = Modifier.height(8.dp)) }
+            }
+
+            AnimatedVisibility(
+                visible = pendingDelete != null,
+                enter = slideInVertically(
+                    animationSpec = LucentMotion.toIntOffset(LucentMotion.Sheet)
+                ) { it } + fadeIn(tween(180)),
+                exit = slideOutVertically(
+                    animationSpec = LucentMotion.toIntOffset(LucentMotion.Firm)
+                ) { it } + fadeOut(tween(150))
+            ) {
+                pendingDelete?.let { pending ->
+                    DeleteUndoBar(
+                        messageId = pending.message.id,
+                        label = if (pending.message.role == "user") "已删除这条提问" else "已删除这条回答",
+                        excerpt = ChatStats.preview(pending.message.content, limit = 24),
+                        onUndo = { undoDelete() },
+                        onDismiss = { pendingDelete = null }
+                    )
+                }
             }
 
             BottomGlassComposer(
@@ -655,37 +704,12 @@ fun NotebookChatTab(
                 onDismiss = { answerToEdit = null }
             )
         }
-
-        messageToDelete?.let { target ->
-            AlertDialog(
-                onDismissRequest = { messageToDelete = null },
-                title = { Text(if (target.role == "user") "删除这条提问？" else "删除这条回答？") },
-                text = {
-                    Text(
-                        text = ChatStats.preview(target.content),
-                        fontSize = 13.sp,
-                        maxLines = 3,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                },
-                confirmButton = {
-                    TextButton(onClick = {
-                        messageToDelete = null
-                        deleteMessage(target.id)
-                    }) {
-                        Text("删除", color = Color(0xFFEF5350))
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { messageToDelete = null }) { Text("取消") }
-                }
-            )
-        }
     }
 }
 
 @Composable
 private fun UserMessageCard(
+    modifier: Modifier = Modifier,
     message: UiChatMessage,
     actionsEnabled: Boolean,
     onEdit: () -> Unit,
@@ -697,7 +721,7 @@ private fun UserMessageCard(
     val textColor = LocalOnGradient.current
 
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(start = 24.dp),
         horizontalAlignment = Alignment.End
@@ -723,26 +747,26 @@ private fun UserMessageCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 2.dp, end = 2.dp),
-            horizontalArrangement = Arrangement.End,
+            horizontalArrangement = Arrangement.spacedBy(2.dp, Alignment.End),
             verticalAlignment = Alignment.CenterVertically
         ) {
             BubbleAction(
-                icon = Icons.Default.ContentCopy,
+                icon = Icons.Rounded.ContentCopy,
                 label = "复制全文",
                 tint = textColor,
                 onClick = { copyTextToClipboard(context, message.content) }
             )
             BubbleAction(
-                icon = Icons.Default.Edit,
+                icon = Icons.Rounded.Edit,
                 label = "编辑",
                 tint = textColor,
                 enabled = actionsEnabled,
                 onClick = onEdit
             )
             BubbleAction(
-                icon = Icons.Default.Delete,
+                icon = Icons.Rounded.Delete,
                 label = "删除",
-                tint = Color(0xFFEF5350),
+                tint = textColor,
                 enabled = actionsEnabled,
                 onClick = onDelete
             )
@@ -752,6 +776,7 @@ private fun UserMessageCard(
 
 @Composable
 private fun AiMessageCard(
+    modifier: Modifier = Modifier,
     message: UiChatMessage,
     streaming: Boolean = false,
     liveThought: State<String>? = null,
@@ -762,7 +787,7 @@ private fun AiMessageCard(
 ) {
     val context = LocalContext.current
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(end = 12.dp)
     ) {
@@ -799,12 +824,11 @@ private fun AiMessageCard(
                     promptTokens = message.promptTokens,
                     chars = message.content.length
                 )
-                Row(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(top = 4.dp, start = 4.dp, end = 2.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     if (stats.isNotEmpty()) {
                         Text(
@@ -812,38 +836,42 @@ private fun AiMessageCard(
                             color = LocalOnGradientMuted.current.copy(alpha = 0.75f),
                             fontSize = 11.sp,
                             maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f, fill = false)
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
-                    Spacer(modifier = Modifier.width(if (stats.isNotEmpty()) 6.dp else 0.dp))
-                    BubbleAction(
-                        icon = Icons.Default.ContentCopy,
-                        label = "复制",
-                        tint = LocalOnGradient.current,
-                        onClick = { copyTextToClipboard(context, message.content) }
-                    )
-                    BubbleAction(
-                        icon = Icons.Default.Refresh,
-                        label = "重新生成",
-                        tint = LocalOnGradient.current,
-                        enabled = actionsEnabled,
-                        onClick = onRegenerate
-                    )
-                    BubbleAction(
-                        icon = Icons.Default.Edit,
-                        label = "编辑",
-                        tint = LocalOnGradient.current,
-                        enabled = actionsEnabled,
-                        onClick = onEditAnswer
-                    )
-                    BubbleAction(
-                        icon = Icons.Default.Delete,
-                        label = "删除",
-                        tint = Color(0xFFEF5350),
-                        enabled = actionsEnabled,
-                        onClick = onDelete
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(2.dp, Alignment.End),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        BubbleAction(
+                            icon = Icons.Rounded.ContentCopy,
+                            label = "复制",
+                            tint = LocalOnGradient.current,
+                            onClick = { copyTextToClipboard(context, message.content) }
+                        )
+                        BubbleAction(
+                            icon = Icons.Rounded.Refresh,
+                            label = "重新生成",
+                            tint = LocalOnGradient.current,
+                            enabled = actionsEnabled,
+                            onClick = onRegenerate
+                        )
+                        BubbleAction(
+                            icon = Icons.Rounded.Edit,
+                            label = "编辑",
+                            tint = LocalOnGradient.current,
+                            enabled = actionsEnabled,
+                            onClick = onEditAnswer
+                        )
+                        BubbleAction(
+                            icon = Icons.Rounded.Delete,
+                            label = "删除",
+                            tint = LocalOnGradient.current,
+                            enabled = actionsEnabled,
+                            onClick = onDelete
+                        )
+                    }
                 }
             }
         }
@@ -871,10 +899,16 @@ private fun BubbleAction(
         label = "bubbleActionAlpha"
     )
 
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
+    val scale by animateFloatAsState(
+        targetValue = if (pressed) 0.96f else 1f,
+        animationSpec = LucentMotion.toSpring(LucentMotion.Control),
+        label = "bubbleActionScale"
+    )
+
+    Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(9.dp))
+            .size(48.dp)
+            .clip(RoundedCornerShape(14.dp))
             .clickable(
                 interactionSource = interaction,
                 indication = null,
@@ -883,21 +917,104 @@ private fun BubbleAction(
                 Haptics.tick(context)
                 onClick()
             }
-            .padding(horizontal = 6.dp, vertical = 5.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+                this.alpha = alpha
+            },
+        contentAlignment = Alignment.Center
     ) {
         Icon(
             icon,
             contentDescription = label,
-            tint = tint.copy(alpha = alpha),
-            modifier = Modifier.size(14.dp)
+            tint = tint,
+            modifier = Modifier.size(18.dp)
         )
-        Spacer(modifier = Modifier.width(3.dp))
-        Text(
-            text = label,
-            color = tint.copy(alpha = alpha),
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Medium
-        )
+    }
+}
+
+private data class PendingChatDelete(
+    val row: ChatMessage?,
+    val message: UiChatMessage,
+    val index: Int
+)
+
+private const val SWIPE_FRACTION = 0.34f
+private const val FLING_VELOCITY = 1200f
+
+@Composable
+private fun DeleteUndoBar(
+    messageId: Long,
+    label: String,
+    excerpt: String,
+    onUndo: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val slide = remember { Animatable(0f) }
+    var barWidth by remember { mutableStateOf(0f) }
+    val reduced = LucentMotion.reduced(context)
+
+    LaunchedEffect(messageId) {
+        slide.snapTo(0f)
+        delay(10_000)
+        onDismiss()
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 4.dp)
+            .onSizeChanged { barWidth = it.width.toFloat() }
+            .offset { IntOffset(slide.value.roundToInt(), 0) }
+            .alpha((1f - abs(slide.value) / barWidth.coerceAtLeast(1f)).coerceIn(0f, 1f))
+            .draggable(
+                state = rememberDraggableState { delta ->
+                    scope.launch { slide.snapTo(slide.value + delta) }
+                },
+                orientation = Orientation.Horizontal,
+                onDragStopped = { velocity ->
+                    val distance = abs(slide.value)
+                    val kept = distance < barWidth * SWIPE_FRACTION && abs(velocity) < FLING_VELOCITY
+                    val direction = if (distance > 1f) slide.value else velocity
+                    scope.launch {
+                        if (kept) {
+                            if (reduced) slide.snapTo(0f) else slide.animateTo(0f, LucentMotion.toSpring(LucentMotion.Settle))
+                        } else {
+                            val target = if (direction >= 0f) barWidth else -barWidth
+                            if (reduced) slide.snapTo(target) else slide.animateTo(target, LucentMotion.toSpring(LucentMotion.Firm))
+                            onDismiss()
+                        }
+                    }
+                }
+            )
+            .clip(RoundedCornerShape(16.dp))
+            .frostedGlass(cornerRadius = 16.dp)
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = label,
+                color = LocalOnGradient.current,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium
+            )
+            Text(
+                text = excerpt,
+                color = LocalOnGradientMuted.current,
+                fontSize = 11.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        TextButton(onClick = {
+            Haptics.tick(context)
+            onUndo()
+        }) {
+            Text(text = "撤销", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+        }
     }
 }
 

@@ -365,7 +365,6 @@ object LlmClient {
         model: String,
         messages: List<ChatMessagePayload>,
         systemInstruction: String = "",
-        temperature: Float = -1f,
         customUserAgent: String = "",
         reasoningConfig: com.lucent.app.data.ResolvedReasoningConfig? = null
     ): Result<ChatCompletionResult> = withContext(Dispatchers.IO) {
@@ -401,9 +400,6 @@ object LlmClient {
                             })
                         }
                         put("messages", messagesArray)
-                        if (temperature in 0.0f..2.0f) {
-                            put("temperature", temperature.toDouble())
-                        }
                         if (reasoningConfig != null && !reasoningConfig.isAuto) {
                             if (reasoningConfig.openAiMode != null) {
                                 put("reasoning", JSONObject().apply {
@@ -438,9 +434,6 @@ object LlmClient {
                             })
                         }
                         put("messages", messagesArray)
-                        if (temperature in 0.0f..1.0f) {
-                            put("temperature", temperature.toDouble())
-                        }
                         if (reasoningConfig != null && !reasoningConfig.isAuto) {
                             if (reasoningConfig.claudeEffort != null) {
                                 put("output_config", JSONObject().apply {
@@ -484,9 +477,6 @@ object LlmClient {
                         }
                         put("contents", contentsArray)
                         val genConfig = JSONObject()
-                        if (temperature in 0.0f..2.0f) {
-                            genConfig.put("temperature", temperature.toDouble())
-                        }
                         if (reasoningConfig != null && !reasoningConfig.isAuto) {
                             val thinkingConfig = JSONObject()
                             if (reasoningConfig.geminiThinkingLevel != null) {
@@ -581,7 +571,6 @@ object LlmClient {
         model: String,
         messages: List<ChatMessagePayload>,
         systemInstruction: String = "",
-        temperature: Float = -1f,
         customUserAgent: String = "",
         reasoningConfig: com.lucent.app.data.ResolvedReasoningConfig? = null,
         onChunk: suspend (deltaContent: String, deltaReasoning: String?) -> Unit
@@ -622,9 +611,6 @@ object LlmClient {
                             })
                         }
                         put("messages", messagesArray)
-                        if (temperature in 0.0f..2.0f) {
-                            put("temperature", temperature.toDouble())
-                        }
                         if (reasoningConfig != null && !reasoningConfig.isAuto) {
                             if (reasoningConfig.openAiMode != null) {
                                 put("reasoning", JSONObject().apply {
@@ -664,9 +650,6 @@ object LlmClient {
                             })
                         }
                         put("messages", messagesArray)
-                        if (temperature in 0.0f..1.0f) {
-                            put("temperature", temperature.toDouble())
-                        }
                         if (reasoningConfig != null && !reasoningConfig.isAuto) {
                             if (reasoningConfig.claudeEffort != null) {
                                 put("output_config", JSONObject().apply {
@@ -710,9 +693,6 @@ object LlmClient {
                         }
                         put("contents", contentsArray)
                         val genConfig = JSONObject()
-                        if (temperature in 0.0f..2.0f) {
-                            genConfig.put("temperature", temperature.toDouble())
-                        }
                         if (reasoningConfig != null && !reasoningConfig.isAuto) {
                             val thinkingConfig = JSONObject()
                             if (reasoningConfig.geminiThinkingLevel != null) {

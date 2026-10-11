@@ -48,8 +48,7 @@ fun StandardSliderRow(
     onValueChangeFinished: () -> Unit,
     onGradient: Color,
     modifier: Modifier = Modifier,
-    steps: Int = 0,
-    active: Boolean = true
+    steps: Int = 0
 ) {
     var dragging by remember { mutableStateOf(false) }
     val pillScale by animateFloatAsState(
@@ -75,21 +74,13 @@ fun StandardSliderRow(
                 modifier = Modifier
                     .scale(pillScale)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(
-                        if (active) MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
-                        else onGradient.copy(alpha = 0.08f)
-                    )
-                    .border(
-                        1.dp,
-                        if (active) MaterialTheme.colorScheme.primary.copy(alpha = 0.34f)
-                        else onGradient.copy(alpha = 0.16f),
-                        RoundedCornerShape(8.dp)
-                    )
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.14f))
+                    .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.34f), RoundedCornerShape(8.dp))
                     .padding(horizontal = 8.dp, vertical = 2.dp)
             ) {
                 Text(
                     text = valueLabel,
-                    color = if (active) MaterialTheme.colorScheme.primary else onGradient,
+                    color = MaterialTheme.colorScheme.primary,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -110,11 +101,9 @@ fun StandardSliderRow(
             },
             valueRange = valueRange,
             steps = steps,
-            enabled = active,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(28.dp)
-                .alpha(if (active) 1f else 0.55f),
+                .height(28.dp),
             thumb = {
                 Box(
                     modifier = Modifier
@@ -145,9 +134,7 @@ fun StandardSliderRow(
                         modifier = Modifier
                             .size(5.dp)
                             .clip(CircleShape)
-                            .background(
-                                if (active) MaterialTheme.colorScheme.primary else Color.White
-                            )
+                            .background(MaterialTheme.colorScheme.primary)
                     )
                 }
             },

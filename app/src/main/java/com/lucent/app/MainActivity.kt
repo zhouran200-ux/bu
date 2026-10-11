@@ -42,6 +42,7 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import com.lucent.app.ui.LastScreen
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -253,11 +254,13 @@ class MainActivity : ComponentActivity() {
 fun LucentApp(paletteColors: List<Color>, backdropColor: Color, backgroundAnimated: Boolean = true) {
     var currentScreen by rememberSaveable { mutableStateOf(LastScreen.current) }
     val tabs = HomeTab.entries
-    val currentTab = HomeTab.of(currentScreen)
     val pagerState = rememberPagerState(
-        initialPage = tabs.indexOf(currentTab),
+        initialPage = tabs.indexOf(HomeTab.of(currentScreen)),
         pageCount = { tabs.size }
     )
+    val currentTab by remember(pagerState, tabs) {
+        derivedStateOf { tabs[pagerState.currentPage.coerceIn(tabs.indices)] }
+    }
     val tabScope = rememberCoroutineScope()
     LaunchedEffect(currentScreen) {
         LastScreen.remember(currentScreen)
@@ -319,7 +322,7 @@ fun LucentApp(paletteColors: List<Color>, backdropColor: Color, backgroundAnimat
                     if (AppNavigation.activeNotebookId == null) {
                         TopAppBar(
                             title = {
-                                if (currentScreen == Screen.Settings) {
+                                if (currentTab == HomeTab.Settings) {
                                     com.lucent.app.ui.SettingsBreadcrumb(
                                         route = AppNavigation.settingsRoute,
                                         onNavigate = { SettingsNav.go(it) },
@@ -327,7 +330,7 @@ fun LucentApp(paletteColors: List<Color>, backdropColor: Color, backgroundAnimat
                                     )
                                 } else {
                                     Text(
-                                        currentScreen.label,
+                                        currentTab.label,
                                         color = onGradient,
                                         fontSize = com.lucent.app.ui.LucentTitles.ScreenSize,
                                         fontWeight = com.lucent.app.ui.LucentTitles.ScreenWeight
@@ -335,7 +338,7 @@ fun LucentApp(paletteColors: List<Color>, backdropColor: Color, backgroundAnimat
                                 }
                             },
                             actions = {
-                                if (currentScreen == Screen.Notebooks) {
+                                if (currentTab == HomeTab.Notebooks) {
                                     IconButton(
                                         onClick = { AppNavigation.requestCreateNotebook() },
                                         modifier = Modifier

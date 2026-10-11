@@ -98,14 +98,12 @@ import com.lucent.app.network.ApiSpec
 import com.lucent.app.network.LlmClient
 import com.lucent.app.network.TestConnectionResult
 import com.lucent.app.ui.ApiModelPickerDialog
-import com.lucent.app.ui.BackHeader
 import com.lucent.app.ui.GlassButton
 import com.lucent.app.ui.Haptics
 import com.lucent.app.ui.LocalOnGradient
 import com.lucent.app.ui.LocalOnGradientMuted
 import com.lucent.app.ui.LucentToast
 import com.lucent.app.ui.LucentTitles
-import com.lucent.app.ui.SettingsRoute
 import com.lucent.app.ui.frostedGlass
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -244,8 +242,7 @@ internal fun ApiConfigSettingsPage(
     onSelectProfile: (Int) -> Unit,
     onReorderProfiles: (List<ApiProfile>, Int) -> Unit,
     onAddProfile: () -> Unit,
-    onSaveProfile: () -> Unit,
-    onRoute: (SettingsRoute) -> Unit
+    onSaveProfile: () -> Unit
 ) {
     val onGradient = LocalOnGradient.current
     val onGradientMuted = LocalOnGradientMuted.current
@@ -320,8 +317,6 @@ internal fun ApiConfigSettingsPage(
         testStatusText = ""
         testSuccess = false
     }
-
-    BackHeader(onBack = { onRoute(SettingsRoute.Root) })
 
     Column(modifier = Modifier.fillMaxWidth().frostedGlass().padding(12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {

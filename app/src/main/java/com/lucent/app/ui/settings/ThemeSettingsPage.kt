@@ -23,30 +23,26 @@ import com.lucent.app.AppScope
 import com.lucent.app.data.SettingsCache
 import com.lucent.app.data.SettingsRepository
 import com.lucent.app.i18n.S
-import com.lucent.app.ui.BackHeader
+import com.lucent.app.ui.LockNote
 import com.lucent.app.ui.LocalOnGradient
 import com.lucent.app.ui.LocalOnGradientMuted
 import com.lucent.app.ui.LucentThemeMode
 import com.lucent.app.ui.LucentThemeSection
 import com.lucent.app.ui.LucentTitles
 import com.lucent.app.ui.PaletteSwatch
-import com.lucent.app.ui.SettingsRoute
 import com.lucent.app.ui.frostedGlass
 import com.lucent.app.ui.rememberDynamicColorActive
 import kotlinx.coroutines.launch
 
 @Composable
-internal fun ThemeSettingsPage(repo: SettingsRepository, onRoute: (SettingsRoute) -> Unit) {
+internal fun ThemeSettingsPage(repo: SettingsRepository) {
     val onGradient = LocalOnGradient.current
     val onGradientMuted = LocalOnGradientMuted.current
     val savedTheme by repo.themeMode.collectAsState(initial = SettingsCache.themeMode)
     val locked = rememberDynamicColorActive(repo)
     val lockAlpha = if (locked) 0.5f else 1f
 
-    BackHeader(
-        onBack = { onRoute(SettingsRoute.Appearance) },
-        note = if (locked) S.dynamicThemeLockedHint else ""
-    )
+    LockNote(if (locked) S.dynamicThemeLockedHint else "")
 
     val systemDark = isSystemInDarkTheme()
     val offered = LucentThemeMode.pickerEntries

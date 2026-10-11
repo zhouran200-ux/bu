@@ -25,7 +25,7 @@ import com.lucent.app.AppScope
 import com.lucent.app.data.SettingsCache
 import com.lucent.app.data.SettingsRepository
 import com.lucent.app.i18n.S
-import com.lucent.app.ui.BackHeader
+import com.lucent.app.ui.LockNote
 import com.lucent.app.ui.LocalOnGradient
 import com.lucent.app.ui.LocalOnGradientMuted
 import com.lucent.app.ui.LucentPalette
@@ -35,14 +35,13 @@ import com.lucent.app.ui.PALETTE_CYCLE
 import com.lucent.app.ui.PALETTE_RANDOM
 import com.lucent.app.ui.PaletteGroup
 import com.lucent.app.ui.PaletteSwatch
-import com.lucent.app.ui.SettingsRoute
 import com.lucent.app.ui.frostedGlass
 import com.lucent.app.ui.rememberDynamicColorActive
 import com.lucent.app.ui.title
 import kotlinx.coroutines.launch
 
 @Composable
-internal fun BackgroundSettingsPage(repo: SettingsRepository, onRoute: (SettingsRoute) -> Unit) {
+internal fun BackgroundSettingsPage(repo: SettingsRepository) {
     val context = LocalContext.current
     val onGradient = LocalOnGradient.current
     val onGradientMuted = LocalOnGradientMuted.current
@@ -66,10 +65,7 @@ internal fun BackgroundSettingsPage(repo: SettingsRepository, onRoute: (Settings
         AppScope.io.launch { repo.setPalette(name) }
     }
 
-    BackHeader(
-        onBack = { onRoute(SettingsRoute.Appearance) },
-        note = if (locked) S.dynamicThemeLockedHint else ""
-    )
+    LockNote(if (locked) S.dynamicThemeLockedHint else "")
 
     Column(modifier = Modifier.fillMaxWidth().frostedGlass().padding(16.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {

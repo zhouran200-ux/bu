@@ -21,7 +21,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Button
@@ -108,30 +107,19 @@ internal fun NavCard(
 }
 
 @Composable
-internal fun BackHeader(onBack: () -> Unit, note: String = "") {
-    val onGradient = LocalOnGradient.current
-    val onGradientMuted = LocalOnGradientMuted.current
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        IconButton(onClick = onBack) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = S.actionBack, tint = onGradient)
-        }
-        if (note.isNotBlank()) {
-            Text(note, color = onGradientMuted, fontSize = 13.sp)
-        }
-    }
-    Spacer(modifier = Modifier.height(8.dp))
+internal fun LockNote(note: String) {
+    if (note.isBlank()) return
+    Text(
+        note,
+        color = LocalOnGradientMuted.current,
+        fontSize = 13.sp,
+        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+    )
 }
 
 internal object SettingsTrail {
 
-    fun parent(route: SettingsRoute): SettingsRoute? = when (route) {
-        SettingsRoute.Root -> null
-        SettingsRoute.Theme, SettingsRoute.Background, SettingsRoute.Font -> SettingsRoute.Appearance
-        else -> SettingsRoute.Root
-    }
+    fun parent(route: SettingsRoute): SettingsRoute? = if (route == SettingsRoute.Root) null else SettingsRoute.Root
 
     fun trail(route: SettingsRoute): List<SettingsRoute> {
         val out = ArrayList<SettingsRoute>()
@@ -147,7 +135,6 @@ internal object SettingsTrail {
 
     fun title(route: SettingsRoute): String = when (route) {
         SettingsRoute.Root -> S.tabSettings
-        SettingsRoute.Appearance -> S.settingsAppearanceTitle
         SettingsRoute.Theme -> S.settingsThemeTitle
         SettingsRoute.Background -> S.settingsBackgroundTitle
         SettingsRoute.Font -> S.fontTypographyTitle

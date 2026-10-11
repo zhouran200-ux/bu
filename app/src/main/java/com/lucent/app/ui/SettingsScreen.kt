@@ -29,7 +29,6 @@ import com.lucent.app.data.SettingsCache
 import com.lucent.app.data.SettingsRepository
 import com.lucent.app.i18n.S
 import com.lucent.app.ui.settings.ApiConfigSettingsPage
-import com.lucent.app.ui.settings.AppearanceSettingsPage
 import com.lucent.app.ui.settings.BackgroundSettingsPage
 import com.lucent.app.ui.settings.FontSettingsPage
 import com.lucent.app.ui.settings.RootSettingsPage
@@ -192,18 +191,13 @@ fun SettingsScreen(active: Boolean = true) {
             .padding(bottom = LocalBottomBarInset.current)
     ) {
         when (route) {
-            SettingsRoute.Root -> RootSettingsPage(onRoute = { navigate(it) })
+            SettingsRoute.Root -> RootSettingsPage(repo = repo, onRoute = { navigate(it) })
 
-            SettingsRoute.Appearance -> AppearanceSettingsPage(repo = repo, onRoute = { navigate(it) })
+            SettingsRoute.Theme -> ThemeSettingsPage(repo = repo)
 
-            SettingsRoute.Theme -> ThemeSettingsPage(repo = repo, onRoute = { navigate(it) })
+            SettingsRoute.Background -> BackgroundSettingsPage(repo = repo)
 
-            SettingsRoute.Background -> BackgroundSettingsPage(repo = repo, onRoute = { navigate(it) })
-
-            SettingsRoute.Font -> FontSettingsPage(
-                repo = repo,
-                onRoute = { navigate(it) }
-            )
+            SettingsRoute.Font -> FontSettingsPage(repo = repo)
 
             SettingsRoute.Api -> ApiConfigSettingsPage(
                 repo = repo,
@@ -231,8 +225,7 @@ fun SettingsScreen(active: Boolean = true) {
                 onSelectProfile = { selectProfile(it) },
                 onReorderProfiles = { order, selected -> reorderProfiles(order, selected) },
                 onAddProfile = { addProfile() },
-                onSaveProfile = { saveActiveProfile(selectedProfileIdx, models) },
-                onRoute = { navigate(it) }
+                onSaveProfile = { saveActiveProfile(selectedProfileIdx, models) }
             )
         }
     }

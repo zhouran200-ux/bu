@@ -32,13 +32,11 @@ import com.lucent.app.data.FontStore
 import com.lucent.app.data.SettingsCache
 import com.lucent.app.data.SettingsRepository
 import com.lucent.app.i18n.S
-import com.lucent.app.ui.BackHeader
 import com.lucent.app.ui.LocalOnGradient
 import com.lucent.app.ui.LocalOnGradientMuted
 import com.lucent.app.ui.LucentFontResolver
 import com.lucent.app.ui.LucentTitles
 import com.lucent.app.ui.SYSTEM_FONT_KEY
-import com.lucent.app.ui.SettingsRoute
 import com.lucent.app.ui.StandardSliderRow
 import com.lucent.app.ui.frostedGlass
 import kotlinx.coroutines.Dispatchers
@@ -48,8 +46,7 @@ import kotlinx.coroutines.withContext
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun FontSettingsPage(
-    repo: SettingsRepository,
-    onRoute: (SettingsRoute) -> Unit
+    repo: SettingsRepository
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -115,8 +112,6 @@ internal fun FontSettingsPage(
             }
         }
     }
-
-    BackHeader(onBack = { onRoute(SettingsRoute.Appearance) })
 
     Column(
         modifier = Modifier

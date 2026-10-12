@@ -122,20 +122,13 @@ fun lucentGlassRim(strong: Boolean = false): Brush {
             )
         )
     } else {
-        Brush.verticalGradient(
-            listOf(
-                Color.White.copy(alpha = if (strong) 0.95f else 0.90f),
-                ink.copy(alpha = 0.07f),
-                ink.copy(alpha = if (strong) 0.24f else 0.20f)
-            )
-        )
+        SolidColor(ink.copy(alpha = if (strong) 0.20f else 0.16f))
     }
 }
 
 fun Modifier.frostedGlass(cornerRadius: Dp = 20.dp, tint: Color = Color.White): Modifier = composed {
     val shape = RoundedCornerShape(cornerRadius)
     val darkTheme = isDarkGlass()
-    val ink = LocalOnGradient.current
     val tinted = tint != Color.White
 
     val fillColor = if (tinted) tint else Color.White
@@ -146,13 +139,11 @@ fun Modifier.frostedGlass(cornerRadius: Dp = 20.dp, tint: Color = Color.White): 
         else -> LucentGlass.CARD_FILL_LIGHT
     }
 
-    val edge = if (darkTheme) lucentGlassRim() else SolidColor(ink.copy(alpha = 0.16f))
-
     clip(shape)
         .background(fillColor.copy(alpha = fillAlpha))
         .then(
             if (tinted) Modifier.border(1.dp, tint.copy(alpha = if (darkTheme) 0.45f else 0.55f), shape)
-            else Modifier.border(1.dp, edge, shape)
+            else Modifier.border(1.dp, lucentGlassRim(), shape)
         )
 }
 

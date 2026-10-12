@@ -632,7 +632,12 @@ internal fun ApiConfigSettingsPage(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
                                 .weight(1f)
-                                .clickable(enabled = settled) { onSelectProfile(idx) }
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null,
+                                    enabled = settled,
+                                    onClick = { onSelectProfile(idx) }
+                                )
                         ) {
                             Text(
                                 text = p.name.ifBlank { "方案 ${idx + 1}" },

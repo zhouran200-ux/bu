@@ -69,7 +69,6 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Stop
-import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -1359,7 +1358,7 @@ private fun BottomGlassComposer(
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
-                                    Icons.Default.Psychology,
+                                    LucentIcons.presetIcon(reasoningPreset),
                                     contentDescription = "思考程度",
                                     tint = thinkingTint,
                                     modifier = Modifier.size(20.dp)
@@ -1683,8 +1682,7 @@ private fun DialogueSettingsSheet(
                         value = historyRounds.toFloat(),
                         valueRange = 1f..20f,
                         step = 1f,
-                        onValueChange = { historyRounds = it.toInt() },
-                        onValueChangeFinished = { }
+                        onValueChange = { historyRounds = it.toInt() }
                     )
                 }
             }

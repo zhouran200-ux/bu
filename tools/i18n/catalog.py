@@ -113,7 +113,7 @@ ENTRIES = [
     ("apiNoneBody", "你已删除全部已保存的 API。添加一个即可使用云端助手。"),
     ("a11yDragToReorder", "拖拽以调整顺序"),
     ("notebookCreate", "创建"),
-    ("notebookDeleteBody(title: String)", "“{title}”和它里面的文档、聊天记录、任务会被一并删除，无法恢复。"),
+    ("notebookDeleteBody(title: String)", "“{title}”和它里面的文档、聊天记录会被一并删除，无法恢复。"),
     ("notebookDeleteTitle", "删除笔记本？"),
     ("notebookDeletedToast", "笔记本已删除"),
     ("notebookEmptyTitle", "未命名"),

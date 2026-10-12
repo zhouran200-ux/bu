@@ -64,8 +64,8 @@ fun StepperSlider(
     step: Float,
     valueLabel: String,
     onValueChange: (Float) -> Unit,
-    onValueChangeFinished: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onValueChangeFinished: () -> Unit = {}
 ) {
     val ink = LocalOnGradient.current
     val accent = MaterialTheme.colorScheme.primary

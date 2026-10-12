@@ -114,7 +114,7 @@ open class Tr {
     open val apiNoneBody: String = "你已删除全部已保存的 API。添加一个即可使用云端助手。"
     open val a11yDragToReorder: String = "拖拽以调整顺序"
     open val notebookCreate: String = "创建"
-    open fun notebookDeleteBody(title: String): String = "“${title}”和它里面的文档、聊天记录、任务会被一并删除，无法恢复。"
+    open fun notebookDeleteBody(title: String): String = "“${title}”和它里面的文档、聊天记录会被一并删除，无法恢复。"
     open val notebookDeleteTitle: String = "删除笔记本？"
     open val notebookDeletedToast: String = "笔记本已删除"
     open val notebookEmptyTitle: String = "未命名"

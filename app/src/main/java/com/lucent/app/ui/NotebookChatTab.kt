@@ -67,7 +67,6 @@ import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material.icons.filled.Psychology
@@ -1384,20 +1383,22 @@ private fun BottomGlassComposer(
 
                             ReasoningPreset.entries.forEach { preset ->
                                 val isSelected = reasoningPreset == preset
-                                val icon = when (preset) {
-                                    ReasoningPreset.AUTO -> "✨"
-                                    ReasoningPreset.FAST -> "⚡"
-                                    ReasoningPreset.BALANCED -> "⚖️"
-                                    ReasoningPreset.DEEP -> "🧠"
-                                    ReasoningPreset.MAXIMUM -> "🚀"
-                                }
+                                val accent = MaterialTheme.colorScheme.primary
                                 DropdownMenuItem(
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = LucentIcons.presetIcon(preset),
+                                            contentDescription = null,
+                                            tint = if (isSelected) accent else onGradientMuted,
+                                            modifier = Modifier.size(19.dp)
+                                        )
+                                    },
                                     text = {
                                         Row(verticalAlignment = Alignment.CenterVertically) {
                                             Text(
-                                                text = "$icon  ${preset.label}",
+                                                text = preset.label,
                                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                                color = if (isSelected) Color(0xFFF59E0B) else onGradient,
+                                                color = if (isSelected) accent else onGradient,
                                                 fontSize = LucentTitles.ItemSize
                                             )
                                             if (isSelected) {
@@ -1405,7 +1406,7 @@ private fun BottomGlassComposer(
                                                 Icon(
                                                     Icons.Default.Check,
                                                     contentDescription = null,
-                                                    tint = Color(0xFFF59E0B),
+                                                    tint = accent,
                                                     modifier = Modifier.size(16.dp)
                                                 )
                                             }
@@ -1457,10 +1458,10 @@ private fun BottomGlassComposer(
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
                                     Icon(
-                                        Icons.Default.Memory,
+                                        LucentIcons.Model,
                                         contentDescription = null,
                                         tint = Color.White,
-                                        modifier = Modifier.size(12.dp)
+                                        modifier = Modifier.size(13.dp)
                                     )
                                 }
                             }

@@ -40,7 +40,6 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.Wifi
@@ -104,6 +103,7 @@ import com.lucent.app.network.LlmClient
 import com.lucent.app.network.TestConnectionResult
 import com.lucent.app.ui.ApiModelPickerDialog
 import com.lucent.app.ui.GlassButton
+import com.lucent.app.ui.LucentIcons
 import com.lucent.app.ui.Haptics
 import com.lucent.app.ui.LocalOnGradient
 import com.lucent.app.ui.LocalOnGradientMuted
@@ -882,10 +882,10 @@ internal fun ApiConfigSettingsPage(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.Memory,
+                                    imageVector = LucentIcons.Model,
                                     contentDescription = null,
                                     tint = if (isSelected) MaterialTheme.colorScheme.primary else onGradientMuted,
-                                    modifier = Modifier.size(15.dp)
+                                    modifier = Modifier.size(16.dp)
                                 )
                             }
                             Spacer(modifier = Modifier.width(8.dp))

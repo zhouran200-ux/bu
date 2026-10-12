@@ -18,9 +18,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Book
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -115,8 +112,8 @@ internal fun CapsuleNavItem(
 }
 
 fun iconFor(tab: HomeTab): ImageVector = when (tab) {
-    HomeTab.Notebooks -> Icons.Default.Book
-    HomeTab.Settings -> Icons.Default.Settings
+    HomeTab.Notebooks -> com.lucent.app.ui.LucentIcons.Notebook
+    HomeTab.Settings -> com.lucent.app.ui.LucentIcons.Settings
 }
 
 @OptIn(ExperimentalFoundationApi::class)

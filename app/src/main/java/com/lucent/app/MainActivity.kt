@@ -24,8 +24,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -347,10 +345,10 @@ fun LucentApp(paletteColors: List<Color>, backdropColor: Color, backgroundAnimat
                                             .border(1.5.dp, onGradient.copy(alpha = 0.35f), CircleShape)
                                     ) {
                                         Icon(
-                                            imageVector = Icons.Default.Add,
+                                            imageVector = com.lucent.app.ui.LucentIcons.Create,
                                             contentDescription = com.lucent.app.i18n.S.notebookNew,
                                             tint = onGradient,
-                                            modifier = Modifier.size(28.dp)
+                                            modifier = Modifier.size(22.dp)
                                         )
                                     }
                                 }

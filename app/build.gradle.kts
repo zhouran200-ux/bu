@@ -113,24 +113,21 @@ ksp {
 dependencies {
     implementation(platform(libs.compose.bom))
     implementation(libs.androidx.ui)
-    implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
     implementation(libs.androidx.material.icons.extended)
     implementation(libs.activity.compose)
     implementation(libs.core.ktx)
-
-    debugImplementation(libs.androidx.ui.tooling)
 
     implementation(libs.kotlinx.coroutines.android)
 
     implementation(libs.room.runtime)
     ksp(libs.room.compiler)
 
-    implementation(libs.sqlite.ktx)
-
     implementation(libs.datastore.preferences)
 
     implementation(libs.okhttp)
+
+    implementation(libs.androidx.profileinstaller)
 
     implementation(libs.haze)
     implementation(libs.haze.materials)
@@ -139,10 +136,7 @@ dependencies {
     testImplementation(libs.org.json)
 
     androidTestImplementation(libs.room.testing)
-    androidTestImplementation(libs.androidx.test.core)
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.test.ext.junit)
-
-    implementation(libs.androidx.profileinstaller)
 
 }

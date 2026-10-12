@@ -14,8 +14,7 @@ import javax.xml.parsers.DocumentBuilderFactory
 
 data class ParsedDocument(
     val title: String,
-    val markdown: String,
-    val extension: String
+    val markdown: String
 )
 
 object MarkdownDocumentParser {
@@ -47,8 +46,7 @@ object MarkdownDocumentParser {
 
         ParsedDocument(
             title = title,
-            markdown = markdown,
-            extension = ext
+            markdown = markdown
         )
     }
 

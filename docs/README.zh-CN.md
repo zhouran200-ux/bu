@@ -98,10 +98,3 @@ docs/           项目文档与开源许可声明
 | [Haze](https://github.com/chrisbanes/haze) — © Chris Banes | 通透灵动的毛玻璃高斯模糊渲染 | Apache-2.0 |
 | [OkHttp](https://github.com/square/okhttp) — © Square, Inc. | 稳定高效的 HTTP/SSE 网络请求通信 | Apache-2.0 |
 | [SQLite](https://www.sqlite.org/) | 数据库引擎，安静高效地保存一切 | Public Domain |
-
----
-
-## 许可证
-
-Lucent 以 **MIT 许可证** 发布——详见根目录 [`LICENSE`](../LICENSE)。
-你可以自由使用、修改、打包或分发该项目。遵循开源协议，请在任何衍生副本中保留原始版权声明与许可说明。

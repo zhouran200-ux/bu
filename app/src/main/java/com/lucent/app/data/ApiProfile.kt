@@ -13,7 +13,6 @@ data class ApiProfile(
 )
 
 object UserAgentPresets {
-    const val DEFAULT = ""
     const val SILLY_TAVERN_NODE_FETCH = "node-fetch (+https://github.com/node-fetch/node-fetch)"
 }
 

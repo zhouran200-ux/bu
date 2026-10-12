@@ -8,7 +8,6 @@ class ApiProfileTest {
 
     @Test
     fun testUserAgentPresetsValues() {
-        assertEquals("", UserAgentPresets.DEFAULT)
         assertEquals("node-fetch (+https://github.com/node-fetch/node-fetch)", UserAgentPresets.SILLY_TAVERN_NODE_FETCH)
     }
 

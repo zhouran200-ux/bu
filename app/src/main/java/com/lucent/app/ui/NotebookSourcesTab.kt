@@ -3,12 +3,13 @@ package com.lucent.app.ui
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -16,31 +17,26 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.layout.boundsInParent
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -55,13 +51,11 @@ import kotlinx.coroutines.launch
 fun NotebookSourcesTab(
     notebookId: Long,
     sourceNotes: List<Note>,
-    onOpenReader: (Note) -> Unit,
     onReload: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val db = remember { AppDatabase.getInstance(context) }
-    val onGradient = LocalOnGradient.current
     val accent = MaterialTheme.colorScheme.primary
 
     val documentMimeTypes = arrayOf(
@@ -92,8 +86,9 @@ fun NotebookSourcesTab(
         }
     }
 
+    val current = sourceNotes.firstOrNull()
     Box(modifier = modifier.fillMaxSize()) {
-        if (sourceNotes.isEmpty()) {
+        if (current == null) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -122,37 +117,10 @@ fun NotebookSourcesTab(
                     text = "暂无关联资料文档",
                     fontSize = LucentTitles.SectionSize,
                     fontWeight = LucentTitles.SectionWeight,
-                    color = onGradient
+                    color = LocalOnGradient.current
                 )
             }
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 14.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                item { Spacer(modifier = Modifier.height(8.dp)) }
 
-                items(sourceNotes, key = { it.id }) { note ->
-                    SourceNoteCard(
-                        note = note,
-                        onOpen = { onOpenReader(note) },
-                        onDelete = {
-                            AppScope.io.launch {
-                                NotebookPurge.releaseNote(db, notebookId, note.id)
-                                onReload()
-                            }
-                            LucentToast.show(context, "已删除该文档")
-                        }
-                    )
-                }
-
-                item { Spacer(modifier = Modifier.height(100.dp)) }
-            }
-        }
-
-        if (sourceNotes.isEmpty()) {
             Surface(
                 shape = RoundedCornerShape(20.dp),
                 color = accent,
@@ -163,7 +131,7 @@ fun NotebookSourcesTab(
                     .navigationBarsPadding()
                     .size(58.dp)
                     .clip(RoundedCornerShape(20.dp))
-                    .clickable { openDocumentLauncher.launch(documentMimeTypes) }
+                    .pressableGlass(onClick = { openDocumentLauncher.launch(documentMimeTypes) }, cornerRadius = 20.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
@@ -171,6 +139,99 @@ fun NotebookSourcesTab(
                         contentDescription = "上传文档",
                         tint = MaterialTheme.colorScheme.onPrimary,
                         modifier = Modifier.size(30.dp)
+                    )
+                }
+            }
+        } else {
+            SourceReader(note = current, modifier = Modifier.fillMaxSize())
+        }
+    }
+}
+
+private fun splitSections(body: String): List<String> {
+    val lines = body.split("\n")
+    val sections = mutableListOf<String>()
+    val buffer = StringBuilder()
+    fun flush() {
+        val text = buffer.toString().trim()
+        if (text.isNotEmpty()) sections.add(text)
+        buffer.setLength(0)
+    }
+    lines.forEach { line ->
+        if (line.trimStart().startsWith("#") && buffer.isNotEmpty()) {
+            flush()
+        }
+        buffer.append(line).append("\n")
+    }
+    flush()
+    return sections.ifEmpty { listOf(body) }
+}
+
+@Composable
+private fun SourceReader(note: Note, modifier: Modifier = Modifier) {
+    val scroll = rememberScrollState()
+    val accent = MaterialTheme.colorScheme.primary
+    val sections = remember(note.id, note.body) { splitSections(note.body) }
+    val tops = remember(note.id) { mutableMapOf<Int, Int>() }
+
+    val currentSection by remember {
+        derivedStateOf {
+            val offset = scroll.value
+            var active = 0
+            for (i in sections.indices) {
+                val top = tops[i] ?: continue
+                if (top <= offset + 1) active = i
+            }
+            active + 1
+        }
+    }
+
+    Box(modifier = modifier.background(lucentPanelBackground())) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(scroll)
+                .padding(horizontal = 18.dp, vertical = 16.dp)
+        ) {
+            sections.forEachIndexed { index, section ->
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .onGloballyPositioned { coords ->
+                            tops[index] = coords.boundsInParent().top.toInt()
+                        }
+                ) {
+                    MarkdownText(
+                        text = section,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(48.dp))
+        }
+
+        AnimatedVisibility(
+            visible = sections.size > 1,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(12.dp)
+        ) {
+            Surface(
+                shape = CircleShape,
+                color = accent.copy(alpha = 0.9f),
+                shadowElevation = 4.dp
+            ) {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.size(34.dp)
+                ) {
+                    Text(
+                        text = "$currentSection",
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        fontSize = 14.sp,
+                        fontWeight = LucentTitles.SectionWeight
                     )
                 }
             }
@@ -186,172 +247,4 @@ internal fun previewExcerpt(body: String, limit: Int = 96): String {
         .replace(Regex("\\s+"), " ")
         .trim()
     return if (flat.length <= limit) flat else flat.take(limit).trimEnd() + "…"
-}
-
-@Composable
-private fun SourceNoteCard(
-    note: Note,
-    onOpen: () -> Unit,
-    onDelete: () -> Unit
-) {
-    val onGradient = LocalOnGradient.current
-    val onGradientMuted = LocalOnGradientMuted.current
-    val accent = MaterialTheme.colorScheme.primary
-
-    Surface(
-        shape = RoundedCornerShape(18.dp),
-        color = Color.Transparent,
-        modifier = Modifier
-            .fillMaxWidth()
-            .frostedGlass(cornerRadius = 18.dp)
-            .clickable { onOpen() }
-    ) {
-        Row(
-            modifier = Modifier.padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Surface(
-                shape = RoundedCornerShape(14.dp),
-                color = accent.copy(alpha = 0.25f),
-                modifier = Modifier.size(46.dp)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        Icons.Default.Description,
-                        contentDescription = null,
-                        tint = accent,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.width(14.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = note.title.ifBlank { com.lucent.app.i18n.S.untitled },
-                    fontSize = LucentTitles.SectionSize,
-                    fontWeight = LucentTitles.SectionWeight,
-                    color = onGradient
-                )
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                Text(
-                    text = previewExcerpt(note.body).ifBlank { "暂无可预览内容" },
-                    fontSize = 12.sp,
-                    color = onGradientMuted,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-
-                Spacer(modifier = Modifier.height(2.dp))
-
-                Text(
-                    text = "${note.body.length} 字符",
-                    fontSize = 12.sp,
-                    color = onGradientMuted.copy(alpha = onGradientMuted.alpha * 0.7f)
-                )
-            }
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onOpen, modifier = Modifier.size(36.dp)) {
-                    Icon(
-                        Icons.Default.Visibility,
-                        contentDescription = "预览",
-                        tint = onGradientMuted,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-
-                IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
-                    Icon(
-                        Icons.Default.DeleteOutline,
-                        contentDescription = "删除",
-                        tint = onGradientMuted,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun SourceReaderOverlay(
-    note: Note,
-    onDismiss: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val context = LocalContext.current
-    val onGradient = LocalOnGradient.current
-    val accent = MaterialTheme.colorScheme.primary
-
-    Surface(
-        color = lucentPanelBackground().copy(alpha = 0.94f),
-        modifier = modifier.fillMaxSize()
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .statusBarsPadding()
-                .navigationBarsPadding()
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = onDismiss) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "返回",
-                        tint = onGradient
-                    )
-                }
-
-                Surface(
-                    shape = RoundedCornerShape(20.dp),
-                    color = accent.copy(alpha = 0.30f),
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(start = 4.dp)
-                        .border(1.dp, accent.copy(alpha = 0.40f), RoundedCornerShape(20.dp))
-                ) {
-                    Text(
-                        text = note.title.ifBlank { com.lucent.app.i18n.S.untitled },
-                        color = accent,
-                        fontSize = LucentTitles.SectionSize,
-                        fontWeight = LucentTitles.SectionWeight,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
-                    )
-                }
-            }
-
-            Surface(
-                shape = RoundedCornerShape(20.dp),
-                color = Color.Transparent,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .padding(14.dp)
-                    .frostedGlass(cornerRadius = 20.dp)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(18.dp)
-                        .verticalScroll(rememberScrollState())
-                ) {
-                    MarkdownText(
-                        text = note.body,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-            }
-        }
-    }
 }

@@ -53,18 +53,13 @@ fun NotebookDetailScreen(
 
     var selectedTab by remember { mutableStateOf(NotebookDetailTab.CHAT) }
     var sourceNotes by remember { mutableStateOf<List<Note>>(emptyList()) }
-    var readerNote by remember { mutableStateOf<Note?>(null) }
     var reloadCount by remember { mutableIntStateOf(0) }
 
     val onGradient = LocalOnGradient.current
     val onGradientMuted = LocalOnGradientMuted.current
 
     BackHandler {
-        if (readerNote != null) {
-            readerNote = null
-        } else {
-            onBack()
-        }
+        onBack()
     }
 
     LaunchedEffect(notebookId, reloadCount) {
@@ -109,21 +104,12 @@ fun NotebookDetailScreen(
                         NotebookSourcesTab(
                             notebookId = notebookId,
                             sourceNotes = sourceNotes,
-                            onOpenReader = { readerNote = it },
                             onReload = { reloadCount++ },
                             modifier = Modifier.fillMaxSize()
                         )
                     }
                 }
             }
-        }
-
-        readerNote?.let { note ->
-            SourceReaderOverlay(
-                note = note,
-                onDismiss = { readerNote = null },
-                modifier = Modifier.fillMaxSize()
-            )
         }
     }
 }

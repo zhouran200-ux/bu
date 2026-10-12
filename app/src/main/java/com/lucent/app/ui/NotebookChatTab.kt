@@ -560,7 +560,22 @@ fun NotebookChatTab(
         val pending = pendingDelete ?: return
         pendingDelete = null
         if (messages.none { it.id == pending.message.id }) {
-            messages.add(pending.index.coerceIn(0, messages.size), pending.message)
+            val at = pending.index.coerceIn(0, messages.size)
+            messages.add(at, pending.message)
+            scope.launch {
+                val targetItem = at + 1
+                val info = listState.layoutInfo
+                val visible = info.visibleItemsInfo
+                val firstFull = visible.firstOrNull { it.offset >= info.viewportStartOffset }?.index
+                    ?: visible.firstOrNull()?.index
+                val lastFull = visible.lastOrNull { it.offset + it.size <= info.viewportEndOffset }?.index
+                    ?: visible.lastOrNull()?.index
+                val onScreen = firstFull != null && lastFull != null &&
+                    targetItem in firstFull..lastFull
+                if (!onScreen) {
+                    listState.animateScrollToItem(targetItem.coerceAtLeast(0))
+                }
+            }
         }
     }
 
@@ -621,7 +636,11 @@ fun NotebookChatTab(
 
                 itemsIndexed(messages, key = { _, msg -> msg.id }) { _, msg ->
                     val actionsEnabled = streamingAnswerId == null
-                    val itemModifier = Modifier.animateItem(placementSpec = placementSpec)
+                    val itemModifier = Modifier.animateItem(
+                        fadeInSpec = tween(200),
+                        placementSpec = placementSpec,
+                        fadeOutSpec = tween(140)
+                    )
                     if (msg.role == "user") {
                         UserMessageCard(
                             modifier = itemModifier,

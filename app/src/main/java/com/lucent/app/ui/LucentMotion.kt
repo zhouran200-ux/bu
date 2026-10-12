@@ -3,6 +3,7 @@ package com.lucent.app.ui
 import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.spring
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 
 object LucentMotion {
 
@@ -19,5 +20,12 @@ object LucentMotion {
             dampingRatio = pair.first,
             stiffness = pair.second,
             visibilityThreshold = IntOffset(1, 1)
+        )
+
+    fun toIntSize(pair: Pair<Float, Float>): FiniteAnimationSpec<IntSize> =
+        spring(
+            dampingRatio = pair.first,
+            stiffness = pair.second,
+            visibilityThreshold = IntSize(1, 1)
         )
 }

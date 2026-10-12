@@ -22,7 +22,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -170,6 +169,11 @@ fun NotebookChatTab(
             val last = info.visibleItemsInfo.lastOrNull()
             last == null || last.index >= info.totalItemsCount - 2
         }
+    }
+    var followStream by remember { mutableStateOf(true) }
+    LaunchedEffect(atBottom) {
+        if (atBottom) followStream = true
+        else if (listState.isScrollInProgress) followStream = false
     }
 
     val prefs = remember(notebookId) {
@@ -493,6 +497,7 @@ fun NotebookChatTab(
         }
         val answerId = userMsg.id + 1
         messages.add(UiChatMessage(id = answerId, role = "assistant", content = "", timestamp = answerId))
+        followStream = true
         scope.launch {
             delay(100)
             listState.animateScrollToItem((messages.size - 1).coerceAtLeast(0))
@@ -589,6 +594,19 @@ fun NotebookChatTab(
         stoppedByUser = true
         Haptics.tick(context)
         streamHandle.cancel()
+    }
+
+    val streamProgress by remember {
+        derivedStateOf {
+            val id = streamingAnswerId ?: return@derivedStateOf 0
+            val body = messages.firstOrNull { it.id == id }?.content?.length ?: 0
+            body + streamingThought.value.length
+        }
+    }
+    LaunchedEffect(streamProgress) {
+        if (streamingAnswerId != null && followStream && streamProgress > 0) {
+            listState.scrollToItem((listState.layoutInfo.totalItemsCount - 1).coerceAtLeast(0))
+        }
     }
 
     val onSendMessage: () -> Unit = send@{
@@ -737,6 +755,7 @@ fun NotebookChatTab(
                     .size(44.dp)
                     .clip(CircleShape)
                     .clickable {
+                        followStream = true
                         scope.launch {
                             listState.animateScrollToItem(
                                 (listState.layoutInfo.totalItemsCount - 1).coerceAtLeast(0)
@@ -909,7 +928,8 @@ private fun AiMessageCard(
                 liveThought = liveThought,
                 storedThought = message.reasoningText.orEmpty(),
                 tag = message.reasoningTag,
-                streaming = streaming
+                streaming = streaming,
+                answerSeconds = message.answerSeconds
             )
         }
 
@@ -1183,7 +1203,8 @@ private fun ThinkingLane(
     liveThought: State<String>?,
     storedThought: String,
     tag: String?,
-    streaming: Boolean
+    streaming: Boolean,
+    answerSeconds: Int
 ) {
     val accent = MaterialTheme.colorScheme.primary
     val onGradientMuted = LocalOnGradientMuted.current
@@ -1195,9 +1216,10 @@ private fun ThinkingLane(
         if (!streaming) expanded = false
     }
 
-    LaunchedEffect(thought, expanded) {
-        val remaining = laneState.maxValue - laneState.value
-        if (expanded && remaining > 0) laneState.animateScrollBy(remaining.toFloat(), tween(180))
+    val title = when {
+        streaming -> "思考中"
+        answerSeconds > 0 -> "已深度思考（用时 ${answerSeconds} 秒）"
+        else -> "已深度思考"
     }
 
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -1209,7 +1231,7 @@ private fun ThinkingLane(
                 .padding(horizontal = 8.dp, vertical = 6.dp)
         ) {
             Text(
-                text = if (streaming) "思考中" else "已思考",
+                text = title,
                 color = accent,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium
@@ -1225,8 +1247,8 @@ private fun ThinkingLane(
 
         AnimatedVisibility(
             visible = expanded,
-            enter = fadeIn() + expandVertically(),
-            exit = fadeOut() + shrinkVertically()
+            enter = fadeIn(tween(160)) + expandVertically(animationSpec = LucentMotion.toIntSize(LucentMotion.Settle)),
+            exit = fadeOut(tween(140)) + shrinkVertically(animationSpec = LucentMotion.toIntSize(LucentMotion.Settle))
         ) {
             Column(
                 modifier = Modifier
@@ -1257,9 +1279,14 @@ private fun ThinkingLane(
                     fontSize = 13.sp,
                     fontFamily = FontFamily.Monospace,
                     lineHeight = 19.sp,
-                    modifier = Modifier
-                        .heightIn(max = 132.dp)
-                        .verticalScroll(laneState)
+                    modifier = if (streaming) {
+                        Modifier.fillMaxWidth()
+                    } else {
+                        Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 220.dp)
+                            .verticalScroll(laneState)
+                    }
                 )
                 if (streaming) {
                     Spacer(modifier = Modifier.height(6.dp))

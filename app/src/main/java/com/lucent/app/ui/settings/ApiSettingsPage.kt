@@ -110,7 +110,7 @@ import com.lucent.app.ui.LocalOnGradientMuted
 import com.lucent.app.ui.LucentToast
 import com.lucent.app.ui.LucentTitles
 import com.lucent.app.ui.frostedGlass
-import com.lucent.app.ui.selectedRim
+import com.lucent.app.ui.selectedCard
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -565,12 +565,8 @@ internal fun ApiConfigSettingsPage(
                                 scaleY = if (held) HELD_SCALE else 1f
                                 alpha = if (held) HELD_ALPHA else 1f
                             }
-                            .selectedRim(
-                                selected = isActive,
-                                cornerRadius = ROW_CARD_RADIUS,
-                                accent = MaterialTheme.colorScheme.primary
-                            )
                             .frostedGlass(cornerRadius = ROW_CARD_RADIUS)
+                            .selectedCard(isActive, ROW_CARD_RADIUS)
                             .padding(horizontal = 10.dp, vertical = 8.dp)
                     ) {
                         if (canReorder) {
@@ -854,14 +850,10 @@ internal fun ApiConfigSettingsPage(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .selectedRim(
-                                    selected = isSelected,
-                                    cornerRadius = 10.dp,
-                                    accent = MaterialTheme.colorScheme.primary
-                                )
                                 .clip(cardShape)
                                 .background(cardBg)
                                 .border(1.dp, cardBorder, cardShape)
+                                .selectedCard(isSelected, 10.dp)
                                 .combinedClickable(
                                     onClick = { onSelectedModelChange(if (isSelected) "" else m) },
                                     onLongClick = {

@@ -1163,7 +1163,7 @@ private fun ThinkingLane(
     tag: String?,
     streaming: Boolean
 ) {
-    val accent = Color(0xFF38BDF8)
+    val accent = MaterialTheme.colorScheme.primary
     val onGradientMuted = LocalOnGradientMuted.current
     var expanded by remember(messageId) { mutableStateOf(streaming) }
     val laneState = rememberScrollState()
@@ -1285,6 +1285,8 @@ private fun BottomGlassComposer(
 ) {
     val onGradient = LocalOnGradient.current
     val onGradientMuted = LocalOnGradientMuted.current
+    val accent = MaterialTheme.colorScheme.primary
+    val onAccent = MaterialTheme.colorScheme.onPrimary
     var showReasoningMenu by remember { mutableStateOf(false) }
 
     Surface(
@@ -1298,7 +1300,7 @@ private fun BottomGlassComposer(
                 value = inputText,
                 onValueChange = onInputChange,
                 textStyle = TextStyle(fontSize = 15.sp, color = onGradient),
-                cursorBrush = SolidColor(Color(0xFF38BDF8)),
+                cursorBrush = SolidColor(accent),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                 keyboardActions = KeyboardActions(onSend = { onSend() }),
                 maxLines = 6,
@@ -1333,16 +1335,16 @@ private fun BottomGlassComposer(
                         val isHighIntensity = reasoningPreset == ReasoningPreset.DEEP || reasoningPreset == ReasoningPreset.MAXIMUM
                         val isThinkingActive = reasoningPreset != ReasoningPreset.AUTO
                         val thinkingBg = if (isHighIntensity) {
-                            Color(0xFFF59E0B).copy(alpha = 0.28f)
+                            accent.copy(alpha = 0.85f)
                         } else if (isThinkingActive) {
-                            Color(0xFF0284C7).copy(alpha = 0.25f)
+                            accent.copy(alpha = 0.25f)
                         } else {
                             onGradient.copy(alpha = 0.08f)
                         }
                         val thinkingTint = if (isHighIntensity) {
-                            Color(0xFFFBBF24)
+                            onAccent
                         } else if (isThinkingActive) {
-                            Color(0xFF38BDF8)
+                            accent
                         } else {
                             onGradientMuted
                         }
@@ -1381,7 +1383,6 @@ private fun BottomGlassComposer(
 
                             ReasoningPreset.entries.forEach { preset ->
                                 val isSelected = reasoningPreset == preset
-                                val accent = MaterialTheme.colorScheme.primary
                                 DropdownMenuItem(
                                     leadingIcon = {
                                         Icon(
@@ -1439,11 +1440,11 @@ private fun BottomGlassComposer(
 
                     Surface(
                         shape = RoundedCornerShape(18.dp),
-                        color = Color(0xFF0284C7).copy(alpha = 0.22f),
+                        color = accent.copy(alpha = 0.22f),
                         modifier = Modifier
                             .clip(RoundedCornerShape(18.dp))
                             .clickable { onOpenModelPicker() }
-                            .border(1.dp, Color(0xFF38BDF8).copy(alpha = 0.35f), RoundedCornerShape(18.dp))
+                            .border(1.dp, accent.copy(alpha = 0.35f), RoundedCornerShape(18.dp))
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -1451,14 +1452,14 @@ private fun BottomGlassComposer(
                         ) {
                             Surface(
                                 shape = CircleShape,
-                                color = Color(0xFF2563EB),
+                                color = accent,
                                 modifier = Modifier.size(18.dp)
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
                                     Icon(
                                         LucentIcons.Model,
                                         contentDescription = null,
-                                        tint = Color.White,
+                                        tint = onAccent,
                                         modifier = Modifier.size(13.dp)
                                     )
                                 }
@@ -1466,7 +1467,7 @@ private fun BottomGlassComposer(
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
                                 text = selectedProfileName.ifBlank { selectedModel.take(8) },
-                                color = Color(0xFF38BDF8),
+                                color = accent,
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.SemiBold
                             )
@@ -1474,7 +1475,7 @@ private fun BottomGlassComposer(
                             Icon(
                                 Icons.Default.KeyboardArrowUp,
                                 contentDescription = "展开模型选择",
-                                tint = Color(0xFF38BDF8),
+                                tint = accent,
                                 modifier = Modifier.size(15.dp)
                             )
                         }
@@ -1484,7 +1485,7 @@ private fun BottomGlassComposer(
                 Surface(
                     shape = CircleShape,
                     color = when {
-                        streaming || inputText.isNotBlank() -> Color(0xFF0284C7)
+                        streaming || inputText.isNotBlank() -> accent
                         else -> onGradient.copy(alpha = 0.15f)
                     },
                     modifier = Modifier
@@ -1499,14 +1500,14 @@ private fun BottomGlassComposer(
                             Icon(
                                 Icons.Rounded.Stop,
                                 contentDescription = "停止生成",
-                                tint = Color.White,
+                                tint = onAccent,
                                 modifier = Modifier.size(19.dp)
                             )
                         } else {
                             Icon(
                                 Icons.AutoMirrored.Filled.Send,
                                 contentDescription = "发送",
-                                tint = if (inputText.isNotBlank()) Color.White else onGradient.copy(alpha = 0.4f),
+                                tint = if (inputText.isNotBlank()) onAccent else onGradient.copy(alpha = 0.4f),
                                 modifier = Modifier.size(18.dp)
                             )
                         }
@@ -1726,6 +1727,8 @@ private fun ProfileModelPickerSheet(
 
     val ink = LocalOnGradient.current
     val sheetBg = lucentPanelBackground()
+    val accent = MaterialTheme.colorScheme.primary
+    val selectedBg = accent.copy(alpha = 0.22f)
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
@@ -1769,7 +1772,7 @@ private fun ProfileModelPickerSheet(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(12.dp))
-                            .background(if (isSelected) Color(0xFF0284C7).copy(alpha = 0.12f) else Color.Transparent)
+                            .background(if (isSelected) selectedBg else Color.Transparent)
                     ) {
                         Row(
                             modifier = Modifier
@@ -1790,7 +1793,7 @@ private fun ProfileModelPickerSheet(
                                 Icon(
                                     imageVector = if (isExpanded) Icons.Default.KeyboardArrowDown else Icons.Default.ChevronRight,
                                     contentDescription = null,
-                                    tint = if (isSelected) Color(0xFF38BDF8) else ink.copy(alpha = 0.6f),
+                                    tint = if (isSelected) accent else ink.copy(alpha = 0.6f),
                                     modifier = Modifier.size(20.dp)
                                 )
                                 Spacer(modifier = Modifier.width(12.dp))
@@ -1798,7 +1801,7 @@ private fun ProfileModelPickerSheet(
                                     text = profile.name,
                                     fontSize = 16.sp,
                                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                    color = if (isSelected) Color(0xFF38BDF8) else ink
+                                    color = if (isSelected) accent else ink
                                 )
                             }
 
@@ -1831,14 +1834,14 @@ private fun ProfileModelPickerSheet(
                                         Text(
                                             text = subModel,
                                             fontSize = LucentTitles.ItemSize,
-                                            color = if (isSubSelected) Color(0xFF38BDF8) else ink.copy(alpha = 0.85f),
+                                            color = if (isSubSelected) accent else ink.copy(alpha = 0.85f),
                                             fontWeight = if (isSubSelected) FontWeight.Bold else FontWeight.Normal
                                         )
                                         if (isSubSelected) {
                                             Icon(
                                                 Icons.Default.Check,
                                                 contentDescription = null,
-                                                tint = Color(0xFF38BDF8),
+                                                tint = accent,
                                                 modifier = Modifier.size(16.dp)
                                             )
                                         }

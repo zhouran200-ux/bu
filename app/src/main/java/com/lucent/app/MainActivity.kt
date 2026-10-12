@@ -71,6 +71,7 @@ import com.lucent.app.ui.LocalOnGradient
 import com.lucent.app.ui.LocalOnGradientMuted
 import com.lucent.app.ui.LocalBackdropColor
 import com.lucent.app.ui.lucentGlassRim
+import com.lucent.app.ui.lucentScheme
 import com.lucent.app.ui.LucentToast
 import com.lucent.app.ui.lucentTypography
 import com.lucent.app.ui.LucentPalette
@@ -124,16 +125,7 @@ class MainActivity : ComponentActivity() {
         }
         window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(initialBackdropColor.toArgb()))
 
-        enableEdgeToEdge(
-            statusBarStyle = SystemBarStyle.auto(
-                android.graphics.Color.TRANSPARENT,
-                android.graphics.Color.TRANSPARENT
-            ),
-            navigationBarStyle = SystemBarStyle.auto(
-                android.graphics.Color.TRANSPARENT,
-                android.graphics.Color.TRANSPARENT
-            )
-        )
+        applySystemBarStyle(isDarkTheme)
 
         val initialPalette = display.palette
         val initialFont = display.font
@@ -171,6 +163,7 @@ class MainActivity : ComponentActivity() {
             val systemDark = isSystemInDarkTheme()
             val themeChoice = com.lucent.app.ui.LucentThemeMode.fromKey(themeMode)
             val isDarkTheme = themeChoice.isDark(systemDark)
+            LaunchedEffect(isDarkTheme) { applySystemBarStyle(isDarkTheme) }
 
             val dynamicActive = dynamicColorOn && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
             val colors: ColorScheme
@@ -178,7 +171,7 @@ class MainActivity : ComponentActivity() {
             val backdropColor: Color
             val paletteColors: List<Color>
             if (dynamicActive) {
-                val scheme = if (systemDark) {
+                val scheme = if (isDarkTheme) {
                     dynamicDarkColorScheme(this@MainActivity)
                 } else {
                     dynamicLightColorScheme(this@MainActivity)
@@ -188,7 +181,6 @@ class MainActivity : ComponentActivity() {
                 backdropColor = scheme.background
                 paletteColors = com.lucent.app.ui.dynamicBlobPalette(scheme)
             } else {
-                colors = if (isDarkTheme) darkColorScheme() else lightColorScheme()
                 onGradient = if (isDarkTheme) Color.White else Color(0xFF20202B)
                 backdropColor = themeChoice.backdrop(systemDark)
                 paletteColors = if (paletteName == com.lucent.app.ui.PALETTE_RANDOM) {
@@ -206,6 +198,8 @@ class MainActivity : ComponentActivity() {
                     LucentPalette.entries.firstOrNull { it.name == paletteName }?.colors
                         ?: LucentPalette.SUNSET.colors
                 }
+                val baseScheme = if (isDarkTheme) darkColorScheme() else lightColorScheme()
+                colors = lucentScheme(baseScheme, paletteColors, onGradient)
             }
             val onGradientMuted = onGradient.copy(alpha = 0.65f)
 
@@ -243,6 +237,15 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    private fun applySystemBarStyle(dark: Boolean) {
+        val style = if (dark) {
+            SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+        } else {
+            SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT)
+        }
+        enableEdgeToEdge(statusBarStyle = style, navigationBarStyle = style)
     }
 }
 

@@ -1,26 +1,17 @@
 package com.lucent.app.ui
 
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.State
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawOutline
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.Dp
@@ -54,6 +45,33 @@ fun panelOver(backdrop: Color): Color =
 
 @Composable
 fun lucentPanelBackground(): Color = panelOver(LocalBackdropColor.current)
+
+fun lucentAccent(palette: List<Color>, ink: Color): Color {
+    val dark = ink.luminance() > 0.5f
+    val mid = palette.getOrNull(1) ?: palette.firstOrNull() ?: return ink
+    val extreme = if (dark) {
+        palette.maxByOrNull { it.luminance() } ?: mid
+    } else {
+        palette.minByOrNull { it.luminance() } ?: mid
+    }
+    val mixed = lerp(mid, extreme, if (dark) 0.55f else 0.35f)
+    return if (dark) lerp(mixed, Color.White, 0.10f) else mixed
+}
+
+fun lucentScheme(base: ColorScheme, palette: List<Color>, ink: Color): ColorScheme {
+    val accent = lucentAccent(palette, ink)
+    val content = if (accent.luminance() > 0.55f) Color(0xFF14141C) else Color.White
+    return base.copy(
+        primary = accent,
+        onPrimary = content,
+        primaryContainer = accent.copy(alpha = 0.35f),
+        onPrimaryContainer = accent,
+        secondary = accent,
+        onSecondary = content,
+        tertiary = accent,
+        onTertiary = content
+    )
+}
 
 @Composable
 fun lucentGlassRim(strong: Boolean = false): Brush {
@@ -99,53 +117,15 @@ fun Modifier.frostedGlass(cornerRadius: Dp = 20.dp, tint: Color = Color.White): 
         )
 }
 
-private const val RIM_SPIN_MS = 1150
-private const val RIM_STROKE_DP = 1.6f
-private const val RIM_DIM_ALPHA = 0.22f
-private const val RIM_TAIL_SPAN = 0.34f
-private const val RIM_SAMPLES = 16
-
-private fun rimAlpha(distanceBehindHead: Float): Float {
-    if (distanceBehindHead >= RIM_TAIL_SPAN) return RIM_DIM_ALPHA
-    val k = distanceBehindHead / RIM_TAIL_SPAN
-    return 1f - k * (1f - RIM_DIM_ALPHA)
-}
-
 @Composable
-private fun rememberRimPhase(): State<Float> {
-    val transition = rememberInfiniteTransition(label = "rimSpin")
-    return transition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = RIM_SPIN_MS, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "rimSpinPhase"
-    )
-}
-
-fun Modifier.selectedRim(selected: Boolean, cornerRadius: Dp, accent: Color): Modifier = composed {
+fun Modifier.selectedCard(selected: Boolean, cornerRadius: Dp): Modifier = composed {
     if (!selected) return@composed this
+    val accent = MaterialTheme.colorScheme.primary
     val shape = RoundedCornerShape(cornerRadius)
-    val spin = if (LocalBackgroundEnvironment.current.motionEnabled) rememberRimPhase() else null
-    this.drawWithContent {
-        drawContent()
-        val head = spin?.value ?: 0f
-        val stops = (0..RIM_SAMPLES).map { i ->
-            val at = i.toFloat() / RIM_SAMPLES
-            val behind = (at - head + 1f) % 1f
-            at to accent.copy(alpha = rimAlpha(behind))
-        }
-        drawOutline(
-            outline = shape.createOutline(size, layoutDirection, this),
-            brush = Brush.sweepGradient(
-                colorStops = stops.toTypedArray(),
-                center = Offset(size.width / 2f, size.height / 2f)
-            ),
-            style = Stroke(width = RIM_STROKE_DP.dp.toPx())
-        )
-    }
+    this
+        .clip(shape)
+        .background(accent.copy(alpha = if (isDarkGlass()) 0.32f else 0.18f))
+        .border(1.5.dp, accent, shape)
 }
 
 enum class PaletteGroup { DAWN, BLOSSOM, EVERGREEN, AQUA, SUNFIRE, VIVID, EARTH, VELVET }

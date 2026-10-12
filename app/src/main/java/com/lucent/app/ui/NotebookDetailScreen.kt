@@ -18,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -137,6 +138,8 @@ private fun NotebookDetailHeader(
     val onGradient = LocalOnGradient.current
     val onGradientMuted = LocalOnGradientMuted.current
     val dark = isDarkGlass()
+    val accent = MaterialTheme.colorScheme.primary
+    val tabPillSelected = accent.copy(alpha = if (dark) 0.35f else 0.20f)
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -170,7 +173,7 @@ private fun NotebookDetailHeader(
                 val isChat = selectedTab == NotebookDetailTab.CHAT
                 Surface(
                     shape = RoundedCornerShape(20.dp),
-                    color = if (isChat) (if (dark) Color(0xFF0284C7).copy(alpha = 0.35f) else Color(0xFF0284C7).copy(alpha = 0.20f)) else Color.Transparent,
+                    color = if (isChat) tabPillSelected else Color.Transparent,
                     modifier = Modifier
                         .weight(1f)
                         .clip(RoundedCornerShape(20.dp))
@@ -182,7 +185,7 @@ private fun NotebookDetailHeader(
                     ) {
                         Text(
                             text = "对话",
-                            color = if (isChat) (if (dark) Color(0xFF38BDF8) else Color(0xFF0284C7)) else onGradientMuted,
+                            color = if (isChat) accent else onGradientMuted,
                             fontSize = LucentTitles.SectionSize,
                             fontWeight = if (isChat) FontWeight.Bold else FontWeight.Medium
                         )
@@ -194,7 +197,7 @@ private fun NotebookDetailHeader(
                 val isSources = selectedTab == NotebookDetailTab.SOURCES
                 Surface(
                     shape = RoundedCornerShape(20.dp),
-                    color = if (isSources) (if (dark) Color(0xFF0284C7).copy(alpha = 0.35f) else Color(0xFF0284C7).copy(alpha = 0.20f)) else Color.Transparent,
+                    color = if (isSources) tabPillSelected else Color.Transparent,
                     modifier = Modifier
                         .weight(1f)
                         .clip(RoundedCornerShape(20.dp))
@@ -206,7 +209,7 @@ private fun NotebookDetailHeader(
                     ) {
                         Text(
                             text = "来源 ($sourceCount)",
-                            color = if (isSources) (if (dark) Color(0xFF38BDF8) else Color(0xFF0284C7)) else onGradientMuted,
+                            color = if (isSources) accent else onGradientMuted,
                             fontSize = LucentTitles.SectionSize,
                             fontWeight = if (isSources) FontWeight.Bold else FontWeight.Medium
                         )

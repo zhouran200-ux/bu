@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -263,6 +264,7 @@ fun MarkdownText(
 ) {
     val onGradient = LocalOnGradient.current
     val onGradientMuted = LocalOnGradientMuted.current
+    val accent = MaterialTheme.colorScheme.primary
     val incrementalParser = remember { IncrementalMarkdownParser() }
     val blocks = remember(text) { incrementalParser.parse(text) }
 
@@ -271,7 +273,7 @@ fun MarkdownText(
             if (index > 0) Spacer(modifier = Modifier.height(6.dp))
             when (block) {
                 is MdBlock.Heading -> Text(
-                    inlineAnnotated(block.text, onGradient, onGradient),
+                    inlineAnnotated(block.text, onGradient, accent),
                     color = onGradient,
                     fontSize = when (block.level) {
                         1 -> 22.sp
@@ -283,14 +285,14 @@ fun MarkdownText(
                 )
 
                 is MdBlock.Paragraph -> Text(
-                    inlineAnnotated(block.text, onGradient, onGradient),
+                    inlineAnnotated(block.text, onGradient, accent),
                     color = onGradient
                 )
 
                 is MdBlock.Bullet -> Row(modifier = Modifier.fillMaxWidth()) {
                     Text("•", color = onGradientMuted, modifier = Modifier.padding(end = 8.dp))
                     Text(
-                        inlineAnnotated(block.text, onGradient, onGradient),
+                        inlineAnnotated(block.text, onGradient, accent),
                         color = onGradient,
                         modifier = Modifier.weight(1f)
                     )
@@ -299,7 +301,7 @@ fun MarkdownText(
                 is MdBlock.Numbered -> Row(modifier = Modifier.fillMaxWidth()) {
                     Text("${block.marker}.", color = onGradientMuted, modifier = Modifier.padding(end = 8.dp))
                     Text(
-                        inlineAnnotated(block.text, onGradient, onGradient),
+                        inlineAnnotated(block.text, onGradient, accent),
                         color = onGradient,
                         modifier = Modifier.weight(1f)
                     )
@@ -313,7 +315,7 @@ fun MarkdownText(
                             .background(onGradientMuted)
                     )
                     Text(
-                        inlineAnnotated(block.text, onGradientMuted, onGradient),
+                        inlineAnnotated(block.text, onGradientMuted, accent),
                         color = onGradientMuted,
                         fontStyle = FontStyle.Italic,
                         modifier = Modifier.padding(start = 8.dp)

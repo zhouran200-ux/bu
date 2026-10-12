@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -62,6 +63,7 @@ fun NotebookSourcesTab(
     val db = remember { AppDatabase.getInstance(context) }
     val onGradient = LocalOnGradient.current
     val onGradientMuted = LocalOnGradientMuted.current
+    val accent = MaterialTheme.colorScheme.primary
 
     val documentMimeTypes = arrayOf(
         "text/plain",
@@ -102,14 +104,14 @@ fun NotebookSourcesTab(
             ) {
                 Surface(
                     shape = RoundedCornerShape(20.dp),
-                    color = Color(0xFF0284C7).copy(alpha = 0.25f),
+                    color = accent.copy(alpha = 0.25f),
                     modifier = Modifier.size(72.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
                             Icons.Default.Description,
                             contentDescription = null,
-                            tint = Color(0xFF38BDF8),
+                            tint = accent,
                             modifier = Modifier.size(36.dp)
                         )
                     }
@@ -163,7 +165,7 @@ fun NotebookSourcesTab(
         if (sourceNotes.isEmpty()) {
             Surface(
                 shape = RoundedCornerShape(20.dp),
-                color = Color(0xFF0284C7),
+                color = accent,
                 shadowElevation = 8.dp,
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
@@ -177,7 +179,7 @@ fun NotebookSourcesTab(
                     Icon(
                         Icons.Default.Add,
                         contentDescription = "上传文档",
-                        tint = Color.White,
+                        tint = MaterialTheme.colorScheme.onPrimary,
                         modifier = Modifier.size(30.dp)
                     )
                 }
@@ -204,6 +206,7 @@ private fun SourceNoteCard(
 ) {
     val onGradient = LocalOnGradient.current
     val onGradientMuted = LocalOnGradientMuted.current
+    val accent = MaterialTheme.colorScheme.primary
 
     Surface(
         shape = RoundedCornerShape(18.dp),
@@ -219,14 +222,14 @@ private fun SourceNoteCard(
         ) {
             Surface(
                 shape = RoundedCornerShape(14.dp),
-                color = Color(0xFF0284C7).copy(alpha = 0.25f),
+                color = accent.copy(alpha = 0.25f),
                 modifier = Modifier.size(46.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         Icons.Default.Description,
                         contentDescription = null,
-                        tint = Color(0xFF38BDF8),
+                        tint = accent,
                         modifier = Modifier.size(24.dp)
                     )
                 }
@@ -292,6 +295,7 @@ fun SourceReaderOverlay(
 ) {
     val context = LocalContext.current
     val onGradient = LocalOnGradient.current
+    val accent = MaterialTheme.colorScheme.primary
 
     Surface(
         color = (if (isDarkGlass()) LucentGlass.HazeContainerDark else LucentGlass.HazeContainerLight)
@@ -320,15 +324,15 @@ fun SourceReaderOverlay(
 
                 Surface(
                     shape = RoundedCornerShape(20.dp),
-                    color = Color(0xFF0284C7).copy(alpha = 0.30f),
+                    color = accent.copy(alpha = 0.30f),
                     modifier = Modifier
                         .weight(1f)
                         .padding(start = 4.dp)
-                        .border(1.dp, Color(0xFF38BDF8).copy(alpha = 0.40f), RoundedCornerShape(20.dp))
+                        .border(1.dp, accent.copy(alpha = 0.40f), RoundedCornerShape(20.dp))
                 ) {
                     Text(
                         text = note.title.ifBlank { com.lucent.app.i18n.S.untitled },
-                        color = Color(0xFF38BDF8),
+                        color = accent,
                         fontSize = LucentTitles.SectionSize,
                         fontWeight = LucentTitles.SectionWeight,
                         maxLines = 1,

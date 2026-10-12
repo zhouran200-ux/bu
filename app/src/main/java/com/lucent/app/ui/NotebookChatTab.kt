@@ -418,7 +418,10 @@ fun NotebookChatTab(
                                 role = "assistant",
                                 content = finalAi.content,
                                 reasoningText = finalAi.reasoningText,
-                                conversationId = convId
+                                conversationId = convId,
+                                tokens = finalAi.promptTokens,
+                                cachedTokens = finalAi.cachedTokens,
+                                answerSeconds = finalAi.answerSeconds
                             )
                         )
                     }
@@ -452,7 +455,8 @@ fun NotebookChatTab(
                                     role = "assistant",
                                     content = failedAi.content,
                                     reasoningText = failedAi.reasoningText,
-                                    conversationId = convId
+                                    conversationId = convId,
+                                    answerSeconds = failedAi.answerSeconds
                                 )
                             )
                         }

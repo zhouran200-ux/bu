@@ -52,9 +52,9 @@ import androidx.compose.ui.unit.sp
 import kotlin.math.roundToInt
 
 private val SliderTrackHeight = 10.dp
-private val SliderThumbRadius = 13.dp
+private val SliderThumbRadius = 8.5.dp
 private val SliderHitHeight = 36.dp
-private val SliderButtonSize = 34.dp
+private val SliderButtonSize = 26.dp
 
 @Composable
 fun StepperSlider(
@@ -126,7 +126,7 @@ fun StepperSlider(
                 enabled = shown > low + safeStep / 2f,
                 onClick = { nudge(-safeStep) }
             )
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.width(6.dp))
             SliderTrack(
                 fraction = fraction,
                 accent = accent,
@@ -162,7 +162,7 @@ fun StepperSlider(
                         }
                     }
             )
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.width(6.dp))
             SliderEdgeButton(
                 icon = Icons.Rounded.Add,
                 description = "增大$title",
@@ -183,19 +183,25 @@ private fun SliderEdgeButton(
     val ink = LocalOnGradient.current
     Box(
         modifier = Modifier
-            .size(SliderButtonSize)
-            .graphicsLayer { alpha = if (enabled) 1f else 0.32f }
-            .clip(CircleShape)
-            .border(1.5.dp, ink.copy(alpha = 0.32f), CircleShape)
+            .size(width = 30.dp, height = 36.dp)
             .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = description,
-            tint = ink,
-            modifier = Modifier.size(19.dp)
-        )
+        Box(
+            modifier = Modifier
+                .size(SliderButtonSize)
+                .graphicsLayer { alpha = if (enabled) 1f else 0.32f }
+                .clip(CircleShape)
+                .border(1.2.dp, ink.copy(alpha = 0.32f), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = description,
+                tint = ink,
+                modifier = Modifier.size(14.dp)
+            )
+        }
     }
 }
 

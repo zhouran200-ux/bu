@@ -35,19 +35,18 @@ fun GlassButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    icon: ImageVector? = null,
-    compact: Boolean = false
+    icon: ImageVector? = null
 ) {
     val onGradient = LocalOnGradient.current
     val context = androidx.compose.ui.platform.LocalContext.current
     val shape = RoundedCornerShape(percent = 50)
     val glassDark = isDarkGlass()
 
-    val padH = if (compact) 14.dp else 22.dp
-    val padV = if (compact) 8.dp else 13.dp
-    val iconSize = if (compact) 15.dp else 18.dp
-    val iconGap = if (compact) 6.dp else 8.dp
-    val labelSize = if (compact) 13.sp else 15.sp
+    val padH = 14.dp
+    val padV = 8.dp
+    val iconSize = 15.dp
+    val iconGap = 6.dp
+    val labelSize = 13.sp
 
     val fill = if (glassDark) {
         Color.White.copy(alpha = LucentGlass.CARD_FILL_DARK)

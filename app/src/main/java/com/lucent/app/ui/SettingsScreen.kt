@@ -125,7 +125,6 @@ fun SettingsScreen(active: Boolean = true) {
             baseUrl = url.trim(),
             apiKey = key.trim(),
             model = typedModel,
-            provider = com.lucent.app.data.ApiProviders.CUSTOM,
             selectedModels = mergedModels
         )
         if (idx in updated.indices) updated[idx] = edited else updated.add(edited)

@@ -146,8 +146,7 @@ internal object SettingsTrail {
 internal fun SettingsBreadcrumb(
     route: SettingsRoute,
     onNavigate: (SettingsRoute) -> Unit,
-    modifier: Modifier = Modifier,
-    leading: @Composable () -> Unit = {}
+    modifier: Modifier = Modifier
 ) {
     val onGradient = LocalOnGradient.current
     val onGradientMuted = LocalOnGradientMuted.current
@@ -172,7 +171,6 @@ internal fun SettingsBreadcrumb(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp).horizontalScroll(scroll),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            leading()
             crumbs.forEachIndexed { index, crumb ->
                 if (index > 0) {
                     Text(

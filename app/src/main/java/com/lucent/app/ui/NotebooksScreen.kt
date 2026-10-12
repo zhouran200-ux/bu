@@ -224,10 +224,9 @@ fun NotebooksScreen(
                     sourceCount = (countById[notebook.id] ?: 0).coerceAtLeast(1),
                     itemModifier = Modifier
                         .animateItem(placementSpec = placementSpec)
-                        .reorderVisuals(notebook.id, reorderState, reorderSlots, shadow = false),
+                        .reorderVisuals(notebook.id, reorderState, reorderSlots),
                     reorderModifier = Modifier.reorderableItem(
                         id = notebook.id,
-                        enabled = true,
                         listState = listState,
                         state = reorderState,
                         onLongPress = { Haptics.tick(context) },
@@ -334,7 +333,7 @@ private fun NotebookShelfItem(
 
 fun nextDefaultNotebookName(existingNotebooks: List<Notebook>): String {
     val base = "新建笔记本"
-    val existingTitles = existingNotebooks.filter { it.trashedAt == null }.map { it.title.trim() }.toSet()
+    val existingTitles = existingNotebooks.map { it.title.trim() }.toSet()
     if (base !in existingTitles) return base
     var index = 2
     while ("$base ($index)" in existingTitles) {

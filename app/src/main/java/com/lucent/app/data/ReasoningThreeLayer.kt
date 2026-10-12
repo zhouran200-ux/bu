@@ -70,14 +70,13 @@ data class ResolvedReasoningConfig(
     val openAiEffort: String? = null,
     val openAiMode: String? = null,
     val geminiThinkingLevel: String? = null,
-    val geminiThinkingBudget: Int? = null,
     val claudeEffort: String? = null,
     val claudeBudgetTokens: Int? = null,
     val displayTag: String = ""
 ) {
     val hasNativeParam: Boolean
         get() = !isAuto && (openAiEffort != null || openAiMode != null ||
-                geminiThinkingLevel != null || geminiThinkingBudget != null ||
+                geminiThinkingLevel != null ||
                 claudeEffort != null || claudeBudgetTokens != null)
 
     companion object {

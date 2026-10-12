@@ -27,8 +27,7 @@ class HomeTabTest {
     }
 
     @Test
-    fun everyTabAndScreenHasALabel() {
+    fun everyTabHasALabel() {
         HomeTab.entries.forEach { assertTrue(it.label.isNotBlank()) }
-        Screen.entries.forEach { assertTrue(it.label.isNotBlank()) }
     }
 }

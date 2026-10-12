@@ -9,7 +9,6 @@ data class ApiProfile(
     val baseUrl: String = "",
     val apiKey: String = "",
     val model: String = "",
-    val provider: String = ApiProviders.CUSTOM,
     val selectedModels: List<String> = emptyList()
 )
 
@@ -28,8 +27,7 @@ object ApiProfiles {
             spec = "openai",
             baseUrl = "https://token.sensenova.cn/v1",
             apiKey = "",
-            model = "",
-            provider = ApiProviders.CUSTOM
+            model = ""
         )
     )
 
@@ -45,7 +43,6 @@ object ApiProfiles {
                     .put("baseUrl", p.baseUrl)
                     .put("apiKey", p.apiKey)
                     .put("model", p.model)
-                    .put("provider", p.provider)
                     .put("selectedModels", models)
             )
         }
@@ -76,7 +73,6 @@ object ApiProfiles {
                     baseUrl = baseUrl,
                     apiKey = o.optString("apiKey", ""),
                     model = model,
-                    provider = ApiProviders.resolve(o.optString("provider", ""), spec, baseUrl),
                     selectedModels = selectedModels
                 )
             }.take(MAX)

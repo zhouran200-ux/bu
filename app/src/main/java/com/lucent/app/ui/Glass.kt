@@ -126,25 +126,13 @@ fun lucentGlassRim(strong: Boolean = false): Brush {
     }
 }
 
-fun Modifier.frostedGlass(cornerRadius: Dp = 20.dp, tint: Color = Color.White): Modifier = composed {
+fun Modifier.frostedGlass(cornerRadius: Dp = 20.dp): Modifier = composed {
     val shape = RoundedCornerShape(cornerRadius)
-    val darkTheme = isDarkGlass()
-    val tinted = tint != Color.White
-
-    val fillColor = if (tinted) tint else Color.White
-    val fillAlpha = when {
-        tinted && darkTheme -> 0.20f
-        tinted -> 0.26f
-        darkTheme -> LucentGlass.CARD_FILL_DARK
-        else -> LucentGlass.CARD_FILL_LIGHT
-    }
+    val fillAlpha = if (isDarkGlass()) LucentGlass.CARD_FILL_DARK else LucentGlass.CARD_FILL_LIGHT
 
     clip(shape)
-        .background(fillColor.copy(alpha = fillAlpha))
-        .then(
-            if (tinted) Modifier.border(1.dp, tint.copy(alpha = if (darkTheme) 0.45f else 0.55f), shape)
-            else Modifier.border(1.dp, lucentGlassRim(), shape)
-        )
+        .background(Color.White.copy(alpha = fillAlpha))
+        .border(1.dp, lucentGlassRim(), shape)
 }
 
 @Composable

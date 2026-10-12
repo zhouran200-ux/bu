@@ -16,7 +16,6 @@ class HomeNavigationTest {
     fun setUp() {
         drain()
         LastScreen.current = Screen.Notebooks
-        LastScreen.home = Screen.Notebooks
     }
 
     @AfterTest
@@ -44,11 +43,10 @@ class HomeNavigationTest {
     }
 
     @Test
-    fun lastScreenTracksTheHomeScreen() {
+    fun lastScreenTracksTheVisibleScreen() {
         LastScreen.remember(Screen.Notebooks)
-        assertEquals(Screen.Notebooks, LastScreen.home)
+        assertEquals(Screen.Notebooks, LastScreen.current)
         LastScreen.remember(Screen.Settings)
-        assertEquals(Screen.Notebooks, LastScreen.home)
         assertEquals(Screen.Settings, LastScreen.current)
     }
 

@@ -89,13 +89,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
 enum class Screen {
-    Notebooks, Settings;
-
-    val label: String
-        get() = when (this) {
-            Notebooks -> com.lucent.app.i18n.S.screenNotebooks
-            Settings -> com.lucent.app.i18n.S.tabSettings
-        }
+    Notebooks, Settings
 }
 
 class MainActivity : ComponentActivity() {

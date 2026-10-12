@@ -673,7 +673,6 @@ internal fun ApiConfigSettingsPage(
             GlassButton(
                 text = S.apiAddButton,
                 icon = Icons.Default.Add,
-                compact = true,
                 enabled = settled,
                 onClick = onAddProfile
             )
@@ -738,7 +737,6 @@ internal fun ApiConfigSettingsPage(
         ) {
             GlassButton(
                 text = S.fetchModels,
-                compact = true,
                 onClick = {
                     if (url.trim().isEmpty()) {
                         onErrorTextChange(S.apiUrlRequired)
@@ -787,7 +785,6 @@ internal fun ApiConfigSettingsPage(
 
             GlassButton(
                 text = S.saveApi,
-                compact = true,
                 enabled = settled,
                 onClick = {
                     val input = customModelInput.trim()
@@ -1172,7 +1169,6 @@ internal fun GlobalUserAgentSection(repo: SettingsRepository) {
             Spacer(modifier = Modifier.width(8.dp))
             GlassButton(
                 text = S.userAgentSaveButton,
-                compact = true,
                 onClick = {
                     Haptics.tick(context)
                     focusManager.clearFocus()

@@ -428,7 +428,7 @@ object LlmClient {
                             } else if (reasoningConfig.openAiEffort != null) {
                                 put("reasoning_effort", reasoningConfig.openAiEffort)
                             }
-                            val budget = reasoningConfig.claudeBudgetTokens ?: reasoningConfig.geminiThinkingBudget
+                            val budget = reasoningConfig.claudeBudgetTokens
                             if (budget != null && budget > 0) {
                                 put("max_completion_tokens", budget)
                             }
@@ -503,9 +503,6 @@ object LlmClient {
                             val thinkingConfig = JSONObject()
                             if (reasoningConfig.geminiThinkingLevel != null) {
                                 thinkingConfig.put("thinkingLevel", reasoningConfig.geminiThinkingLevel)
-                            }
-                            if (reasoningConfig.geminiThinkingBudget != null) {
-                                thinkingConfig.put("thinkingBudget", reasoningConfig.geminiThinkingBudget)
                             }
                             if (thinkingConfig.length() > 0) {
                                 genConfig.put("thinkingConfig", thinkingConfig)

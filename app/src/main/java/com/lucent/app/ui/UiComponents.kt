@@ -1,9 +1,12 @@
 package com.lucent.app.ui
 
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -13,12 +16,16 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalTextStyle
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.unit.dp
@@ -48,20 +55,42 @@ fun GlassButton(
     val iconGap = 6.dp
     val labelSize = 13.sp
 
-    val fill = if (glassDark) {
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (pressed && enabled) 0.95f else 1f,
+        animationSpec = LucentMotion.toSpring(LucentMotion.Settle),
+        label = "glassButtonScale"
+    )
+
+    val baseFill = if (glassDark) {
         Color.White.copy(alpha = LucentGlass.CARD_FILL_DARK)
     } else {
         Color.White.copy(alpha = LucentGlass.CARD_FILL_LIGHT)
+    }
+    val accent = MaterialTheme.colorScheme.primary
+    val fill = if (pressed && enabled) {
+        accent.copy(alpha = if (glassDark) 0.22f else 0.16f)
+    } else {
+        baseFill
     }
     val label = onGradient
     val fade = if (enabled) 1f else 0.38f
 
     Row(
         modifier = modifier
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
             .clip(shape)
             .background(fill.copy(alpha = fill.alpha * fade))
             .border(1.dp, lucentGlassRim(strong = true), shape)
-            .clickable(enabled = enabled) {
+            .clickable(
+                interactionSource = interaction,
+                indication = null,
+                enabled = enabled
+            ) {
                 Haptics.tick(context)
                 onClick()
             }

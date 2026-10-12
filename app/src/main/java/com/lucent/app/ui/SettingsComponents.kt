@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Button
@@ -84,8 +85,7 @@ internal fun NavCard(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .frostedGlass()
-            .clickable { onClick() }
+            .pressableGlass(onClick = onClick)
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -102,6 +102,14 @@ internal fun NavCard(
         if (trailing != null) {
             Spacer(modifier = Modifier.width(12.dp))
             trailing()
+        } else {
+            Spacer(modifier = Modifier.width(8.dp))
+            Icon(
+                imageVector = Icons.Default.ChevronRight,
+                contentDescription = null,
+                tint = onGradientMuted.copy(alpha = 0.6f),
+                modifier = Modifier.size(18.dp)
+            )
         }
     }
 }

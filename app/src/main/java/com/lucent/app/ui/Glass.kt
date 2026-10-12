@@ -2,17 +2,23 @@ package com.lucent.app.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.Dp
@@ -133,6 +139,51 @@ fun Modifier.frostedGlass(cornerRadius: Dp = 20.dp): Modifier = composed {
     clip(shape)
         .background(Color.White.copy(alpha = fillAlpha))
         .border(1.dp, lucentGlassRim(), shape)
+}
+
+@Composable
+fun Modifier.pressableGlass(
+    onClick: () -> Unit,
+    cornerRadius: Dp = 20.dp,
+    enabled: Boolean = true,
+    emphasized: Boolean = false
+): Modifier {
+    val shape = RoundedCornerShape(cornerRadius)
+    val dark = isDarkGlass()
+    val accent = MaterialTheme.colorScheme.primary
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val targetScale = if (pressed && enabled) 0.97f else 1f
+    val scale by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = targetScale,
+        animationSpec = LucentMotion.toSpring(LucentMotion.Settle),
+        label = "pressScale"
+    )
+    val baseFill = if (dark) LucentGlass.CARD_FILL_DARK else LucentGlass.CARD_FILL_LIGHT
+    val pressWash by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (pressed && enabled) 1f else 0f,
+        animationSpec = LucentMotion.toSpring(LucentMotion.Settle),
+        label = "pressWash"
+    )
+    val fill = lerp(
+        Color.White.copy(alpha = baseFill),
+        accent.copy(alpha = if (dark) 0.20f else 0.14f),
+        pressWash * if (emphasized) 0.9f else 0.6f
+    )
+    val rim = if (emphasized) lucentGlassRim(strong = true) else lucentGlassRim()
+    return this
+        .graphicsLayer {
+            scaleX = scale
+            scaleY = scale
+        }
+        .clip(shape)
+        .background(fill)
+        .border(1.dp, rim, shape)
+        .clickable(
+            interactionSource = interaction,
+            indication = null,
+            enabled = enabled
+        ) { onClick() }
 }
 
 @Composable

@@ -173,7 +173,7 @@ private fun DeleteWithConfirmButton(
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(6.dp))
-                    .background(Color(0xFFE53935))
+                    .background(MaterialTheme.colorScheme.error)
                     .clickable {
                         confirmOpen = false
                         Haptics.tick(context)
@@ -184,7 +184,7 @@ private fun DeleteWithConfirmButton(
             ) {
                 Text(
                     text = "确认删除",
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onError,
                     fontSize = confirmTextSize,
                     fontWeight = FontWeight.SemiBold
                 )

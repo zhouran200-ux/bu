@@ -28,8 +28,6 @@ private object SettingsKeys {
 
     val API_PROFILE_SELECTED = intPreferencesKey("api_profile_selected")
 
-    val NOTEBOOK_OPENS = stringPreferencesKey("notebook_opens")
-
     val BACKGROUND_ANIMATION_ENABLED = booleanPreferencesKey("background_animation_enabled")
 }
 
@@ -152,6 +150,7 @@ class SettingsRepository(context: Context) {
         "model_enc",
         "model_recents",
         "note_history_enabled",
+        "notebook_opens",
         "notebook_opens_enc",
         "open_links_externally",
         "pending_update_version",
@@ -235,14 +234,6 @@ class SettingsRepository(context: Context) {
     suspend fun setDynamicColorEnabled(value: Boolean) {
         context.settingsDataStore.edit { it[SettingsKeys.DYNAMIC_COLOR_ENABLED] = value }
         SettingsCache.dynamicColor = value
-    }
-
-    suspend fun notebookOpensOnce(): String {
-        val prefs = context.settingsDataStore.data.first()
-        return prefs[SettingsKeys.NOTEBOOK_OPENS] ?: "{}"
-    }
-    suspend fun setNotebookOpens(value: String) {
-        context.settingsDataStore.edit { it[SettingsKeys.NOTEBOOK_OPENS] = value }
     }
 
     suspend fun saveApiProfiles(profiles: List<ApiProfile>, selected: Int) {

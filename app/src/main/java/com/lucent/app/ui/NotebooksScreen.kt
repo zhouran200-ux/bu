@@ -45,7 +45,6 @@ import com.lucent.app.BackClaim
 import com.lucent.app.data.AppDatabase
 import com.lucent.app.data.Notebook
 import com.lucent.app.data.NotebookPurge
-import com.lucent.app.data.SettingsRepository
 import dev.chrisbanes.haze.hazeSource
 import java.time.Instant
 import java.time.ZoneId
@@ -60,23 +59,9 @@ fun NotebooksScreen(
     val context = LocalContext.current
     val db = remember { AppDatabase.getInstance(context) }
     val scope = rememberCoroutineScope()
-    val settingsRepo = remember { SettingsRepository(context) }
     val notebooks by db.notebookDao().getAll().collectAsState(initial = emptyList())
     val counts by db.notebookDao().itemCounts().collectAsState(initial = emptyList())
     val countById = remember(counts) { counts.associate { it.notebookId to it.count } }
-
-    fun recordNotebookOpen(id: Long) {
-        AppScope.io.launch {
-            runCatching {
-                val data = org.json.JSONObject(settingsRepo.notebookOpensOnce())
-                val previous = data.optJSONObject(id.toString()) ?: org.json.JSONObject()
-                data.put(id.toString(), org.json.JSONObject()
-                    .put("last", System.currentTimeMillis())
-                    .put("count", previous.optInt("count", 0) + 1))
-                settingsRepo.setNotebookOpens(data.toString())
-            }
-        }
-    }
 
     var openNotebookId by remember { mutableStateOf<Long?>(null) }
     LaunchedEffect(openNotebookId) {
@@ -166,7 +151,6 @@ fun NotebooksScreen(
                     val newId = db.notebookDao().insert(Notebook(title = finalName))
                     if (newId > 0) {
                         openNotebookId = newId
-                        recordNotebookOpen(newId)
                     }
                 }
             },
@@ -234,7 +218,6 @@ fun NotebooksScreen(
                     ),
                     onOpen = {
                         openNotebookId = notebook.id
-                        recordNotebookOpen(notebook.id)
                     },
                     onRename = { renaming = notebook },
                     onDelete = { deleting = notebook }

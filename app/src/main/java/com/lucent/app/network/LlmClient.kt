@@ -216,7 +216,6 @@ object LlmClient {
                         com.lucent.app.data.ModelCapabilityRegistry.register(
                             com.lucent.app.data.ModelDefinition(
                                 id = trimmedId,
-                                provider = spec.name,
                                 reasoning = com.lucent.app.data.ReasoningCapability(
                                     supported = supported,
                                     control = control,

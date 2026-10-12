@@ -1,7 +1,6 @@
 package com.lucent.app.data
 
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -35,7 +34,6 @@ class ReasoningThreeLayerTest {
     fun testOpenAiReasoningResolution() {
         val autoConfig = ReasoningResolver.resolve(ReasoningPreset.AUTO, "openai", "gpt-6.1-sol")
         assertTrue(autoConfig.isAuto)
-        assertFalse(autoConfig.hasNativeParam)
         assertNull(autoConfig.openAiEffort)
         assertNull(autoConfig.openAiMode)
 
@@ -106,7 +104,6 @@ class ReasoningThreeLayerTest {
     fun testUnknownModelZeroParamFallback() {
         val config = ReasoningResolver.resolve(ReasoningPreset.BALANCED, "custom", "my-private-model")
         assertTrue(config.isAuto)
-        assertFalse(config.hasNativeParam)
         assertEquals("模型默认", config.displayTag)
     }
 

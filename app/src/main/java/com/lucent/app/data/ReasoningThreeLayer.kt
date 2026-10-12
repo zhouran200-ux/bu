@@ -59,7 +59,6 @@ data class ReasoningCapability(
 
 data class ModelDefinition(
     val id: String,
-    val provider: String,
     val reasoning: ReasoningCapability
 )
 
@@ -74,11 +73,6 @@ data class ResolvedReasoningConfig(
     val claudeBudgetTokens: Int? = null,
     val displayTag: String = ""
 ) {
-    val hasNativeParam: Boolean
-        get() = !isAuto && (openAiEffort != null || openAiMode != null ||
-                geminiThinkingLevel != null ||
-                claudeEffort != null || claudeBudgetTokens != null)
-
     companion object {
         val AUTO = ResolvedReasoningConfig(
             preset = ReasoningPreset.AUTO,
@@ -284,53 +278,53 @@ object ModelCapabilityRegistry {
             control = inferredControl,
             isAdaptive = true
         )
-        val created = ModelDefinition(id = clean, provider = provider, reasoning = capability)
+        val created = ModelDefinition(id = clean, reasoning = capability)
         registry[clean] = created
         return created
     }
 
     private fun registerOpenAiModels() {
         listOf("o1", "o1-preview", "o1-mini", "o3", "o3-mini", "o4", "gpt-6.1-sol", "gpt-6-astra", "gpt-6-luna").forEach { id ->
-            register(ModelDefinition(id, "openai", ReasoningCapability(true, ReasoningControl.OPENAI_EFFORT)))
+            register(ModelDefinition(id, ReasoningCapability(true, ReasoningControl.OPENAI_EFFORT)))
         }
         listOf("gpt-4o", "gpt-4o-mini", "gpt-4-turbo").forEach { id ->
-            register(ModelDefinition(id, "openai", ReasoningCapability.NONE))
+            register(ModelDefinition(id, ReasoningCapability.NONE))
         }
     }
 
     private fun registerAnthropicModels() {
         listOf("claude-3-7-sonnet", "claude-4-sonnet", "claude-5-sonnet", "claude-opus-5.5").forEach { id ->
-            register(ModelDefinition(id, "anthropic", ReasoningCapability(true, ReasoningControl.ANTHROPIC_EFFORT)))
+            register(ModelDefinition(id, ReasoningCapability(true, ReasoningControl.ANTHROPIC_EFFORT)))
         }
         listOf("claude-3-5-sonnet", "claude-3-opus").forEach { id ->
-            register(ModelDefinition(id, "anthropic", ReasoningCapability(true, ReasoningControl.ANTHROPIC_BUDGET, isAdaptive = false)))
+            register(ModelDefinition(id, ReasoningCapability(true, ReasoningControl.ANTHROPIC_BUDGET, isAdaptive = false)))
         }
         listOf("claude-3-5-haiku", "claude-3-haiku").forEach { id ->
-            register(ModelDefinition(id, "anthropic", ReasoningCapability.NONE))
+            register(ModelDefinition(id, ReasoningCapability.NONE))
         }
     }
 
     private fun registerGeminiModels() {
         listOf("gemini-2.0-flash-thinking", "gemini-2.5-pro", "gemini-2.5-flash", "gemini-3.5-flash", "gemini-3.8-flash").forEach { id ->
-            register(ModelDefinition(id, "google", ReasoningCapability(true, ReasoningControl.GEMINI_THINKING_LEVEL)))
+            register(ModelDefinition(id, ReasoningCapability(true, ReasoningControl.GEMINI_THINKING_LEVEL)))
         }
         listOf("gemini-1.5-pro", "gemini-1.5-flash", "gemini-1.5-flash-8b").forEach { id ->
-            register(ModelDefinition(id, "google", ReasoningCapability.NONE))
+            register(ModelDefinition(id, ReasoningCapability.NONE))
         }
     }
 
     private fun registerDeepSeekModels() {
         listOf("deepseek-r1", "deepseek-v4", "deepseek-reasoner").forEach { id ->
-            register(ModelDefinition(id, "deepseek", ReasoningCapability(true, ReasoningControl.DEEPSEEK_EFFORT)))
+            register(ModelDefinition(id, ReasoningCapability(true, ReasoningControl.DEEPSEEK_EFFORT)))
         }
         listOf("deepseek-v3", "deepseek-chat").forEach { id ->
-            register(ModelDefinition(id, "deepseek", ReasoningCapability.NONE))
+            register(ModelDefinition(id, ReasoningCapability.NONE))
         }
     }
 
     private fun registerQwenModels() {
         listOf("qwen-max", "qwen-plus", "qwen3.8-omni-flash", "qvq-72b-preview").forEach { id ->
-            register(ModelDefinition(id, "qwen", ReasoningCapability(true, ReasoningControl.QWEN_EFFORT)))
+            register(ModelDefinition(id, ReasoningCapability(true, ReasoningControl.QWEN_EFFORT)))
         }
     }
 }

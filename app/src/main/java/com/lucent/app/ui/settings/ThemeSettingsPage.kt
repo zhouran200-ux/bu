@@ -1,7 +1,6 @@
 package com.lucent.app.ui.settings
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -44,7 +43,6 @@ internal fun ThemeSettingsPage(repo: SettingsRepository) {
 
     LockNote(if (locked) S.dynamicThemeLockedHint else "")
 
-    val systemDark = isSystemInDarkTheme()
     val offered = LucentThemeMode.pickerEntries
     LucentThemeSection.entries.forEachIndexed { index, section ->
         if (index > 0) Spacer(modifier = Modifier.height(12.dp))
@@ -73,7 +71,7 @@ internal fun ThemeSettingsPage(repo: SettingsRepository) {
                         }
                     )
                     Box(modifier = Modifier.alpha(lockAlpha)) {
-                        PaletteSwatch(mode.swatch(systemDark))
+                        PaletteSwatch(mode.swatch())
                     }
                     Column(modifier = Modifier.padding(start = 10.dp).alpha(lockAlpha)) {
                         Text(mode.label, color = onGradient, fontSize = LucentTitles.ItemSize, fontWeight = LucentTitles.ItemWeight)

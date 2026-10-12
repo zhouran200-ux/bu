@@ -15,6 +15,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,6 +54,7 @@ internal fun BackgroundSettingsPage(repo: SettingsRepository) {
     val locked = rememberDynamicColorActive(repo)
     val lockAlpha = if (locked) 0.5f else 1f
     val motionAlpha = lockAlpha * if (backgroundAnimationEnabled) 1f else 0.38f
+    val randomSwatch = remember { LucentPalette.pickerEntries.shuffled().take(4).flatMap { it.colors } }
 
     fun pickPalette(name: String) {
         if (locked) return
@@ -120,7 +122,7 @@ internal fun BackgroundSettingsPage(repo: SettingsRepository) {
                     onClick = { pickPalette(PALETTE_RANDOM) }
                 )
                 Box(modifier = Modifier.alpha(motionAlpha)) {
-                    PaletteSwatch(LucentPalette.pickerEntries.shuffled().take(4).flatMap { it.colors })
+                    PaletteSwatch(randomSwatch)
                 }
                 Text(
                     S.paletteRandomAuto,

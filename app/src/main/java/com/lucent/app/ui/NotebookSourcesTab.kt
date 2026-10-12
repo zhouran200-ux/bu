@@ -298,8 +298,7 @@ fun SourceReaderOverlay(
     val accent = MaterialTheme.colorScheme.primary
 
     Surface(
-        color = (if (isDarkGlass()) LucentGlass.HazeContainerDark else LucentGlass.HazeContainerLight)
-            .copy(alpha = 0.86f),
+        color = lucentPanelBackground().copy(alpha = 0.94f),
         modifier = modifier.fillMaxSize()
     ) {
         Column(

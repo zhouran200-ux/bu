@@ -12,6 +12,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.graphics.toArgb
+import androidx.core.graphics.drawable.toDrawable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -123,7 +124,7 @@ class MainActivity : ComponentActivity() {
         } else {
             themeChoice.backdrop(systemDark)
         }
-        window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(initialBackdropColor.toArgb()))
+        window.setBackgroundDrawable(initialBackdropColor.toArgb().toDrawable())
 
         applySystemBarStyle(isDarkTheme)
 
@@ -199,9 +200,12 @@ class MainActivity : ComponentActivity() {
                         ?: LucentPalette.SUNSET.colors
                 }
                 val baseScheme = if (isDarkTheme) darkColorScheme() else lightColorScheme()
-                colors = lucentScheme(baseScheme, paletteColors, onGradient)
+                colors = lucentScheme(baseScheme, paletteColors, onGradient, backdropColor)
             }
             val onGradientMuted = onGradient.copy(alpha = 0.65f)
+            LaunchedEffect(backdropColor) {
+                window.setBackgroundDrawable(backdropColor.toArgb().toDrawable())
+            }
 
             val currentDensity = LocalDensity.current
             val appDensity = remember(currentDensity, fontScale) {

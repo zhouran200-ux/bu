@@ -184,7 +184,7 @@ enum class LucentThemeMode(val key: String, val featured: Boolean = true) {
         MONET_ABYSS -> Color(0xFF032A26)
     }
 
-    fun swatch(systemDark: Boolean): List<Color> = when (this) {
+    fun swatch(): List<Color> = when (this) {
         SYSTEM -> listOf(LIGHT_BACKDROP, DARK_BACKDROP)
         LIGHT -> listOf(LIGHT_BACKDROP, Color(0xFFDCDBE4))
         DARK -> listOf(Color(0xFF23232E), DARK_BACKDROP)

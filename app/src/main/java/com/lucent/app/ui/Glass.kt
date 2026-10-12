@@ -58,18 +58,45 @@ fun lucentAccent(palette: List<Color>, ink: Color): Color {
     return if (dark) lerp(mixed, Color.White, 0.10f) else mixed
 }
 
-fun lucentScheme(base: ColorScheme, palette: List<Color>, ink: Color): ColorScheme {
+fun lucentScheme(base: ColorScheme, palette: List<Color>, ink: Color, backdrop: Color): ColorScheme {
     val accent = lucentAccent(palette, ink)
     val content = if (accent.luminance() > 0.55f) Color(0xFF14141C) else Color.White
+    val dark = ink.luminance() > 0.5f
+    val surface = panelOver(backdrop)
+    val container = lerp(surface, accent, if (dark) 0.30f else 0.18f)
+    val lift = if (dark) 0.05f else 0.035f
     return base.copy(
         primary = accent,
         onPrimary = content,
-        primaryContainer = accent.copy(alpha = 0.35f),
+        primaryContainer = container,
         onPrimaryContainer = accent,
         secondary = accent,
         onSecondary = content,
+        secondaryContainer = container,
+        onSecondaryContainer = accent,
         tertiary = accent,
-        onTertiary = content
+        onTertiary = content,
+        tertiaryContainer = container,
+        onTertiaryContainer = accent,
+        background = backdrop,
+        onBackground = ink,
+        surface = surface,
+        onSurface = ink,
+        surfaceTint = accent,
+        surfaceVariant = lerp(surface, ink, if (dark) 0.14f else 0.08f),
+        onSurfaceVariant = ink.copy(alpha = 0.72f),
+        surfaceDim = lerp(surface, backdrop, 0.55f),
+        surfaceBright = lerp(surface, ink, lift * 3f),
+        surfaceContainerLowest = lerp(surface, backdrop, 0.6f),
+        surfaceContainerLow = surface,
+        surfaceContainer = lerp(surface, ink, lift),
+        surfaceContainerHigh = lerp(surface, ink, lift * 2f),
+        surfaceContainerHighest = lerp(surface, ink, lift * 3f),
+        inverseSurface = lerp(surface, ink, 0.88f),
+        inverseOnSurface = surface,
+        inversePrimary = accent,
+        outline = ink.copy(alpha = 0.38f),
+        outlineVariant = ink.copy(alpha = 0.16f)
     )
 }
 

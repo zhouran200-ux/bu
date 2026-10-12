@@ -36,7 +36,7 @@ fun DynamicColorRow(repo: SettingsRepository) {
     Column(modifier = Modifier.fillMaxWidth().frostedGlass().padding(16.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(S.dynamicColorTitle, color = onGradient, fontSize = LucentTitles.EntrySize, fontWeight = LucentTitles.EntryWeight)
+                Text(S.dynamicColorTitle, color = LucentTitles.titleInk(onGradient), fontSize = LucentTitles.EntrySize, fontWeight = LucentTitles.EntryWeight)
                 if (!dynamicColorSupported) {
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(S.dynamicColorUnsupported, color = onGradientMuted, fontSize = 13.sp)

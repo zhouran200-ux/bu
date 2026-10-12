@@ -335,7 +335,7 @@ fun LucentApp(paletteColors: List<Color>, backdropColor: Color, backgroundAnimat
                                 } else {
                                     Text(
                                         currentTab.label,
-                                        color = onGradient,
+                                        color = com.lucent.app.ui.LucentTitles.titleInk(onGradient),
                                         fontSize = com.lucent.app.ui.LucentTitles.ScreenSize,
                                         fontWeight = com.lucent.app.ui.LucentTitles.ScreenWeight
                                     )

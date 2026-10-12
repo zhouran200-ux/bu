@@ -39,6 +39,22 @@ class LucentTitlesTest {
     }
 
     @Test
+    fun weightNeverRisesWithDepth() {
+        val weights = (1..6).map { LucentTitles.weightForDepth(it).weight }
+        assertTrue(weights == weights.sortedDescending(), "weights must not get heavier deeper down: $weights")
+    }
+
+    @Test
+    fun titleInkOnlySoftensTheGivenInk() {
+        val ink = androidx.compose.ui.graphics.Color(0xFF20202B)
+        val softened = LucentTitles.titleInk(ink)
+        assertEquals(ink.red, softened.red)
+        assertEquals(ink.green, softened.green)
+        assertEquals(ink.blue, softened.blue)
+        assertTrue(softened.alpha < ink.alpha && softened.alpha > 0.8f, "title ink alpha was ${softened.alpha}")
+    }
+
+    @Test
     fun depthMapsToTheExpectedLevel() {
         assertEquals(LucentTitles.ScreenSize, LucentTitles.sizeForDepth(1))
         assertEquals(LucentTitles.EntrySize, LucentTitles.sizeForDepth(2))

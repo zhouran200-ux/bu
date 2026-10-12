@@ -92,7 +92,7 @@ internal fun NavCard(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 title,
-                color = onGradient,
+                color = LucentTitles.titleInk(onGradient),
                 fontSize = LucentTitles.sizeForDepth(depth + 1),
                 fontWeight = LucentTitles.weightForDepth(depth + 1)
             )

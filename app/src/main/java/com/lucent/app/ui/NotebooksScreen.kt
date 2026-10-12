@@ -285,7 +285,7 @@ private fun NotebookShelfItem(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
-                color = onGradient,
+                color = LucentTitles.titleInk(onGradient),
                 fontSize = LucentTitles.EntrySize,
                 fontWeight = LucentTitles.EntryWeight,
                 maxLines = 1,

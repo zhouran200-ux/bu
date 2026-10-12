@@ -37,9 +37,10 @@ import com.lucent.app.ui.LocalOnGradientMuted
 import com.lucent.app.ui.LucentFontResolver
 import com.lucent.app.ui.LucentTitles
 import com.lucent.app.ui.SYSTEM_FONT_KEY
-import com.lucent.app.ui.StandardSliderRow
+import com.lucent.app.ui.StepperSlider
 import com.lucent.app.ui.frostedGlass
 import kotlinx.coroutines.Dispatchers
+import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -206,14 +207,14 @@ internal fun FontSettingsPage(
             .frostedGlass()
             .padding(16.dp)
     ) {
-        StandardSliderRow(
+        StepperSlider(
             title = S.fontSizeScaleTitle,
-            valueLabel = "${(activeFontScale * 100).toInt()}%",
+            valueLabel = if (kotlin.math.abs(activeFontScale - 1f) < 0.005f) "默认" else "${(activeFontScale * 100).roundToInt()}%",
             value = activeFontScale,
             valueRange = 0.85f..1.30f,
+            step = 0.05f,
             onValueChange = { activeFontScale = it },
-            onValueChangeFinished = { scope.launch { repo.setFontScale(activeFontScale) } },
-            onGradient = onGradient
+            onValueChangeFinished = { scope.launch { repo.setFontScale(activeFontScale) } }
         )
 
         HorizontalDivider(
@@ -221,14 +222,14 @@ internal fun FontSettingsPage(
             color = onGradient.copy(alpha = 0.08f)
         )
 
-        StandardSliderRow(
+        StepperSlider(
             title = S.lineSpacingTitle,
-            valueLabel = String.format("%.2fx", activeLineSpacing),
+            valueLabel = if (kotlin.math.abs(activeLineSpacing - 1.2f) < 0.005f) "默认" else String.format("%.2fx", activeLineSpacing),
             value = activeLineSpacing,
             valueRange = 1.0f..1.8f,
+            step = 0.05f,
             onValueChange = { activeLineSpacing = it },
-            onValueChangeFinished = { scope.launch { repo.setLineSpacing(activeLineSpacing) } },
-            onGradient = onGradient
+            onValueChangeFinished = { scope.launch { repo.setLineSpacing(activeLineSpacing) } }
         )
 
         HorizontalDivider(
@@ -236,14 +237,14 @@ internal fun FontSettingsPage(
             color = onGradient.copy(alpha = 0.08f)
         )
 
-        StandardSliderRow(
+        StepperSlider(
             title = S.letterSpacingTitle,
-            valueLabel = String.format("%+.1fsp", activeLetterSpacing),
+            valueLabel = if (kotlin.math.abs(activeLetterSpacing) < 0.005f) "默认" else String.format("%+.1fsp", activeLetterSpacing),
             value = activeLetterSpacing,
             valueRange = -0.5f..2.0f,
+            step = 0.1f,
             onValueChange = { activeLetterSpacing = it },
-            onValueChangeFinished = { scope.launch { repo.setLetterSpacing(activeLetterSpacing) } },
-            onGradient = onGradient
+            onValueChangeFinished = { scope.launch { repo.setLetterSpacing(activeLetterSpacing) } }
         )
     }
 

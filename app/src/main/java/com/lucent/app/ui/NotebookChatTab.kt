@@ -1676,15 +1676,14 @@ private fun DialogueSettingsSheet(
                     .border(1.dp, lucentGlassRim(), RoundedCornerShape(18.dp))
             ) {
                 Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)) {
-                    StandardSliderRow(
+                    StepperSlider(
                         title = "携带历史轮数",
-                        valueLabel = "$historyRounds 轮",
+                        valueLabel = if (historyRounds == 10) "默认 10 轮" else "$historyRounds 轮",
                         value = historyRounds.toFloat(),
                         valueRange = 1f..20f,
-                        steps = 18,
+                        step = 1f,
                         onValueChange = { historyRounds = it.toInt() },
-                        onValueChangeFinished = { },
-                        onGradient = ink
+                        onValueChangeFinished = { }
                     )
                 }
             }

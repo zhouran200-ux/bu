@@ -48,19 +48,27 @@ fun lucentPanelBackground(): Color = panelOver(LocalBackdropColor.current)
 
 fun lucentAccent(palette: List<Color>, ink: Color): Color {
     val dark = ink.luminance() > 0.5f
-    val mid = palette.getOrNull(1) ?: palette.firstOrNull() ?: return ink
-    val extreme = if (dark) {
-        palette.maxByOrNull { it.luminance() } ?: mid
+    val base = if (dark) {
+        palette.maxByOrNull { it.luminance() } ?: return ink
     } else {
-        palette.minByOrNull { it.luminance() } ?: mid
+        palette.minByOrNull { it.luminance() } ?: return ink
     }
-    val mixed = lerp(mid, extreme, if (dark) 0.55f else 0.35f)
-    return if (dark) lerp(mixed, Color.White, 0.10f) else mixed
+    val lift = if (dark) Color.White else Color.Black
+    var shifted = base
+    var guard = 0
+    while (guard < 10 && !lucentAccentReadable(shifted, dark)) {
+        shifted = lerp(shifted, lift, 0.12f)
+        guard++
+    }
+    return shifted
 }
+
+private fun lucentAccentReadable(color: Color, dark: Boolean): Boolean =
+    if (dark) color.luminance() >= 0.55f else color.luminance() <= 0.135f
 
 fun lucentScheme(base: ColorScheme, palette: List<Color>, ink: Color, backdrop: Color): ColorScheme {
     val accent = lucentAccent(palette, ink)
-    val content = if (accent.luminance() > 0.55f) Color(0xFF14141C) else Color.White
+    val content = if (accent.luminance() > 0.20f) Color(0xFF14141C) else Color.White
     val dark = ink.luminance() > 0.5f
     val surface = panelOver(backdrop)
     val container = lerp(surface, accent, if (dark) 0.30f else 0.18f)

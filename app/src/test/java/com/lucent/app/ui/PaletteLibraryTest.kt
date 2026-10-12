@@ -1,5 +1,7 @@
 package com.lucent.app.ui
 
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import kotlin.test.Test
@@ -69,5 +71,62 @@ class PaletteLibraryTest {
             }
             assertEquals(expected, mode.section, "${mode.key} lands in the wrong settings group")
         }
+    }
+
+    @Test
+    fun everyPaletteAccentStaysReadableOnBothPanels() {
+        val darkPanel = panelOver(LucentThemeMode.DARK_BACKDROP)
+        val lightPanel = panelOver(LucentThemeMode.LIGHT_BACKDROP)
+        for (palette in LucentPalette.entries) {
+            val onDark = lucentAccent(palette.colors, Color.White)
+            val onLight = lucentAccent(palette.colors, Color(0xFF20202B))
+            assertTrue(
+                contrastRatio(onDark, darkPanel) >= 4.5f,
+                "${palette.name} dark accent is too dim on the dark panel"
+            )
+            assertTrue(
+                contrastRatio(onLight, lightPanel) >= 4.5f,
+                "${palette.name} light accent is too pale on the light panel"
+            )
+        }
+    }
+
+    @Test
+    fun accentFlipsItsLightnessWithTheInk() {
+        val board = LucentPalette.SUNSET.colors
+        assertTrue(lucentAccent(board, Color.White).luminance() > 0.5f)
+        assertTrue(lucentAccent(board, Color(0xFF20202B)).luminance() < 0.25f)
+        assertEquals(Color(0xFF20202B), lucentAccent(emptyList(), Color(0xFF20202B)))
+    }
+
+    @Test
+    fun accentChangesWhenThePaletteChanges() {
+        val ink = Color(0xFF20202B)
+        val sunset = lucentAccent(LucentPalette.SUNSET.colors, ink)
+        val ocean = lucentAccent(LucentPalette.OCEAN.colors, ink)
+        val forest = lucentAccent(LucentPalette.FOREST.colors, ink)
+        assertTrue(sunset != ocean && ocean != forest)
+    }
+
+    @Test
+    fun schemePaintsSurfaceFromBackdropAndKeepsErrorIndependent() {
+        val ink = Color.White
+        val scheme = lucentScheme(
+            base = darkColorScheme(),
+            palette = LucentPalette.FOREST.colors,
+            ink = ink,
+            backdrop = LucentThemeMode.DARK_BACKDROP
+        )
+        assertEquals(panelOver(LucentThemeMode.DARK_BACKDROP), scheme.surface)
+        assertEquals(LucentThemeMode.DARK_BACKDROP, scheme.background)
+        assertEquals(ink, scheme.onSurface)
+        assertEquals(scheme.primary, scheme.secondary)
+        assertTrue(scheme.error != scheme.primary, "error must stay its own semantic colour")
+    }
+
+    private fun contrastRatio(first: Color, second: Color): Float {
+        val high = maxOf(first.luminance(), second.luminance())
+        val low = minOf(first.luminance(), second.luminance())
+        return (high + 0.05f) / (low + 0.05f)
     }
 }

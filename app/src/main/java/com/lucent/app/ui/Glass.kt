@@ -151,7 +151,7 @@ fun Modifier.selectedCard(selected: Boolean, cornerRadius: Dp): Modifier = compo
     val shape = RoundedCornerShape(cornerRadius)
     this
         .clip(shape)
-        .background(accent.copy(alpha = if (isDarkGlass()) 0.32f else 0.18f))
+        .background(accent.copy(alpha = if (isDarkGlass()) 0.26f else 0.16f))
         .border(1.5.dp, accent, shape)
 }
 

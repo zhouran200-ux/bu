@@ -87,6 +87,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateListOf
@@ -808,8 +809,6 @@ private fun UserMessageCard(
     onDelete: () -> Unit
 ) {
     val context = LocalContext.current
-    val bubbleBg = Color(0xFF2563EB).copy(alpha = 0.30f)
-    val bubbleBorder = Color(0xFF60A5FA).copy(alpha = 0.35f)
     val textColor = LocalOnGradient.current
 
     Column(
@@ -820,10 +819,9 @@ private fun UserMessageCard(
     ) {
         Surface(
             shape = RoundedCornerShape(20.dp),
-            color = bubbleBg,
+            color = Color.Transparent,
             modifier = Modifier
-                .clip(RoundedCornerShape(20.dp))
-                .border(1.dp, bubbleBorder, RoundedCornerShape(20.dp))
+                .frostedGlass(cornerRadius = 20.dp)
         ) {
             Column(modifier = Modifier.padding(14.dp)) {
                 Text(
@@ -1519,6 +1517,37 @@ private fun BottomGlassComposer(
     }
 }
 
+@Composable
+private fun SheetCloseHandle(onDismiss: () -> Unit) {
+    val ink = LocalOnGradient.current
+    var travel by remember { mutableFloatStateOf(0f) }
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(30.dp)
+            .draggable(
+                orientation = Orientation.Vertical,
+                state = rememberDraggableState { delta ->
+                    travel = (travel + delta).coerceAtLeast(0f)
+                },
+                onDragStopped = { velocity ->
+                    val closing = travel >= 72f || velocity > 2000f
+                    travel = 0f
+                    if (closing) onDismiss()
+                }
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Surface(
+            shape = CircleShape,
+            color = ink.copy(alpha = 0.3f),
+            modifier = Modifier
+                .graphicsLayer { translationY = travel }
+                .size(width = 36.dp, height = 4.dp)
+        ) {}
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DialogueSettingsSheet(
@@ -1539,15 +1568,8 @@ private fun DialogueSettingsSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         containerColor = lucentPanelBackground(),
-        dragHandle = {
-            Surface(
-                shape = CircleShape,
-                color = ink.copy(alpha = 0.3f),
-                modifier = Modifier
-                    .padding(top = 10.dp, bottom = 2.dp)
-                    .size(width = 36.dp, height = 4.dp)
-            ) {}
-        }
+        sheetGesturesEnabled = false,
+        dragHandle = { SheetCloseHandle(onDismiss) }
     ) {
         Column(
             modifier = Modifier

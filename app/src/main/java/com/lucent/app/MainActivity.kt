@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -340,15 +339,14 @@ fun LucentApp(paletteColors: List<Color>, backdropColor: Color, backgroundAnimat
                                     IconButton(
                                         onClick = { AppNavigation.requestCreateNotebook() },
                                         modifier = Modifier
-                                            .padding(end = 12.dp)
+                                            .padding(end = 10.dp)
                                             .size(44.dp)
-                                            .border(1.5.dp, onGradient.copy(alpha = 0.35f), CircleShape)
                                     ) {
                                         Icon(
                                             imageVector = com.lucent.app.ui.LucentIcons.Create,
                                             contentDescription = com.lucent.app.i18n.S.notebookNew,
                                             tint = onGradient,
-                                            modifier = Modifier.size(22.dp)
+                                            modifier = Modifier.size(30.dp)
                                         )
                                     }
                                 }

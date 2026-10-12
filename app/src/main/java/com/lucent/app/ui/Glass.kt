@@ -12,6 +12,7 @@ import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.Dp
@@ -134,6 +135,7 @@ fun lucentGlassRim(strong: Boolean = false): Brush {
 fun Modifier.frostedGlass(cornerRadius: Dp = 20.dp, tint: Color = Color.White): Modifier = composed {
     val shape = RoundedCornerShape(cornerRadius)
     val darkTheme = isDarkGlass()
+    val ink = LocalOnGradient.current
     val tinted = tint != Color.White
 
     val fillColor = if (tinted) tint else Color.White
@@ -144,11 +146,13 @@ fun Modifier.frostedGlass(cornerRadius: Dp = 20.dp, tint: Color = Color.White): 
         else -> LucentGlass.CARD_FILL_LIGHT
     }
 
+    val edge = if (darkTheme) lucentGlassRim() else SolidColor(ink.copy(alpha = 0.16f))
+
     clip(shape)
         .background(fillColor.copy(alpha = fillAlpha))
         .then(
             if (tinted) Modifier.border(1.dp, tint.copy(alpha = if (darkTheme) 0.45f else 0.55f), shape)
-            else Modifier.border(1.dp, lucentGlassRim(), shape)
+            else Modifier.border(1.dp, edge, shape)
         )
 }
 

@@ -62,7 +62,6 @@ fun NotebookSourcesTab(
     val context = LocalContext.current
     val db = remember { AppDatabase.getInstance(context) }
     val onGradient = LocalOnGradient.current
-    val onGradientMuted = LocalOnGradientMuted.current
     val accent = MaterialTheme.colorScheme.primary
 
     val documentMimeTypes = arrayOf(
@@ -124,15 +123,6 @@ fun NotebookSourcesTab(
                     fontSize = LucentTitles.SectionSize,
                     fontWeight = LucentTitles.SectionWeight,
                     color = onGradient
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    text = "点击右下角 + 按钮，上传一份 TXT 或 Word 文档作为这个笔记本的资料。每个笔记本只保留一份文档，想换资料就先删掉它。",
-                    fontSize = 14.sp,
-                    color = onGradientMuted,
-                    modifier = Modifier.padding(horizontal = 16.dp)
                 )
             }
         } else {

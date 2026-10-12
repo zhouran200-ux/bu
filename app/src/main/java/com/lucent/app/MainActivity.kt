@@ -272,8 +272,6 @@ fun LucentApp(paletteColors: List<Color>, backdropColor: Color, backgroundAnimat
     val hazeState = rememberHazeState()
     val onGradient = LocalOnGradient.current
     val context = LocalContext.current
-    val pinnedScrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
-    val scrollBehavior = pinnedScrollBehavior
 
     var backArmed by remember { mutableStateOf(false) }
     LaunchedEffect(backArmed) {
@@ -361,8 +359,7 @@ fun LucentApp(paletteColors: List<Color>, backdropColor: Color, backgroundAnimat
                             colors = TopAppBarDefaults.topAppBarColors(
                                 containerColor = Color.Transparent,
                                 scrolledContainerColor = Color.Transparent
-                            ),
-                            scrollBehavior = scrollBehavior
+                            )
                         )
                     }
                 },

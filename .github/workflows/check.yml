@@ -1,7 +1,13 @@
 name: check
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
+
+concurrency:
+  group: check-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   source-hygiene:
@@ -29,6 +35,9 @@ jobs:
         run: |
           python3 tools/compose_scroll_check.py --self-test
           python3 tools/compose_scroll_check.py
+
+      - name: Design conformance score (non-blocking)
+        run: python3 tools/design_audit.py
 
   android-jvm-check:
     runs-on: ubuntu-latest

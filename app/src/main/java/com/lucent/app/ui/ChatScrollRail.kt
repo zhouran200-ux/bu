@@ -28,13 +28,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastSumBy
-import kotlin.math.roundToInt
-
-data class ChatScrollMetrics(
-    val fraction: Float,
-    val thumbFraction: Float,
-    val scrollable: Boolean
-)
 
 private fun averageItemSize(listState: LazyListState): Int {
     val visible = listState.layoutInfo.visibleItemsInfo
@@ -44,38 +37,32 @@ private fun averageItemSize(listState: LazyListState): Int {
 
 fun chatScrollMetrics(listState: LazyListState): ChatScrollMetrics {
     val info = listState.layoutInfo
-    val total = info.totalItemsCount
     val visible = info.visibleItemsInfo
-    if (total == 0 || visible.isEmpty()) {
+    if (info.totalItemsCount == 0 || visible.isEmpty()) {
         return ChatScrollMetrics(fraction = 0f, thumbFraction = 1f, scrollable = false)
     }
-    val viewport = (info.viewportEndOffset - info.viewportStartOffset).coerceAtLeast(1)
-    val average = averageItemSize(listState)
-    val spacing = info.mainAxisItemSpacing
-    val contentLength = (average + spacing).toLong() * total - spacing
-    val maxScroll = (contentLength - viewport).coerceAtLeast(1L)
     val lead = visible.first()
-    val scrolledPast = lead.index.toLong() * (average + spacing) - lead.offset
-    val fraction = (scrolledPast.toFloat() / maxScroll.toFloat()).coerceIn(0f, 1f)
-    val thumbFraction = (viewport.toFloat() / contentLength.toFloat()).coerceIn(0.08f, 1f)
-    val scrollable = contentLength > viewport
-    return ChatScrollMetrics(fraction = fraction, thumbFraction = thumbFraction, scrollable = scrollable)
+    return ChatScrollMath.metrics(
+        totalItems = info.totalItemsCount,
+        averageItemSize = averageItemSize(listState),
+        spacing = info.mainAxisItemSpacing,
+        viewport = info.viewportEndOffset - info.viewportStartOffset,
+        leadIndex = lead.index,
+        leadOffset = lead.offset
+    )
 }
 
 suspend fun scrollChatToFraction(listState: LazyListState, fraction: Float) {
     val info = listState.layoutInfo
-    val total = info.totalItemsCount
-    if (total == 0) return
-    val average = averageItemSize(listState)
-    val spacing = info.mainAxisItemSpacing
-    val viewport = (info.viewportEndOffset - info.viewportStartOffset).coerceAtLeast(1)
-    val contentLength = (average + spacing).toLong() * total - spacing
-    val maxScroll = (contentLength - viewport).coerceAtLeast(0L)
-    val targetPx = (fraction.coerceIn(0f, 1f) * maxScroll).roundToInt()
-    val step = (average + spacing).coerceAtLeast(1)
-    val index = (targetPx / step).coerceIn(0, (total - 1).coerceAtLeast(0))
-    val offset = targetPx - index * step
-    listState.scrollToItem(index, offset.coerceAtLeast(0))
+    if (info.totalItemsCount == 0) return
+    val target = ChatScrollMath.targetForFraction(
+        totalItems = info.totalItemsCount,
+        averageItemSize = averageItemSize(listState),
+        spacing = info.mainAxisItemSpacing,
+        viewport = info.viewportEndOffset - info.viewportStartOffset,
+        fraction = fraction
+    )
+    listState.scrollToItem(target.index, target.offset)
 }
 
 @Composable

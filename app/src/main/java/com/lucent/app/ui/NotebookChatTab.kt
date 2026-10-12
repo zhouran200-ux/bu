@@ -172,8 +172,11 @@ fun NotebookChatTab(
     }
     var followStream by remember { mutableStateOf(true) }
     LaunchedEffect(atBottom) {
-        if (atBottom && listState.isScrollInProgress) followStream = true
-        else if (!atBottom && listState.isScrollInProgress) followStream = false
+        followStream = ChatScrollMath.shouldFollowAfterScroll(
+            wasFollowing = followStream,
+            atBottom = atBottom,
+            userScrolling = listState.isScrollInProgress
+        )
     }
 
     var railExpanded by remember { mutableStateOf(false) }

@@ -148,41 +148,16 @@ fun NotebookSourcesTab(
     }
 }
 
-private fun splitSections(body: String): List<String> {
-    val lines = body.split("\n")
-    val sections = mutableListOf<String>()
-    val buffer = StringBuilder()
-    fun flush() {
-        val text = buffer.toString().trim()
-        if (text.isNotEmpty()) sections.add(text)
-        buffer.setLength(0)
-    }
-    lines.forEach { line ->
-        if (line.trimStart().startsWith("#") && buffer.isNotEmpty()) {
-            flush()
-        }
-        buffer.append(line).append("\n")
-    }
-    flush()
-    return sections.ifEmpty { listOf(body) }
-}
-
 @Composable
 private fun SourceReader(note: Note, modifier: Modifier = Modifier) {
     val scroll = rememberScrollState()
     val accent = MaterialTheme.colorScheme.primary
-    val sections = remember(note.id, note.body) { splitSections(note.body) }
+    val sections = remember(note.id, note.body) { splitDocumentSections(note.body) }
     val tops = remember(note.id) { mutableMapOf<Int, Int>() }
 
     val currentSection by remember {
         derivedStateOf {
-            val offset = scroll.value
-            var active = 0
-            for (i in sections.indices) {
-                val top = tops[i] ?: continue
-                if (top <= offset + 1) active = i
-            }
-            active + 1
+            activeSectionNumber(sections.indices.map { tops[it] }, scroll.value)
         }
     }
 

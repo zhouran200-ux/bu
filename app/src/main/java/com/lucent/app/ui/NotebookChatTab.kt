@@ -172,8 +172,22 @@ fun NotebookChatTab(
     }
     var followStream by remember { mutableStateOf(true) }
     LaunchedEffect(atBottom) {
-        if (atBottom) followStream = true
-        else if (listState.isScrollInProgress) followStream = false
+        if (atBottom && listState.isScrollInProgress) followStream = true
+        else if (!atBottom && listState.isScrollInProgress) followStream = false
+    }
+
+    var railExpanded by remember { mutableStateOf(false) }
+    var railDragging by remember { mutableStateOf(false) }
+    var showHistorySheet by remember { mutableStateOf(false) }
+    var historyAnchorId by remember { mutableStateOf<Long?>(null) }
+    val railVisible by remember {
+        derivedStateOf { listState.isScrollInProgress || railExpanded || railDragging }
+    }
+    LaunchedEffect(railVisible, railExpanded) {
+        if (railVisible && railExpanded) {
+            delay(2600)
+            if (!railDragging) railExpanded = false
+        }
     }
 
     val prefs = remember(notebookId) {
@@ -229,6 +243,13 @@ fun NotebookChatTab(
     var answerToEdit by remember { mutableStateOf<UiChatMessage?>(null) }
     val streamingThought = remember { mutableStateOf("") }
     val lastDelete = remember { mutableStateOf<PendingChatDelete?>(null) }
+
+    fun openHistorySheet() {
+        historyAnchorId = listState.layoutInfo.visibleItemsInfo
+            .firstOrNull { it.index in 1..messages.size }
+            ?.let { messages.getOrNull(it.index - 1)?.id }
+        showHistorySheet = true
+    }
 
     fun settlePendingDelete() {
         val pending = pendingDelete ?: return
@@ -772,6 +793,63 @@ fun NotebookChatTab(
                     )
                 }
             }
+        }
+
+        ChatScrollRail(
+            listState = listState,
+            visible = railVisible && !isImeVisible,
+            expanded = railExpanded,
+            dragging = railDragging,
+            onRequestExpand = {
+                Haptics.tick(context)
+                railExpanded = true
+            },
+            onOpenHistory = {
+                Haptics.tick(context)
+                openHistorySheet()
+            },
+            onDragStart = {
+                railExpanded = true
+                railDragging = true
+                followStream = false
+            },
+            onDragFraction = { fraction ->
+                scope.launch { scrollChatToFraction(listState, fraction) }
+            },
+            onDragEnd = { railDragging = false },
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .navigationBarsPadding()
+                .padding(end = 6.dp)
+        )
+
+        if (showHistorySheet) {
+            ChatHistorySheet(
+                messages = messages.toList(),
+                currentMessageId = historyAnchorId,
+                streamingAnswerId = streamingAnswerId,
+                onMessageClick = { id ->
+                    showHistorySheet = false
+                    followStream = false
+                    val target = messages.indexOfFirst { it.id == id }
+                    if (target >= 0) {
+                        scope.launch { listState.animateScrollToItem(target + 1) }
+                    }
+                },
+                onTop = {
+                    showHistorySheet = false
+                    followStream = false
+                    scope.launch { listState.animateScrollToItem(0) }
+                },
+                onBottom = {
+                    showHistorySheet = false
+                    followStream = true
+                    scope.launch {
+                        listState.animateScrollToItem((listState.layoutInfo.totalItemsCount - 1).coerceAtLeast(0))
+                    }
+                },
+                onDismiss = { showHistorySheet = false }
+            )
         }
 
         if (showDialogueSettingsDialog) {

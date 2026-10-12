@@ -2,6 +2,7 @@ package com.lucent.app.ui
 
 import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.spring
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 
@@ -13,6 +14,9 @@ object LucentMotion {
     val Sheet = .9f to 380f
 
     fun toSpring(pair: Pair<Float, Float>): FiniteAnimationSpec<Float> =
+        spring(dampingRatio = pair.first, stiffness = pair.second)
+
+    fun toColor(pair: Pair<Float, Float>): FiniteAnimationSpec<Color> =
         spring(dampingRatio = pair.first, stiffness = pair.second)
 
     fun toIntOffset(pair: Pair<Float, Float>): FiniteAnimationSpec<IntOffset> =

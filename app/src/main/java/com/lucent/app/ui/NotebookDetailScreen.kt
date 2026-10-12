@@ -3,6 +3,7 @@ package com.lucent.app.ui
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -156,52 +157,69 @@ private fun NotebookDetailHeader(
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                val isChat = selectedTab == NotebookDetailTab.CHAT
-                Surface(
-                    shape = RoundedCornerShape(20.dp),
-                    color = if (isChat) tabPillSelected else Color.Transparent,
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(20.dp))
-                        .clickable { onSelectTab(NotebookDetailTab.CHAT) }
-                ) {
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier.padding(vertical = 8.dp)
-                    ) {
-                        Text(
-                            text = "对话",
-                            color = if (isChat) accent else onGradientMuted,
-                            fontSize = LucentTitles.SectionSize,
-                            fontWeight = if (isChat) FontWeight.Bold else FontWeight.Medium
-                        )
-                    }
-                }
+                TabPill(
+                    label = "对话",
+                    selected = selectedTab == NotebookDetailTab.CHAT,
+                    accent = accent,
+                    selectedBg = tabPillSelected,
+                    mutedColor = onGradientMuted,
+                    modifier = Modifier.weight(1f),
+                    onClick = { onSelectTab(NotebookDetailTab.CHAT) }
+                )
 
                 Spacer(modifier = Modifier.padding(horizontal = 2.dp))
 
-                val isSources = selectedTab == NotebookDetailTab.SOURCES
-                Surface(
-                    shape = RoundedCornerShape(20.dp),
-                    color = if (isSources) tabPillSelected else Color.Transparent,
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(20.dp))
-                        .clickable { onSelectTab(NotebookDetailTab.SOURCES) }
-                ) {
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier.padding(vertical = 8.dp)
-                    ) {
-                        Text(
-                            text = "来源 ($sourceCount)",
-                            color = if (isSources) accent else onGradientMuted,
-                            fontSize = LucentTitles.SectionSize,
-                            fontWeight = if (isSources) FontWeight.Bold else FontWeight.Medium
-                        )
-                    }
-                }
+                TabPill(
+                    label = "来源 ($sourceCount)",
+                    selected = selectedTab == NotebookDetailTab.SOURCES,
+                    accent = accent,
+                    selectedBg = tabPillSelected,
+                    mutedColor = onGradientMuted,
+                    modifier = Modifier.weight(1f),
+                    onClick = { onSelectTab(NotebookDetailTab.SOURCES) }
+                )
             }
         }
+    }
+}
+
+@Composable
+private fun TabPill(
+    label: String,
+    selected: Boolean,
+    accent: Color,
+    selectedBg: Color,
+    mutedColor: Color,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    val bg by androidx.compose.animation.animateColorAsState(
+        targetValue = if (selected) selectedBg else Color.Transparent,
+        animationSpec = LucentMotion.toColor(LucentMotion.Settle),
+        label = "tabPillBg"
+    )
+    val textColor by androidx.compose.animation.animateColorAsState(
+        targetValue = if (selected) accent else mutedColor,
+        animationSpec = LucentMotion.toColor(LucentMotion.Settle),
+        label = "tabPillText"
+    )
+    val interaction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(bg)
+            .clickable(
+                interactionSource = interaction,
+                indication = null
+            ) { onClick() }
+            .padding(vertical = 8.dp)
+    ) {
+        Text(
+            text = label,
+            color = textColor,
+            fontSize = LucentTitles.SectionSize,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
+        )
     }
 }

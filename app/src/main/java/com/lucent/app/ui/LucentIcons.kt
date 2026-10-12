@@ -83,9 +83,11 @@ object LucentIcons {
     val PresetBalanced: ImageVector by lazy {
         lineIcon(
             "PresetBalanced",
-            "m15 12 -9.373 9.373a1 1 0 0 1 -3.001 -3L12 9",
-            "m18 15 4 -4",
-            "m21.5 11.5 -1.914 -1.914A2 2 0 0 1 19 8.172v -0.344a2 2 0 0 0 -0.586 -1.414l-1.657 -1.657A6 6 0 0 0 12.516 3H9l1.243 1.243A6 6 0 0 1 12 8.485V10l2 2h1.172a2 2 0 0 1 1.414 0.586L18.5 14.5"
+            "M12 3v18",
+            "M3 7h18",
+            "M7 7l-4 7a4 4 0 0 0 8 0z",
+            "M17 7l-4 7a4 4 0 0 0 8 0z",
+            "M8 21h8"
         )
     }
 
@@ -101,9 +103,8 @@ object LucentIcons {
     val PresetMaximum: ImageVector by lazy {
         lineIcon(
             "PresetMaximum",
-            "M21 8a2 2 0 0 0 -1 -1.73l-7 -4a2 2 0 0 0 -2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7 -4A2 2 0 0 0 21 16Z",
-            "m3.3 7 8.7 5 8.7 -5",
-            "M12 22V12"
+            "m17 11 -5 -5 -5 5",
+            "m17 18 -5 -5 -5 5"
         )
     }
 

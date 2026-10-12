@@ -4,8 +4,10 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,8 +19,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -29,9 +29,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -45,6 +49,7 @@ import com.lucent.app.data.AppDatabase
 import com.lucent.app.data.MarkdownDocumentParser
 import com.lucent.app.data.Note
 import com.lucent.app.data.NotebookPurge
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
@@ -150,7 +155,7 @@ fun NotebookSourcesTab(
 
 @Composable
 private fun SourceReader(note: Note, modifier: Modifier = Modifier) {
-    val scroll = rememberScrollState()
+    val scroll = rememberSaveable(note.id, saver = ScrollState.Saver) { ScrollState(0) }
     val accent = MaterialTheme.colorScheme.primary
     val sections = remember(note.id, note.body) { splitDocumentSections(note.body) }
     val tops = remember(note.id) { mutableMapOf<Int, Int>() }
@@ -158,6 +163,16 @@ private fun SourceReader(note: Note, modifier: Modifier = Modifier) {
     val currentSection by remember {
         derivedStateOf {
             activeSectionNumber(sections.indices.map { tops[it] }, scroll.value)
+        }
+    }
+
+    var chipVisible by remember { mutableStateOf(true) }
+    LaunchedEffect(scroll.isScrollInProgress) {
+        if (scroll.isScrollInProgress) {
+            chipVisible = false
+        } else {
+            delay(500)
+            chipVisible = true
         }
     }
 
@@ -173,7 +188,9 @@ private fun SourceReader(note: Note, modifier: Modifier = Modifier) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .onGloballyPositioned { coords ->
-                            tops[index] = coords.boundsInParent().top.toInt()
+                            if (tops[index] == null) {
+                                tops[index] = coords.boundsInParent().top.toInt()
+                            }
                         }
                 ) {
                     MarkdownText(
@@ -186,26 +203,26 @@ private fun SourceReader(note: Note, modifier: Modifier = Modifier) {
         }
 
         AnimatedVisibility(
-            visible = sections.size > 1,
-            enter = fadeIn(),
-            exit = fadeOut(),
+            visible = sections.size > 1 && chipVisible,
+            enter = fadeIn(tween(220)),
+            exit = fadeOut(tween(150)),
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .padding(12.dp)
         ) {
             Surface(
-                shape = CircleShape,
+                shape = RoundedCornerShape(12.dp),
                 color = accent.copy(alpha = 0.9f),
                 shadowElevation = 4.dp
             ) {
                 Box(
                     contentAlignment = Alignment.Center,
-                    modifier = Modifier.size(34.dp)
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                 ) {
                     Text(
-                        text = "$currentSection",
+                        text = "$currentSection / ${sections.size}",
                         color = MaterialTheme.colorScheme.onPrimary,
-                        fontSize = 14.sp,
+                        fontSize = 13.sp,
                         fontWeight = LucentTitles.SectionWeight
                     )
                 }

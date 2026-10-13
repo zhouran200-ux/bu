@@ -52,7 +52,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -1430,8 +1429,7 @@ private fun BottomGlassComposer(
                 onValueChange = onInputChange,
                 textStyle = TextStyle(fontSize = 15.sp, color = onGradient),
                 cursorBrush = SolidColor(accent),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                keyboardActions = KeyboardActions(onSend = { onSend() }),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Default),
                 maxLines = 6,
                 modifier = Modifier
                     .fillMaxWidth()

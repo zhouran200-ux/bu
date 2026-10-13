@@ -22,6 +22,8 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -37,6 +39,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.lucent.app.AppNavigation
@@ -337,6 +340,14 @@ internal fun NotebookNameDialog(
 ) {
     val context = LocalContext.current
     var name by remember { mutableStateOf(initialName) }
+    fun submit() {
+        if (name.isBlank() && !allowBlankName) {
+            LucentToast.show(context, com.lucent.app.i18n.S.notebookNameRequired)
+        } else {
+            onConfirm(name)
+            onDismiss()
+        }
+    }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title, fontSize = LucentTitles.EntrySize, fontWeight = LucentTitles.EntryWeight) },
@@ -349,18 +360,13 @@ internal fun NotebookNameDialog(
                     { Text(placeholder, color = LocalOnGradientMuted.current) }
                 } else null,
                 singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { submit() }),
                 modifier = Modifier.fillMaxWidth()
             )
         },
         confirmButton = {
-            TextButton(onClick = {
-                if (name.isBlank() && !allowBlankName) {
-                    LucentToast.show(context, com.lucent.app.i18n.S.notebookNameRequired)
-                } else {
-                    onConfirm(name)
-                    onDismiss()
-                }
-            }) { Text(confirmLabel) }
+            TextButton(onClick = { submit() }) { Text(confirmLabel) }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text(com.lucent.app.i18n.S.actionCancel) }

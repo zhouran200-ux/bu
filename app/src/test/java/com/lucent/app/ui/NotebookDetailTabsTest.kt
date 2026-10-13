@@ -14,6 +14,25 @@ class NotebookDetailTabsTest {
     }
 
     @Test
+    fun sourcesBackReturnsToChatInsteadOfLeavingNotebook() {
+        assertEquals(NotebookDetailTab.CHAT, notebookBackTarget(NotebookDetailTab.SOURCES))
+    }
+
+    @Test
+    fun chatBackLeavesNotebook() {
+        assertEquals(null, notebookBackTarget(NotebookDetailTab.CHAT))
+    }
+
+    @Test
+    fun backDuringSwipeNeverSkipsChatParent() {
+        val tabs = NotebookDetailTab.entries
+        for (current in tabs) for (settled in tabs) for (target in tabs) {
+            val expected = if (listOf(current, settled, target).all { it == NotebookDetailTab.CHAT }) null else NotebookDetailTab.CHAT
+            assertEquals(expected, notebookBackTarget(current, settled, target))
+        }
+    }
+
+    @Test
     fun detailTabIndexMatchesPagerPage() {
         val tabs = NotebookDetailTab.entries
         assertEquals(0, tabs.indexOf(NotebookDetailTab.CHAT))

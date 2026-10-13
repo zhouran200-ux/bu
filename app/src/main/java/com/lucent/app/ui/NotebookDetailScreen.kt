@@ -48,6 +48,16 @@ enum class NotebookDetailTab {
     SOURCES
 }
 
+internal fun notebookBackTarget(
+    currentTab: NotebookDetailTab,
+    settledTab: NotebookDetailTab = currentTab,
+    targetTab: NotebookDetailTab = currentTab
+): NotebookDetailTab? = if (
+    currentTab != NotebookDetailTab.CHAT ||
+    settledTab != NotebookDetailTab.CHAT ||
+    targetTab != NotebookDetailTab.CHAT
+) NotebookDetailTab.CHAT else null
+
 @Composable
 fun NotebookDetailScreen(
     notebookId: Long,
@@ -73,9 +83,19 @@ fun NotebookDetailScreen(
         }
     }
 
-    BackHandler {
-        onBack()
+    val navigateBack: () -> Unit = {
+        val target = notebookBackTarget(
+            tabs[pagerState.currentPage],
+            tabs[pagerState.settledPage],
+            tabs[pagerState.targetPage]
+        )
+        if (target == null) {
+            onBack()
+        } else {
+            scope.launch { pagerState.scrollToPage(tabs.indexOf(target)) }
+        }
     }
+    BackHandler(enabled = active, onBack = navigateBack)
 
     LaunchedEffect(notebookId, reloadCount) {
         val items = db.notebookDao().getItemsOnce(notebookId)
@@ -99,7 +119,7 @@ fun NotebookDetailScreen(
                 onSelectTab = { tab ->
                     scope.launch { pagerState.animateScrollToPage(tabs.indexOf(tab)) }
                 },
-                onBack = onBack
+                onBack = navigateBack
             )
 
             HorizontalPager(

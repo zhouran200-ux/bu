@@ -4,6 +4,8 @@ plugins {
     id("com.google.devtools.ksp")
 }
 
+apply(from = rootProject.file("gradle/windows-test-classpath.gradle.kts"))
+
 val MARKETING_VERSION = "3.1.2"
 
 val ciVersionCode = (project.findProperty("versionCode") as String?)?.toIntOrNull()

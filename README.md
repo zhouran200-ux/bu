@@ -22,6 +22,8 @@
 ./gradlew :app:lintRelease          # 静态检查
 ```
 
+Windows 使用 `gradlew.bat` 执行同名任务。对于本地编码与 Gradle 编码不同的 Windows 环境，单测会自动生成类路径清单 JAR，避免中文目录名被 Java 启动器误读；无需移动项目或更改系统编码。清单位于纯 ASCII 路径的 Gradle 用户目录（否则使用临时目录）下的 `lucent-test-classpath`，按项目隔离；测试报告仍在 `app/build/reports/tests`。
+
 ## 云端构建
 
 推送到 `main` 即会自动运行 `build-apk.yml`，产出可直接安装的 APK 并附上构建产物。要打签名 Release 包，在仓库 Secrets 里配置 `LUCENT_KEYSTORE_BASE64` 与 `LUCENT_KEYSTORE_PASSWORD`。

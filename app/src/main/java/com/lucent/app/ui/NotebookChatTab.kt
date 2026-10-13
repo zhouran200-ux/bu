@@ -112,7 +112,6 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.lucent.app.AppNavigation
@@ -1035,45 +1034,44 @@ private fun AiMessageCard(
                     promptTokens = message.promptTokens,
                     chars = message.content.length
                 )
-                Row(
-                    modifier = Modifier.padding(top = 2.dp, start = 2.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    BubbleAction(
-                        icon = Icons.Rounded.ContentCopy,
-                        label = "复制",
-                        tint = LocalOnGradient.current,
-                        onClick = { copyTextToClipboard(context, message.content) }
-                    )
-                    BubbleAction(
-                        icon = Icons.Rounded.Refresh,
-                        label = "重新生成",
-                        tint = LocalOnGradient.current,
-                        enabled = actionsEnabled,
-                        onClick = onRegenerate
-                    )
-                    BubbleAction(
-                        icon = Icons.Rounded.Edit,
-                        label = "编辑",
-                        tint = LocalOnGradient.current,
-                        enabled = actionsEnabled,
-                        onClick = onEditAnswer
-                    )
-                    BubbleAction(
-                        icon = Icons.Rounded.Delete,
-                        label = "删除",
-                        tint = LocalOnGradient.current,
-                        enabled = actionsEnabled,
-                        onClick = onDelete
-                    )
+                Column(modifier = Modifier.padding(top = 2.dp, start = 2.dp)) {
                     if (stats.isNotEmpty()) {
                         Text(
                             text = stats,
                             color = LocalOnGradientMuted.current.copy(alpha = 0.75f),
-                            fontSize = 11.sp,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.padding(start = 6.dp)
+                            fontSize = 10.sp,
+                            lineHeight = 14.sp,
+                            softWrap = true,
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 2.dp)
+                        )
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        BubbleAction(
+                            icon = Icons.Rounded.ContentCopy,
+                            label = "复制",
+                            tint = LocalOnGradient.current,
+                            onClick = { copyTextToClipboard(context, message.content) }
+                        )
+                        BubbleAction(
+                            icon = Icons.Rounded.Refresh,
+                            label = "重新生成",
+                            tint = LocalOnGradient.current,
+                            enabled = actionsEnabled,
+                            onClick = onRegenerate
+                        )
+                        BubbleAction(
+                            icon = Icons.Rounded.Edit,
+                            label = "编辑",
+                            tint = LocalOnGradient.current,
+                            enabled = actionsEnabled,
+                            onClick = onEditAnswer
+                        )
+                        BubbleAction(
+                            icon = Icons.Rounded.Delete,
+                            label = "删除",
+                            tint = LocalOnGradient.current,
+                            enabled = actionsEnabled,
+                            onClick = onDelete
                         )
                     }
                 }

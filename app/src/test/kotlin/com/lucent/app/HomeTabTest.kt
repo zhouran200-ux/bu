@@ -50,7 +50,7 @@ class HomeTabTest {
         assertEquals(11.sp, style.fontSize)
         assertEquals(14.sp, style.lineHeight)
         assertEquals(0.sp, style.letterSpacing)
-        assertEquals(false, style.platformStyle?.includeFontPadding)
+        assertEquals(false, style.platformStyle?.paragraphStyle?.includeFontPadding)
         assertEquals(LineHeightStyle.Alignment.Center, style.lineHeightStyle?.alignment)
         assertEquals(LineHeightStyle.Trim.Both, style.lineHeightStyle?.trim)
         assertEquals(base.fontFamily, style.fontFamily)

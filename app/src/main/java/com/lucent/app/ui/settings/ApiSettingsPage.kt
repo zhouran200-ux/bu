@@ -405,6 +405,71 @@ private fun FloatingCopyButton(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun ResponseCard(
+    body: String,
+    charCount: Int,
+    copied: Boolean,
+    onCopy: () -> Unit
+) {
+    val onGradient = LocalOnGradient.current
+    val onGradientMuted = LocalOnGradientMuted.current
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .frostedGlass(cornerRadius = 12.dp)
+            .combinedClickable(onClick = { }, onLongClick = onCopy)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(10.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(onGradient.copy(alpha = 0.05f))
+                    .padding(8.dp)
+            ) {
+                val scrollState = rememberScrollState()
+                Text(
+                    text = body.ifBlank { "(空响应体)" },
+                    color = onGradient,
+                    fontSize = 11.sp,
+                    lineHeight = 15.sp,
+                    fontFamily = FontFamily.Monospace,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 160.dp)
+                        .verticalScroll(scrollState)
+                )
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "长按卡片或点右上角按钮复制全文",
+                    color = onGradientMuted.copy(alpha = 0.7f),
+                    fontSize = 10.sp
+                )
+                Text(
+                    text = "$charCount 字符",
+                    color = onGradientMuted.copy(alpha = 0.7f),
+                    fontSize = 10.sp
+                )
+            }
+        }
+        Box(modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)) {
+            FloatingCopyButton(copied = copied, onClick = onCopy)
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 internal fun ApiConfigSettingsPage(
@@ -447,6 +512,7 @@ internal fun ApiConfigSettingsPage(
     var testStatusText by remember { mutableStateOf("") }
     var testSuccess by remember { mutableStateOf(false) }
     var lastTestResult by remember { mutableStateOf<TestConnectionResult?>(null) }
+    var fetchedModelsReport by remember { mutableStateOf("") }
     var copiedRawHint by remember { mutableStateOf(false) }
     var customModelInput by remember { mutableStateOf("") }
     val choices = modelChoices(fetchedModels, models)
@@ -744,6 +810,8 @@ internal fun ApiConfigSettingsPage(
                         onLoadingChange(true)
                         onErrorTextChange("")
                         testStatusText = ""
+                        lastTestResult = null
+                        fetchedModelsReport = ""
                         scope.launch {
                             val apiSpecEnum = when (spec) {
                                 "anthropic" -> ApiSpec.ANTHROPIC
@@ -762,6 +830,7 @@ internal fun ApiConfigSettingsPage(
                                     onErrorTextChange(S.apiModelsEmpty)
                                 } else {
                                     fetchedModels = list
+                                    fetchedModelsReport = list.mapIndexed { i, m -> "${i + 1}. $m" }.joinToString("\n")
                                     pickerOpen = true
                                 }
                             }.onFailure {
@@ -981,6 +1050,7 @@ internal fun ApiConfigSettingsPage(
                 testStatusText = ""
                 testSuccess = false
                 lastTestResult = null
+                fetchedModelsReport = ""
                 onErrorTextChange("")
                 scope.launch {
                     val apiSpecEnum = when (spec) {
@@ -1050,68 +1120,27 @@ internal fun ApiConfigSettingsPage(
         }
 
         lastTestResult?.let { res ->
-            val prettyBody = res.prettyResponseBody()
+            val prettyBody = res.prettyResponseBody().ifBlank { res.errorMessage ?: "" }
             val textToCopy = if (res.rawResponseBody.isNotBlank()) res.rawResponseBody else res.toFullReport()
-
             Spacer(modifier = Modifier.height(8.dp))
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .frostedGlass(cornerRadius = 12.dp)
-                    .combinedClickable(
-                        onClick = { },
-                        onLongClick = { copyRawResponse(textToCopy) }
-                    )
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(10.dp)
-                ) {
-                    Spacer(modifier = Modifier.height(24.dp))
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(onGradient.copy(alpha = 0.05f))
-                            .padding(8.dp)
-                    ) {
-                        val scrollState = rememberScrollState()
-                        Text(
-                            text = prettyBody.ifBlank { res.errorMessage ?: "(空响应体)" },
-                            color = onGradient,
-                            fontSize = 11.sp,
-                            lineHeight = 15.sp,
-                            fontFamily = FontFamily.Monospace,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(max = 160.dp)
-                                .verticalScroll(scrollState)
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "长按卡片或点右上角按钮复制全文",
-                            color = onGradientMuted.copy(alpha = 0.7f),
-                            fontSize = 10.sp
-                        )
-                        Text(
-                            text = "${res.rawResponseBody.length} 字符",
-                            color = onGradientMuted.copy(alpha = 0.7f),
-                            fontSize = 10.sp
-                        )
-                    }
-                }
-                Box(modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)) {
-                    FloatingCopyButton(copied = copiedRawHint) { copyRawResponse(textToCopy) }
-                }
-            }
+            ResponseCard(
+                body = prettyBody,
+                charCount = res.rawResponseBody.length,
+                copied = copiedRawHint,
+                onCopy = { copyRawResponse(textToCopy) }
+            )
         }
+
+        if (fetchedModelsReport.isNotBlank()) {
+            Spacer(modifier = Modifier.height(8.dp))
+            ResponseCard(
+                body = fetchedModelsReport,
+                charCount = fetchedModelsReport.length,
+                copied = copiedRawHint,
+                onCopy = { copyRawResponse(fetchedModelsReport) }
+            )
+        }
+
         if (errorText.isNotBlank()) {
             Spacer(modifier = Modifier.height(6.dp))
             Text(errorText, color = MaterialTheme.colorScheme.error, fontSize = 12.sp)

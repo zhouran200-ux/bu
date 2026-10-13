@@ -2,9 +2,7 @@ package com.lucent.app
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -22,6 +20,7 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -31,9 +30,11 @@ import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.PlatformTextStyle
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -66,6 +67,17 @@ enum class HomeTab {
     }
 }
 
+internal fun capsuleNavLabelStyle(base: TextStyle): TextStyle = base.copy(
+    fontSize = 11.sp,
+    lineHeight = 14.sp,
+    letterSpacing = 0.sp,
+    platformStyle = PlatformTextStyle(includeFontPadding = false),
+    lineHeightStyle = LineHeightStyle(
+        alignment = LineHeightStyle.Alignment.Center,
+        trim = LineHeightStyle.Trim.Both
+    )
+)
+
 @Composable
 internal fun CapsuleNavItem(
     tab: HomeTab,
@@ -87,12 +99,6 @@ internal fun CapsuleNavItem(
         animationSpec = tween(220, easing = FastOutSlowInEasing),
         label = "tabBgAlpha"
     )
-    val animScale by animateFloatAsState(
-        targetValue = if (selected) 1f else 0.94f,
-        animationSpec = spring(stiffness = Spring.StiffnessMediumLow, dampingRatio = Spring.DampingRatioLowBouncy),
-        label = "tabScale"
-    )
-
     Column(
         modifier = modifier
             .fillMaxHeight()
@@ -101,10 +107,6 @@ internal fun CapsuleNavItem(
             .clickable {
                 com.lucent.app.ui.Haptics.tick(context)
                 onClick()
-            }
-            .graphicsLayer {
-                scaleX = animScale
-                scaleY = animScale
             }
             .padding(vertical = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -120,7 +122,7 @@ internal fun CapsuleNavItem(
         Text(
             tab.label,
             color = animTint,
-            fontSize = 11.sp,
+            style = capsuleNavLabelStyle(MaterialTheme.typography.labelSmall),
             maxLines = 1,
             textAlign = TextAlign.Center
         )

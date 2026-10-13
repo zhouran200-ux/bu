@@ -83,11 +83,11 @@ object LucentIcons {
     val PresetBalanced: ImageVector by lazy {
         lineIcon(
             "PresetBalanced",
-            "M12 3v18",
-            "M3 7h18",
-            "M7 7l-4 7a4 4 0 0 0 8 0z",
-            "M17 7l-4 7a4 4 0 0 0 8 0z",
-            "M8 21h8"
+            "M12 4v16",
+            "M5 8h14",
+            "M5 8v3",
+            "M19 8v3",
+            "M8 20h8"
         )
     }
 

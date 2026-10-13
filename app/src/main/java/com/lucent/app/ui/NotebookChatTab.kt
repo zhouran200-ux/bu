@@ -48,7 +48,6 @@ import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -152,9 +151,17 @@ data class UiChatMessage(
 fun NotebookChatTab(
     notebookId: Long,
     sourceNotes: List<Note>,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    active: Boolean = true
 ) {
     val context = LocalContext.current
+    val session = remember(notebookId) { ChatSessions.forNotebook(context, notebookId) }
+    if (!session.ready) {
+        Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text(session.storageError ?: "正在读取对话…", color = LocalOnGradient.current)
+        }
+        return
+    }
     val notificationPermission = androidx.activity.compose.rememberLauncherForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
     ) { granted ->
@@ -162,16 +169,19 @@ fun NotebookChatTab(
     }
     val db = remember { AppDatabase.getInstance(context) }
     val scope = rememberCoroutineScope()
-    val listState = rememberLazyListState()
+    val messages = session.messages
+    val readingKeys = listOf("header") + messages.map { "message:${it.id}" } + "footer"
+    val listState = rememberReadingListState("chat:$notebookId", readingKeys)
     val atBottom by remember {
         derivedStateOf {
-            val info = listState.layoutInfo
-            val last = info.visibleItemsInfo.lastOrNull()
-            last == null || last.index >= info.totalItemsCount - 2
+            !listState.canScrollForward
         }
     }
-    var followStream by remember { mutableStateOf(true) }
-    LaunchedEffect(atBottom) {
+    var followStream by remember(notebookId) { mutableStateOf(false) }
+    LaunchedEffect(active) {
+        if (!active) followStream = false
+    }
+    LaunchedEffect(atBottom, listState.isScrollInProgress) {
         followStream = ChatScrollMath.shouldFollowAfterScroll(
             wasFollowing = followStream,
             atBottom = atBottom,
@@ -236,8 +246,6 @@ fun NotebookChatTab(
     var showDialogueSettingsDialog by remember { mutableStateOf(false) }
     var showProfileModelPickerSheet by remember { mutableStateOf(false) }
 
-    val session = remember(notebookId) { ChatSessions.forNotebook(context, notebookId) }
-    val messages = session.messages
     val placementSpec = rememberReorderPlacementSpec()
     val streamingAnswerId = session.streamingAnswerId
     var pendingDelete by remember { mutableStateOf<PendingChatDelete?>(null) }
@@ -520,7 +528,7 @@ fun NotebookChatTab(
         }
     }
     LaunchedEffect(streamProgress) {
-        if (streamingAnswerId != null && followStream && streamProgress > 0) {
+        if (active && streamingAnswerId != null && followStream && streamProgress > 0) {
             listState.scrollToItem((listState.layoutInfo.totalItemsCount - 1).coerceAtLeast(0))
         }
     }
@@ -543,8 +551,11 @@ fun NotebookChatTab(
         startAnswer(text)
     }
 
+    var previousImeVisible by remember { mutableStateOf(isImeVisible) }
     LaunchedEffect(isImeVisible) {
-        if (isImeVisible && messages.isNotEmpty()) {
+        val opened = isImeVisible && !previousImeVisible
+        previousImeVisible = isImeVisible
+        if (active && opened && followStream && messages.isNotEmpty()) {
             delay(50)
             listState.animateScrollToItem((messages.size - 1).coerceAtLeast(0))
         }
@@ -570,9 +581,9 @@ fun NotebookChatTab(
                     .padding(horizontal = 14.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                item { Spacer(modifier = Modifier.height(8.dp)) }
+                item(key = "header") { Spacer(modifier = Modifier.height(8.dp)) }
 
-                itemsIndexed(messages, key = { _, msg -> msg.id }) { _, msg ->
+                itemsIndexed(messages, key = { _, msg -> "message:${msg.id}" }) { _, msg ->
                     val actionsEnabled = session.ready && streamingAnswerId == null
                     val itemModifier = Modifier.animateItem(
                         fadeInSpec = tween(200),
@@ -591,6 +602,7 @@ fun NotebookChatTab(
                         AiMessageCard(
                             modifier = itemModifier,
                             message = msg,
+                            readingKey = "chat:$notebookId:thought:${msg.id}",
                             streaming = msg.id == streamingAnswerId,
                             liveThought = if (msg.id == streamingAnswerId) streamingThought else null,
                             actionsEnabled = actionsEnabled,
@@ -601,7 +613,7 @@ fun NotebookChatTab(
                     }
                 }
 
-                item { Spacer(modifier = Modifier.height(8.dp)) }
+                item(key = "footer") { Spacer(modifier = Modifier.height(8.dp)) }
             }
 
             BottomGlassComposer(
@@ -886,6 +898,7 @@ private fun UserMessageCard(
 private fun AiMessageCard(
     modifier: Modifier = Modifier,
     message: UiChatMessage,
+    readingKey: String,
     streaming: Boolean = false,
     liveThought: State<String>? = null,
     actionsEnabled: Boolean = true,
@@ -901,7 +914,7 @@ private fun AiMessageCard(
     ) {
         if (streaming || liveThought != null || !message.reasoningText.isNullOrBlank()) {
             ThinkingLane(
-                messageId = message.id,
+                readingKey = readingKey,
                 liveThought = liveThought,
                 storedThought = message.reasoningText.orEmpty(),
                 tag = message.reasoningTag,
@@ -1175,7 +1188,7 @@ private fun EditMessageDialog(
 
 @Composable
 private fun ThinkingLane(
-    messageId: Long,
+    readingKey: String,
     liveThought: State<String>?,
     storedThought: String,
     tag: String?,
@@ -1184,12 +1197,20 @@ private fun ThinkingLane(
 ) {
     val accent = MaterialTheme.colorScheme.primary
     val onGradientMuted = LocalOnGradientMuted.current
-    var expanded by remember(messageId) { mutableStateOf(streaming) }
-    val laneState = rememberScrollState()
+    val context = LocalContext.current.applicationContext
+    val savedLane = remember(readingKey) { ReadingPositionMemory.read(context, readingKey) }
+    var expanded by remember(readingKey) { mutableStateOf(savedLane?.itemKey?.let { it == "expanded" } ?: streaming) }
+    val laneState = remember(readingKey) { androidx.compose.foundation.ScrollState(savedLane?.offset ?: 0) }
     val thought = liveThought?.value ?: storedThought
-
-    LaunchedEffect(streaming) {
-        if (!streaming) expanded = false
+    LaunchedEffect(readingKey, laneState) {
+        androidx.compose.runtime.snapshotFlow { expanded to laneState.value }.collect { (open, offset) ->
+            ReadingPositionMemory.write(context, readingKey, ReadingPosition(if (open) "expanded" else "collapsed", 0, offset))
+        }
+    }
+    DisposableEffect(readingKey, laneState) {
+        onDispose {
+            ReadingPositionMemory.write(context, readingKey, ReadingPosition(if (expanded) "expanded" else "collapsed", 0, laneState.value))
+        }
     }
 
     val title = when {

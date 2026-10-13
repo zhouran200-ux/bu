@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -144,16 +143,17 @@ fun NotebookSourcesTab(
             }
         } else {
             key(current.id) {
-                SourceReader(note = current, modifier = Modifier.fillMaxSize())
+                SourceReader(notebookId = notebookId, note = current, modifier = Modifier.fillMaxSize())
             }
         }
     }
 }
 
 @Composable
-private fun SourceReader(note: Note, modifier: Modifier = Modifier) {
-    val listState = rememberLazyListState()
+private fun SourceReader(notebookId: Long, note: Note, modifier: Modifier = Modifier) {
     val blocks = remember(note.id, note.body) { splitRenderBlocks(note.body) }
+    val readingKeys = remember(blocks) { blocks.indices.map { "block:$it" } + "footer" }
+    val listState = rememberReadingListState("source:$notebookId:${note.id}", readingKeys)
     val pureWhite = LocalPureWhite.current
     val currentSectionTitle by remember(blocks, note.title, listState) {
         derivedStateOf {
@@ -168,13 +168,13 @@ private fun SourceReader(note: Note, modifier: Modifier = Modifier) {
             contentPadding = PaddingValues(start = 18.dp, top = 60.dp, end = 18.dp, bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            itemsIndexed(blocks, key = { index, _ -> index }) { _, block ->
+            itemsIndexed(blocks, key = { index, _ -> readingKeys[index] }) { _, block ->
                 MarkdownText(
                     text = block.text,
                     modifier = Modifier.fillMaxWidth()
                 )
             }
-            item { Spacer(modifier = Modifier.height(48.dp)) }
+            item(key = "footer") { Spacer(modifier = Modifier.height(48.dp)) }
         }
 
         Surface(

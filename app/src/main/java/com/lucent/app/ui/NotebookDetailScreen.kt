@@ -51,7 +51,8 @@ enum class NotebookDetailTab {
 @Composable
 fun NotebookDetailScreen(
     notebookId: Long,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    active: Boolean = true
 ) {
     val context = LocalContext.current
     val db = remember { AppDatabase.getInstance(context) }
@@ -114,7 +115,8 @@ fun NotebookDetailScreen(
                         NotebookChatTab(
                             notebookId = notebookId,
                             sourceNotes = sourceNotes,
-                            modifier = Modifier.fillMaxSize()
+                            modifier = Modifier.fillMaxSize(),
+                            active = active && selectedTab == NotebookDetailTab.CHAT
                         )
                     }
                     NotebookDetailTab.SOURCES -> {

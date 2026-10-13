@@ -120,6 +120,7 @@ fun NotebooksScreen(
         NotebookDetailScreen(
             notebookId = open,
             onBack = { openNotebookId = null },
+            active = active,
         )
         return
     }
@@ -136,6 +137,7 @@ fun NotebooksScreen(
                     AppScope.io.launch {
                         try {
                             NotebookPurge.purge(db, target.id)
+                            ReadingPositionMemory.clearNotebook(context, target.id)
                             LucentToast.show(context, com.lucent.app.i18n.S.notebookDeletedToast)
                         } catch (e: IllegalStateException) {
                             LucentToast.show(context, e.message ?: "删除失败")

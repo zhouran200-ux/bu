@@ -1,0 +1,162 @@
+package com.lucent.app.chat
+
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import com.lucent.app.network.ChatCompletionResult
+import com.lucent.app.network.StreamCallHandle
+import com.lucent.app.ui.StreamUiScheduler
+import com.lucent.app.ui.UiChatMessage
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
+class ChatSession(
+    private val dispatcher: CoroutineDispatcher,
+    private val load: suspend () -> List<UiChatMessage>,
+    private val save: suspend (UiChatMessage) -> Unit,
+    private val onRunningChanged: (Boolean) -> Unit = {}
+) {
+    private val scope = CoroutineScope(SupervisorJob() + dispatcher)
+    val messages = mutableStateListOf<UiChatMessage>()
+    val thought = mutableStateOf("")
+    var streamingAnswerId by mutableStateOf<Long?>(null)
+        private set
+    var ready by mutableStateOf(false)
+        private set
+    var storageError by mutableStateOf<String?>(null)
+        private set
+    private var generation: Job? = null
+    private var handle: StreamCallHandle? = null
+    private var writeTail: Job? = null
+    private var unavailable = false
+
+    init {
+        scope.launch {
+            try {
+                messages.addAll(load())
+                ready = !unavailable
+            } catch (e: Exception) {
+                storageError = "读取对话失败：${e.message}"
+            }
+        }
+    }
+
+    fun write(block: suspend () -> Unit): Job {
+        if (unavailable) return Job().apply { complete() }
+        val previous = writeTail
+        return scope.launch(start = CoroutineStart.LAZY) {
+            previous?.join()
+            try {
+                block()
+            } catch (e: Exception) {
+                storageError = "保存对话失败：${e.message}"
+            }
+        }.also { writeTail = it; it.start() }
+    }
+
+    fun saveMessage(message: UiChatMessage) = write { save(message) }
+
+    fun start(
+        answerId: Long,
+        reasoningTag: String?,
+        stream: suspend (StreamCallHandle, suspend (String, String?) -> Unit) -> Result<ChatCompletionResult>
+    ): Boolean {
+        if (!ready || streamingAnswerId != null) return false
+        val slot = messages.indexOfFirst { it.id == answerId }
+        if (slot < 0) return false
+        onRunningChanged(true)
+        val initial = messages[slot].copy(content = "", reasoningText = null, reasoningTag = reasoningTag,
+            answerSeconds = 0, promptTokens = 0, cachedTokens = 0)
+        messages[slot] = initial
+        thought.value = ""
+        val callHandle = StreamCallHandle()
+        handle = callHandle
+        streamingAnswerId = answerId
+        val job = scope.launch(start = CoroutineStart.UNDISPATCHED) {
+            val startedAt = System.currentTimeMillis()
+            val scheduler = StreamUiScheduler(
+                onThought = { thought.value = it },
+                onFlush = { content, reasoning ->
+                    update(initial.copy(content = content, reasoningText = reasoning))
+                    thought.value = reasoning.orEmpty()
+                }
+            )
+            var result: ChatCompletionResult? = null
+            var failure: Throwable? = null
+            try {
+                saveMessage(initial).join()
+                val response = stream(callHandle) { text, reasoning ->
+                    withContext(dispatcher) { scheduler.append(text, reasoning) }
+                }
+                result = response.getOrNull()
+                failure = response.exceptionOrNull()
+            } catch (e: CancellationException) {
+                failure = e
+            } catch (e: Exception) {
+                failure = e
+            } finally {
+                withContext(NonCancellable) {
+                    scheduler.forceFlush()
+                    val partial = scheduler.getFinalContent()
+                    val content = when {
+                        callHandle.isCancelled -> partial.ifBlank { "（已停止生成）" }
+                        result != null -> result.content.ifBlank { partial }.ifBlank { "（模型返回了空回复）" }
+                        partial.isNotBlank() -> "$partial\n\n[网络中断：${failure?.message ?: "连接已关闭"}，已保留已生成内容]"
+                        else -> "【请求失败】${failure?.message ?: "网络或接口异常"}\n\n请检查网络连接、API 密钥与模型端点配置。"
+                    }
+                    val final = initial.copy(
+                        content = content,
+                        reasoningText = result?.reasoningText ?: scheduler.getFinalReasoning(),
+                        answerSeconds = ((System.currentTimeMillis() - startedAt) / 1000).toInt().coerceAtLeast(1),
+                        promptTokens = result?.promptTokens ?: 0,
+                        cachedTokens = result?.cachedTokens ?: 0
+                    )
+                    update(final)
+                    try {
+                        saveMessage(final).join()
+                    } finally {
+                        handle = null
+                        generation = null
+                        streamingAnswerId = null
+                        thought.value = ""
+                        onRunningChanged(false)
+                    }
+                }
+            }
+        }
+        generation = job.takeUnless { it.isCompleted }
+        return true
+    }
+
+    suspend fun prepareDelete() {
+        check(streamingAnswerId == null) { "请先停止此笔记本中的回答，再删除笔记本" }
+        unavailable = true
+        ready = false
+        storageError = "笔记本正在删除或已删除"
+        writeTail?.join()
+    }
+
+    fun deletionFailed() {
+        unavailable = false
+        ready = true
+        storageError = "删除失败，请重试"
+    }
+
+    fun stop() {
+        handle?.cancel()
+        generation?.cancel()
+    }
+
+    private fun update(message: UiChatMessage) {
+        val index = messages.indexOfFirst { it.id == message.id }
+        if (index >= 0) messages[index] = message
+    }
+}

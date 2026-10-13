@@ -1,12 +1,17 @@
 package com.lucent.app.network
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
+import okhttp3.Call
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
+import org.json.JSONException
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
@@ -105,16 +110,37 @@ data class TestConnectionResult(
 }
 
 class StreamCallHandle {
-    @Volatile
-    private var call: okhttp3.Call? = null
+    private val lock = Any()
+    private var call: Call? = null
 
-    fun attach(value: okhttp3.Call) {
-        call = value
+    @Volatile
+    var isCancelled: Boolean = false
+        private set
+
+    fun attach(value: Call) {
+        val shouldCancel = synchronized(lock) {
+            if (isCancelled) {
+                true
+            } else {
+                call = value
+                false
+            }
+        }
+        if (shouldCancel) value.cancel()
+    }
+
+    fun detach(value: Call) {
+        synchronized(lock) {
+            if (call === value) call = null
+        }
     }
 
     fun cancel() {
-        call?.cancel()
-        call = null
+        val callToCancel = synchronized(lock) {
+            isCancelled = true
+            call.also { call = null }
+        }
+        callToCancel?.cancel()
     }
 }
 
@@ -126,10 +152,12 @@ object LlmClient {
             .build()
     }
 
-    private val streamClient by lazy {
+    internal val streamClient by lazy {
         OkHttpClient.Builder()
             .connectTimeout(20, TimeUnit.SECONDS)
-            .readTimeout(120, TimeUnit.SECONDS)
+            .readTimeout(0, TimeUnit.SECONDS)
+            .callTimeout(0, TimeUnit.SECONDS)
+            .retryOnConnectionFailure(false)
             .build()
     }
 
@@ -380,7 +408,15 @@ object LlmClient {
         rawEndpoint: Boolean = false,
         onChunk: suspend (deltaContent: String, deltaReasoning: String?) -> Unit
     ): Result<ChatCompletionResult> = withContext(Dispatchers.IO) {
+        fun ensureStreamActive() {
+            coroutineContext.ensureActive()
+            if (handle?.isCancelled == true) {
+                throw CancellationException("Stream cancelled")
+            }
+        }
+
         try {
+            ensureStreamActive()
             val trimmed = baseUrl.trim().trimEnd('/')
             val jsonMediaType = "application/json; charset=utf-8".toMediaType()
             val requestBuilder = Request.Builder()
@@ -520,110 +556,130 @@ object LlmClient {
 
             val call = streamClient.newCall(requestBuilder.build())
             handle?.attach(call)
-            val response = call.execute()
-            if (!response.isSuccessful) {
-                val bodyStr = response.body?.string().orEmpty()
-                val errMsg = try {
-                    val json = JSONObject(bodyStr)
-                    val errorObj = json.optJSONObject("error")
-                    errorObj?.optString("message") ?: bodyStr.take(200)
-                } catch (_: Exception) {
-                    bodyStr.take(200)
-                }
-                return@withContext Result.failure(Exception("HTTP ${response.code}: ${errMsg.ifBlank { response.message }}"))
+            val cancellationSignal = Job(coroutineContext[Job])
+            cancellationSignal.invokeOnCompletion { cause ->
+                if (cause != null) call.cancel()
             }
+            try {
+                ensureStreamActive()
+                call.execute().use { response ->
+                    ensureStreamActive()
+                    if (!response.isSuccessful) {
+                        val bodyStr = response.body?.string().orEmpty()
+                        ensureStreamActive()
+                        val errMsg = try {
+                            val json = JSONObject(bodyStr)
+                            val errorObj = json.optJSONObject("error")
+                            errorObj?.optString("message") ?: bodyStr.take(200)
+                        } catch (_: JSONException) {
+                            bodyStr.take(200)
+                        }
+                        return@withContext Result.failure(Exception("HTTP ${response.code}: ${errMsg.ifBlank { response.message }}"))
+                    }
 
-            val fullContent = StringBuilder()
-            val fullReasoning = StringBuilder()
-            var usage = StreamUsage()
-            val source = response.body?.source() ?: return@withContext Result.failure(Exception("响应数据为空"))
+                    val fullContent = StringBuilder()
+                    val fullReasoning = StringBuilder()
+                    var usage = StreamUsage()
+                    val source = response.body?.source() ?: return@withContext Result.failure(Exception("响应数据为空"))
 
-            while (!source.exhausted()) {
-                val line = source.readUtf8Line() ?: break
-                val trimmedLine = line.trim()
-                if (trimmedLine.startsWith("data:")) {
-                    val data = trimmedLine.removePrefix("data:").trim()
-                    if (data == "[DONE]") break
-                    if (data.isBlank()) continue
+                    while (true) {
+                        ensureStreamActive()
+                        val line = source.readUtf8Line() ?: break
+                        ensureStreamActive()
+                        val trimmedLine = line.trim()
+                        if (trimmedLine.startsWith("data:")) {
+                            val data = trimmedLine.removePrefix("data:").trim()
+                            if (data == "[DONE]") break
+                            if (data.isBlank()) continue
 
-                    try {
-                        when (spec) {
-                            ApiSpec.OPENAI -> {
-                                val json = JSONObject(data)
-                                StreamUsageParser.parse(spec, json)?.let { usage = it }
-                                val choices = json.optJSONArray("choices")
-                                val delta = choices?.optJSONObject(0)?.optJSONObject("delta")
-                                if (delta != null) {
-                                    val content = delta.optString("content", "")
-                                    val reasoning = delta.optString("reasoning_content", "")
-                                        .ifBlank { delta.optString("reasoning", "") }
-                                        .ifBlank { null }
-                                    if (content.isNotEmpty() || reasoning != null) {
-                                        if (content.isNotEmpty()) fullContent.append(content)
-                                        if (reasoning != null) fullReasoning.append(reasoning)
-                                        onChunk(content, reasoning)
-                                    }
-                                }
+                            val json = try {
+                                JSONObject(data)
+                            } catch (_: JSONException) {
+                                continue
                             }
-                            ApiSpec.GOOGLE -> {
-                                val json = JSONObject(data)
-                                StreamUsageParser.parse(spec, json)?.let { usage = it }
-                                val candidates = json.optJSONArray("candidates")
-                                val contentObj = candidates?.optJSONObject(0)?.optJSONObject("content")
-                                val parts = contentObj?.optJSONArray("parts") ?: JSONArray()
-                                for (i in 0 until parts.length()) {
-                                    val part = parts.optJSONObject(i) ?: continue
-                                    val isThought = part.optBoolean("thought", false) || part.has("thought")
-                                    val text = part.optString("text", "")
-                                    if (text.isNotEmpty()) {
-                                        if (isThought) {
-                                            fullReasoning.append(text)
-                                            onChunk("", text)
-                                        } else {
-                                            fullContent.append(text)
-                                            onChunk(text, null)
+                            if (spec == ApiSpec.ANTHROPIC && json.optString("type") == "message_stop") break
+                            when (spec) {
+                                ApiSpec.OPENAI -> {
+                                    StreamUsageParser.parse(spec, json)?.let { usage = it }
+                                    val choices = json.optJSONArray("choices")
+                                    val delta = choices?.optJSONObject(0)?.optJSONObject("delta")
+                                    if (delta != null) {
+                                        val content = delta.optString("content", "")
+                                        val reasoning = delta.optString("reasoning_content", "")
+                                            .ifBlank { delta.optString("reasoning", "") }
+                                            .ifBlank { null }
+                                        if (content.isNotEmpty() || reasoning != null) {
+                                            if (content.isNotEmpty()) fullContent.append(content)
+                                            if (reasoning != null) fullReasoning.append(reasoning)
+                                            onChunk(content, reasoning)
                                         }
                                     }
                                 }
-                            }
-                            ApiSpec.ANTHROPIC -> {
-                                val json = JSONObject(data)
-                                StreamUsageParser.parse(spec, json)?.let { usage = it }
-                                val delta = json.optJSONObject("delta")
-                                if (delta != null) {
-                                    when (delta.optString("type")) {
-                                        "text_delta" -> {
-                                            val text = delta.optString("text", "")
-                                            if (text.isNotEmpty()) {
+                                ApiSpec.GOOGLE -> {
+                                    StreamUsageParser.parse(spec, json)?.let { usage = it }
+                                    val candidates = json.optJSONArray("candidates")
+                                    val contentObj = candidates?.optJSONObject(0)?.optJSONObject("content")
+                                    val parts = contentObj?.optJSONArray("parts") ?: JSONArray()
+                                    for (i in 0 until parts.length()) {
+                                        ensureStreamActive()
+                                        val part = parts.optJSONObject(i) ?: continue
+                                        val isThought = part.optBoolean("thought", false) || part.has("thought")
+                                        val text = part.optString("text", "")
+                                        if (text.isNotEmpty()) {
+                                            if (isThought) {
+                                                fullReasoning.append(text)
+                                                onChunk("", text)
+                                            } else {
                                                 fullContent.append(text)
                                                 onChunk(text, null)
                                             }
                                         }
-                                        "thinking_delta" -> {
-                                            val thinking = delta.optString("thinking", "")
-                                            if (thinking.isNotEmpty()) {
-                                                fullReasoning.append(thinking)
-                                                onChunk("", thinking)
+                                    }
+                                }
+                                ApiSpec.ANTHROPIC -> {
+                                    StreamUsageParser.parse(spec, json)?.let { usage = it }
+                                    val delta = json.optJSONObject("delta")
+                                    if (delta != null) {
+                                        when (delta.optString("type")) {
+                                            "text_delta" -> {
+                                                val text = delta.optString("text", "")
+                                                if (text.isNotEmpty()) {
+                                                    fullContent.append(text)
+                                                    onChunk(text, null)
+                                                }
+                                            }
+                                            "thinking_delta" -> {
+                                                val thinking = delta.optString("thinking", "")
+                                                if (thinking.isNotEmpty()) {
+                                                    fullReasoning.append(thinking)
+                                                    onChunk("", thinking)
+                                                }
                                             }
                                         }
                                     }
                                 }
                             }
                         }
-                    } catch (_: Exception) {
                     }
-                }
-            }
 
-            Result.success(
-                ChatCompletionResult(
-                    content = fullContent.toString(),
-                    reasoningText = fullReasoning.toString().ifBlank { null },
-                    promptTokens = usage.promptTokens,
-                    cachedTokens = usage.cachedTokens
-                )
-            )
+                    ensureStreamActive()
+                    Result.success(
+                        ChatCompletionResult(
+                            content = fullContent.toString(),
+                            reasoningText = fullReasoning.toString().ifBlank { null },
+                            promptTokens = usage.promptTokens,
+                            cachedTokens = usage.cachedTokens
+                        )
+                    )
+                }
+            } finally {
+                cancellationSignal.complete()
+                handle?.detach(call)
+            }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
+            ensureStreamActive()
             Result.failure(e)
         }
     }

@@ -33,6 +33,9 @@ interface ChatDao {
     @Insert
     suspend fun insert(message: ChatMessage): Long
 
+    @androidx.room.Upsert
+    suspend fun upsert(message: ChatMessage)
+
     @Query("UPDATE chat_messages SET content = :content WHERE id = :id")
     suspend fun updateContent(id: Long, content: String)
 

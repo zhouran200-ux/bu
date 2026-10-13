@@ -86,7 +86,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.State
-import androidx.compose.runtime.mutableStateListOf
+import com.lucent.app.chat.ChatSessions
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -115,7 +115,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.lucent.app.AppNavigation
-import com.lucent.app.AppScope
 import com.lucent.app.Screen
 import com.lucent.app.SettingsNav
 import com.lucent.app.data.ApiProfile
@@ -131,7 +130,6 @@ import com.lucent.app.data.SettingsRepository
 import com.lucent.app.network.ApiSpec
 import com.lucent.app.network.ChatMessagePayload
 import com.lucent.app.network.LlmClient
-import com.lucent.app.network.StreamCallHandle
 import com.lucent.app.ui.SettingsRoute
 import kotlin.math.abs
 import kotlinx.coroutines.delay
@@ -157,6 +155,11 @@ fun NotebookChatTab(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val notificationPermission = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (!granted) LucentToast.show(context, "通知未开启，后台生成仍可继续；请返回对话页停止生成")
+    }
     val db = remember { AppDatabase.getInstance(context) }
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
@@ -233,16 +236,18 @@ fun NotebookChatTab(
     var showDialogueSettingsDialog by remember { mutableStateOf(false) }
     var showProfileModelPickerSheet by remember { mutableStateOf(false) }
 
-    val messages = remember { mutableStateListOf<UiChatMessage>() }
+    val session = remember(notebookId) { ChatSessions.forNotebook(context, notebookId) }
+    val messages = session.messages
     val placementSpec = rememberReorderPlacementSpec()
-    var streamingAnswerId by remember { mutableStateOf<Long?>(null) }
-    val streamHandle = remember { StreamCallHandle() }
-    var stoppedByUser by remember { mutableStateOf(false) }
+    val streamingAnswerId = session.streamingAnswerId
     var pendingDelete by remember { mutableStateOf<PendingChatDelete?>(null) }
     var questionToEdit by remember { mutableStateOf<UiChatMessage?>(null) }
     var answerToEdit by remember { mutableStateOf<UiChatMessage?>(null) }
-    val streamingThought = remember { mutableStateOf("") }
+    val streamingThought = session.thought
     val lastDelete = remember { mutableStateOf<PendingChatDelete?>(null) }
+    LaunchedEffect(session.storageError) {
+        session.storageError?.let { LucentToast.show(context, it) }
+    }
 
     fun openHistorySheet() {
         historyAnchorId = listState.layoutInfo.visibleItemsInfo
@@ -254,7 +259,7 @@ fun NotebookChatTab(
     fun settlePendingDelete() {
         val pending = pendingDelete ?: return
         pendingDelete = null
-        AppScope.io.launch { db.chatDao().deleteByIds(listOf(pending.message.id)) }
+        session.write { db.chatDao().deleteByIds(listOf(pending.message.id)) }
     }
 
     DisposableEffect(notebookId) {
@@ -265,32 +270,11 @@ fun NotebookChatTab(
         pendingDelete?.let { lastDelete.value = it }
     }
 
-    LaunchedEffect(notebookId) {
-        settlePendingDelete()
-        val convId = ChatScope.forNotebook(notebookId)
-        val existing = db.chatDao().getForConversationOnce(convId)
-        messages.clear()
-        if (existing.isNotEmpty()) {
-            messages.addAll(existing.map { m ->
-                UiChatMessage(
-                    id = m.id,
-                    role = m.role,
-                    content = m.content,
-                    reasoningText = m.reasoningText,
-                    answerSeconds = m.answerSeconds,
-                    promptTokens = m.tokens,
-                    cachedTokens = m.cachedTokens,
-                    timestamp = m.timestamp
-                )
-            })
-        }
-    }
-
     fun askModel(answerId: Long) {
+        if (!session.ready) return
         val matchedProfile = savedProfiles.find { it.name == selectedProfileName }
             ?: savedProfiles.firstOrNull()
         val targetModel = selectedModel.ifBlank { matchedProfile?.model.orEmpty() }
-        val convId = ChatScope.forNotebook(notebookId)
         val aiMsgId = answerId
         val answerStamp = messages.firstOrNull { it.id == aiMsgId }?.timestamp ?: System.currentTimeMillis()
         fun upsertAnswerSlot(msg: UiChatMessage) {
@@ -302,8 +286,8 @@ fun NotebookChatTab(
             val blankIdx = messages.indexOfFirst { it.id == aiMsgId }
             if (blankIdx >= 0) {
                 messages[blankIdx] = messages[blankIdx].copy(content = "【未配置可用模型】请先在设置-API 配置里获取并保存模型。")
+                session.saveMessage(messages[blankIdx])
             }
-            streamingAnswerId = null
             return
         }
 
@@ -356,7 +340,7 @@ fun NotebookChatTab(
             }
         }
 
-        val historyPayload = messages.filter { it.id != aiMsgId }.takeLast(historyRounds * 2).map {
+        val historyPayload = messages.takeWhile { it.id != aiMsgId }.takeLast(historyRounds * 2).map {
             ChatMessagePayload(
                 role = if (it.role == "assistant") "assistant" else "user",
                 content = it.content
@@ -369,130 +353,38 @@ fun NotebookChatTab(
                 role = "assistant",
                 content = "【未配置 API 密钥】\n当前所选方案未设置有效的 API Key。请点击底部右侧「模型选择」卡片中的「管理与添加 API 方案」，或前往「设置 -> API 配置」填入 API Key 与基础 URL，即可开始基于本地 Markdown 知识库与大模型对话。"
             )
-            upsertAnswerSlot(pendingAi)
+            upsertAnswerSlot(pendingAi.copy(timestamp = answerStamp))
+            session.saveMessage(pendingAi.copy(timestamp = answerStamp))
         } else {
-            val pendingAi = UiChatMessage(
-                id = aiMsgId,
-                role = "assistant",
-                content = "",
-                reasoningTag = effortLabel
-            )
-            upsertAnswerSlot(pendingAi)
-            streamingThought.value = ""
-            streamingAnswerId = aiMsgId
-            stoppedByUser = false
-
-            scope.launch {
-                val startTime = System.currentTimeMillis()
-                val scheduler = StreamUiScheduler(
-                    timeWindowMs = 35L,
-                    charBurstThreshold = 48,
-                    thoughtWindowMs = 16L,
-                    thoughtBurstThreshold = 24,
-                    onFlush = { currentContent, _ ->
-                        val idx = messages.indexOfFirst { it.id == aiMsgId }
-                        if (idx >= 0) {
-                            messages[idx] = messages[idx].copy(content = currentContent)
-                        }
-                    },
-                    onThought = { reasoning -> streamingThought.value = reasoning }
-                )
-
-                val chatResult = LlmClient.chatStream(
-                    baseUrl = baseUrl,
-                    spec = spec,
-                    apiKey = apiKey,
-                    model = targetModel,
-                    messages = historyPayload,
-                    systemInstruction = knowledgeBasePrompt,
-                    reasoningConfig = resolvedReasoning,
-                    handle = streamHandle,
-                    rawEndpoint = rawEndpoint
-                ) { deltaText, deltaThought ->
-                    scheduler.append(deltaText, deltaThought)
-                }
-
-                scheduler.forceFlush()
-
-                val durationSec = ((System.currentTimeMillis() - startTime) / 1000).toInt().coerceAtLeast(1)
-
-                chatResult.onSuccess { res ->
-                    val finalContent = res.content.ifBlank { scheduler.getFinalContent() }.ifBlank { "（模型返回了空回复）" }
-                    val finalReasoning = res.reasoningText ?: scheduler.getFinalReasoning()
-
-                    val finalAi = UiChatMessage(
-                        id = aiMsgId,
-                        role = "assistant",
-                        content = finalContent,
-                        reasoningText = finalReasoning,
-                        answerSeconds = durationSec,
-                        reasoningTag = effortLabel,
-                        promptTokens = res.promptTokens,
-                        cachedTokens = res.cachedTokens,
-                        timestamp = answerStamp
+            if (android.os.Build.VERSION.SDK_INT >= 33 &&
+                !prefs.getBoolean("generation_notification_asked", false) &&
+                androidx.core.content.ContextCompat.checkSelfPermission(context,
+                    android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED
+            ) {
+                prefs.edit().putBoolean("generation_notification_asked", true).apply()
+                notificationPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+            }
+            try {
+                session.start(aiMsgId, effortLabel) { handle, onChunk ->
+                    LlmClient.chatStream(
+                        baseUrl = baseUrl,
+                        spec = spec,
+                        apiKey = apiKey,
+                        model = targetModel,
+                        messages = historyPayload,
+                        systemInstruction = knowledgeBasePrompt,
+                        reasoningConfig = resolvedReasoning,
+                        handle = handle,
+                        rawEndpoint = rawEndpoint,
+                        onChunk = onChunk
                     )
-                    val idx = messages.indexOfFirst { it.id == aiMsgId }
-                    if (idx >= 0) {
-                        messages[idx] = finalAi
-                    }
-
-                    AppScope.io.launch {
-                        db.chatDao().insert(
-                            ChatMessage(
-                                id = aiMsgId,
-                                role = "assistant",
-                                content = finalAi.content,
-                                reasoningText = finalAi.reasoningText,
-                                conversationId = convId,
-                                tokens = finalAi.promptTokens,
-                                cachedTokens = finalAi.cachedTokens,
-                                answerSeconds = finalAi.answerSeconds
-                            )
-                        )
-                    }
-                }.onFailure { err ->
-                    val currentText = scheduler.getFinalContent()
-                    val errorDisplay = when {
-                        stoppedByUser -> currentText.ifBlank { "（已停止生成）" }
-                        currentText.isNotBlank() ->
-                            "$currentText\n\n[网络中断：${err.message ?: "连接已关闭"}，已保留已生成内容]"
-                        else -> "【请求失败】${err.message ?: "网络或接口异常"}\n\n请检查网络连接、API 密钥与模型端点配置。"
-                    }
-
-                    val failedAi = UiChatMessage(
-                        id = aiMsgId,
-                        role = "assistant",
-                        content = errorDisplay,
-                        reasoningText = scheduler.getFinalReasoning(),
-                        answerSeconds = durationSec,
-                        reasoningTag = effortLabel
-                    )
-                    val idx = messages.indexOfFirst { it.id == aiMsgId }
-                    if (idx >= 0) {
-                        messages[idx] = failedAi
-                    }
-
-                    if (currentText.isNotBlank()) {
-                        AppScope.io.launch {
-                            db.chatDao().insert(
-                                ChatMessage(
-                                    id = aiMsgId,
-                                    role = "assistant",
-                                    content = failedAi.content,
-                                    reasoningText = failedAi.reasoningText,
-                                    conversationId = convId,
-                                    answerSeconds = failedAi.answerSeconds
-                                )
-                            )
-                        }
-                    }
                 }
-
-                streamingAnswerId = null
-                delay(100)
-                if (atBottom) {
-                    listState.animateScrollToItem((messages.size - 1).coerceAtLeast(0))
-                }
+            } catch (e: Exception) {
+                val failed = UiChatMessage(aiMsgId, "assistant",
+                    "【无法启动后台生成】${e.message ?: "请重试"}", timestamp = answerStamp)
+                upsertAnswerSlot(failed)
+                session.saveMessage(failed)
+                LucentToast.show(context, "无法启动后台生成，请保持应用在前台后重试")
             }
         }
     }
@@ -505,7 +397,7 @@ fun NotebookChatTab(
         )
         messages.add(userMsg)
         val convId = ChatScope.forNotebook(notebookId)
-        AppScope.io.launch {
+        session.write {
             db.chatDao().insert(
                 ChatMessage(
                     id = userMsg.id,
@@ -527,6 +419,7 @@ fun NotebookChatTab(
     }
 
     fun regenerateAnswer(answerId: Long) {
+        if (!session.ready) return
         if (streamingAnswerId != null) {
             LucentToast.show(context, "上一条回答还没有结束")
             return
@@ -546,18 +439,19 @@ fun NotebookChatTab(
             cachedTokens = 0
         )
         settlePendingDelete()
-        AppScope.io.launch { db.chatDao().deleteByIds(listOf(answerId)) }
+        session.write { db.chatDao().deleteByIds(listOf(answerId)) }
         askModel(answerId)
     }
 
     fun resendEditedQuestion(questionId: Long, newText: String) {
+        if (!session.ready || session.streamingAnswerId != null) return
         val idx = messages.indexOfFirst { it.id == questionId }
         if (idx < 0) return
         settlePendingDelete()
         val followingIds = messages.drop(idx + 1).map { it.id }
         while (messages.size > idx + 1) messages.removeAt(messages.size - 1)
         messages[idx] = messages[idx].copy(content = newText)
-        AppScope.io.launch {
+        session.write {
             db.chatDao().updateContent(questionId, newText)
             if (followingIds.isNotEmpty()) db.chatDao().deleteByIds(followingIds)
         }
@@ -567,13 +461,15 @@ fun NotebookChatTab(
     }
 
     fun saveAnswerEdit(answerId: Long, newText: String) {
+        if (!session.ready || session.streamingAnswerId != null) return
         val idx = messages.indexOfFirst { it.id == answerId }
         if (idx < 0) return
         messages[idx] = messages[idx].copy(content = newText)
-        AppScope.io.launch { db.chatDao().updateContent(answerId, newText) }
+        session.write { db.chatDao().updateContent(answerId, newText) }
     }
 
     fun deleteMessage(target: UiChatMessage) {
+        if (!session.ready || session.streamingAnswerId != null) return
         val idx = messages.indexOfFirst { it.id == target.id }
         if (idx < 0) return
         if (pendingDelete != null) LucentToast.show(context, "上一条删除已生效")
@@ -612,14 +508,13 @@ fun NotebookChatTab(
 
     fun stopStreaming() {
         if (streamingAnswerId == null) return
-        stoppedByUser = true
+        session.stop()
         Haptics.tick(context)
-        streamHandle.cancel()
     }
 
-    val streamProgress by remember {
+    val streamProgress by remember(session) {
         derivedStateOf {
-            val id = streamingAnswerId ?: return@derivedStateOf 0
+            val id = session.streamingAnswerId ?: return@derivedStateOf 0
             val body = messages.firstOrNull { it.id == id }?.content?.length ?: 0
             body + streamingThought.value.length
         }
@@ -633,6 +528,10 @@ fun NotebookChatTab(
     val onSendMessage: () -> Unit = send@{
         val text = inputText.trim()
         if (text.isEmpty()) return@send
+        if (!session.ready) {
+            LucentToast.show(context, session.storageError ?: "正在读取对话，请稍候")
+            return@send
+        }
         if (streamingAnswerId != null) {
             LucentToast.show(context, "正在回答，点右下角的方块可以停止")
             return@send
@@ -674,7 +573,7 @@ fun NotebookChatTab(
                 item { Spacer(modifier = Modifier.height(8.dp)) }
 
                 itemsIndexed(messages, key = { _, msg -> msg.id }) { _, msg ->
-                    val actionsEnabled = streamingAnswerId == null
+                    val actionsEnabled = session.ready && streamingAnswerId == null
                     val itemModifier = Modifier.animateItem(
                         fadeInSpec = tween(200),
                         placementSpec = placementSpec,

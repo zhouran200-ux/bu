@@ -29,12 +29,23 @@ object NotebookPurge {
     }
 
     suspend fun purge(db: AppDatabase, notebookId: Long) {
-        val doomed = noteIdsExclusiveTo(db.notebookDao().getAllItemsOnce(), notebookId)
-        doomed.forEach { noteId ->
-            db.noteDao().getByIdOnce(noteId)?.let { TrashCleanup.purgeNote(db, it) }
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main.immediate) {
+            com.lucent.app.chat.ChatSessions.prepareDelete(notebookId)
         }
-        db.chatDao().clearConversation(ChatScope.forNotebook(notebookId))
-        db.notebookDao().deleteItemsForNotebook(notebookId)
-        db.notebookDao().deleteById(notebookId)
+        var success = false
+        try {
+            val doomed = noteIdsExclusiveTo(db.notebookDao().getAllItemsOnce(), notebookId)
+            doomed.forEach { noteId ->
+                db.noteDao().getByIdOnce(noteId)?.let { TrashCleanup.purgeNote(db, it) }
+            }
+            db.chatDao().clearConversation(ChatScope.forNotebook(notebookId))
+            db.notebookDao().deleteItemsForNotebook(notebookId)
+            db.notebookDao().deleteById(notebookId)
+            success = true
+        } finally {
+            kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable + kotlinx.coroutines.Dispatchers.Main.immediate) {
+                com.lucent.app.chat.ChatSessions.finishDelete(notebookId, success)
+            }
+        }
     }
 }

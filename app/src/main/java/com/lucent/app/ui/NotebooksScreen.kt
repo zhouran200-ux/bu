@@ -134,8 +134,12 @@ fun NotebooksScreen(
                     val target = notebook
                     deleting = null
                     AppScope.io.launch {
-                        NotebookPurge.purge(db, target.id)
-                        LucentToast.show(context, com.lucent.app.i18n.S.notebookDeletedToast)
+                        try {
+                            NotebookPurge.purge(db, target.id)
+                            LucentToast.show(context, com.lucent.app.i18n.S.notebookDeletedToast)
+                        } catch (e: IllegalStateException) {
+                            LucentToast.show(context, e.message ?: "删除失败")
+                        }
                     }
                 }) { Text(com.lucent.app.i18n.S.actionDelete) }
             },

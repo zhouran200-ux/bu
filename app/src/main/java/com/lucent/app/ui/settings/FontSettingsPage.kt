@@ -30,6 +30,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.unit.sp
 import com.lucent.app.data.FontStore
 import com.lucent.app.data.SettingsCache
@@ -42,6 +43,7 @@ import com.lucent.app.ui.LucentTitles
 import com.lucent.app.ui.SYSTEM_FONT_KEY
 import com.lucent.app.ui.StepperSlider
 import com.lucent.app.ui.frostedGlass
+import com.lucent.app.ui.lucentPanelBackground
 import kotlinx.coroutines.Dispatchers
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
@@ -486,44 +488,45 @@ internal fun FontSettingsPage(
     }
 
     pendingImportUri?.let { uri ->
-        AlertDialog(
-            onDismissRequest = { pendingImportUri = null },
-            shape = RoundedCornerShape(20.dp),
-            title = { Text(S.fontNameTitle, fontSize = LucentTitles.ItemSize, fontWeight = LucentTitles.ItemWeight) },
-            text = {
-                Column {
-                    Text(S.fontNameBody, style = MaterialTheme.typography.bodySmall)
-                    Spacer(modifier = Modifier.height(10.dp))
-                    OutlinedTextField(
-                        value = importFontNameDraft,
-                        onValueChange = { importFontNameDraft = it },
-                        label = { Text(S.fontNameField) },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                        keyboardActions = KeyboardActions(onDone = {
-                            startImportFont(uri, importFontNameDraft.ifBlank { "Custom Font" })
-                        }),
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        val nameToUse = importFontNameDraft.ifBlank { "Custom Font" }
-                        startImportFont(uri, nameToUse)
-                    }
+        Dialog(onDismissRequest = { pendingImportUri = null }) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .imePadding()
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(lucentPanelBackground())
+                    .padding(20.dp)
+            ) {
+                Text(S.fontNameTitle, fontSize = LucentTitles.ItemSize, fontWeight = LucentTitles.ItemWeight, color = onGradient)
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(S.fontNameBody, style = MaterialTheme.typography.bodySmall, color = onGradientMuted)
+                Spacer(modifier = Modifier.height(10.dp))
+                OutlinedTextField(
+                    value = importFontNameDraft,
+                    onValueChange = { importFontNameDraft = it },
+                    label = { Text(S.fontNameField) },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = {
+                        startImportFont(uri, importFontNameDraft.ifBlank { "Custom Font" })
+                    }),
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("导入")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { pendingImportUri = null }) {
-                    Text("取消")
+                    TextButton(onClick = { pendingImportUri = null }) { Text("取消") }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    TextButton(onClick = {
+                        startImportFont(uri, importFontNameDraft.ifBlank { "Custom Font" })
+                    }) { Text("导入") }
                 }
             }
-        )
+        }
     }
 
     fontPendingDelete?.let { slot ->

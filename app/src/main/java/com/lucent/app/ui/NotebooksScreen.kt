@@ -1,6 +1,7 @@
 package com.lucent.app.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -11,7 +12,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -37,10 +41,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.unit.sp
 import com.lucent.app.AppNavigation
 import com.lucent.app.AppScope
@@ -348,10 +354,17 @@ internal fun NotebookNameDialog(
             onDismiss()
         }
     }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(title, fontSize = LucentTitles.EntrySize, fontWeight = LucentTitles.EntryWeight) },
-        text = {
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .imePadding()
+                .clip(RoundedCornerShape(24.dp))
+                .background(lucentPanelBackground())
+                .padding(20.dp)
+        ) {
+            Text(title, fontSize = LucentTitles.EntrySize, fontWeight = LucentTitles.EntryWeight, color = LocalOnGradient.current)
+            Spacer(modifier = Modifier.height(14.dp))
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
@@ -364,13 +377,17 @@ internal fun NotebookNameDialog(
                 keyboardActions = KeyboardActions(onDone = { submit() }),
                 modifier = Modifier.fillMaxWidth()
             )
-        },
-        confirmButton = {
-            TextButton(onClick = { submit() }) { Text(confirmLabel) }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(com.lucent.app.i18n.S.actionCancel) }
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TextButton(onClick = onDismiss) { Text(com.lucent.app.i18n.S.actionCancel) }
+                Spacer(modifier = Modifier.width(8.dp))
+                TextButton(onClick = { submit() }) { Text(confirmLabel) }
+            }
         }
-    )
+    }
 }
 

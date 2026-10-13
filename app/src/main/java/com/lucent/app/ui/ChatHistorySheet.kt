@@ -73,15 +73,8 @@ internal fun ChatHistorySheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         containerColor = lucentPanelBackground(),
-        dragHandle = {
-            androidx.compose.material3.Surface(
-                shape = CircleShape,
-                color = ink.copy(alpha = 0.3f),
-                modifier = Modifier
-                    .padding(top = 10.dp, bottom = 4.dp)
-                    .size(width = 36.dp, height = 4.dp)
-            ) {}
-        }
+        sheetGesturesEnabled = false,
+        dragHandle = { LucentDragHandle(onDismiss) }
     ) {
         Column(
             modifier = Modifier

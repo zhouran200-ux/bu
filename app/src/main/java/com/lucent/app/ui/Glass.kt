@@ -3,15 +3,27 @@ package com.lucent.app.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.animation.core.Animatable
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
@@ -21,9 +33,11 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.chrisbanes.haze.HazeState
+import kotlinx.coroutines.launch
 
 val LocalHazeState = compositionLocalOf { HazeState() }
 val LocalOnGradient = compositionLocalOf { Color.White }
@@ -380,5 +394,54 @@ enum class LucentPalette(val colors: List<Color>, val group: PaletteGroup, val f
 
     companion object {
         val pickerEntries: List<LucentPalette> = entries.filter { it.featured }
+    }
+}
+
+@Composable
+fun LucentDragHandle(onDismiss: () -> Unit) {
+    val ink = LocalOnGradient.current
+    val scope = rememberCoroutineScope()
+    val density = LocalDensity.current
+    val travel = remember { Animatable(0f) }
+    val dismissThresholdPx = with(density) { 56.dp.toPx() }
+    val maxTravelPx = with(density) { 120.dp.toPx() }
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+
+    val progress = (travel.value / maxTravelPx).coerceIn(0f, 1f)
+    val widthDp = (36 + 16 * progress).dp
+    val handleAlpha = (if (pressed) 0.5f else 0.32f) * (1f - 0.4f * progress)
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(28.dp)
+            .draggable(
+                orientation = Orientation.Vertical,
+                interactionSource = interaction,
+                state = rememberDraggableState { delta ->
+                    scope.launch {
+                        travel.snapTo((travel.value + delta).coerceIn(0f, maxTravelPx))
+                    }
+                },
+                onDragStopped = { velocity ->
+                    if (travel.value >= dismissThresholdPx || velocity > 1600f) {
+                        onDismiss()
+                    } else {
+                        scope.launch {
+                            travel.animateTo(0f, LucentMotion.toSpring(LucentMotion.Settle))
+                        }
+                    }
+                }
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Surface(
+            shape = RoundedCornerShape(50),
+            color = ink.copy(alpha = handleAlpha),
+            modifier = Modifier
+                .graphicsLayer { translationY = travel.value * 0.5f }
+                .size(width = widthDp, height = 4.dp)
+        ) {}
     }
 }

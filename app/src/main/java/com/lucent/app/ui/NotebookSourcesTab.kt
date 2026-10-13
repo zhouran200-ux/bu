@@ -156,10 +156,14 @@ fun NotebookSourcesTab(
 private fun SourceReader(note: Note, modifier: Modifier = Modifier) {
     val listState = rememberLazyListState()
     val accent = MaterialTheme.colorScheme.primary
-    val sections = remember(note.id, note.body) { splitDocumentSections(note.body) }
+    val sectionCount = remember(note.id, note.body) { splitDocumentSections(note.body).size }
+    val blocks = remember(note.id, note.body) { splitRenderBlocks(note.body) }
 
     val currentSection by remember {
-        derivedStateOf { (listState.firstVisibleItemIndex + 1).coerceIn(1, sections.size.coerceAtLeast(1)) }
+        derivedStateOf {
+            val block = blocks.getOrNull(listState.firstVisibleItemIndex)
+            ((block?.sectionIndex ?: 0) + 1).coerceIn(1, sectionCount.coerceAtLeast(1))
+        }
     }
 
     var chipVisible by remember { mutableStateOf(true) }
@@ -179,9 +183,9 @@ private fun SourceReader(note: Note, modifier: Modifier = Modifier) {
             contentPadding = PaddingValues(horizontal = 18.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            itemsIndexed(sections, key = { index, _ -> index }) { _, section ->
+            itemsIndexed(blocks, key = { index, _ -> index }) { _, block ->
                 MarkdownText(
-                    text = section,
+                    text = block.text,
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -189,7 +193,7 @@ private fun SourceReader(note: Note, modifier: Modifier = Modifier) {
         }
 
         AnimatedVisibility(
-            visible = sections.size > 1 && chipVisible,
+            visible = sectionCount > 1 && chipVisible,
             enter = fadeIn(tween(220)),
             exit = fadeOut(tween(150)),
             modifier = Modifier
@@ -206,7 +210,7 @@ private fun SourceReader(note: Note, modifier: Modifier = Modifier) {
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                 ) {
                     Text(
-                        text = "$currentSection / ${sections.size}",
+                        text = "$currentSection / $sectionCount",
                         color = MaterialTheme.colorScheme.onPrimary,
                         fontSize = 13.sp,
                         fontWeight = LucentTitles.SectionWeight

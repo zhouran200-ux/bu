@@ -96,3 +96,63 @@ fun activeSectionNumber(sectionTops: List<Int?>, scrollOffset: Int): Int {
     }
     return active + 1
 }
+
+data class RenderBlock(val text: String, val sectionIndex: Int)
+
+fun splitRenderBlocks(body: String, maxChars: Int = 1200): List<RenderBlock> {
+    val sections = splitDocumentSections(body)
+    val blocks = mutableListOf<RenderBlock>()
+    sections.forEachIndexed { sectionIndex, section ->
+        if (section.length <= maxChars) {
+            blocks.add(RenderBlock(section, sectionIndex))
+        } else {
+            chunkLongText(section, maxChars).forEach { piece ->
+                blocks.add(RenderBlock(piece, sectionIndex))
+            }
+        }
+    }
+    return blocks
+}
+
+private fun chunkLongText(text: String, maxChars: Int): List<String> {
+    val paragraphs = text.split("\n\n")
+    val pieces = mutableListOf<String>()
+    val buffer = StringBuilder()
+    fun flush() {
+        val t = buffer.toString().trim()
+        if (t.isNotEmpty()) pieces.add(t)
+        buffer.setLength(0)
+    }
+    for (para in paragraphs) {
+        if (para.length > maxChars) {
+            flush()
+            pieces.addAll(chunkBySentence(para, maxChars))
+            continue
+        }
+        if (buffer.isNotEmpty() && buffer.length + para.length > maxChars) flush()
+        if (buffer.isNotEmpty()) buffer.append("\n\n")
+        buffer.append(para)
+    }
+    flush()
+    return pieces.ifEmpty { listOf(text.trim()) }
+}
+
+private fun chunkBySentence(text: String, maxChars: Int): List<String> {
+    val pieces = mutableListOf<String>()
+    val buffer = StringBuilder()
+    for (ch in text) {
+        buffer.append(ch)
+        val boundary = ch == '。' || ch == '！' || ch == '？' || ch == '\n' ||
+            ch == '.' || ch == '!' || ch == '?'
+        if (boundary && buffer.length >= maxChars) {
+            pieces.add(buffer.toString().trim())
+            buffer.setLength(0)
+        } else if (buffer.length >= maxChars * 2) {
+            pieces.add(buffer.toString().trim())
+            buffer.setLength(0)
+        }
+    }
+    val tail = buffer.toString().trim()
+    if (tail.isNotEmpty()) pieces.add(tail)
+    return pieces.filter { it.isNotEmpty() }
+}

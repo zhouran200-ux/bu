@@ -151,4 +151,34 @@ class DocumentSectionTest {
         assertEquals(1, activeSectionNumber(tops, 500))
         assertEquals(3, activeSectionNumber(tops, 1000))
     }
+
+    @Test
+    fun smallSectionsStayOneBlockEach() {
+        val blocks = splitRenderBlocks("# 一\n短内容\n# 二\n也很短", maxChars = 1200)
+        assertEquals(2, blocks.size)
+        assertEquals(0, blocks[0].sectionIndex)
+        assertEquals(1, blocks[1].sectionIndex)
+    }
+
+    @Test
+    fun oversizedSectionIsSplitButKeepsSectionIndex() {
+        val huge = "开头\n\n" + "句子。".repeat(2000)
+        val blocks = splitRenderBlocks(huge, maxChars = 500)
+        assertTrue(blocks.size > 1)
+        assertTrue(blocks.all { it.sectionIndex == 0 })
+        assertTrue(blocks.all { it.text.isNotBlank() })
+    }
+
+    @Test
+    fun splittingPreservesAllVisibleCharacters() {
+        val body = "# 标题\n" + "字".repeat(5000)
+        val blocks = splitRenderBlocks(body, maxChars = 400)
+        val merged = blocks.joinToString("") { it.text }.filter { it == '字' }
+        assertEquals(5000, merged.length)
+    }
+
+    @Test
+    fun blankBodyProducesNoBlocks() {
+        assertTrue(splitRenderBlocks("   \n\n  ").isEmpty())
+    }
 }

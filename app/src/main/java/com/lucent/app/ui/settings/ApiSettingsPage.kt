@@ -512,7 +512,7 @@ internal fun ApiConfigSettingsPage(
     var testStatusText by remember { mutableStateOf("") }
     var testSuccess by remember { mutableStateOf(false) }
     var lastTestResult by remember { mutableStateOf<TestConnectionResult?>(null) }
-    var fetchedModelsReport by remember { mutableStateOf("") }
+    var fetchModelsError by remember { mutableStateOf("") }
     var copiedRawHint by remember { mutableStateOf(false) }
     var customModelInput by remember { mutableStateOf("") }
     val choices = modelChoices(fetchedModels, models)
@@ -573,6 +573,7 @@ internal fun ApiConfigSettingsPage(
         lastTestResult = null
         testStatusText = ""
         testSuccess = false
+        fetchModelsError = ""
     }
 
     Column(modifier = Modifier.fillMaxWidth().frostedGlass().padding(12.dp)) {
@@ -811,7 +812,7 @@ internal fun ApiConfigSettingsPage(
                         onErrorTextChange("")
                         testStatusText = ""
                         lastTestResult = null
-                        fetchedModelsReport = ""
+                        fetchModelsError = ""
                         scope.launch {
                             val apiSpecEnum = when (spec) {
                                 "anthropic" -> ApiSpec.ANTHROPIC
@@ -830,12 +831,11 @@ internal fun ApiConfigSettingsPage(
                                     onErrorTextChange(S.apiModelsEmpty)
                                 } else {
                                     fetchedModels = list
-                                    fetchedModelsReport = list.mapIndexed { i, m -> "${i + 1}. $m" }.joinToString("\n")
                                     pickerOpen = true
                                 }
                             }.onFailure {
                                 val detail = (it.message ?: "").trim().ifBlank { S.noDetails }.take(180)
-                                onErrorTextChange(S.apiModelsFetchFailed(detail))
+                                fetchModelsError = S.apiModelsFetchFailed(detail)
                             }
                         }
                     }
@@ -1050,7 +1050,7 @@ internal fun ApiConfigSettingsPage(
                 testStatusText = ""
                 testSuccess = false
                 lastTestResult = null
-                fetchedModelsReport = ""
+                fetchModelsError = ""
                 onErrorTextChange("")
                 scope.launch {
                     val apiSpecEnum = when (spec) {
@@ -1131,13 +1131,13 @@ internal fun ApiConfigSettingsPage(
             )
         }
 
-        if (fetchedModelsReport.isNotBlank()) {
+        if (fetchModelsError.isNotBlank()) {
             Spacer(modifier = Modifier.height(8.dp))
             ResponseCard(
-                body = fetchedModelsReport,
-                charCount = fetchedModelsReport.length,
+                body = fetchModelsError,
+                charCount = fetchModelsError.length,
                 copied = copiedRawHint,
-                onCopy = { copyRawResponse(fetchedModelsReport) }
+                onCopy = { copyRawResponse(fetchModelsError) }
             )
         }
 

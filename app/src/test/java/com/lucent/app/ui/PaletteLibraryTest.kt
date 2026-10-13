@@ -124,6 +124,45 @@ class PaletteLibraryTest {
         assertTrue(scheme.error != scheme.primary, "error must stay its own semantic colour")
     }
 
+    @Test
+    fun pureWhiteFillsStayAchromaticAndOpaque() {
+        val scheme = pureWhiteScheme(darkColorScheme())
+        val fills = listOf(
+            scheme.primary,
+            scheme.secondary,
+            scheme.tertiary,
+            scheme.background,
+            scheme.surface,
+            scheme.primaryContainer,
+            scheme.secondaryContainer,
+            scheme.tertiaryContainer,
+            scheme.surfaceVariant,
+            scheme.surfaceDim,
+            scheme.surfaceBright,
+            scheme.surfaceContainerLow,
+            scheme.surfaceContainer,
+            scheme.surfaceContainerHigh,
+            scheme.surfaceContainerHighest
+        )
+        for (fill in fills) {
+            assertEquals(1f, fill.alpha, "pure-white surfaces must not be translucent")
+            val spread = maxOf(fill.red, maxOf(fill.green, fill.blue)) -
+                minOf(fill.red, minOf(fill.green, fill.blue))
+            assertTrue(spread < 0.05f, "pure-white surfaces must stay achromatic")
+        }
+        assertEquals(LucentGlass.PureWhitePage, scheme.background)
+        assertEquals(LucentGlass.PureWhiteSurface, scheme.surface)
+        assertEquals(LucentGlass.PureWhiteInk, scheme.onSurface)
+    }
+
+    @Test
+    fun pureWhiteIsDrivenByItsToggleInsteadOfTheThemePicker() {
+        assertFalse(LucentThemeMode.pickerEntries.contains(LucentThemeMode.PURE_WHITE))
+        assertEquals(LucentThemeMode.PURE_WHITE, LucentThemeMode.fromKey("pure_white"))
+        assertFalse(LucentThemeMode.PURE_WHITE.isDark(systemDark = true))
+        assertEquals(listOf(Color(0xFFFFFFFF), Color(0xFFD9D9D9)), LucentThemeMode.PURE_WHITE.swatch())
+    }
+
     private fun contrastRatio(first: Color, second: Color): Float {
         val high = maxOf(first.luminance(), second.luminance())
         val low = minOf(first.luminance(), second.luminance())

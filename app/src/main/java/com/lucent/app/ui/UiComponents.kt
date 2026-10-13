@@ -63,16 +63,17 @@ fun GlassButton(
         label = "glassButtonScale"
     )
 
-    val baseFill = if (glassDark) {
-        Color.White.copy(alpha = LucentGlass.CARD_FILL_DARK)
-    } else {
-        Color.White.copy(alpha = LucentGlass.CARD_FILL_LIGHT)
+    val pureWhite = LocalPureWhite.current
+    val baseFill = when {
+        pureWhite -> LucentGlass.PureWhiteControlFill
+        glassDark -> Color.White.copy(alpha = LucentGlass.CARD_FILL_DARK)
+        else -> Color.White.copy(alpha = LucentGlass.CARD_FILL_LIGHT)
     }
     val accent = MaterialTheme.colorScheme.primary
-    val fill = if (pressed && enabled) {
-        accent.copy(alpha = if (glassDark) 0.22f else 0.16f)
-    } else {
-        baseFill
+    val fill = when {
+        pureWhite && pressed && enabled -> LucentGlass.PureWhiteControlFillPressed
+        pressed && enabled -> accent.copy(alpha = if (glassDark) 0.22f else 0.16f)
+        else -> baseFill
     }
     val label = onGradient
     val fade = if (enabled) 1f else 0.38f

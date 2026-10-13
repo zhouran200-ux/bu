@@ -30,12 +30,18 @@ fun FluidGlassBackground(
     palette: List<Color>,
     backdropColor: Color,
     modifier: Modifier = Modifier,
-    animated: Boolean = true
+    animated: Boolean = true,
+    pureWhite: Boolean = false
 ) {
     val context = LocalContext.current
     val environment = LocalBackgroundEnvironment.current
     val inspection = LocalInspectionMode.current
-    val moving = animated && environment.motionEnabled && !inspection
+    val moving = animated && environment.motionEnabled && !inspection && !pureWhite
+
+    if (pureWhite) {
+        Canvas(modifier.fillMaxSize().background(backdropColor)) { }
+        return
+    }
 
     val primary = palette.getOrNull(0) ?: MaterialTheme.colorScheme.primary
     val secondary = palette.getOrNull(1) ?: MaterialTheme.colorScheme.secondary

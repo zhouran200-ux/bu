@@ -71,8 +71,11 @@ import com.lucent.app.ui.LocalBottomBarInset
 import com.lucent.app.ui.LocalOnGradient
 import com.lucent.app.ui.LocalOnGradientMuted
 import com.lucent.app.ui.LocalBackdropColor
+import com.lucent.app.ui.LocalPureWhite
+import com.lucent.app.ui.LucentGlass
 import com.lucent.app.ui.lucentGlassRim
 import com.lucent.app.ui.lucentScheme
+import com.lucent.app.ui.pureWhiteScheme
 import com.lucent.app.ui.LucentToast
 import com.lucent.app.ui.lucentTypography
 import com.lucent.app.ui.LucentPalette
@@ -110,9 +113,12 @@ class MainActivity : ComponentActivity() {
         val initialThemeMode = display.themeMode
         val systemDark = (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
         val themeChoice = com.lucent.app.ui.LucentThemeMode.fromKey(initialThemeMode)
-        val isDarkTheme = themeChoice.isDark(systemDark)
-        val dynamicActive = startup.dynamicColor && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S
-        val initialBackdropColor = if (dynamicActive) {
+        val isPureWhite = themeChoice == com.lucent.app.ui.LucentThemeMode.PURE_WHITE
+        val isDarkTheme = !isPureWhite && themeChoice.isDark(systemDark)
+        val dynamicActive = !isPureWhite && startup.dynamicColor && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S
+        val initialBackdropColor = if (isPureWhite) {
+            LucentGlass.PureWhitePage
+        } else if (dynamicActive) {
             val scheme = if (isDarkTheme) androidx.compose.material3.dynamicDarkColorScheme(applicationContext) else androidx.compose.material3.dynamicLightColorScheme(applicationContext)
             scheme.background
         } else {
@@ -157,15 +163,22 @@ class MainActivity : ComponentActivity() {
 
             val systemDark = isSystemInDarkTheme()
             val themeChoice = com.lucent.app.ui.LucentThemeMode.fromKey(themeMode)
-            val isDarkTheme = themeChoice.isDark(systemDark)
+            val pureWhite = themeChoice == com.lucent.app.ui.LucentThemeMode.PURE_WHITE
+            val isDarkTheme = !pureWhite && themeChoice.isDark(systemDark)
             LaunchedEffect(isDarkTheme) { applySystemBarStyle(isDarkTheme) }
 
-            val dynamicActive = dynamicColorOn && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+            val dynamicActive = !pureWhite && dynamicColorOn && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
             val colors: ColorScheme
             val onGradient: Color
             val backdropColor: Color
             val paletteColors: List<Color>
-            if (dynamicActive) {
+            if (pureWhite) {
+                val baseScheme = lightColorScheme()
+                colors = pureWhiteScheme(baseScheme)
+                onGradient = LucentGlass.PureWhiteInk
+                backdropColor = LucentGlass.PureWhitePage
+                paletteColors = listOf(LucentGlass.PureWhitePage, LucentGlass.PureWhiteSurface)
+            } else if (dynamicActive) {
                 val scheme = if (isDarkTheme) {
                     dynamicDarkColorScheme(this@MainActivity)
                 } else {
@@ -223,13 +236,15 @@ class MainActivity : ComponentActivity() {
                     LocalOnGradient provides onGradient,
                     LocalOnGradientMuted provides onGradientMuted,
                     LocalBackdropColor provides backdropColor,
+                    LocalPureWhite provides pureWhite,
                     LocalBackgroundEnvironment provides backgroundEnvironment
                 ) {
                     Box(modifier = Modifier.fillMaxSize()) {
                         LucentApp(
                             paletteColors = paletteColors,
                             backdropColor = backdropColor,
-                            backgroundAnimated = appBackgroundAnimated
+                            backgroundAnimated = appBackgroundAnimated,
+                            pureWhite = pureWhite
                         )
                     }
                 }
@@ -249,7 +264,7 @@ class MainActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalHazeMaterialsApi::class)
 @Composable
-fun LucentApp(paletteColors: List<Color>, backdropColor: Color, backgroundAnimated: Boolean = true) {
+fun LucentApp(paletteColors: List<Color>, backdropColor: Color, backgroundAnimated: Boolean = true, pureWhite: Boolean = false) {
     var currentScreen by rememberSaveable { mutableStateOf(LastScreen.current) }
     val tabs = HomeTab.entries
     val pagerState = rememberPagerState(
@@ -307,6 +322,7 @@ fun LucentApp(paletteColors: List<Color>, backdropColor: Color, backgroundAnimat
                 palette = paletteColors,
                 backdropColor = backdropColor,
                 animated = backgroundAnimated,
+                pureWhite = pureWhite,
                 modifier = Modifier
                     .fillMaxSize()
                     .hazeSource(state = hazeState)
@@ -363,12 +379,17 @@ fun LucentApp(paletteColors: List<Color>, backdropColor: Color, backgroundAnimat
                     ) {
                         val capsuleShape = RoundedCornerShape(percent = 50)
                         val glassDark = onGradient.luminance() > 0.5f
-                        val capsuleFill = Color.White.copy(
-                            alpha = if (glassDark) com.lucent.app.ui.LucentGlass.BLURRED_FILL_DARK
-                            else com.lucent.app.ui.LucentGlass.BLURRED_FILL_LIGHT
-                        )
+                        val capsuleFill = if (pureWhite) {
+                            LucentGlass.PureWhiteSurface
+                        } else {
+                            Color.White.copy(
+                                alpha = if (glassDark) com.lucent.app.ui.LucentGlass.BLURRED_FILL_DARK
+                                else com.lucent.app.ui.LucentGlass.BLURRED_FILL_LIGHT
+                            )
+                        }
                         val capsuleRim = lucentGlassRim(strong = true)
-                        val capsuleDivider = if (glassDark) Color.White.copy(alpha = 0.08f) else onGradient.copy(alpha = 0.10f)
+                        val capsuleDivider = if (pureWhite) LucentGlass.PureWhiteDivider
+                            else if (glassDark) Color.White.copy(alpha = 0.08f) else onGradient.copy(alpha = 0.10f)
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -381,18 +402,21 @@ fun LucentApp(paletteColors: List<Color>, backdropColor: Color, backgroundAnimat
                                     .fillMaxWidth(0.875f)
                                     .height(76.dp)
                                     .shadow(
-                                        elevation = if (glassDark) 18.dp else 12.dp,
+                                        elevation = if (pureWhite) 10.dp else if (glassDark) 18.dp else 12.dp,
                                         shape = capsuleShape,
                                         clip = false,
-                                        ambientColor = if (glassDark) Color.Black.copy(alpha = 0.35f) else Color(0xFF2A2A3A).copy(alpha = 0.26f),
-                                        spotColor = if (glassDark) Color.Black.copy(alpha = 0.45f) else Color(0xFF2A2A3A).copy(alpha = 0.34f)
+                                        ambientColor = if (pureWhite) LucentGlass.PureWhiteShadowAmbient else if (glassDark) Color.Black.copy(alpha = 0.35f) else Color(0xFF2A2A3A).copy(alpha = 0.26f),
+                                        spotColor = if (pureWhite) LucentGlass.PureWhiteShadowSpot else if (glassDark) Color.Black.copy(alpha = 0.45f) else Color(0xFF2A2A3A).copy(alpha = 0.34f)
                                     )
                                     .clip(capsuleShape)
-                                    .hazeEffect(
-                                        state = hazeState,
-                                        style = HazeMaterials.ultraThin(
-                                            if (glassDark) com.lucent.app.ui.LucentGlass.HazeContainerDark
-                                            else com.lucent.app.ui.LucentGlass.HazeContainerLight
+                                    .then(
+                                        if (pureWhite) Modifier
+                                        else Modifier.hazeEffect(
+                                            state = hazeState,
+                                            style = HazeMaterials.ultraThin(
+                                                if (glassDark) com.lucent.app.ui.LucentGlass.HazeContainerDark
+                                                else com.lucent.app.ui.LucentGlass.HazeContainerLight
+                                            )
                                         )
                                     )
                                     .background(capsuleFill)

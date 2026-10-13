@@ -21,6 +21,7 @@ enum class LucentThemeMode(val key: String, val featured: Boolean = true) {
     SYSTEM("system"),
     LIGHT("light"),
     DARK("dark"),
+    PURE_WHITE("pure_white", featured = false),
     MONET_WHEAT("monet_yellow"),
     MONET_GARDEN("monet_green"),
     MONET_MORNING("monet_blue"),
@@ -60,6 +61,7 @@ enum class LucentThemeMode(val key: String, val featured: Boolean = true) {
             SYSTEM -> com.lucent.app.i18n.S.themeSystem
             LIGHT -> com.lucent.app.i18n.S.themeLight
             DARK -> com.lucent.app.i18n.S.themeDark
+            PURE_WHITE -> com.lucent.app.i18n.S.themePureWhite
             MONET_WHEAT -> com.lucent.app.i18n.S.themeMonetWheat
             MONET_GARDEN -> com.lucent.app.i18n.S.themeMonetGarden
             MONET_MORNING -> com.lucent.app.i18n.S.themeMonetMorning
@@ -99,6 +101,7 @@ enum class LucentThemeMode(val key: String, val featured: Boolean = true) {
             SYSTEM -> com.lucent.app.i18n.S.themeSystemDesc
             LIGHT -> com.lucent.app.i18n.S.themeLightDesc
             DARK -> com.lucent.app.i18n.S.themeDarkDesc
+            PURE_WHITE -> com.lucent.app.i18n.S.themePureWhiteDesc
             MONET_WHEAT -> com.lucent.app.i18n.S.themeMonetWheatDesc
             MONET_GARDEN -> com.lucent.app.i18n.S.themeMonetGardenDesc
             MONET_MORNING -> com.lucent.app.i18n.S.themeMonetMorningDesc
@@ -150,6 +153,7 @@ enum class LucentThemeMode(val key: String, val featured: Boolean = true) {
         SYSTEM -> if (systemDark) DARK_BACKDROP else LIGHT_BACKDROP
         DARK -> DARK_BACKDROP
         LIGHT -> LIGHT_BACKDROP
+        PURE_WHITE -> LucentGlass.PureWhitePage
         MONET_WHEAT -> Color(0xFFF7F1DC)
         MONET_GARDEN -> Color(0xFFE9F2E5)
         MONET_MORNING -> Color(0xFFE5EDF7)
@@ -188,6 +192,7 @@ enum class LucentThemeMode(val key: String, val featured: Boolean = true) {
         SYSTEM -> listOf(LIGHT_BACKDROP, DARK_BACKDROP)
         LIGHT -> listOf(LIGHT_BACKDROP, Color(0xFFDCDBE4))
         DARK -> listOf(Color(0xFF23232E), DARK_BACKDROP)
+        PURE_WHITE -> listOf(LucentGlass.PureWhiteSurface, LucentGlass.PureWhiteDivider)
         MONET_WHEAT -> listOf(Color(0xFFFBF7EA), Color(0xFFE8DDB6))
         MONET_GARDEN -> listOf(Color(0xFFF1F7EF), Color(0xFFC9DEC2))
         MONET_MORNING -> listOf(Color(0xFFEEF4FB), Color(0xFFC2D5EA))

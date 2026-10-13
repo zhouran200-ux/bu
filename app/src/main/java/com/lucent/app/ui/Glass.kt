@@ -27,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
@@ -42,6 +43,7 @@ import kotlinx.coroutines.launch
 val LocalHazeState = compositionLocalOf { HazeState() }
 val LocalOnGradient = compositionLocalOf { Color.White }
 val LocalOnGradientMuted = compositionLocalOf { Color.White.copy(alpha = 0.65f) }
+val LocalPureWhite = compositionLocalOf { false }
 
 val LocalBottomBarInset = compositionLocalOf { 0.dp }
 val LocalBackdropColor = compositionLocalOf { Color(0xFF0E0E14) }
@@ -55,6 +57,15 @@ object LucentGlass {
 
     const val BLURRED_FILL_DARK = 0.06f
     const val BLURRED_FILL_LIGHT = 0.14f
+
+    val PureWhitePage = Color(0xFFF7F7F8)
+    val PureWhiteSurface = Color(0xFFFFFFFF)
+    val PureWhiteInk = Color(0xFF1A1D21)
+    val PureWhiteDivider = Color(0xFFD9D9D9)
+    val PureWhiteShadowAmbient = Color(0xFF1A1D21).copy(alpha = 0.08f)
+    val PureWhiteShadowSpot = Color(0xFF1A1D21).copy(alpha = 0.12f)
+    val PureWhiteControlFill = Color(0xFFF4F4F5)
+    val PureWhiteControlFillPressed = Color(0xFFE3E3E5)
 }
 
 @Composable
@@ -65,7 +76,9 @@ fun panelOver(backdrop: Color): Color =
     else lerp(backdrop, Color.Black, 0.045f)
 
 @Composable
-fun lucentPanelBackground(): Color = panelOver(LocalBackdropColor.current)
+fun lucentPanelBackground(): Color =
+    if (LocalPureWhite.current) LucentGlass.PureWhiteSurface
+    else panelOver(LocalBackdropColor.current)
 
 fun lucentAccent(palette: List<Color>, ink: Color): Color {
     val dark = ink.luminance() > 0.5f
@@ -129,8 +142,49 @@ fun lucentScheme(base: ColorScheme, palette: List<Color>, ink: Color, backdrop: 
     )
 }
 
+fun pureWhiteScheme(base: ColorScheme): ColorScheme {
+    val ink = LucentGlass.PureWhiteInk
+    val page = LucentGlass.PureWhitePage
+    val surface = LucentGlass.PureWhiteSurface
+    val divider = LucentGlass.PureWhiteDivider
+    return base.copy(
+        primary = ink,
+        onPrimary = surface,
+        primaryContainer = Color(0xFFECECED),
+        onPrimaryContainer = ink,
+        secondary = ink,
+        onSecondary = surface,
+        secondaryContainer = Color(0xFFECECED),
+        onSecondaryContainer = ink,
+        tertiary = ink,
+        onTertiary = surface,
+        tertiaryContainer = Color(0xFFECECED),
+        onTertiaryContainer = ink,
+        background = page,
+        onBackground = ink,
+        surface = surface,
+        onSurface = ink,
+        surfaceTint = ink,
+        surfaceVariant = Color(0xFFF0F0F1),
+        onSurfaceVariant = ink.copy(alpha = 0.60f),
+        surfaceDim = Color(0xFFEDEDEE),
+        surfaceBright = surface,
+        surfaceContainerLowest = surface,
+        surfaceContainerLow = Color(0xFFFAFAFB),
+        surfaceContainer = Color(0xFFF4F4F5),
+        surfaceContainerHigh = Color(0xFFEFEFF0),
+        surfaceContainerHighest = Color(0xFFEAEAEB),
+        inverseSurface = ink,
+        inverseOnSurface = surface,
+        inversePrimary = ink,
+        outline = divider,
+        outlineVariant = divider.copy(alpha = 0.55f)
+    )
+}
+
 @Composable
 fun lucentGlassRim(strong: Boolean = false): Brush {
+    if (LocalPureWhite.current) return SolidColor(LucentGlass.PureWhiteDivider)
     val dark = isDarkGlass()
     val ink = LocalOnGradient.current
     return if (dark) {
@@ -148,6 +202,18 @@ fun lucentGlassRim(strong: Boolean = false): Brush {
 
 fun Modifier.frostedGlass(cornerRadius: Dp = 20.dp): Modifier = composed {
     val shape = RoundedCornerShape(cornerRadius)
+    if (LocalPureWhite.current) {
+        return@composed shadow(
+            elevation = 6.dp,
+            shape = shape,
+            clip = false,
+            ambientColor = LucentGlass.PureWhiteShadowAmbient,
+            spotColor = LucentGlass.PureWhiteShadowSpot
+        )
+            .clip(shape)
+            .background(LucentGlass.PureWhiteSurface)
+            .border(1.dp, LucentGlass.PureWhiteDivider, shape)
+    }
     val fillAlpha = if (isDarkGlass()) LucentGlass.CARD_FILL_DARK else LucentGlass.CARD_FILL_LIGHT
 
     clip(shape)
@@ -164,6 +230,7 @@ fun Modifier.pressableGlass(
 ): Modifier {
     val shape = RoundedCornerShape(cornerRadius)
     val dark = isDarkGlass()
+    val pureWhite = LocalPureWhite.current
     val accent = MaterialTheme.colorScheme.primary
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
@@ -173,6 +240,34 @@ fun Modifier.pressableGlass(
         animationSpec = LucentMotion.toSpring(LucentMotion.Settle),
         label = "pressScale"
     )
+    if (pureWhite) {
+        val pressWash by androidx.compose.animation.core.animateFloatAsState(
+            targetValue = if (pressed && enabled) 1f else 0f,
+            animationSpec = LucentMotion.toSpring(LucentMotion.Settle),
+            label = "pressWashWhite"
+        )
+        val fill = lerp(LucentGlass.PureWhiteSurface, Color(0xFFECECED), pressWash)
+        return this
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .shadow(
+                elevation = if (emphasized) 8.dp else 6.dp,
+                shape = shape,
+                clip = false,
+                ambientColor = LucentGlass.PureWhiteShadowAmbient,
+                spotColor = LucentGlass.PureWhiteShadowSpot
+            )
+            .clip(shape)
+            .background(fill)
+            .border(1.dp, LucentGlass.PureWhiteDivider, shape)
+            .clickable(
+                interactionSource = interaction,
+                indication = null,
+                enabled = enabled
+            ) { onClick() }
+    }
     val baseFill = if (dark) LucentGlass.CARD_FILL_DARK else LucentGlass.CARD_FILL_LIGHT
     val pressWash by androidx.compose.animation.core.animateFloatAsState(
         targetValue = if (pressed && enabled) 1f else 0f,

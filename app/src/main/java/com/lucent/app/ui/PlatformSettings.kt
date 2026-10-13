@@ -1,6 +1,8 @@
 package com.lucent.app.ui
 
 import android.os.Build
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -32,6 +34,8 @@ fun DynamicColorRow(repo: SettingsRepository) {
     val dynamicColorOn by repo.dynamicColorEnabled.collectAsState(
         initial = SettingsCache.dynamicColor
     )
+    val themeMode by repo.themeMode.collectAsState(initial = SettingsCache.themeMode)
+    val pureWhiteOn = themeMode == LucentThemeMode.PURE_WHITE.key
 
     Column(modifier = Modifier.fillMaxWidth().frostedGlass().padding(16.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -44,11 +48,38 @@ fun DynamicColorRow(repo: SettingsRepository) {
             }
             Spacer(modifier = Modifier.width(12.dp))
             Switch(
-                checked = dynamicColorOn,
-                enabled = dynamicColorSupported,
+                checked = dynamicColorOn && !pureWhiteOn,
+                enabled = dynamicColorSupported && !pureWhiteOn,
                 onCheckedChange = { on ->
                     SettingsCache.dynamicColor = on
                     AppScope.io.launch { repo.setDynamicColorEnabled(on) }
+                }
+            )
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(1.dp)
+                .background(onGradientMuted.copy(alpha = 0.18f))
+        )
+        Spacer(modifier = Modifier.height(14.dp))
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(S.pureWhiteTitle, color = LucentTitles.titleInk(onGradient), fontSize = LucentTitles.EntrySize, fontWeight = LucentTitles.EntryWeight)
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(S.pureWhiteSubtitle, color = onGradientMuted, fontSize = 13.sp)
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Switch(
+                checked = pureWhiteOn,
+                enabled = !(dynamicColorOn && dynamicColorSupported),
+                onCheckedChange = { on ->
+                    val next = if (on) LucentThemeMode.PURE_WHITE.key else LucentThemeMode.SYSTEM.key
+                    SettingsCache.themeMode = next
+                    AppScope.io.launch { repo.setThemeMode(next) }
                 }
             )
         }
@@ -62,4 +93,10 @@ fun rememberDynamicColorActive(repo: SettingsRepository): Boolean {
         initial = SettingsCache.dynamicColor && dynamicColorSupported
     )
     return dynamicColorOn && dynamicColorSupported
+}
+
+@Composable
+fun rememberPureWhiteActive(repo: SettingsRepository): Boolean {
+    val themeMode by repo.themeMode.collectAsState(initial = SettingsCache.themeMode)
+    return themeMode == LucentThemeMode.PURE_WHITE.key
 }

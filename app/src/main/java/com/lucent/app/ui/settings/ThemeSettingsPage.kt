@@ -31,6 +31,7 @@ import com.lucent.app.ui.LucentTitles
 import com.lucent.app.ui.PaletteSwatch
 import com.lucent.app.ui.frostedGlass
 import com.lucent.app.ui.rememberDynamicColorActive
+import com.lucent.app.ui.rememberPureWhiteActive
 import kotlinx.coroutines.launch
 
 @Composable
@@ -38,10 +39,12 @@ internal fun ThemeSettingsPage(repo: SettingsRepository) {
     val onGradient = LocalOnGradient.current
     val onGradientMuted = LocalOnGradientMuted.current
     val savedTheme by repo.themeMode.collectAsState(initial = SettingsCache.themeMode)
-    val locked = rememberDynamicColorActive(repo)
+    val dynamicLocked = rememberDynamicColorActive(repo)
+    val pureWhiteLocked = rememberPureWhiteActive(repo)
+    val locked = dynamicLocked || pureWhiteLocked
     val lockAlpha = if (locked) 0.5f else 1f
 
-    LockNote(if (locked) S.dynamicThemeLockedHint else "")
+    LockNote(if (pureWhiteLocked) S.pureWhiteLockedHint else if (dynamicLocked) S.dynamicThemeLockedHint else "")
 
     val offered = LucentThemeMode.pickerEntries
     LucentThemeSection.entries.forEachIndexed { index, section ->

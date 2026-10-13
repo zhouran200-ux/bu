@@ -38,6 +38,7 @@ import com.lucent.app.ui.PaletteGroup
 import com.lucent.app.ui.PaletteSwatch
 import com.lucent.app.ui.frostedGlass
 import com.lucent.app.ui.rememberDynamicColorActive
+import com.lucent.app.ui.rememberPureWhiteActive
 import com.lucent.app.ui.title
 import kotlinx.coroutines.launch
 
@@ -51,7 +52,9 @@ internal fun BackgroundSettingsPage(repo: SettingsRepository) {
         initial = SettingsCache.backgroundAnimationEnabled
     )
     val savedPalette by repo.palette.collectAsState(initial = SettingsCache.palette)
-    val locked = rememberDynamicColorActive(repo)
+    val dynamicLocked = rememberDynamicColorActive(repo)
+    val pureWhiteLocked = rememberPureWhiteActive(repo)
+    val locked = dynamicLocked || pureWhiteLocked
     val lockAlpha = if (locked) 0.5f else 1f
     val motionAlpha = lockAlpha * if (backgroundAnimationEnabled) 1f else 0.38f
     val randomSwatch = remember { LucentPalette.pickerEntries.shuffled().take(4).flatMap { it.colors } }
@@ -67,7 +70,7 @@ internal fun BackgroundSettingsPage(repo: SettingsRepository) {
         AppScope.io.launch { repo.setPalette(name) }
     }
 
-    LockNote(if (locked) S.dynamicThemeLockedHint else "")
+    LockNote(if (pureWhiteLocked) S.pureWhiteLockedHint else if (dynamicLocked) S.dynamicThemeLockedHint else "")
 
     Column(modifier = Modifier.fillMaxWidth().frostedGlass().padding(16.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {

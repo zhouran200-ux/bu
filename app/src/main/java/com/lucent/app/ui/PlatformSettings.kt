@@ -69,8 +69,6 @@ fun DynamicColorRow(repo: SettingsRepository) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(S.pureWhiteTitle, color = LucentTitles.titleInk(onGradient), fontSize = LucentTitles.EntrySize, fontWeight = LucentTitles.EntryWeight)
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(S.pureWhiteSubtitle, color = onGradientMuted, fontSize = 13.sp)
             }
             Spacer(modifier = Modifier.width(12.dp))
             Switch(

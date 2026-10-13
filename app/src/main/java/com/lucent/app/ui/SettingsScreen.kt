@@ -3,7 +3,9 @@ package com.lucent.app.ui
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.ScrollState
@@ -39,7 +41,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun SettingsScreen(active: Boolean = true) {
     val context = LocalContext.current
@@ -180,6 +182,7 @@ fun SettingsScreen(active: Boolean = true) {
         snapshotFlow { rootScroll.value }.collect { SettingsScrollMemory.write(route, it) }
     }
 
+    val imeVisible = WindowInsets.isImeVisible
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -187,7 +190,7 @@ fun SettingsScreen(active: Boolean = true) {
             .verticalScroll(rootScroll)
             .hazeSource(state = LocalHazeState.current)
             .padding(16.dp)
-            .padding(bottom = LocalBottomBarInset.current)
+            .padding(bottom = if (imeVisible) 0.dp else LocalBottomBarInset.current)
     ) {
         when (route) {
             SettingsRoute.Root -> RootSettingsPage(repo = repo, onRoute = { navigate(it) })

@@ -181,4 +181,79 @@ class DocumentSectionTest {
     fun blankBodyProducesNoBlocks() {
         assertTrue(splitRenderBlocks("   \n\n  ").isEmpty())
     }
+
+    @Test
+    fun plainTextChaptersAreRecognizedWithoutBlankLines() {
+        val body = "第57章 剥皮\n正文一\n第五十八章 新线索\n正文二\n第５９章：归来\n正文三"
+        val blocks = splitRenderBlocks(body)
+
+        assertEquals(3, blocks.size)
+        assertEquals(
+            listOf("第57章 剥皮", "第五十八章 新线索", "第５９章：归来"),
+            blocks.map { it.sectionTitle }
+        )
+        assertEquals(listOf(0, 1, 2), blocks.map { it.sectionIndex })
+    }
+
+    @Test
+    fun chapterMentionsInParagraphsDoNotCreateSections() {
+        val body = "第57章 剥皮\n他翻到了第58章，继续读下去。\n第58章的内容仍未结束。\n#不是标题"
+        assertEquals(1, splitDocumentSections(body).size)
+    }
+
+    @Test
+    fun headingLabelsRemoveMarkdownMarkersAndFileBom() {
+        assertEquals("第一章 开始", documentSectionTitle("  ## 第一章 开始 ###  "))
+        assertEquals("第57章 剥皮", documentSectionTitle("\uFEFF第57章 剥皮"))
+    }
+
+    @Test
+    fun headingsInsideCodeFencesDoNotCreateSections() {
+        val body = "# 文档\n```text\n# 代码标题\n第57章 剥皮\n```\n## 下一节\n正文"
+        val blocks = splitRenderBlocks(body)
+        assertEquals(listOf("文档", "下一节"), blocks.map { it.sectionTitle })
+    }
+
+    @Test
+    fun longChaptersKeepTheirTitlesAcrossEveryRenderBlock() {
+        val body = "第57章 剥皮\n" + "长段正文。".repeat(200) + "\n第58章 新线索\n另一章正文"
+        val blocks = splitRenderBlocks(body, maxChars = 120)
+        val nextChapter = blocks.indexOfFirst { it.sectionIndex == 1 }
+
+        assertTrue(nextChapter > 1)
+        blocks.take(nextChapter).indices.forEach { index ->
+            assertEquals("第57章 剥皮", currentDocumentSectionTitle(blocks, index, "书名"))
+        }
+        assertEquals("第58章 新线索", currentDocumentSectionTitle(blocks, nextChapter, "书名"))
+    }
+
+    @Test
+    fun aSingleChapterStillProvidesItsActualTitle() {
+        val blocks = splitRenderBlocks("第57章 剥皮\n正文")
+        assertEquals("第57章 剥皮", currentDocumentSectionTitle(blocks, 0, "书名"))
+    }
+
+    @Test
+    fun headinglessAndEmptyDocumentsUseReadableFallbacks() {
+        val blocks = splitRenderBlocks("没有章节标题的正文")
+        assertEquals("导入的资料", currentDocumentSectionTitle(blocks, 0, "导入的资料"))
+        assertEquals("正文", currentDocumentSectionTitle(blocks, 0, ""))
+        assertEquals("资料", currentDocumentSectionTitle(emptyList(), 0, "资料"))
+    }
+
+    @Test
+    fun footerAndOutOfRangePositionsKeepTheNearestChapter() {
+        val blocks = splitRenderBlocks("# 开头\n一\n# 结尾\n二")
+        assertEquals("开头", currentDocumentSectionTitle(blocks, -1, "资料"))
+        assertEquals("结尾", currentDocumentSectionTitle(blocks, blocks.size, "资料"))
+        assertEquals("结尾", currentDocumentSectionTitle(blocks, Int.MAX_VALUE, "资料"))
+    }
+
+    @Test
+    fun switchingDocumentsDoesNotReuseThePreviousChapterTitle() {
+        val first = splitRenderBlocks("第57章 剥皮\n正文")
+        val second = splitRenderBlocks("第1章 新书\n正文")
+        assertEquals("第57章 剥皮", currentDocumentSectionTitle(first, 0, "旧书"))
+        assertEquals("第1章 新书", currentDocumentSectionTitle(second, 0, "新书"))
+    }
 }

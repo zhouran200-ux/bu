@@ -69,23 +69,46 @@ object ChatScrollMath {
     }
 }
 
+private val markdownSectionHeading = Regex("^#{1,6}\\s+(.+?)(?:\\s+#+)?$")
+private val plainSectionHeading = Regex(
+    "^第\\s*[0-9０-９零〇一二三四五六七八九十百千万两壹贰叁肆伍陆柒捌玖拾佰仟]+\\s*[章回节卷部篇](?:[\\s:：、.．·—-]+.*)?$"
+)
+private val documentCodeFence = Regex("^(`{3,}|~{3,})(.*)$")
+
+internal fun documentSectionTitle(line: String): String? {
+    val title = line.trim().removePrefix("\uFEFF").trim()
+    markdownSectionHeading.matchEntire(title)?.let { return it.groupValues[1].trim() }
+    return title.takeIf { plainSectionHeading.matches(it) }
+}
+
 fun splitDocumentSections(body: String): List<String> {
-    val lines = body.split("\n")
     val sections = mutableListOf<String>()
     val buffer = StringBuilder()
+    var fence: String? = null
     fun flush() {
         val text = buffer.toString().trim()
         if (text.isNotEmpty()) sections.add(text)
         buffer.setLength(0)
     }
-    lines.forEach { line ->
-        if (line.trimStart().startsWith("#") && buffer.isNotEmpty()) {
+    body.lineSequence().forEach { line ->
+        val codeFence = documentCodeFence.matchEntire(line.trimStart())
+        if (codeFence != null) {
+            val marker = codeFence.groupValues[1]
+            val currentFence = fence
+            if (currentFence == null) {
+                fence = marker
+            } else if (marker.first() == currentFence.first() &&
+                marker.length >= currentFence.length && codeFence.groupValues[2].isBlank()
+            ) {
+                fence = null
+            }
+        } else if (fence == null && documentSectionTitle(line) != null && buffer.isNotEmpty()) {
             flush()
         }
         buffer.append(line).append("\n")
     }
     flush()
-    return sections.ifEmpty { listOf(body.trim()).filter { it.isNotEmpty() } }
+    return sections
 }
 
 fun activeSectionNumber(sectionTops: List<Int?>, scrollOffset: Int): Int {
@@ -97,21 +120,35 @@ fun activeSectionNumber(sectionTops: List<Int?>, scrollOffset: Int): Int {
     return active + 1
 }
 
-data class RenderBlock(val text: String, val sectionIndex: Int)
+data class RenderBlock(
+    val text: String,
+    val sectionIndex: Int,
+    val sectionTitle: String? = null
+)
 
 fun splitRenderBlocks(body: String, maxChars: Int = 1200): List<RenderBlock> {
     val sections = splitDocumentSections(body)
     val blocks = mutableListOf<RenderBlock>()
     sections.forEachIndexed { sectionIndex, section ->
+        val title = documentSectionTitle(section.lineSequence().first())
         if (section.length <= maxChars) {
-            blocks.add(RenderBlock(section, sectionIndex))
+            blocks.add(RenderBlock(section, sectionIndex, title))
         } else {
             chunkLongText(section, maxChars).forEach { piece ->
-                blocks.add(RenderBlock(piece, sectionIndex))
+                blocks.add(RenderBlock(piece, sectionIndex, title))
             }
         }
     }
     return blocks
+}
+
+internal fun currentDocumentSectionTitle(
+    blocks: List<RenderBlock>,
+    firstVisibleItemIndex: Int,
+    documentTitle: String
+): String {
+    val block = blocks.getOrNull(firstVisibleItemIndex.coerceIn(0, blocks.lastIndex.coerceAtLeast(0)))
+    return block?.sectionTitle ?: documentTitle.ifBlank { "正文" }
 }
 
 private fun chunkLongText(text: String, maxChars: Int): List<String> {

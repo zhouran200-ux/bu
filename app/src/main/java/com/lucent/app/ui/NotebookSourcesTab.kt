@@ -3,10 +3,7 @@ package com.lucent.app.ui
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -31,16 +29,15 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.lucent.app.AppScope
@@ -48,7 +45,6 @@ import com.lucent.app.data.AppDatabase
 import com.lucent.app.data.MarkdownDocumentParser
 import com.lucent.app.data.Note
 import com.lucent.app.data.NotebookPurge
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
@@ -147,7 +143,9 @@ fun NotebookSourcesTab(
                 }
             }
         } else {
-            SourceReader(note = current, modifier = Modifier.fillMaxSize())
+            key(current.id) {
+                SourceReader(note = current, modifier = Modifier.fillMaxSize())
+            }
         }
     }
 }
@@ -155,24 +153,11 @@ fun NotebookSourcesTab(
 @Composable
 private fun SourceReader(note: Note, modifier: Modifier = Modifier) {
     val listState = rememberLazyListState()
-    val accent = MaterialTheme.colorScheme.primary
-    val sectionCount = remember(note.id, note.body) { splitDocumentSections(note.body).size }
     val blocks = remember(note.id, note.body) { splitRenderBlocks(note.body) }
-
-    val currentSection by remember {
+    val pureWhite = LocalPureWhite.current
+    val currentSectionTitle by remember(blocks, note.title, listState) {
         derivedStateOf {
-            val block = blocks.getOrNull(listState.firstVisibleItemIndex)
-            ((block?.sectionIndex ?: 0) + 1).coerceIn(1, sectionCount.coerceAtLeast(1))
-        }
-    }
-
-    var chipVisible by remember { mutableStateOf(true) }
-    LaunchedEffect(listState.isScrollInProgress) {
-        if (listState.isScrollInProgress) {
-            chipVisible = false
-        } else {
-            delay(500)
-            chipVisible = true
+            currentDocumentSectionTitle(blocks, listState.firstVisibleItemIndex, note.title)
         }
     }
 
@@ -180,7 +165,7 @@ private fun SourceReader(note: Note, modifier: Modifier = Modifier) {
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(horizontal = 18.dp, vertical = 16.dp),
+            contentPadding = PaddingValues(start = 18.dp, top = 60.dp, end = 18.dp, bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             itemsIndexed(blocks, key = { index, _ -> index }) { _, block ->
@@ -192,31 +177,32 @@ private fun SourceReader(note: Note, modifier: Modifier = Modifier) {
             item { Spacer(modifier = Modifier.height(48.dp)) }
         }
 
-        AnimatedVisibility(
-            visible = sectionCount > 1 && chipVisible,
-            enter = fadeIn(tween(220)),
-            exit = fadeOut(tween(150)),
+        Surface(
+            shape = RoundedCornerShape(12.dp),
+            color = if (pureWhite) LucentGlass.PureWhiteSurface else MaterialTheme.colorScheme.surfaceContainerHigh,
+            contentColor = if (pureWhite) LucentGlass.PureWhiteInk else MaterialTheme.colorScheme.onSurface,
+            border = BorderStroke(
+                1.dp,
+                if (pureWhite) LucentGlass.PureWhiteDivider else MaterialTheme.colorScheme.outlineVariant
+            ),
+            shadowElevation = 4.dp,
             modifier = Modifier
-                .align(Alignment.TopEnd)
+                .align(Alignment.TopStart)
                 .padding(12.dp)
+                .widthIn(max = 280.dp)
         ) {
-            Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = accent.copy(alpha = 0.9f),
-                shadowElevation = 4.dp
-            ) {
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-                ) {
-                    Text(
-                        text = "$currentSection / $sectionCount",
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        fontSize = 13.sp,
-                        fontWeight = LucentTitles.SectionWeight
-                    )
-                }
-            }
+            Text(
+                text = currentSectionTitle,
+                style = MaterialTheme.typography.labelMedium.copy(
+                    fontSize = 13.sp,
+                    lineHeight = 18.sp,
+                    letterSpacing = 0.sp
+                ),
+                fontWeight = LucentTitles.SectionWeight,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+            )
         }
     }
 }

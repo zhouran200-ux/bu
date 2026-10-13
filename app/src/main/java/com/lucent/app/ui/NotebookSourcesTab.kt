@@ -7,11 +7,11 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -19,8 +19,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Description
@@ -34,13 +36,10 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.boundsInParent
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -155,20 +154,17 @@ fun NotebookSourcesTab(
 
 @Composable
 private fun SourceReader(note: Note, modifier: Modifier = Modifier) {
-    val scroll = rememberSaveable(note.id, saver = ScrollState.Saver) { ScrollState(0) }
+    val listState = rememberLazyListState()
     val accent = MaterialTheme.colorScheme.primary
     val sections = remember(note.id, note.body) { splitDocumentSections(note.body) }
-    val tops = remember(note.id) { mutableMapOf<Int, Int>() }
 
     val currentSection by remember {
-        derivedStateOf {
-            activeSectionNumber(sections.indices.map { tops[it] }, scroll.value)
-        }
+        derivedStateOf { (listState.firstVisibleItemIndex + 1).coerceIn(1, sections.size.coerceAtLeast(1)) }
     }
 
     var chipVisible by remember { mutableStateOf(true) }
-    LaunchedEffect(scroll.isScrollInProgress) {
-        if (scroll.isScrollInProgress) {
+    LaunchedEffect(listState.isScrollInProgress) {
+        if (listState.isScrollInProgress) {
             chipVisible = false
         } else {
             delay(500)
@@ -177,29 +173,19 @@ private fun SourceReader(note: Note, modifier: Modifier = Modifier) {
     }
 
     Box(modifier = modifier.background(lucentPanelBackground())) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(scroll)
-                .padding(horizontal = 18.dp, vertical = 16.dp)
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(horizontal = 18.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            sections.forEachIndexed { index, section ->
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .onGloballyPositioned { coords ->
-                            if (tops[index] == null) {
-                                tops[index] = coords.boundsInParent().top.toInt()
-                            }
-                        }
-                ) {
-                    MarkdownText(
-                        text = section,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
+            itemsIndexed(sections, key = { index, _ -> index }) { _, section ->
+                MarkdownText(
+                    text = section,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
-            Spacer(modifier = Modifier.height(48.dp))
+            item { Spacer(modifier = Modifier.height(48.dp)) }
         }
 
         AnimatedVisibility(

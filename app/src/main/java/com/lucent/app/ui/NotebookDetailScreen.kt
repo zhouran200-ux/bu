@@ -1,10 +1,7 @@
 package com.lucent.app.ui
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.Crossfade
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,13 +11,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -28,16 +27,21 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.lucent.app.data.AppDatabase
 import com.lucent.app.data.Note
+import kotlinx.coroutines.launch
 
 enum class NotebookDetailTab {
     CHAT,
@@ -52,12 +56,21 @@ fun NotebookDetailScreen(
     val context = LocalContext.current
     val db = remember { AppDatabase.getInstance(context) }
 
-    var selectedTab by remember { mutableStateOf(NotebookDetailTab.CHAT) }
+    val tabs = NotebookDetailTab.entries
+    val pagerState = rememberPagerState { tabs.size }
+    val scope = rememberCoroutineScope()
+    val selectedTab = tabs[pagerState.currentPage]
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
     var sourceNotes by remember { mutableStateOf<List<Note>>(emptyList()) }
     var reloadCount by remember { mutableIntStateOf(0) }
 
-    val onGradient = LocalOnGradient.current
-    val onGradientMuted = LocalOnGradientMuted.current
+    LaunchedEffect(selectedTab) {
+        if (selectedTab != NotebookDetailTab.CHAT) {
+            focusManager.clearFocus()
+            keyboardController?.hide()
+        }
+    }
 
     BackHandler {
         onBack()
@@ -82,18 +95,21 @@ fun NotebookDetailScreen(
             NotebookDetailHeader(
                 selectedTab = selectedTab,
                 sourceCount = sourceNotes.size,
-                onSelectTab = { selectedTab = it },
+                onSelectTab = { tab ->
+                    scope.launch { pagerState.animateScrollToPage(tabs.indexOf(tab)) }
+                },
                 onBack = onBack
             )
 
-            Crossfade(
-                targetState = selectedTab,
-                animationSpec = tween(durationMillis = 200),
+            HorizontalPager(
+                state = pagerState,
+                beyondViewportPageCount = tabs.lastIndex,
+                key = { tabs[it] },
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
-            ) { tab ->
-                when (tab) {
+            ) { page ->
+                when (tabs[page]) {
                     NotebookDetailTab.CHAT -> {
                         NotebookChatTab(
                             notebookId = notebookId,
@@ -209,10 +225,13 @@ private fun TabPill(
         modifier = modifier
             .clip(RoundedCornerShape(20.dp))
             .background(bg)
-            .clickable(
+            .selectable(
+                selected = selected,
                 interactionSource = interaction,
-                indication = null
-            ) { onClick() }
+                indication = null,
+                role = Role.Tab,
+                onClick = onClick
+            )
             .padding(vertical = 8.dp)
     ) {
         Text(

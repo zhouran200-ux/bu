@@ -1,0 +1,24 @@
+package com.lucent.app.ui
+
+import kotlin.test.Test
+import kotlin.test.assertEquals
+
+class NotebookDetailTabsTest {
+
+    @Test
+    fun detailTabsKeepChatFirstSoSwipeOrderIsStable() {
+        assertEquals(
+            listOf(NotebookDetailTab.CHAT, NotebookDetailTab.SOURCES),
+            NotebookDetailTab.entries.toList()
+        )
+    }
+
+    @Test
+    fun detailTabIndexMatchesPagerPage() {
+        val tabs = NotebookDetailTab.entries
+        assertEquals(0, tabs.indexOf(NotebookDetailTab.CHAT))
+        assertEquals(1, tabs.indexOf(NotebookDetailTab.SOURCES))
+        assertEquals(NotebookDetailTab.CHAT, tabs[0])
+        assertEquals(NotebookDetailTab.SOURCES, tabs[1])
+    }
+}

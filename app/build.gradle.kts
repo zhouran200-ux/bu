@@ -27,6 +27,7 @@ android {
         targetSdk = 36
         versionCode = ciVersionCode
         versionName = ciVersionName
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // 只带真机（骁龙 8 至尊版）和模拟器两种架构，不再为老 32 位机型准备二进制副本
         ndk {
             abiFilters += listOf("arm64-v8a", "x86_64")
@@ -97,7 +98,7 @@ android {
     }
 
     lint {
-        abortOnError = false
+        abortOnError = true
         baseline = file("lint-baseline.xml")
     }
 }

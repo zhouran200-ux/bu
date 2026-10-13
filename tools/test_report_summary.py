@@ -9,7 +9,7 @@ def main():
         print("usage: test_report_summary.py <results-dir> <label>")
         return 0
     folder, label = sys.argv[1], sys.argv[2]
-    files = sorted(glob.glob(os.path.join(folder, "*.xml")))
+    files = sorted(glob.glob(os.path.join(folder, "**", "TEST-*.xml"), recursive=True))
     rows = []
     totals = [0, 0, 0, 0]
     failures = []

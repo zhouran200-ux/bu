@@ -54,10 +54,13 @@ def run_step(name, cmd):
 
 
 def main():
-    level = "logic"
+    level = "quick"
     for arg in sys.argv[1:]:
         if arg in LEVELS:
             level = arg
+    if level != "quick" and os.environ.get("GITHUB_ACTIONS") != "true":
+        print("本地禁止启动 Java/Gradle；请推送到 GitHub，由 check 工作流运行编译、单测和 Lint。")
+        return 2
     steps = plan(level)
     print(f"验证档位: {level}  (共 {len(steps)} 项)")
 
@@ -77,10 +80,10 @@ def main():
                 hard_fail = True
         print(f"  [{mark}] {name}")
 
-    print("\n已自动验证: 代码可编译、单测通过、静态规范检查。")
+    print("\n本次仅执行上表列出的检查；未执行或失败的检查不视为通过。")
     print("UI/美术规范为静态评分, 仅供参考, 不作阻断。")
     print("未自动验证 (需真机实测): 动画手感、手势是否跟手、视觉居中与配色观感、长按拖动与边缘返回冲突。")
-    print("CI 兜底: push 到 main 会由 check 工作流再跑一遍单测/lint/脚本。")
+    print("云端验证: push 到 main 后由 GitHub Actions 执行单测、编译、Lint 和模拟器测试；推送后不等待结果。")
 
     if hard_fail:
         print("\n结论: 有硬性检查失败, 不应推送。")

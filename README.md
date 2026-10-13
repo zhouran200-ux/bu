@@ -12,17 +12,18 @@
 
 ---
 
-## 本地构建
+## 验证与交付
 
-需要 JDK 17 与 Android SDK（compileSdk 36、minSdk 28），无需其它工具：
+本地不启动 Java/OpenJDK、Gradle、编译、Android 单元测试、Lint 或 APK 打包。修改代码并补充测试后，只运行轻量 Python 检查：
 
 ```bash
-./gradlew :app:assembleDebug        # 调试包，使用仓库自带的 debug.keystore
-./gradlew :app:testDebugUnitTest    # 单元测试
-./gradlew :app:lintRelease          # 静态检查
+python tools/verify.py quick
+python -m unittest discover -s tools/tests -v
 ```
 
-Windows 使用 `gradlew.bat` 执行同名任务。对于本地编码与 Gradle 编码不同的 Windows 环境，单测会自动生成类路径清单 JAR，避免中文目录名被 Java 启动器误读；无需移动项目或更改系统编码。清单位于纯 ASCII 路径的 Gradle 用户目录（否则使用临时目录）下的 `lucent-test-classpath`，按项目隔离；测试报告仍在 `app/build/reports/tests`。
+`verify.py` 默认采用 `quick`，本地请求 `logic` / `full` 会直接拒绝，不启动 Gradle。完整验证在 GitHub Actions 的 `check` 工作流执行：Debug/Release 编译与 JVM 单测、两种变体的 Lint、Room schema、Android 插桩测试编译及云端模拟器运行。报告无论成功失败都尽量上传为 artifacts。
+
+推送成功后结束本轮，不等待 CI；下一次开发任务开始时，由独立子代理检查上一轮提交的结果和报告，发现问题在当轮修复。覆盖范围及限制见 [云端验证说明](docs/CLOUD-VALIDATION.md)。
 
 ## 云端构建
 

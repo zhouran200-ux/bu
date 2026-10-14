@@ -70,14 +70,29 @@
 - 存储：Room 迁移 2→30 在云端模拟器 26 项通过；旧版本实机升级未验证。
 - 多语言：i18n 生成一致性由 check.yml 校验；长文案截断为设备项。
 
+## 阶段D进展（可本地验证部分）
+
+「获取模型」此前零覆盖，已补 `LlmClientFetchModelsTest`（10 项，真实 Socket 断言）：
+- OpenAI/Anthropic 的 `data[]` 与 Google 的 `models[]` 两种响应形态，Google 前缀 `models/` 正确剥离；
+- id 首尾空格、空 id、重复 id 的规范化与去重；
+- 服务端广告的 `reasoning` 能力被注册进 `ModelCapabilityRegistry`（含 `supported/control/adaptive`）；
+- 未知 control 字符串按端点协议兜底（OpenAI→EFFORT，Google→THINKING_LEVEL）；
+- 无能力元数据的模型按名称/协议推断；
+- HTTP 401 带上状态码与正文；非 JSON 响应返回失败而非空列表；空数组返回空列表；
+- 端点路径：OpenAI 补 `/models`，raw 模式原样使用，Google 附加 `key=`。
+
+### 残余风险（已记录，未改行为）
+
+在 OpenAI 兼容端点上，**无能力元数据且名称无厂商线索**的模型会被自适应推断为 `OPENAI_EFFORT`（`isAdaptive=true`）。用户选择非 AUTO 档位时，请求体会带上 `reasoning_effort`；若该端点严格校验未知参数，可能返回 400。这是既有设计（非本轮引入），是否收紧需要真实端点证据，故只记录不改。
+
 ## 阶段完成情况
 
 - **阶段A（完成）**：功能清单、覆盖矩阵、基线验证（Debug/Release 各 195 项→现 229 项，Release Lint 0 错误，androidTest 可编译，远端 CI 成功）。
 - **阶段B（完成）**：修复代理场景推理参数误判；补重排几何 16 项、DOC 健壮性 8 项。
 - **阶段C（完成）**：修正矩阵中对非流式请求的误判；修复 OpenAI 线路丢弃 Claude effort；补线路级请求体断言 5 项、配置种子一致性 3 项。
-- **阶段D（待续，需设备/实机）**：真机键盘与长按手势、通知栏动作、前台服务时限、字体缩放下的阅读位置精度、旧库实机升级、厂商 ROM 差异。
+- **阶段D（本地部分完成）**：补「获取模型」线路级测试 10 项并记录自适应推断的残余风险；设备项（真机键盘与长按手势、通知栏动作、前台服务时限、字体缩放下的阅读位置精度、旧库实机升级、厂商 ROM 差异）仍需实机验收。
 
-最终本地结果：28 个测试类 / 229 项测试（Debug、Release 各一次）0 失败；Lint 0 错误 6 警告；Python 工具与契约测试 26 项通过；未打包 APK。
+最终本地结果：29 个测试类 / 239 项测试（Debug、Release 各一次）0 失败；Lint 0 错误 6 警告；Python 工具与契约测试 26 项通过；未打包 APK。
 
 ## 未验证边界（不做无证据声明）
 

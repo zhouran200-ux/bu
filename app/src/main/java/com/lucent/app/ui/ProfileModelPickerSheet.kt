@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -25,12 +26,16 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
+import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
@@ -56,17 +61,40 @@ internal fun ProfileModelPickerSheet(
     onDismiss: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    var expandedProfileId by remember { mutableStateOf<String?>(currentProfileId) }
+    val position = remember(profiles, currentProfileId, currentModel) {
+        modelPickerPosition(profiles, currentProfileId, currentModel)
+    }
+    var expandedProfileId by remember(position) { mutableStateOf(position.expandedProfileId) }
+    val listState = remember(position) { LazyListState(position.firstVisibleItemIndex, 0) }
+    val scope = rememberCoroutineScope()
+    var closing by remember { mutableStateOf(false) }
+    val latestDismiss by rememberUpdatedState(onDismiss)
+    fun closeSheet(afterHidden: () -> Unit = {}) {
+        if (closing) return
+        closing = true
+        scope.launch {
+            try {
+                sheetState.hide()
+                if (!sheetState.isVisible) {
+                    latestDismiss()
+                    afterHidden()
+                }
+            } finally {
+                closing = false
+            }
+        }
+    }
     val ink = LocalOnGradient.current
     val accent = MaterialTheme.colorScheme.primary
     ModalBottomSheet(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { latestDismiss() },
         sheetState = sheetState,
         containerColor = lucentPanelBackground(),
-        sheetGesturesEnabled = false,
-        dragHandle = { LucentDragHandle(onDismiss) }
+        sheetGesturesEnabled = !closing,
+        dragHandle = { BottomSheetDefaults.DragHandle() }
     ) {
         LazyColumn(
+            state = listState,
             modifier = Modifier.fillMaxWidth().heightIn(max = 520.dp).padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
@@ -85,14 +113,13 @@ internal fun ProfileModelPickerSheet(
                     Row(
                         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
                             .background(if (selected) accent.copy(alpha = 0.22f) else Color.Transparent)
-                            .clickable(enabled = models.isNotEmpty(), role = Role.Button) {
-                                if (models.size == 1) onSelect(profile, models.single())
-                                else expandedProfileId = if (expanded) null else profile.id
+                            .clickable(enabled = !closing && models.isNotEmpty(), role = Role.Button) {
+                                expandedProfileId = if (expanded) null else profile.id
                             }.heightIn(min = 48.dp).padding(horizontal = 8.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(if (expanded) Icons.Default.KeyboardArrowDown else Icons.Default.ChevronRight,
-                            contentDescription = if (models.size > 1) if (expanded) "收起模型列表" else "展开模型列表" else null,
+                            contentDescription = if (models.isNotEmpty()) if (expanded) "收起模型列表" else "展开模型列表" else null,
                             tint = accent, modifier = Modifier.size(20.dp))
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
@@ -112,14 +139,16 @@ internal fun ProfileModelPickerSheet(
                         if (selected && models.size == 1) Icon(Icons.Default.Check, "当前模型", tint = accent, modifier = Modifier.size(18.dp))
                     }
                 }
-                if (expanded && models.size > 1) {
+                if (expanded && models.isNotEmpty()) {
                     models.forEachIndexed { index, model ->
                         item(key = "model:${profile.id}:$index") {
                             val modelSelected = selected && currentModel == model
                             Row(
                                 modifier = Modifier.fillMaxWidth().padding(start = 24.dp)
                                     .clip(RoundedCornerShape(8.dp))
-                                    .selectable(selected = modelSelected, role = Role.RadioButton) { onSelect(profile, model) }
+                                    .selectable(selected = modelSelected, enabled = !closing, role = Role.RadioButton) {
+                                        closeSheet { onSelect(profile, model) }
+                                    }
                                     .heightIn(min = 48.dp).padding(horizontal = 12.dp, vertical = 10.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
@@ -139,10 +168,11 @@ internal fun ProfileModelPickerSheet(
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp)
                         .clip(RoundedCornerShape(12.dp)).background(ink.copy(alpha = 0.06f))
-                        .clickable(role = Role.Button) {
-                            onDismiss()
-                            SettingsNav.go(SettingsRoute.Api)
-                            AppNavigation.requestScreen(Screen.Settings)
+                        .clickable(enabled = !closing, role = Role.Button) {
+                            closeSheet {
+                                SettingsNav.go(SettingsRoute.Api)
+                                AppNavigation.requestScreen(Screen.Settings)
+                            }
                         }.heightIn(min = 48.dp).padding(14.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {

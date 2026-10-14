@@ -191,6 +191,28 @@ class DocumentSectionTest {
     }
 
     @Test
+    fun longSectionsAreChunkedAtLineBoundariesNotInsideALine() {
+        val lines = (1..40).map { "第${it}行内容" }
+        val body = lines.joinToString("\n")
+        val blocks = splitRenderBlocks(body, maxChars = 12)
+        assertTrue(blocks.size > 1)
+        blocks.forEach { block ->
+            block.text.lines().filter { it.isNotBlank() }.forEach { line ->
+                assertTrue(lines.contains(line), "分块把一行切成了半截: $line")
+            }
+        }
+        assertEquals(lines, blocks.flatMap { it.text.lines() }.filter { it.isNotBlank() })
+    }
+
+    @Test
+    fun aSingleLongParagraphIsKeptWholeInsteadOfBeingSplitMidParagraph() {
+        val paragraph = "字".repeat(1500)
+        val body = "开头段落\n\n$paragraph"
+        val blocks = splitRenderBlocks(body, maxChars = 400)
+        assertTrue(blocks.any { it.text == paragraph }, "长段落不应被拆开")
+    }
+
+    @Test
     fun plainTextChaptersAreRecognizedWithoutBlankLines() {
         val body = "第57章 剥皮\n正文一\n第五十八章 新线索\n正文二\n第５９章：归来\n正文三"
         val blocks = splitRenderBlocks(body)

@@ -27,7 +27,14 @@ class MarkdownDocumentParserTest {
     fun testParseTxtToMarkdown() {
         val raw = "第一行内容\r\n第二行内容\r\n\r\n第三行内容"
         val md = MarkdownDocumentParser.parseTxtToMarkdown(raw.toByteArray(Charsets.UTF_8))
-        assertEquals("第一行内容\n第二行内容\n\n第三行内容", md)
+        assertEquals("第一行内容\n\n第二行内容\n\n第三行内容", md)
+    }
+
+    @Test
+    fun txtChapterLinesBecomeMarkdownHeadings() {
+        val raw = "第57章 剥皮\n他翻开了那本书。\n第五十八章 新线索\n线索出现了。"
+        val md = MarkdownDocumentParser.parseTxtToMarkdown(raw.toByteArray(Charsets.UTF_8))
+        assertEquals("# 第57章 剥皮\n\n他翻开了那本书。\n\n# 第五十八章 新线索\n\n线索出现了。", md)
     }
 
     @Test
@@ -114,6 +121,22 @@ class MarkdownDocumentParserTest {
         assertTrue(md.contains("| 列A | 列B |"), md)
         assertTrue(md.contains("| --- | --- |"), md)
         assertTrue(md.contains("""a\|b"""), md)
+    }
+
+    @Test
+    fun docxPlainChapterParagraphsBecomeHeadingsWithoutAWordStyle() {
+        val xml = """
+            <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+              <w:body>
+                <w:p><w:r><w:t>第57章 剥皮</w:t></w:r></w:p>
+                <w:p><w:r><w:t>他翻开了那本书。</w:t></w:r></w:p>
+              </w:body>
+            </w:document>
+        """.trimIndent()
+        val md = MarkdownDocumentParser.parseDocxToMarkdown(docxWith(xml))
+        assertTrue(md.startsWith("# 第57章 剥皮"), md)
+        assertTrue(md.contains("他翻开了那本书。"), md)
+        assertFalse(md.contains("# 他翻开了"), md)
     }
 
     @Test

@@ -52,11 +52,11 @@ object MarkdownDocumentParser {
 
     fun parseTxtToMarkdown(bytes: ByteArray): String {
         if (bytes.isEmpty()) return ""
-        val text = decodeText(bytes)
-        return text.replace("\r\n", "\n").replace("\r", "\n").trim()
+        return PlainTextMarkdown.normalize(decodeText(bytes))
     }
 
-    fun parseDocToMarkdown(bytes: ByteArray): String = DocTextExtractor.extract(bytes)
+    fun parseDocToMarkdown(bytes: ByteArray): String =
+        PlainTextMarkdown.normalize(DocTextExtractor.extract(bytes))
 
     fun parseDocxToMarkdown(bytes: ByteArray): String {
         val documentXml = extractZipEntry(bytes, "word/document.xml")
@@ -149,10 +149,14 @@ object MarkdownDocumentParser {
         }
 
         val textBuilder = StringBuilder()
+        val plainBuilder = StringBuilder()
+        var prefixApplied = false
         if (headingLevel in 1..6) {
             textBuilder.append("#".repeat(headingLevel)).append(" ")
+            prefixApplied = true
         } else if (isList) {
             textBuilder.append("- ")
+            prefixApplied = true
         }
 
         val runs = pElement.childNodes
@@ -192,9 +196,17 @@ object MarkdownDocumentParser {
                     else if (bold) formatted = "**$formatted**"
                     else if (italic) formatted = "*$formatted*"
                     textBuilder.append(leadingSpaces).append(formatted).append(trailingSpaces)
+                    plainBuilder.append(trimmed)
                 } else {
                     textBuilder.append(t)
                 }
+            }
+        }
+
+        if (!prefixApplied) {
+            val plain = plainBuilder.toString().trim()
+            if (plain.isNotEmpty() && DocumentHeadings.plainTitle(plain) != null) {
+                textBuilder.insert(0, "# ")
             }
         }
 

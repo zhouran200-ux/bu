@@ -69,17 +69,9 @@ object ChatScrollMath {
     }
 }
 
-private val markdownSectionHeading = Regex("^#{1,6}\\s+(.+?)(?:\\s+#+)?$")
-private val plainSectionHeading = Regex(
-    "^第\\s*[0-9０-９零〇一二三四五六七八九十百千万两壹贰叁肆伍陆柒捌玖拾佰仟]+\\s*[章回节卷部篇](?:[\\s:：、.．·—-]+.*)?$"
-)
 private val documentCodeFence = Regex("^(`{3,}|~{3,})(.*)$")
 
-internal fun documentSectionTitle(line: String): String? {
-    val title = line.trim().removePrefix("\uFEFF").trim()
-    markdownSectionHeading.matchEntire(title)?.let { return it.groupValues[1].trim() }
-    return title.takeIf { plainSectionHeading.matches(it) }
-}
+internal fun documentSectionTitle(line: String): String? = com.lucent.app.data.DocumentHeadings.titleOf(line)
 
 fun splitDocumentSections(body: String): List<String> {
     val sections = mutableListOf<String>()
@@ -152,23 +144,57 @@ internal fun currentDocumentSectionTitle(
 }
 
 private fun chunkLongText(text: String, maxChars: Int): List<String> {
-    val paragraphs = text.split("\n\n")
+    val paragraphLimit = maxChars * 5
     val pieces = mutableListOf<String>()
     val buffer = StringBuilder()
+
     fun flush() {
         val t = buffer.toString().trim()
         if (t.isNotEmpty()) pieces.add(t)
         buffer.setLength(0)
     }
-    for (para in paragraphs) {
-        if (para.length > maxChars) {
-            flush()
-            pieces.addAll(chunkBySentence(para, maxChars))
-            continue
+
+    text.split("\n\n").forEach { paragraph ->
+        val trimmed = paragraph.trim()
+        if (trimmed.isEmpty()) return@forEach
+        if (trimmed.length <= maxChars) {
+            if (buffer.isNotEmpty() && buffer.length + trimmed.length + 2 > maxChars) flush()
+            if (buffer.isNotEmpty()) buffer.append("\n\n")
+            buffer.append(trimmed)
+            return@forEach
         }
-        if (buffer.isNotEmpty() && buffer.length + para.length > maxChars) flush()
-        if (buffer.isNotEmpty()) buffer.append("\n\n")
-        buffer.append(para)
+        flush()
+        if (trimmed.length <= paragraphLimit) {
+            pieces.add(trimmed)
+        } else {
+            pieces.addAll(chunkByLine(trimmed, maxChars))
+        }
+    }
+    flush()
+    return pieces.ifEmpty { listOf(text.trim()) }
+}
+
+private fun chunkByLine(text: String, maxChars: Int): List<String> {
+    val pieces = mutableListOf<String>()
+    val buffer = StringBuilder()
+
+    fun flush() {
+        val t = buffer.toString().trim()
+        if (t.isNotEmpty()) pieces.add(t)
+        buffer.setLength(0)
+    }
+
+    text.lines().forEach { line ->
+        val trimmed = line.trim()
+        if (trimmed.isEmpty()) return@forEach
+        if (trimmed.length > maxChars) {
+            flush()
+            pieces.addAll(chunkBySentence(trimmed, maxChars))
+            return@forEach
+        }
+        if (buffer.isNotEmpty() && buffer.length + trimmed.length + 1 > maxChars) flush()
+        if (buffer.isNotEmpty()) buffer.append("\n")
+        buffer.append(trimmed)
     }
     flush()
     return pieces.ifEmpty { listOf(text.trim()) }

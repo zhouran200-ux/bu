@@ -29,7 +29,10 @@ class DocTextExtractorTest {
     @Test
     fun parserExposesDocAsSupportedExtension() {
         assertTrue(MarkdownDocumentParser.isSupported("旧文档.doc"))
-        assertEquals(SAMPLE_TEXT, MarkdownDocumentParser.parseDocToMarkdown(fixtureBytes()))
+        assertEquals(
+            "# 第一章 拥抱\n\n她终于明白，有些事情只能自己走完。",
+            MarkdownDocumentParser.parseDocToMarkdown(fixtureBytes())
+        )
     }
 
     @Test

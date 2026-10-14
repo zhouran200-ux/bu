@@ -248,26 +248,42 @@ object ModelCapabilityRegistry {
         if (existing != null) return existing
 
         val inferredControl = when {
-            prov.contains("openai") || prov.contains("chatgpt") || clean.startsWith("o1") || clean.startsWith("o3") || clean.startsWith("o4") || clean.contains("gpt-6") || clean.contains("gpt6") -> {
-                ReasoningControl.OPENAI_EFFORT
-            }
-            prov.contains("claude") || prov.contains("anthropic") || clean.contains("claude") -> {
+            clean.contains("claude") -> {
                 if (clean.contains("3-7") || clean.contains("3.7") || clean.contains("4") || clean.contains("5")) {
                     ReasoningControl.ANTHROPIC_EFFORT
                 } else {
                     ReasoningControl.ANTHROPIC_BUDGET
                 }
             }
-            prov.contains("google") || prov.contains("gemini") || clean.contains("gemini") -> {
+            clean.contains("gemini") -> {
                 if (clean.contains("1.5") || clean.contains("1-5")) ReasoningControl.NONE else ReasoningControl.GEMINI_THINKING_LEVEL
             }
-            prov.contains("deepseek") || clean.contains("deepseek") || clean.contains("r1") -> {
+            clean.contains("deepseek") || clean.contains("r1") -> {
                 ReasoningControl.DEEPSEEK_EFFORT
             }
-            prov.contains("qwen") || clean.contains("qwen") -> {
+            clean.contains("qwen") -> {
                 ReasoningControl.QWEN_EFFORT
             }
-            clean.contains("r1") || clean.contains("think") || clean.contains("reason") -> {
+            prov.contains("openai") || prov.contains("chatgpt") || clean.startsWith("o1") || clean.startsWith("o3") || clean.startsWith("o4") || clean.contains("gpt-6") || clean.contains("gpt6") -> {
+                ReasoningControl.OPENAI_EFFORT
+            }
+            prov.contains("claude") || prov.contains("anthropic") -> {
+                if (clean.contains("3-7") || clean.contains("3.7") || clean.contains("4") || clean.contains("5")) {
+                    ReasoningControl.ANTHROPIC_EFFORT
+                } else {
+                    ReasoningControl.ANTHROPIC_BUDGET
+                }
+            }
+            prov.contains("google") || prov.contains("gemini") -> {
+                if (clean.contains("1.5") || clean.contains("1-5")) ReasoningControl.NONE else ReasoningControl.GEMINI_THINKING_LEVEL
+            }
+            prov.contains("deepseek") -> {
+                ReasoningControl.DEEPSEEK_EFFORT
+            }
+            prov.contains("qwen") -> {
+                ReasoningControl.QWEN_EFFORT
+            }
+            clean.contains("think") || clean.contains("reason") -> {
                 ReasoningControl.OPENAI_EFFORT
             }
             else -> ReasoningControl.NONE

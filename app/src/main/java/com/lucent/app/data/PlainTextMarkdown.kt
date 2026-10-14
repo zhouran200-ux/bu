@@ -2,6 +2,8 @@ package com.lucent.app.data
 
 object PlainTextMarkdown {
 
+    const val SCENE_BREAK = "---"
+
     fun normalize(text: String): String {
         val lines = text.replace("\r\n", "\n").replace('\r', '\n').split('\n')
         val blocks = mutableListOf<String>()
@@ -15,6 +17,13 @@ object PlainTextMarkdown {
             if (body.isNotEmpty()) blocks.add(body)
         }
 
+        fun appendBlock(block: String) {
+            flush()
+            blocks.add(block)
+            previousEndedParagraph = true
+            previousLine = null
+        }
+
         lines.forEach { line ->
             val trimmed = line.trim()
             if (trimmed.isEmpty()) {
@@ -26,23 +35,24 @@ object PlainTextMarkdown {
 
             val markdownTitle = DocumentHeadings.markdownTitle(line)
             if (markdownTitle != null) {
-                flush()
-                blocks.add(trimmed)
-                previousEndedParagraph = true
-                previousLine = null
+                appendBlock(trimmed)
                 return@forEach
             }
 
             val chapterTitle = DocumentHeadings.plainTitle(line)
             if (chapterTitle != null) {
-                flush()
-                blocks.add("# $chapterTitle")
-                previousEndedParagraph = true
-                previousLine = null
+                appendBlock("# $chapterTitle")
                 return@forEach
             }
 
-            val body = line.trimEnd().let { if (it.startsWith("\uFEFF")) it.removePrefix("\uFEFF") else it }
+            if (DocumentHeadings.isSceneSeparator(line)) {
+                appendBlock(SCENE_BREAK)
+                return@forEach
+            }
+
+            val body = trimmed.removePrefix("\uFEFF")
+            if (body.isEmpty()) return@forEach
+
             val startsList = DocumentHeadings.isListItem(line)
             val followsList = DocumentHeadings.isListItem(previousLine.orEmpty())
             if (previousEndedParagraph || startsList || followsList) flush()

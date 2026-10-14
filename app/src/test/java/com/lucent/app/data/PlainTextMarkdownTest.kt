@@ -62,6 +62,20 @@ class PlainTextMarkdownTest {
     }
 
     @Test
+    fun sceneSeparatorLinesBecomeMarkdownRules() {
+        assertEquals("上一段。\n\n---\n\n下一段。", PlainTextMarkdown.normalize("上一段。\n……\n下一段。"))
+        assertEquals("---", PlainTextMarkdown.normalize("……"))
+        assertEquals("---", PlainTextMarkdown.normalize("......"))
+        assertEquals("---", PlainTextMarkdown.normalize("——"))
+    }
+
+    @Test
+    fun ordinaryEllipsisInsideASentenceIsNotASceneBreak() {
+        assertEquals("他走了……然后回头。", PlainTextMarkdown.normalize("他走了……然后回头。"))
+        assertEquals("也许吧…", PlainTextMarkdown.normalize("也许吧…"))
+    }
+
+    @Test
     fun numberedListItemsAreNotGluedToEachOtherOrToTheIntroLine() {
         val raw = "后面列出了迹像：\n1.爱打扮了。\n2.不让看手机。\n3.回家不打电话"
         assertEquals(

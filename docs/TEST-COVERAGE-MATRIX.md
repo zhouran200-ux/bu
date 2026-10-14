@@ -36,11 +36,19 @@
 1. ~~ReorderSlots 落点/回流几何~~ 已补 `ReorderSlotsTest`（16 项）。
 2. ~~CompoundFile/DocTextExtractor 异常输入~~ 已补 `CompoundFileRobustnessTest`（8 项），确认畸形输入只产生可捕获异常。
 3. ~~ApiModels 与 ReasoningResolver 组合~~ **发现并修复真实缺陷**，见下节。
-4. SettingsCache.seed 与 SettingsRepository 键一致性（静态脚本已部分覆盖，未新增运行时测试）。
-5. LlmClient 非流式 chat 的参数/错误路径（当前测试集中在流式）。
+4. ~~SettingsCache.seed 与 SettingsRepository 键一致性~~ 已补 `SettingsCacheSeedTest`（3 项，含全字段 seed 与默认值一致性）。
+5. ~~LlmClient 非流式 chat 的参数/错误路径~~ 更正：客户端**不存在**非流式 chat，只有 `chatStream`、`fetchModels`、`testConnection`。改为线路级验证 `chatStream` 请求体，已补 `LlmClientReasoningPayloadTest`（5 项）。
 6. FontStore.classify 依赖 Context，未做 JVM 测试（真机/插桩项）。
 7. ChatSessions.prepareDelete 与 UI 状态竞态已有部分测试。
 8. MarkdownText 长文渲染块切分已测，跨块选择为设备项。
+
+## 阶段C修复的缺陷（有代码证据）
+
+阶段B 修复厂商识别顺序后暴露出一条新的连带问题：OpenAI 请求体分支只读取 `openAiEffort`，因此「OpenAI 兼容端点 + Claude 模型 + 思考强度」这一组合下用户选择会被**静默丢弃**（既不发 `reasoning_effort` 也不发厂商参数）。
+
+修复：OpenAI 线路参数改用 `openAiEffort ?: claudeEffort` 作为 effort 兜底，其余分支不变；预算类模型继续只发 `max_completion_tokens`，两者互斥。
+
+线路级回归（真实 Socket 捕获请求体）：Claude effort 组合发出 `reasoning_effort=high`；Claude 预算组合发出 `max_completion_tokens=16384` 且无 effort/reasoning；gpt-6 MAXIMUM 发出 `reasoning{mode=pro,effort=xhigh}`；AUTO 模式不发送任何推理参数；DeepSeek/Qwen 保持各自 effort 取值。
 
 ## 阶段B修复的缺陷（有代码证据）
 
@@ -61,6 +69,15 @@
 - 手势：气泡长按选区、底部弹窗整体拖拽、列表长按拖动排序均为设备项。
 - 存储：Room 迁移 2→30 在云端模拟器 26 项通过；旧版本实机升级未验证。
 - 多语言：i18n 生成一致性由 check.yml 校验；长文案截断为设备项。
+
+## 阶段完成情况
+
+- **阶段A（完成）**：功能清单、覆盖矩阵、基线验证（Debug/Release 各 195 项→现 229 项，Release Lint 0 错误，androidTest 可编译，远端 CI 成功）。
+- **阶段B（完成）**：修复代理场景推理参数误判；补重排几何 16 项、DOC 健壮性 8 项。
+- **阶段C（完成）**：修正矩阵中对非流式请求的误判；修复 OpenAI 线路丢弃 Claude effort；补线路级请求体断言 5 项、配置种子一致性 3 项。
+- **阶段D（待续，需设备/实机）**：真机键盘与长按手势、通知栏动作、前台服务时限、字体缩放下的阅读位置精度、旧库实机升级、厂商 ROM 差异。
+
+最终本地结果：28 个测试类 / 229 项测试（Debug、Release 各一次）0 失败；Lint 0 错误 6 警告；Python 工具与契约测试 26 项通过；未打包 APK。
 
 ## 未验证边界（不做无证据声明）
 

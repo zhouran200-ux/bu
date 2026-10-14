@@ -462,15 +462,16 @@ object LlmClient {
                         }
                         put("messages", messagesArray)
                         if (reasoningConfig != null && !reasoningConfig.isAuto) {
+                            val wireEffort = reasoningConfig.openAiEffort ?: reasoningConfig.claudeEffort
                             if (reasoningConfig.openAiMode != null) {
                                 put("reasoning", JSONObject().apply {
                                     put("mode", reasoningConfig.openAiMode)
-                                    if (reasoningConfig.openAiEffort != null) {
-                                        put("effort", reasoningConfig.openAiEffort)
+                                    if (wireEffort != null) {
+                                        put("effort", wireEffort)
                                     }
                                 })
-                            } else if (reasoningConfig.openAiEffort != null) {
-                                put("reasoning_effort", reasoningConfig.openAiEffort)
+                            } else if (wireEffort != null) {
+                                put("reasoning_effort", wireEffort)
                             }
                             val budget = reasoningConfig.claudeBudgetTokens
                             if (budget != null && budget > 0) {

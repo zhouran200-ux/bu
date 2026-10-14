@@ -17,18 +17,17 @@ class PlainTextMarkdownTest {
 
     @Test
     fun hardWrappedLinesAreJoinedBackIntoOneParagraph() {
-        val raw = "\u201C老婆一直打你电话，\n不通。家里的座机也打不通了。你生气了吗老公？\u201D"
         assertEquals(
-            "\u201C老婆一直打你电话，不通。家里的座机也打不通了。你生气了吗老公？\u201D",
-            PlainTextMarkdown.normalize(raw)
+            "他站起身，看了看窗外。",
+            PlainTextMarkdown.normalize("他站起身，\n看了看窗外。")
         )
     }
 
     @Test
     fun hardWrapSplitInsideAWordIsJoinedWithoutASpace() {
         assertEquals(
-            "可能昨天晚上没充电就睡了，手机自己关掉了。",
-            PlainTextMarkdown.normalize("可能昨天晚上没充\n电就睡了，手机自己关掉了。")
+            "这是一段被拆开的文字，拼回一句。",
+            PlainTextMarkdown.normalize("这是一段被拆开的文\n字，拼回一句。")
         )
     }
 
@@ -47,18 +46,60 @@ class PlainTextMarkdownTest {
     }
 
     @Test
-    fun chapterLinesBecomeHeadingsIncludingThoseWithoutASeparator() {
-        assertEquals("# 第一百零三章 拥抱", PlainTextMarkdown.normalize("第一百零三章 拥抱"))
-        assertEquals("# 第一百零八章小发现", PlainTextMarkdown.normalize("第一百零八章小发现"))
-        assertEquals("# 第一百一十四章舌吻", PlainTextMarkdown.normalize("第一百一十四章舌吻"))
-        assertEquals("# 第57章 剥皮", PlainTextMarkdown.normalize("第57章 剥皮"))
-        assertEquals("# 第五十八章 新线索", PlainTextMarkdown.normalize("第五十八章 新线索"))
-        assertEquals("# 第５９章：归来", PlainTextMarkdown.normalize("第５９章：归来"))
+    fun chapterFormsUsedByChineseWebNovelsAllBecomeHeadings() {
+        assertEquals("# 第一章 起点", PlainTextMarkdown.normalize("第一章 起点"))
+        assertEquals("# 第 一 章 起点", PlainTextMarkdown.normalize("第 一 章 起点"))
+        assertEquals("# 第1章 起点", PlainTextMarkdown.normalize("第1章 起点"))
+        assertEquals("# 第01章 起点", PlainTextMarkdown.normalize("第01章 起点"))
+        assertEquals("# 第１章 起点", PlainTextMarkdown.normalize("第１章 起点"))
+        assertEquals("# 01章 起点", PlainTextMarkdown.normalize("01章 起点"))
+        assertEquals("# 1章 起点", PlainTextMarkdown.normalize("1章 起点"))
+        assertEquals("# 第108章无分隔", PlainTextMarkdown.normalize("第108章无分隔"))
+        assertEquals("# 第一百零八章 无分隔", PlainTextMarkdown.normalize("第一百零八章 无分隔"))
+        assertEquals("# 第12回 回目", PlainTextMarkdown.normalize("第12回 回目"))
+        assertEquals("# 第3节 小节", PlainTextMarkdown.normalize("第3节 小节"))
+        assertEquals("# 第2卷 卷二", PlainTextMarkdown.normalize("第2卷 卷二"))
+        assertEquals("# 第4篇 篇名", PlainTextMarkdown.normalize("第4篇 篇名"))
+        assertEquals("# 第5集 集名", PlainTextMarkdown.normalize("第5集 集名"))
+        assertEquals("# 第6话 话名", PlainTextMarkdown.normalize("第6话 话名"))
+    }
+
+    @Test
+    fun specialChapterMarkersBecomeHeadings() {
+        assertEquals("# 序章", PlainTextMarkdown.normalize("序章"))
+        assertEquals("# 楔子", PlainTextMarkdown.normalize("楔子"))
+        assertEquals("# 引子", PlainTextMarkdown.normalize("引子"))
+        assertEquals("# 尾声", PlainTextMarkdown.normalize("尾声"))
+        assertEquals("# 番外篇 别传", PlainTextMarkdown.normalize("番外篇 别传"))
+        assertEquals("# Chapter 12", PlainTextMarkdown.normalize("Chapter 12"))
+        assertEquals("# 【第7章】 带括号", PlainTextMarkdown.normalize("【第7章】 带括号"))
     }
 
     @Test
     fun chapterHeadingsStartANewParagraphForTheFollowingText() {
-        assertEquals("# 第一百零五章 审核\n\n正文。", PlainTextMarkdown.normalize("第一百零五章 审核\n正文。"))
+        assertEquals("# 第一章 起点\n\n正文。", PlainTextMarkdown.normalize("第一章 起点\n正文。"))
+    }
+
+    @Test
+    fun bodyLinesAreNotMistakenForHeadings() {
+        assertEquals(
+            "第二天上班。因为出差，车停在公司了。",
+            PlainTextMarkdown.normalize("第二天上班。因为出差，车停在公司了。")
+        )
+        assertEquals(
+            "第一条腿放稳是最重要的，好的开始是成功的一半。",
+            PlainTextMarkdown.normalize("第一条腿放稳是最重要的，好的开始是成功的一半。")
+        )
+        assertEquals("第58章的内容仍未结束。", PlainTextMarkdown.normalize("第58章的内容仍未结束。"))
+        assertEquals("他翻到了第58章，继续。", PlainTextMarkdown.normalize("他翻到了第58章，继续。"))
+        assertEquals("12章鱼很好吃。", PlainTextMarkdown.normalize("12章鱼很好吃。"))
+        assertEquals("楔子是他写的。", PlainTextMarkdown.normalize("楔子是他写的。"))
+        assertEquals("#不是标题", PlainTextMarkdown.normalize("#不是标题"))
+    }
+
+    @Test
+    fun existingMarkdownHeadingsAreKeptAsTheyAre() {
+        assertEquals("## 第一章 起点\n\n正文", PlainTextMarkdown.normalize("## 第一章 起点\n正文"))
     }
 
     @Test
@@ -77,39 +118,20 @@ class PlainTextMarkdownTest {
 
     @Test
     fun numberedListItemsAreNotGluedToEachOtherOrToTheIntroLine() {
-        val raw = "后面列出了迹像：\n1.爱打扮了。\n2.不让看手机。\n3.回家不打电话"
+        val raw = "迹像如下：\n1.第一条。\n2.第二条。\n3.第三条"
         assertEquals(
-            "后面列出了迹像：\n\n1.爱打扮了。\n\n2.不让看手机。\n\n3.回家不打电话",
+            "迹像如下：\n\n1.第一条。\n\n2.第二条。\n\n3.第三条",
             PlainTextMarkdown.normalize(raw)
         )
     }
 
     @Test
-    fun listIntroLineAndFirstItemStaySeparateEvenWithoutPunctuation() {
-        assertEquals(
-            "迹像如下：\n\n1.第一条",
-            PlainTextMarkdown.normalize("迹像如下：\n1.第一条")
-        )
-    }
-
-    @Test
-    fun bodyLinesAreNotMistakenForHeadings() {
-        assertEquals(
-            "第二天上班。因为前一天出差，车被停在公司了。",
-            PlainTextMarkdown.normalize("第二天上班。因为前一天出差，车被停在公司了。")
-        )
-        assertEquals(
-            "第一条腿放上去放稳是最重要的，预示着好的开始是成功的一半。",
-            PlainTextMarkdown.normalize("第一条腿放上去放稳是最重要的，预示着好的开始是成功的一半。")
-        )
-        assertEquals("第58章的内容仍未结束。", PlainTextMarkdown.normalize("第58章的内容仍未结束。"))
-        assertEquals("他翻到了第58章，继续。", PlainTextMarkdown.normalize("他翻到了第58章，继续。"))
-        assertEquals("#不是标题", PlainTextMarkdown.normalize("#不是标题"))
-    }
-
-    @Test
-    fun existingMarkdownHeadingsAreKeptAsTheyAre() {
-        assertEquals("## 第一章 开始\n\n正文", PlainTextMarkdown.normalize("## 第一章 开始\n正文"))
+    fun dialogueIsItalicWhileNarrationStaysUpright() {
+        assertEquals("他说：\u201C*好的。*\u201D然后走了。", PlainTextMarkdown.italiciseDialogue("他说：\u201C好的。\u201D然后走了。"))
+        assertEquals("\u201C*好的。*\u201D", PlainTextMarkdown.italiciseDialogue("\u201C好的。\u201D"))
+        assertEquals("他点了点头。", PlainTextMarkdown.italiciseDialogue("他点了点头。"))
+        assertEquals("---", PlainTextMarkdown.italiciseDialogue("---"))
+        assertEquals("# 第一章 起点", PlainTextMarkdown.italiciseDialogue("# 第一章 起点"))
     }
 
     @Test
@@ -117,7 +139,7 @@ class PlainTextMarkdownTest {
         assertEquals("缩进段落", PlainTextMarkdown.normalize("　　缩进段落"))
         assertEquals("缩进段落", PlainTextMarkdown.normalize("    缩进段落"))
         assertEquals("段落", PlainTextMarkdown.normalize("段落   "))
-        assertEquals("# 第一章 开始", PlainTextMarkdown.normalize("\uFEFF第一章 开始   "))
+        assertEquals("# 第一章 起点", PlainTextMarkdown.normalize("\uFEFF第一章 起点   "))
     }
 
     @Test
@@ -129,18 +151,19 @@ class PlainTextMarkdownTest {
     @Test
     fun titlesAreDetectedByTheSharedHelper() {
         assertNull(DocumentHeadings.plainTitle("普通正文"))
-        assertNull(DocumentHeadings.plainTitle("在第57章 剥皮里"))
+        assertNull(DocumentHeadings.plainTitle("在第57章 里"))
         assertNull(DocumentHeadings.plainTitle("第58章的内容仍未结束。"))
-        assertEquals("第57章 剥皮", DocumentHeadings.titleOf("第57章 剥皮"))
-        assertEquals("第一百零八章小发现", DocumentHeadings.titleOf("第一百零八章小发现"))
+        assertEquals("第57章 起点", DocumentHeadings.titleOf("第57章 起点"))
+        assertEquals("第108章无分隔", DocumentHeadings.titleOf("第108章无分隔"))
+        assertEquals("第一章 起点", DocumentHeadings.titleOf("  ## 第一章 起点 ###  "))
     }
 
     @Test
     fun paragraphEndsAreDetectedForContinuation() {
         assertTrue(DocumentHeadings.endsParagraph("他走了。"))
-        assertTrue(DocumentHeadings.endsParagraph("你生气了吗老公？\u201D"))
+        assertTrue(DocumentHeadings.endsParagraph("你回来了吗？\u201D"))
         assertTrue(DocumentHeadings.endsParagraph(""))
-        assertTrue(!DocumentHeadings.endsParagraph("老婆一直打你电话，"))
-        assertTrue(!DocumentHeadings.endsParagraph("可能昨天晚上没充"))
+        assertTrue(!DocumentHeadings.endsParagraph("他站起身，"))
+        assertTrue(!DocumentHeadings.endsParagraph("这是一段被拆开的文"))
     }
 }

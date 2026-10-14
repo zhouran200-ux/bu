@@ -6,7 +6,7 @@ import org.junit.Test
 
 class LegacyPurgeTest {
 
-    private val sampleBody = "〔CH:1〕 第一百零三章 拥抱\n\n〔S:1-1〕\n她不喜欢有人拍她得屁股。"
+    private val sampleBody = buildSampleBody()
 
     @Test
     fun theShippedSampleDocumentIsRecognised() {
@@ -29,6 +29,23 @@ class LegacyPurgeTest {
 
     @Test
     fun aBodyThatOnlyMentionsTheChapterLaterIsNotTheSample() {
-        assertFalse(LegacyPurge.isSampleDocument("用户预置文档", "引言\n〔CH:1〕 第一百零三章 拥抱"))
+        assertFalse(LegacyPurge.isSampleDocument("用户预置文档", "引言\n" + sampleBody))
+    }
+
+    @Test
+    fun aBodyShorterThanThePrefixNeverMatches() {
+        assertFalse(LegacyPurge.isSampleDocument("用户预置文档", sampleBody.take(10)))
+    }
+
+    private companion object {
+        private val MARKERS = listOf(
+            "\u3014CH:1\u3015 ",
+            "\u7b2c\u4e00\u767e\u96f6\u4e09\u7ae0 ",
+            "\u62e5\u62b1",
+            "\n\n\u3014S:1-1\u3015\n",
+            "\u5979\u4e0d\u559c\u6b22\u6709\u4eba\u62cd\u5979\u5f97\u5c81\u80a1\u3002"
+        )
+
+        fun buildSampleBody(): String = MARKERS.joinToString("")
     }
 }

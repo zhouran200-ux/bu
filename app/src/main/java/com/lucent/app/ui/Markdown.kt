@@ -270,71 +270,89 @@ fun MarkdownText(
 
     Column(modifier = modifier.fillMaxWidth()) {
         blocks.forEachIndexed { index, block ->
-            if (index > 0) Spacer(modifier = Modifier.height(6.dp))
             when (block) {
-                is MdBlock.Heading -> Text(
-                    inlineAnnotated(block.text, onGradient, accent),
-                    color = onGradient,
-                    fontSize = when (block.level) {
-                        1 -> 22.sp
-                        2 -> 19.sp
-                        3 -> 17.sp
-                        else -> 15.sp
-                    },
-                    fontWeight = FontWeight.SemiBold
-                )
-
-                is MdBlock.Paragraph -> Text(
-                    inlineAnnotated(block.text, onGradient, accent),
-                    color = onGradient
-                )
-
-                is MdBlock.Bullet -> Row(modifier = Modifier.fillMaxWidth()) {
-                    Text("•", color = onGradientMuted, modifier = Modifier.padding(end = 8.dp))
+                is MdBlock.Heading -> {
+                    if (index > 0) Spacer(modifier = Modifier.height(10.dp))
                     Text(
                         inlineAnnotated(block.text, onGradient, accent),
                         color = onGradient,
-                        modifier = Modifier.weight(1f)
+                        fontSize = when (block.level) {
+                            1 -> 22.sp
+                            2 -> 19.sp
+                            3 -> 17.sp
+                            else -> 15.sp
+                        },
+                        fontWeight = FontWeight.Bold
                     )
+                    Spacer(modifier = Modifier.height(10.dp))
                 }
 
-                is MdBlock.Numbered -> Row(modifier = Modifier.fillMaxWidth()) {
-                    Text("${block.marker}.", color = onGradientMuted, modifier = Modifier.padding(end = 8.dp))
+                is MdBlock.Paragraph -> {
+                    if (index > 0) Spacer(modifier = Modifier.height(6.dp))
                     Text(
                         inlineAnnotated(block.text, onGradient, accent),
-                        color = onGradient,
-                        modifier = Modifier.weight(1f)
+                        color = onGradient
                     )
                 }
 
-                is MdBlock.Quote -> Row(modifier = Modifier.fillMaxWidth()) {
-                    Box(
+                is MdBlock.Bullet -> {
+                    if (index > 0) Spacer(modifier = Modifier.height(6.dp))
+                    Row(modifier = Modifier.fillMaxWidth()) {
+                        Text("•", color = onGradientMuted, modifier = Modifier.padding(end = 8.dp))
+                        Text(
+                            inlineAnnotated(block.text, onGradient, accent),
+                            color = onGradient,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+
+                is MdBlock.Numbered -> {
+                    if (index > 0) Spacer(modifier = Modifier.height(6.dp))
+                    Row(modifier = Modifier.fillMaxWidth()) {
+                        Text("${block.marker}.", color = onGradientMuted, modifier = Modifier.padding(end = 8.dp))
+                        Text(
+                            inlineAnnotated(block.text, onGradient, accent),
+                            color = onGradient,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+
+                is MdBlock.Quote -> {
+                    if (index > 0) Spacer(modifier = Modifier.height(6.dp))
+                    Row(modifier = Modifier.fillMaxWidth()) {
+                        Box(
+                            modifier = Modifier
+                                .width(3.dp)
+                                .height(20.dp)
+                                .background(onGradientMuted)
+                        )
+                        Text(
+                            inlineAnnotated(block.text, onGradientMuted, accent),
+                            color = onGradientMuted,
+                            fontStyle = FontStyle.Italic,
+                            modifier = Modifier.padding(start = 8.dp)
+                        )
+                    }
+                }
+
+                is MdBlock.Code -> {
+                    if (index > 0) Spacer(modifier = Modifier.height(6.dp))
+                    Column(
                         modifier = Modifier
-                            .width(3.dp)
-                            .height(20.dp)
-                            .background(onGradientMuted)
-                    )
-                    Text(
-                        inlineAnnotated(block.text, onGradientMuted, accent),
-                        color = onGradientMuted,
-                        fontStyle = FontStyle.Italic,
-                        modifier = Modifier.padding(start = 8.dp)
-                    )
-                }
-
-                is MdBlock.Code -> Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(onGradient.copy(alpha = 0.08f))
-                        .padding(10.dp)
-                ) {
-                    Text(
-                        block.lines.joinToString("\n"),
-                        color = onGradient,
-                        fontFamily = FontFamily.Monospace,
-                        fontSize = 13.sp
-                    )
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(onGradient.copy(alpha = 0.08f))
+                            .padding(10.dp)
+                    ) {
+                        Text(
+                            block.lines.joinToString("\n"),
+                            color = onGradient,
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 13.sp
+                        )
+                    }
                 }
 
                 MdBlock.Blank -> Spacer(modifier = Modifier.height(12.dp))

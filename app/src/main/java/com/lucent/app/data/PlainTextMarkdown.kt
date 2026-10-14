@@ -4,6 +4,8 @@ object PlainTextMarkdown {
 
     const val SCENE_BREAK = "---"
 
+    private val QUOTE_SEGMENT = Regex("([\u201C\u201D\"])([^\u201C\u201D\"]+)([\u201D\"])")
+
     fun normalize(text: String): String {
         val lines = text.replace("\r\n", "\n").replace('\r', '\n').split('\n')
         val blocks = mutableListOf<String>()
@@ -63,7 +65,21 @@ object PlainTextMarkdown {
         }
 
         flush()
-        return blocks.joinToString("\n\n")
+        return blocks.joinToString("\n\n") { italiciseDialogue(it) }
+    }
+
+    internal fun italiciseDialogue(text: String): String {
+        if (text == SCENE_BREAK || text.startsWith("# ")) return text
+        return QUOTE_SEGMENT.replace(text) { match ->
+            val open = match.groupValues[1]
+            val inner = match.groupValues[2]
+            val close = match.groupValues[3]
+            val leading = inner.takeWhile { it.isWhitespace() }
+            val trailing = inner.takeLastWhile { it.isWhitespace() }
+            val core = inner.trim()
+            if (core.isEmpty()) return@replace match.value
+            "$open$leading*$core*$trailing$close"
+        }
     }
 
     private fun joinSeparator(previous: Char, next: Char): String =

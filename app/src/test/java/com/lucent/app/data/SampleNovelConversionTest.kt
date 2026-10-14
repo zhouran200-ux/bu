@@ -7,16 +7,16 @@ import kotlin.test.assertTrue
 class SampleNovelConversionTest {
 
     private val sample = """
-        第一百零三章 拥抱
-        她不喜欢有人拍她得屁股。最少我这样做，她是反感的。
-        我没关机。”把手机掏出来看了一下。可能昨天晚上没充
-        电就睡了，手机自己关掉了。
+        第一章 起点
+        她走了过来。他点了点头。
+        他站起身，
+        看了看窗外。
         ……
-        后面列出了他判断出轨的迹像：
-        1.她会用很多你没见过的有趣表情包。
-        2.下班了不爱回家，对家里人冷淡。
-        第一百零八章小发现
-        那黑色的管柱嵌入那白色的身体里。
+        迹像如下：
+        1.第一条描述。
+        2.第二条描述。
+        第 二 章 空格式标题
+        他说：“好的。”
     """.trimIndent()
 
     private fun convert() = PlainTextMarkdown.normalize(sample)
@@ -24,16 +24,13 @@ class SampleNovelConversionTest {
     @Test
     fun chapterTitlesWithAndWithoutSpacingBecomeHeadings() {
         val markdown = convert()
-        assertTrue(markdown.contains("# 第一百零三章 拥抱"), markdown)
-        assertTrue(markdown.contains("# 第一百零八章小发现"), markdown)
+        assertTrue(markdown.contains("# 第一章 起点"), markdown)
+        assertTrue(markdown.contains("# 第 二 章 空格式标题"), markdown)
     }
 
     @Test
     fun hardWrappedParagraphIsJoined() {
-        assertTrue(
-            convert().contains("我没关机。”把手机掏出来看了一下。可能昨天晚上没充电就睡了，手机自己关掉了。"),
-            convert()
-        )
+        assertTrue(convert().contains("他站起身，看了看窗外。"), convert())
     }
 
     @Test
@@ -44,13 +41,54 @@ class SampleNovelConversionTest {
     @Test
     fun listItemsStaySeparateFromIntroAndEachOther() {
         val blocks = convert().split("\n\n")
-        assertTrue(blocks.contains("后面列出了他判断出轨的迹像："), blocks.toString())
-        assertTrue(blocks.contains("1.她会用很多你没见过的有趣表情包。"), blocks.toString())
-        assertTrue(blocks.contains("2.下班了不爱回家，对家里人冷淡。"), blocks.toString())
+        assertTrue(blocks.contains("迹像如下："), blocks.toString())
+        assertTrue(blocks.contains("1.第一条描述。"), blocks.toString())
+        assertTrue(blocks.contains("2.第二条描述。"), blocks.toString())
     }
 
     @Test
     fun headingCountMatchesTheSampleChapterCount() {
         assertEquals(2, convert().lines().count { it.startsWith("# ") })
+    }
+
+    @Test
+    fun headingsAreMarkdownHeadingsOnTheirOwnBlock() {
+        val blocks = convert().split("\n\n")
+        assertEquals(0, blocks.indexOfFirst { it.startsWith("# ") })
+        assertEquals("# 第一章 起点", blocks[0])
+        assertTrue(blocks[1].isNotBlank())
+    }
+
+    @Test
+    fun onlyTheQuotedSpeechIsItalicisedNotTheNarration() {
+        val markdown = convert()
+        assertTrue(markdown.contains("\u201C*好的。*\u201D"), markdown)
+        assertTrue(markdown.contains("他说："), markdown)
+        assertTrue(!markdown.contains("*他说"), markdown)
+    }
+
+    @Test
+    fun narrationAfterASpeechStaysUpright() {
+        assertEquals(
+            "他说：\u201C*好。*\u201D然后走了。",
+            PlainTextMarkdown.italiciseDialogue("他说：\u201C好。\u201D然后走了。")
+        )
+    }
+
+    @Test
+    fun standaloneSpeechLineIsItalic() {
+        assertEquals("\u201C*好的。*\u201D", PlainTextMarkdown.italiciseDialogue("\u201C好的。\u201D"))
+    }
+
+    @Test
+    fun unpairedQuotesDoNotBreakTheParagraph() {
+        assertEquals("他回来了？\u201D", PlainTextMarkdown.italiciseDialogue("他回来了？\u201D"))
+        assertEquals("\u201C他回来了。", PlainTextMarkdown.italiciseDialogue("\u201C他回来了。"))
+    }
+
+    @Test
+    fun sceneBreakAndHeadingAreNeverItalicised() {
+        assertEquals("---", PlainTextMarkdown.italiciseDialogue("---"))
+        assertEquals("# 第一章 起点", PlainTextMarkdown.italiciseDialogue("# 第一章 起点"))
     }
 }

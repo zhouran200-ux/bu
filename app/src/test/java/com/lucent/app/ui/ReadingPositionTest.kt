@@ -39,6 +39,24 @@ class ReadingPositionTest {
         assertEquals(saved, ReadingPosition.decode(saved.encode()))
     }
 
+    @Test fun undoLastVisibleMessageRestoresViewportInsteadOfItsTop() {
+        val beforeDelete = ReadingPosition("message:2", 2, 387)
+        val shortened = listOf("header", "message:1", "message:2", "footer")
+        val restored = shortened.toMutableList().apply { add(3, "message:3") }
+        assertEquals(ReadingPosition("message:2", 2, 387), beforeDelete.resolve(restored))
+    }
+
+    @Test fun undoDeletedAnchorRetainsOffsetWithinLongAnswer() {
+        val beforeDelete = ReadingPosition("message:3", 3, 1729)
+        val restored = listOf("header", "message:1", "message:2", "message:3", "footer")
+        assertEquals(beforeDelete, beforeDelete.resolve(restored))
+    }
+
+    @Test fun undoOnlyMessageRestoresOriginalHeaderPosition() {
+        val beforeDelete = ReadingPosition("header", 0, 0)
+        assertEquals(beforeDelete, beforeDelete.resolve(listOf("header", "message:1", "footer")))
+    }
+
     @Test fun backgroundAppendDoesNotMoveReadingAnchor() {
         val saved = ReadingPosition("message:4", 1, 517)
         assertEquals(saved, saved.resolve(listOf("header", "message:4", "message:5", "message:6", "footer")))

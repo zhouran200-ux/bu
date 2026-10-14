@@ -138,6 +138,7 @@ dependencies {
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit")
     testImplementation(libs.org.json)
 
+    debugImplementation("org.jetbrains.kotlinx:kotlinx-serialization-core:1.8.1")
     androidTestImplementation(libs.room.testing)
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.test.ext.junit)

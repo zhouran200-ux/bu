@@ -111,7 +111,15 @@ jobs:
           SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
           yes | "$SDKMANAGER" --licenses > /dev/null 2>&1 || true
           "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0"
+      - name: Record application and test serialization dependencies
+        run: |
+          set -o pipefail
+          mkdir -p ci-reports
+          ./gradlew :app:dependencyInsight --configuration debugRuntimeClasspath --dependency kotlinx-serialization --no-daemon --console=plain 2>&1 | tee ci-reports/app-serialization.log
+          ./gradlew :app:dependencyInsight --configuration debugAndroidTestRuntimeClasspath --dependency kotlinx-serialization --no-daemon --console=plain 2>&1 | tee ci-reports/test-serialization.log
+          ./gradlew :app:dependencyInsight --configuration debugAndroidTestRuntimeClasspath --dependency room-migration --no-daemon --console=plain 2>&1 | tee ci-reports/room-migration.log
       - name: Run Android instrumentation tests on cloud emulator
+        if: ${{ !cancelled() }}
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
@@ -131,6 +139,7 @@ jobs:
         with:
           name: android-device-reports
           path: |
+            ci-reports/
             app/build/reports/androidTests/
             app/build/outputs/androidTest-results/
             app/build/outputs/logs/

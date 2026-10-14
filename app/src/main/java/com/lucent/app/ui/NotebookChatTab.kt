@@ -482,8 +482,15 @@ fun NotebookChatTab(
         if (idx < 0) return
         if (pendingDelete != null) LucentToast.show(context, "上一条删除已生效")
         settlePendingDelete()
+        val firstIndex = listState.firstVisibleItemIndex
+        val keys = listOf("header") + messages.map { "message:${it.id}" } + "footer"
+        val viewport = ReadingPosition(
+            itemKey = keys.getOrElse(firstIndex) { "header" },
+            index = firstIndex,
+            offset = listState.firstVisibleItemScrollOffset
+        )
         messages.removeAt(idx)
-        pendingDelete = PendingChatDelete(message = target, index = idx)
+        pendingDelete = PendingChatDelete(message = target, index = idx, viewport = viewport)
     }
 
     fun undoDelete() {
@@ -492,20 +499,10 @@ fun NotebookChatTab(
         if (messages.none { it.id == pending.message.id }) {
             val at = pending.index.coerceIn(0, messages.size)
             messages.add(at, pending.message)
-            scope.launch {
-                val targetItem = at + 1
-                val info = listState.layoutInfo
-                val visible = info.visibleItemsInfo
-                val firstFull = visible.firstOrNull { it.offset >= info.viewportStartOffset }?.index
-                    ?: visible.firstOrNull()?.index
-                val lastFull = visible.lastOrNull { it.offset + it.size <= info.viewportEndOffset }?.index
-                    ?: visible.lastOrNull()?.index
-                val onScreen = firstFull != null && lastFull != null &&
-                    targetItem in firstFull..lastFull
-                if (!onScreen) {
-                    listState.animateScrollToItem(targetItem.coerceAtLeast(0))
-                }
-            }
+            followStream = false
+            val keys = listOf("header") + messages.map { "message:${it.id}" } + "footer"
+            val viewport = pending.viewport.resolve(keys)
+            listState.requestScrollToItem(viewport.index, viewport.offset)
         }
     }
 
@@ -1049,7 +1046,8 @@ private fun BubbleAction(
 
 private data class PendingChatDelete(
     val message: UiChatMessage,
-    val index: Int
+    val index: Int,
+    val viewport: ReadingPosition
 )
 
 private const val SWIPE_FRACTION = 0.34f

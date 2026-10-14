@@ -25,6 +25,8 @@ class HomeNavigationTest {
 
     private fun drain() {
         AppNavigation.consumeScreen()
+        AppNavigation.resetSettingsRoute()
+        com.lucent.app.SettingsNav.handler = null
     }
 
     @Test
@@ -40,6 +42,21 @@ class HomeNavigationTest {
         AppNavigation.requestScreen(Screen.Settings)
         assertEquals(Screen.Settings, AppNavigation.consumeScreen())
         assertNull(AppNavigation.consumeScreen())
+    }
+
+    @Test
+    fun apiManagementRouteSurvivesSettingsPageNotYetMounted() {
+        com.lucent.app.SettingsNav.go(SettingsRoute.Api)
+        assertEquals(SettingsRoute.Api, AppNavigation.settingsRoute)
+    }
+
+    @Test
+    fun settingsRouteStillNotifiesMountedHandler() {
+        var delivered: SettingsRoute? = null
+        com.lucent.app.SettingsNav.handler = { delivered = it }
+        com.lucent.app.SettingsNav.go(SettingsRoute.Api)
+        assertEquals(SettingsRoute.Api, delivered)
+        assertEquals(SettingsRoute.Api, AppNavigation.settingsRoute)
     }
 
     @Test

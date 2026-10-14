@@ -45,6 +45,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -55,10 +56,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Edit
@@ -113,10 +112,6 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.lucent.app.AppNavigation
-import com.lucent.app.Screen
-import com.lucent.app.SettingsNav
-import com.lucent.app.data.ApiProfile
 import com.lucent.app.data.ApiProfiles
 import com.lucent.app.data.AppDatabase
 import com.lucent.app.data.ChatMessage
@@ -129,7 +124,6 @@ import com.lucent.app.data.SettingsRepository
 import com.lucent.app.network.ApiSpec
 import com.lucent.app.network.ChatMessagePayload
 import com.lucent.app.network.LlmClient
-import com.lucent.app.ui.SettingsRoute
 import kotlin.math.abs
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -213,21 +207,26 @@ fun NotebookChatTab(
     val savedProfiles = remember(profilesJson) {
         ApiProfiles.parse(profilesJson).ifEmpty { ApiProfiles.DEFAULT_PROFILES }
     }
-    var selectedProfileName by remember {
+    var selectedProfileId by remember(notebookId) {
+        mutableStateOf(prefs.getString("profile_id_$notebookId", "") ?: "")
+    }
+    var selectedProfileName by remember(notebookId) {
         mutableStateOf(prefs.getString("profile_name_$notebookId", "") ?: "")
     }
-    var selectedModel by remember {
+    var selectedModel by remember(notebookId) {
         mutableStateOf(prefs.getString("model_$notebookId", "") ?: "")
     }
 
-    LaunchedEffect(notebookId, savedProfiles) {
-        val (name, model) = ApiProfiles.selectionFor(savedProfiles, selectedProfileName, selectedModel)
-        if (name.isEmpty()) return@LaunchedEffect
-        if (name != selectedProfileName || model != selectedModel) {
-            selectedProfileName = name
+    val resolvedSelection = ApiProfiles.resolveSelection(savedProfiles, selectedProfileId, selectedProfileName, selectedModel)
+    LaunchedEffect(notebookId, resolvedSelection) {
+        val (profile, model) = resolvedSelection ?: return@LaunchedEffect
+        if (profile.id != selectedProfileId || profile.name != selectedProfileName || model != selectedModel) {
+            selectedProfileId = profile.id
+            selectedProfileName = profile.name
             selectedModel = model
             prefs.edit()
-                .putString("profile_name_$notebookId", name)
+                .putString("profile_id_$notebookId", profile.id)
+                .putString("profile_name_$notebookId", profile.name)
                 .putString("model_$notebookId", model)
                 .apply()
         }
@@ -280,9 +279,9 @@ fun NotebookChatTab(
 
     fun askModel(answerId: Long) {
         if (!session.ready) return
-        val matchedProfile = savedProfiles.find { it.name == selectedProfileName }
-            ?: savedProfiles.firstOrNull()
-        val targetModel = selectedModel.ifBlank { matchedProfile?.model.orEmpty() }
+        val selection = ApiProfiles.resolveSelection(savedProfiles, selectedProfileId, selectedProfileName, selectedModel)
+        val matchedProfile = selection?.first
+        val targetModel = selection?.second.orEmpty()
         val aiMsgId = answerId
         val answerStamp = messages.firstOrNull { it.id == aiMsgId }?.timestamp ?: System.currentTimeMillis()
         fun upsertAnswerSlot(msg: UiChatMessage) {
@@ -632,8 +631,8 @@ fun NotebookChatTab(
                         .apply()
                 },
                 onOpenDialogueSettings = { showDialogueSettingsDialog = true },
-                selectedProfileName = selectedProfileName,
-                selectedModel = selectedModel,
+                selectedProfileName = resolvedSelection?.first?.name.orEmpty(),
+                selectedModel = resolvedSelection?.second.orEmpty(),
                 onOpenModelPicker = { showProfileModelPickerSheet = true },
                 streaming = streamingAnswerId != null,
                 onSend = onSendMessage,
@@ -782,13 +781,15 @@ fun NotebookChatTab(
         if (showProfileModelPickerSheet) {
             ProfileModelPickerSheet(
                 profiles = savedProfiles,
-                currentProfileName = selectedProfileName,
-                currentModel = selectedModel,
-                onSelect = { profileName, modelName ->
-                    selectedProfileName = profileName
+                currentProfileId = resolvedSelection?.first?.id.orEmpty(),
+                currentModel = resolvedSelection?.second.orEmpty(),
+                onSelect = { profile, modelName ->
+                    selectedProfileId = profile.id
+                    selectedProfileName = profile.name
                     selectedModel = modelName
                     prefs.edit()
-                        .putString("profile_name_$notebookId", profileName)
+                        .putString("profile_id_$notebookId", profile.id)
+                        .putString("profile_name_$notebookId", profile.name)
                         .putString("model_$notebookId", modelName)
                         .apply()
                     showProfileModelPickerSheet = false
@@ -1509,7 +1510,10 @@ private fun BottomGlassComposer(
                             }
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = selectedProfileName.ifBlank { selectedModel.take(8) },
+                                text = selectedModel.ifBlank { selectedProfileName.ifBlank { "选择模型" } },
+                                modifier = Modifier.widthIn(max = 150.dp),
+                                maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                                 color = accent,
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.SemiBold
@@ -1716,188 +1720,6 @@ private fun DialogueSettingsSheet(
                         text = "恢复默认",
                         fontSize = 13.sp,
                         color = muted
-                    )
-                }
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun ProfileModelPickerSheet(
-    profiles: List<ApiProfile>,
-    currentProfileName: String,
-    currentModel: String,
-    onSelect: (profileName: String, modelName: String) -> Unit,
-    onDismiss: () -> Unit
-) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-
-    var expandedProfileIndex by remember { mutableIntStateOf(-1) }
-
-    val ink = LocalOnGradient.current
-    val sheetBg = lucentPanelBackground()
-    val accent = MaterialTheme.colorScheme.primary
-    val selectedBg = accent.copy(alpha = 0.22f)
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        containerColor = sheetBg,
-        sheetGesturesEnabled = false,
-        dragHandle = { LucentDragHandle(onDismiss) }
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 24.dp)
-        ) {
-            Text(
-                text = "模型选择",
-                fontSize = LucentTitles.SectionSize,
-                fontWeight = LucentTitles.SectionWeight,
-                color = ink,
-                modifier = Modifier.padding(vertical = 12.dp)
-            )
-
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = 420.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                itemsIndexed(profiles) { index, profile ->
-                    val isExpanded = expandedProfileIndex == index
-                    val isSelected = currentProfileName == profile.name
-                    val modelCount = profile.selectedModels.size
-
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(if (isSelected) selectedBg else Color.Transparent)
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    if (profile.selectedModels.size <= 1) {
-                                        val modelName = profile.selectedModels.firstOrNull() ?: profile.model
-                                        onSelect(profile.name, modelName)
-                                    } else {
-                                        expandedProfileIndex = if (isExpanded) -1 else index
-                                    }
-                                }
-                                .padding(horizontal = 8.dp, vertical = 14.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    imageVector = if (isExpanded) Icons.Default.KeyboardArrowDown else Icons.Default.ChevronRight,
-                                    contentDescription = null,
-                                    tint = if (isSelected) accent else ink.copy(alpha = 0.6f),
-                                    modifier = Modifier.size(20.dp)
-                                )
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Text(
-                                    text = profile.name,
-                                    fontSize = 16.sp,
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                    color = if (isSelected) accent else ink
-                                )
-                            }
-
-                            Text(
-                                text = "$modelCount",
-                                fontSize = 14.sp,
-                                color = ink.copy(alpha = 0.45f)
-                            )
-                        }
-
-                        if (isExpanded && profile.selectedModels.isNotEmpty()) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(start = 40.dp, end = 12.dp, bottom = 8.dp)
-                            ) {
-                                profile.selectedModels.forEach { subModel ->
-                                    val isSubSelected = isSelected && currentModel == subModel
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .clip(RoundedCornerShape(8.dp))
-                                            .clickable {
-                                                onSelect(profile.name, subModel)
-                                            }
-                                            .padding(horizontal = 8.dp, vertical = 10.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.SpaceBetween
-                                    ) {
-                                        Text(
-                                            text = subModel,
-                                            fontSize = LucentTitles.ItemSize,
-                                            color = if (isSubSelected) accent else ink.copy(alpha = 0.85f),
-                                            fontWeight = if (isSubSelected) FontWeight.Bold else FontWeight.Normal
-                                        )
-                                        if (isSubSelected) {
-                                            Icon(
-                                                Icons.Default.Check,
-                                                contentDescription = null,
-                                                tint = accent,
-                                                modifier = Modifier.size(16.dp)
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = ink.copy(alpha = 0.06f),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .clickable {
-                        onDismiss()
-                        AppNavigation.requestScreen(Screen.Settings)
-                        SettingsNav.go(SettingsRoute.Api)
-                    }
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 14.dp, vertical = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            Icons.Default.Tune,
-                            contentDescription = null,
-                            tint = ink.copy(alpha = 0.85f),
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Text(
-                            text = "管理与添加 API 方案",
-                            fontSize = LucentTitles.SectionSize,
-                            color = ink.copy(alpha = 0.90f),
-                            fontWeight = LucentTitles.SectionWeight
-                        )
-                    }
-                    Icon(
-                        Icons.AutoMirrored.Filled.ArrowForward,
-                        contentDescription = "前往 API 设置",
-                        tint = ink.copy(alpha = 0.50f),
-                        modifier = Modifier.size(18.dp)
                     )
                 }
             }

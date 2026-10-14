@@ -2,6 +2,7 @@ package com.lucent.app.data
 
 import org.json.JSONArray
 import org.json.JSONObject
+import java.util.UUID
 
 data class ApiProfile(
     val name: String = "方案 1",
@@ -9,7 +10,8 @@ data class ApiProfile(
     val baseUrl: String = "",
     val apiKey: String = "",
     val model: String = "",
-    val selectedModels: List<String> = emptyList()
+    val selectedModels: List<String> = emptyList(),
+    val id: String = UUID.randomUUID().toString()
 )
 
 object UserAgentPresets {
@@ -26,7 +28,8 @@ object ApiProfiles {
             spec = "openai",
             baseUrl = "https://token.sensenova.cn/v1",
             apiKey = "",
-            model = ""
+            model = "",
+            id = deterministicId("商汤", "openai", "https://token.sensenova.cn/v1", 0)
         )
     )
 
@@ -37,6 +40,7 @@ object ApiProfiles {
             p.selectedModels.forEach { models.put(it) }
             arr.put(
                 JSONObject()
+                    .put("id", p.id)
                     .put("name", p.name)
                     .put("spec", p.spec)
                     .put("baseUrl", p.baseUrl)
@@ -54,6 +58,7 @@ object ApiProfiles {
             val arr = JSONArray(json)
             (0 until arr.length()).mapNotNull { i ->
                 val o = arr.optJSONObject(i) ?: return@mapNotNull null
+                val name = o.optString("name", "方案 ${i + 1}")
                 val spec = o.optString("spec", "openai")
                 val baseUrl = o.optString("baseUrl", "")
                 val model = o.optString("model", "")
@@ -62,23 +67,47 @@ object ApiProfiles {
                     listOfNotNull(model.trim().takeIf { it.isNotBlank() })
                 } else {
                     (0 until stored.length())
-                        .map { stored.optString(it) }
+                        .map { stored.optString(it).trim() }
                         .filter { it.isNotBlank() }
                         .distinct()
                 }
                 ApiProfile(
-                    name = o.optString("name", "方案 ${i + 1}"),
+                    name = name,
                     spec = spec,
                     baseUrl = baseUrl,
                     apiKey = o.optString("apiKey", ""),
                     model = model,
-                    selectedModels = selectedModels
+                    selectedModels = selectedModels,
+                    id = o.optString("id", "").ifBlank {
+                        deterministicId(name, spec, baseUrl, i)
+                    }
                 )
             }.take(MAX)
         } catch (e: Exception) {
             emptyList()
         }
-        return if (list.isEmpty()) DEFAULT_PROFILES else list
+        if (list.isEmpty()) return DEFAULT_PROFILES
+        val reservedIds = list.map { it.id }.toMutableSet()
+        val seenIds = mutableSetOf<String>()
+        return list.mapIndexed { index, profile ->
+            if (seenIds.add(profile.id)) {
+                profile
+            } else {
+                var attempt = 0
+                var replacement: String
+                do {
+                    replacement = deterministicId(profile.name, profile.spec, profile.baseUrl, index, attempt++)
+                } while (!reservedIds.add(replacement))
+                seenIds.add(replacement)
+                profile.copy(id = replacement)
+            }
+        }
+    }
+
+    private fun deterministicId(name: String, spec: String, baseUrl: String, index: Int, attempt: Int = 0): String {
+        val seed = listOf(name, spec, baseUrl, index.toString(), attempt.toString())
+            .joinToString(separator = "") { "${it.length}:$it" }
+        return UUID.nameUUIDFromBytes(seed.toByteArray(Charsets.UTF_8)).toString()
     }
 
     fun nextDefaultName(existing: List<ApiProfile>): String {
@@ -107,17 +136,34 @@ object ApiProfiles {
         }
     }
 
+    fun availableModels(profile: ApiProfile): List<String> =
+        (profile.selectedModels + profile.model).map { it.trim() }.filter { it.isNotBlank() }.distinct()
+
+    fun resolveSelection(
+        profiles: List<ApiProfile>,
+        savedProfileId: String,
+        savedProfileName: String,
+        savedModel: String
+    ): Pair<ApiProfile, String>? {
+        val profile = if (savedProfileId.isNotBlank()) {
+            profiles.firstOrNull { it.id == savedProfileId }
+        } else {
+            profiles.firstOrNull { it.name == savedProfileName }
+        } ?: profiles.firstOrNull() ?: return null
+        val models = availableModels(profile)
+        val model = models.firstOrNull { it == savedModel.trim() }
+            ?: models.firstOrNull { it == profile.model.trim() }
+            ?: models.firstOrNull().orEmpty()
+        return profile to model
+    }
+
     fun selectionFor(
         profiles: List<ApiProfile>,
         savedProfileName: String,
         savedModel: String
     ): Pair<String, String> {
-        val named = profiles.firstOrNull { it.name == savedProfileName }
-            ?: profiles.firstOrNull()
-            ?: return "" to ""
-        val model = named.selectedModels.firstOrNull { it == savedModel }
-            ?: named.model.ifBlank { named.selectedModels.firstOrNull().orEmpty() }
-        return named.name to model
+        val selection = resolveSelection(profiles, "", savedProfileName, savedModel) ?: return "" to ""
+        return selection.first.name to selection.second
     }
 
     fun orderKeys(profiles: List<ApiProfile>): List<String> {

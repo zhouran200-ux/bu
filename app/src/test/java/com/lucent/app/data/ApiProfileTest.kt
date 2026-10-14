@@ -2,7 +2,10 @@ package com.lucent.app.data
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
+import java.util.UUID
 
 class ApiProfileTest {
 
@@ -34,6 +37,7 @@ class ApiProfileTest {
         val serialized = ApiProfiles.serialize(original)
         val parsed = ApiProfiles.parse(serialized)
 
+        assertEquals(original, parsed)
         assertEquals(2, parsed.size)
         assertEquals("SillyTavern Profile", parsed[0].name)
         assertEquals(listOf("gpt-4o", "gpt-4o-mini"), parsed[0].selectedModels)
@@ -63,6 +67,72 @@ class ApiProfileTest {
         assertEquals("Legacy Profile", parsed[0].name)
         assertEquals(listOf("model-1"), parsed[0].selectedModels)
         assertFalse(parsed[0].toString().contains("node-fetch"))
+    }
+
+    @Test
+    fun testNewProfilesHaveUniqueUuidIds() {
+        val first = ApiProfile(name = "same")
+        val second = ApiProfile(name = "same")
+        assertEquals(first.id, UUID.fromString(first.id).toString())
+        assertNotEquals(first.id, second.id)
+        assertEquals(first.id, first.copy(name = "renamed").id)
+    }
+
+    @Test
+    fun testLegacyIdsAreStableDistinctAndIndependentOfSecrets() {
+        val json = """[
+            {"name":"重复", "spec":"openai", "baseUrl":"https://example.com", "apiKey":"secret-one"},
+            {"name":"重复", "spec":"openai", "baseUrl":"https://example.com", "apiKey":"secret-two"}
+        ]""".trimIndent()
+        val first = ApiProfiles.parse(json)
+        assertEquals(first, ApiProfiles.parse(json))
+        assertNotEquals(first[0].id, first[1].id)
+        assertEquals(first.map { it.id }, ApiProfiles.parse(json.replace("secret", "changed")).map { it.id })
+        first.forEach { assertEquals(it.id, UUID.fromString(it.id).toString()) }
+        assertEquals(first, ApiProfiles.parse(ApiProfiles.serialize(first)))
+    }
+
+    @Test
+    fun testBlankAndDuplicateIdsAreRepairedDeterministically() {
+        val json = """[
+            {"id":"saved", "name":"A"},
+            {"id":"saved", "name":"A"},
+            {"id":"   ", "name":"A"},
+            {"name":"A"}
+        ]""".trimIndent()
+        val profiles = ApiProfiles.parse(json)
+        assertEquals("saved", profiles[0].id)
+        assertEquals(4, profiles.map { it.id }.toSet().size)
+        assertFalse(profiles.any { it.id.isBlank() })
+        assertEquals(profiles, ApiProfiles.parse(json))
+        assertEquals(profiles, ApiProfiles.parse(ApiProfiles.serialize(profiles)))
+    }
+
+    @Test
+    fun testDuplicateRepairDoesNotStealALaterStoredId() {
+        val duplicateJson = """[{"id":"same", "name":"A"}, {"id":"same", "name":"B"}]"""
+        val repairedId = ApiProfiles.parse(duplicateJson)[1].id
+        val json = """[
+            {"id":"same", "name":"A"},
+            {"id":"same", "name":"B"},
+            {"id":"$repairedId", "name":"C"}
+        ]""".trimIndent()
+        val profiles = ApiProfiles.parse(json)
+        assertEquals(repairedId, profiles[2].id)
+        assertEquals(3, profiles.map { it.id }.toSet().size)
+        assertEquals(profiles, ApiProfiles.parse(json))
+    }
+
+    @Test
+    fun testParseNormalizesSelectedModelsAndKeepsLegacyPrimaryAvailable() {
+        val profiles = ApiProfiles.parse("""[
+            {"name":"A", "model":" primary ", "selectedModels":[" one ", "", "one", "  ", " two "]},
+            {"name":"B", "model":" legacy "}
+        ]""".trimIndent())
+        assertEquals(listOf("one", "two"), profiles[0].selectedModels)
+        assertEquals(listOf("one", "two", "primary"), ApiProfiles.availableModels(profiles[0]))
+        assertEquals(listOf("legacy"), profiles[1].selectedModels)
+        assertEquals(listOf("legacy"), ApiProfiles.availableModels(profiles[1]))
     }
 
     private fun named(vararg names: String): List<ApiProfile> = names.map { ApiProfile(name = it) }
@@ -179,6 +249,63 @@ class ApiProfileTest {
 
     private fun profileWithModels(name: String, vararg models: String) =
         ApiProfile(name = name, model = models.firstOrNull().orEmpty(), selectedModels = models.toList())
+
+    @Test
+    fun testResolveSelectionDistinguishesDuplicateNamesById() {
+        val first = ApiProfile(name = "same", baseUrl = "https://first.example", apiKey = "first-key", model = "shared")
+        val second = ApiProfile(name = "same", baseUrl = "https://second.example", apiKey = "second-key", model = "shared")
+        val profiles = listOf(first, second)
+        assertEquals(second to "shared", ApiProfiles.resolveSelection(profiles, second.id, "same", "shared"))
+        assertEquals(first to "shared", ApiProfiles.resolveSelection(profiles, "", "same", "shared"))
+    }
+
+    @Test
+    fun testResolveSelectionSurvivesRenameReorderAndSerialization() {
+        val first = profileWithModels("first", "a")
+        val second = profileWithModels("second", "b", "c")
+        val renamed = second.copy(name = "renamed")
+        val profiles = ApiProfiles.parse(ApiProfiles.serialize(listOf(renamed, first)))
+        assertEquals(renamed to "c", ApiProfiles.resolveSelection(profiles, second.id, "second", "c"))
+        assertEquals(renamed to "c", ApiProfiles.resolveSelection(profiles.reversed(), second.id, "second", "c"))
+    }
+
+    @Test
+    fun testResolveSelectionMissingIdDoesNotAliasLegacyName() {
+        val first = profileWithModels("first", "a")
+        val second = profileWithModels("second", "b")
+        val profiles = listOf(first, second)
+        assertEquals(first to "a", ApiProfiles.resolveSelection(profiles, "deleted-id", "second", "b"))
+        assertEquals(second to "b", ApiProfiles.resolveSelection(profiles, "", "second", "b"))
+        assertEquals(second to "b", ApiProfiles.resolveSelection(profiles, "  ", "second", "b"))
+    }
+
+    @Test
+    fun testAvailableModelsTrimsDeduplicatesAndAppendsMissingPrimary() {
+        val profile = ApiProfile(model = " primary ", selectedModels = listOf(" one ", "", "one", "  ", " two "))
+        assertEquals(listOf("one", "two", "primary"), ApiProfiles.availableModels(profile))
+        assertEquals(listOf("one", "two"), ApiProfiles.availableModels(profile.copy(model = " one ")))
+        assertEquals(listOf("primary"), ApiProfiles.availableModels(profile.copy(selectedModels = emptyList())))
+    }
+
+    @Test
+    fun testResolveSelectionUsesNormalizedSavedThenPrimaryThenFirstModel() {
+        val profile = ApiProfile(model = " primary ", selectedModels = listOf(" one ", "two", " two "))
+        assertEquals(profile to "two", ApiProfiles.resolveSelection(listOf(profile), profile.id, "", " two "))
+        assertEquals(profile to "primary", ApiProfiles.resolveSelection(listOf(profile), profile.id, "", "gone"))
+        assertEquals(profile to "primary", ApiProfiles.resolveSelection(listOf(profile), profile.id, "", " primary "))
+        val withoutPrimary = profile.copy(model = "  ")
+        assertEquals(withoutPrimary to "one", ApiProfiles.resolveSelection(listOf(withoutPrimary), profile.id, "", "gone"))
+        assertEquals(profile.name to "two", ApiProfiles.selectionFor(listOf(profile), profile.name, " two "))
+    }
+
+    @Test
+    fun testResolveSelectionHandlesEmptyProfilesAndModels() {
+        assertNull(ApiProfiles.resolveSelection(emptyList(), "id", "name", "model"))
+        assertEquals("" to "", ApiProfiles.selectionFor(emptyList(), "name", "model"))
+        val profile = ApiProfile(model = "  ", selectedModels = listOf("", "  "))
+        assertEquals(emptyList<String>(), ApiProfiles.availableModels(profile))
+        assertEquals(profile to "", ApiProfiles.resolveSelection(listOf(profile), profile.id, "", "missing"))
+    }
 
     @Test
     fun testSelectionForKeepsAStillValidChoice() {

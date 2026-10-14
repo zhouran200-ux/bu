@@ -11,6 +11,7 @@ internal object SettingsNav {
     var handler: ((SettingsRoute) -> Unit)? = null
 
     fun go(route: SettingsRoute) {
+        AppNavigation.rememberSettingsRoute(route)
         handler?.invoke(route)
     }
 }

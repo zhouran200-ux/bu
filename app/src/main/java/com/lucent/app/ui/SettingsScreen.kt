@@ -123,6 +123,7 @@ fun SettingsScreen(active: Boolean = true) {
         models = mergedModels
         val edited = com.lucent.app.data.ApiProfile(
             name = editingProfileName.trim().ifBlank { "方案 ${idx + 1}" },
+            id = profiles.getOrNull(idx)?.id ?: java.util.UUID.randomUUID().toString(),
             spec = spec,
             baseUrl = url.trim(),
             apiKey = key.trim(),

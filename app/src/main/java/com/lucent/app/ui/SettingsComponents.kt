@@ -31,7 +31,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -221,14 +220,16 @@ internal fun ApiModelPickerDialog(
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var draft by remember(names) { mutableStateOf(selected) }
+    val drawer = rememberModelPickerDrawer(sheetState, onDismiss)
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         containerColor = lucentPanelBackground(),
         shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-        sheetGesturesEnabled = true,
-        dragHandle = { BottomSheetDefaults.DragHandle() }
+        modifier = drawer.modifier,
+        sheetGesturesEnabled = false,
+        dragHandle = drawer.handle
     ) {
         Column(
             modifier = Modifier
@@ -384,7 +385,7 @@ internal fun ApiModelPickerDialog(
             Spacer(modifier = Modifier.height(12.dp))
 
             Button(
-                onClick = { onDone(draft) },
+                onClick = { drawer.close { onDone(draft) } },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(36.dp),

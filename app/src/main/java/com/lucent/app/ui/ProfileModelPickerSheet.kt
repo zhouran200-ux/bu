@@ -17,7 +17,6 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Tune
@@ -26,7 +25,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
-import androidx.compose.material3.BottomSheetDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -64,6 +63,7 @@ internal fun ProfileModelPickerSheet(
     var expandedProfileId by remember { mutableStateOf(initialPosition.expandedProfileId) }
     val listState = remember { LazyListState(initialPosition.firstVisibleItemIndex, 0) }
     val latestDismiss by rememberUpdatedState(onDismiss)
+    val drawer = rememberModelPickerDrawer(sheetState) { latestDismiss() }
     val ink = LocalOnGradient.current
     val accent = MaterialTheme.colorScheme.primary
     if (!visible) return
@@ -71,8 +71,9 @@ internal fun ProfileModelPickerSheet(
         onDismissRequest = { latestDismiss() },
         sheetState = sheetState,
         containerColor = lucentPanelBackground(),
-        sheetGesturesEnabled = true,
-        dragHandle = { BottomSheetDefaults.DragHandle() }
+        modifier = drawer.modifier,
+        sheetGesturesEnabled = false,
+        dragHandle = drawer.handle
     ) {
         KeepKeyboardForNonEditingDialog()
         LazyColumn(
@@ -87,17 +88,18 @@ internal fun ProfileModelPickerSheet(
             if (profiles.isEmpty()) {
                 item(key = "empty") { Text("暂无 API 方案，请先添加", color = ink, modifier = Modifier.padding(12.dp)) }
             }
-            profiles.forEach { profile ->
+            profiles.forEachIndexed { profileIndex, profile ->
                 val models = ApiProfiles.availableModels(profile)
                 val selected = profile.id == currentProfileId
                 val expanded = expandedProfileId == profile.id
                 item(key = "profile:${profile.id}") {
+                    if (profileIndex > 0) HorizontalDivider(color = ink.copy(alpha = 0.12f), modifier = Modifier.padding(vertical = 6.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
-                            .background(if (selected) accent.copy(alpha = 0.22f) else Color.Transparent)
+                            .background(Color.Transparent)
                             .clickable(enabled = models.isNotEmpty(), role = Role.Button) {
                                 expandedProfileId = if (expanded) null else profile.id
-                            }.heightIn(min = 48.dp).padding(horizontal = 8.dp, vertical = 10.dp),
+                            }.heightIn(min = 40.dp).padding(horizontal = 8.dp, vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(if (expanded) Icons.Default.KeyboardArrowDown else Icons.Default.ChevronRight,
@@ -105,20 +107,12 @@ internal fun ProfileModelPickerSheet(
                             tint = accent, modifier = Modifier.size(20.dp))
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
-                            Text(profile.name, fontSize = 16.sp, color = ink,
+                            Text(profile.name, fontSize = 14.sp, color = ink,
                                 fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                                maxLines = 2, overflow = TextOverflow.Ellipsis)
-                            Text(when {
-                                models.isEmpty() -> "未配置模型，请到 API 设置添加"
-                                models.size == 1 -> models.single()
-                                selected -> currentModel
-                                else -> "点击展开模型列表"
-                            }, color = ink.copy(alpha = 0.65f), fontSize = 12.sp,
                                 maxLines = 2, overflow = TextOverflow.Ellipsis)
                         }
                         Spacer(Modifier.width(8.dp))
                         Text(models.size.toString(), color = ink.copy(alpha = 0.6f))
-                        if (selected && models.size == 1) Icon(Icons.Default.Check, "当前模型", tint = accent, modifier = Modifier.size(18.dp))
                     }
                 }
                 if (expanded && models.isNotEmpty()) {
@@ -128,19 +122,16 @@ internal fun ProfileModelPickerSheet(
                             Row(
                                 modifier = Modifier.fillMaxWidth().padding(start = 24.dp)
                                     .clip(RoundedCornerShape(8.dp))
+                                    .background(if (modelSelected) ink.copy(alpha = 0.12f) else Color.Transparent)
                                     .selectable(selected = modelSelected, role = Role.RadioButton) {
                                         onSelect(profile, model)
                                     }
-                                    .heightIn(min = 48.dp).padding(horizontal = 12.dp, vertical = 10.dp),
+                                    .heightIn(min = 36.dp).padding(horizontal = 12.dp, vertical = 6.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text(model, modifier = Modifier.weight(1f), maxLines = 3, overflow = TextOverflow.Ellipsis,
-                                    color = if (modelSelected) accent else ink,
+                                Text(model, modifier = Modifier.weight(1f), fontSize = 13.sp, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                                    color = ink,
                                     fontWeight = if (modelSelected) FontWeight.Bold else FontWeight.Normal)
-                                if (modelSelected) {
-                                    Spacer(Modifier.width(8.dp))
-                                    Icon(Icons.Default.Check, "当前模型", tint = accent, modifier = Modifier.size(18.dp))
-                                }
                             }
                         }
                     }

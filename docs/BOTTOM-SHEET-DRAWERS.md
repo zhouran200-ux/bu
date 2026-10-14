@@ -1,5 +1,7 @@
 # 全部底部弹窗的抽屉交互
 
+> 两处模型弹窗采用新的 [横杠专用手势规则](MODEL-PICKER-HANDLE-ONLY.md)。历史记录和对话设置保持原生整体手势，本文旧的全部弹窗统一规则不再适用于模型选择。
+
 ## 盘点
 
 项目共4处 ModalBottomSheet，无额外 BottomSheetScaffold 或其他底部抽屉实现：

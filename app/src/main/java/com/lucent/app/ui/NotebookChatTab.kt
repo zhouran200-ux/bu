@@ -682,7 +682,6 @@ fun NotebookChatTab(
                 },
                 onOpenDialogueSettings = { showDialogueSettingsDialog = true },
                 selectedProfileName = resolvedSelection?.first?.name.orEmpty(),
-                selectedModel = resolvedSelection?.second.orEmpty(),
                 onOpenModelPicker = { showProfileModelPickerSheet = true },
                 streaming = streamingAnswerId != null,
                 onSend = onSendMessage,
@@ -1382,7 +1381,6 @@ private fun BottomGlassComposer(
     onSelectReasoning: (ReasoningPreset) -> Unit,
     onOpenDialogueSettings: () -> Unit,
     selectedProfileName: String,
-    selectedModel: String,
     onOpenModelPicker: () -> Unit,
     streaming: Boolean,
     onSend: () -> Unit,
@@ -1572,7 +1570,7 @@ private fun BottomGlassComposer(
                             }
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = selectedModel.ifBlank { selectedProfileName.ifBlank { "选择模型" } },
+                                text = selectedProfileName.ifBlank { "选择方案" },
                                 modifier = Modifier.widthIn(max = 150.dp),
                                 maxLines = 1,
                                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,

@@ -1168,7 +1168,7 @@ internal fun ApiConfigSettingsPage(
                 if (selectedModel !in list) {
                     onSelectedModelChange(list.firstOrNull().orEmpty())
                 }
-                LucentToast.show(context, "已应用模型选择，可继续修改或下滑关闭")
+                LucentToast.show(context, "已应用模型选择")
             },
             onDismiss = { pickerOpen = false }
         )

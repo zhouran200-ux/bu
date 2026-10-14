@@ -42,6 +42,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.ImeAction
@@ -128,7 +129,7 @@ fun NotebooksScreen(
     deleting?.let { notebook ->
         AlertDialog(
             onDismissRequest = { deleting = null },
-            title = { Text(com.lucent.app.i18n.S.notebookDeleteTitle, fontSize = LucentTitles.EntrySize, fontWeight = LucentTitles.EntryWeight) },
+            title = { KeepKeyboardForNonEditingDialog(); Text(com.lucent.app.i18n.S.notebookDeleteTitle, fontSize = LucentTitles.EntrySize, fontWeight = LucentTitles.EntryWeight) },
             text = { Text(com.lucent.app.i18n.S.notebookDeleteBody(notebook.title.ifBlank { com.lucent.app.i18n.S.notebookEmptyTitle })) },
             confirmButton = {
                 TextButton(onClick = {
@@ -264,6 +265,7 @@ private fun NotebookShelfItem(
     val onGradient = LocalOnGradient.current
     val onGradientMuted = LocalOnGradientMuted.current
     var menuOpen by remember { mutableStateOf(false) }
+    BackHandler(enabled = menuOpen) { menuOpen = false }
     val title = notebook.title.ifBlank { com.lucent.app.i18n.S.notebookEmptyTitle }
     val formattedDate = remember(notebook.updatedAt) { formatMonthDateTime(notebook.updatedAt) }
 
@@ -312,7 +314,8 @@ private fun NotebookShelfItem(
             }
             androidx.compose.material3.DropdownMenu(
                 expanded = menuOpen,
-                onDismissRequest = { menuOpen = false }
+                onDismissRequest = { menuOpen = false },
+                properties = NonEditingPopupProperties
             ) {
                 androidx.compose.material3.DropdownMenuItem(
                     text = { Text(com.lucent.app.i18n.S.notebookRename) },
@@ -352,6 +355,8 @@ internal fun NotebookNameDialog(
 ) {
     val context = LocalContext.current
     var name by remember { mutableStateOf(initialName) }
+    val keepEditing = rememberImeVisibleOnOpen()
+    val inputFocus = remember { androidx.compose.ui.focus.FocusRequester() }
     fun submit() {
         if (name.isBlank() && !allowBlankName) {
             LucentToast.show(context, com.lucent.app.i18n.S.notebookNameRequired)
@@ -361,6 +366,7 @@ internal fun NotebookNameDialog(
         }
     }
     Dialog(onDismissRequest = onDismiss) {
+        PreserveEditingKeyboardOnOpen(keepEditing, inputFocus)
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -381,7 +387,7 @@ internal fun NotebookNameDialog(
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(onDone = { submit() }),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth().focusRequester(inputFocus)
             )
             Spacer(modifier = Modifier.height(12.dp))
             Row(

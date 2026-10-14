@@ -75,6 +75,7 @@ internal fun ChatHistorySheet(
         sheetGesturesEnabled = true,
         dragHandle = { BottomSheetDefaults.DragHandle() }
     ) {
+        KeepKeyboardForNonEditingDialog()
         Column(
             modifier = Modifier
                 .fillMaxWidth()

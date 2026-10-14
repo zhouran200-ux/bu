@@ -22,6 +22,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.text.KeyboardActions
@@ -488,7 +489,10 @@ internal fun FontSettingsPage(
     }
 
     pendingImportUri?.let { uri ->
+        val keepEditing = com.lucent.app.ui.rememberImeVisibleOnOpen()
+        val inputFocus = remember { androidx.compose.ui.focus.FocusRequester() }
         Dialog(onDismissRequest = { pendingImportUri = null }) {
+            com.lucent.app.ui.PreserveEditingKeyboardOnOpen(keepEditing, inputFocus)
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -511,7 +515,7 @@ internal fun FontSettingsPage(
                         startImportFont(uri, importFontNameDraft.ifBlank { "Custom Font" })
                     }),
                     shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth().focusRequester(inputFocus)
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 Row(
@@ -533,7 +537,7 @@ internal fun FontSettingsPage(
         AlertDialog(
             onDismissRequest = { fontPendingDelete = null },
             shape = RoundedCornerShape(20.dp),
-            title = { Text(S.fontDeleteTitle, fontSize = LucentTitles.ItemSize, fontWeight = LucentTitles.ItemWeight) },
+            title = { com.lucent.app.ui.KeepKeyboardForNonEditingDialog(); Text(S.fontDeleteTitle, fontSize = LucentTitles.ItemSize, fontWeight = LucentTitles.ItemWeight) },
             text = { Text(S.fontDeleteBody(slot.name)) },
             confirmButton = {
                 TextButton(

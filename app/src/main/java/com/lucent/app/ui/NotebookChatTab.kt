@@ -93,6 +93,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
@@ -1142,11 +1143,14 @@ private fun EditMessageDialog(
     val onGradient = LocalOnGradient.current
     val onGradientMuted = LocalOnGradientMuted.current
     var text by remember { mutableStateOf(initial) }
+    val keepEditing = rememberImeVisibleOnOpen()
+    val inputFocus = remember { androidx.compose.ui.focus.FocusRequester() }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title, fontSize = LucentTitles.SectionSize, fontWeight = LucentTitles.SectionWeight) },
         text = {
+            PreserveEditingKeyboardOnOpen(keepEditing, inputFocus)
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 Text(subtitle, color = onGradientMuted, fontSize = 12.sp, lineHeight = 17.sp)
                 Spacer(modifier = Modifier.height(10.dp))
@@ -1164,7 +1168,8 @@ private fun EditMessageDialog(
                         cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .heightIn(min = 96.dp, max = 220.dp),
+                            .heightIn(min = 96.dp, max = 220.dp)
+                            .focusRequester(inputFocus),
                         decorationBox = { inner ->
                             if (text.isEmpty()) {
                                 Text("在这里输入…", color = onGradientMuted.copy(alpha = 0.6f), fontSize = 14.sp)
@@ -1334,6 +1339,7 @@ private fun BottomGlassComposer(
     val accent = MaterialTheme.colorScheme.primary
     val onAccent = MaterialTheme.colorScheme.onPrimary
     var showReasoningMenu by remember { mutableStateOf(false) }
+    androidx.activity.compose.BackHandler(enabled = showReasoningMenu) { showReasoningMenu = false }
 
     Surface(
         shape = RoundedCornerShape(24.dp),
@@ -1414,7 +1420,8 @@ private fun BottomGlassComposer(
 
                         DropdownMenu(
                             expanded = showReasoningMenu,
-                            onDismissRequest = { showReasoningMenu = false }
+                            onDismissRequest = { showReasoningMenu = false },
+                            properties = NonEditingPopupProperties
                         ) {
                             Text(
                                 text = "思考强度",
@@ -1578,6 +1585,8 @@ private fun DialogueSettingsSheet(
     var historyRounds by remember { mutableIntStateOf(initialHistoryRounds) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val promptScroll = rememberScrollState()
+    val keepEditing = rememberImeVisibleOnOpen()
+    val inputFocus = remember { androidx.compose.ui.focus.FocusRequester() }
     val ink = LocalOnGradient.current
     val muted = LocalOnGradientMuted.current
     val accent = MaterialTheme.colorScheme.primary
@@ -1589,6 +1598,7 @@ private fun DialogueSettingsSheet(
         sheetGesturesEnabled = true,
         dragHandle = { BottomSheetDefaults.DragHandle() }
     ) {
+        PreserveEditingKeyboardOnOpen(keepEditing, inputFocus)
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1650,7 +1660,8 @@ private fun DialogueSettingsSheet(
                         modifier = Modifier
                             .fillMaxWidth()
                             .heightIn(min = 88.dp, max = 188.dp)
-                            .verticalScroll(promptScroll),
+                            .verticalScroll(promptScroll)
+                            .focusRequester(inputFocus),
                         decorationBox = { innerTextField ->
                             if (prompt.isEmpty()) {
                                 Text(

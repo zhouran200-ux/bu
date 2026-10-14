@@ -74,6 +74,7 @@ internal fun ProfileModelPickerSheet(
         sheetGesturesEnabled = true,
         dragHandle = { BottomSheetDefaults.DragHandle() }
     ) {
+        KeepKeyboardForNonEditingDialog()
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxWidth().heightIn(max = 520.dp).padding(horizontal = 16.dp),

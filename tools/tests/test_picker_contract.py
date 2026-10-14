@@ -61,7 +61,7 @@ class PickerContractTest(unittest.TestCase):
         self.assertIn("if (!visible) return", picker)
         self.assertNotIn("openManagementAfterDismiss", picker)
         self.assertNotIn("ApiConfigurationPage", picker)
-        self.assertNotIn("Dialog(", picker)
+        self.assertNotRegex(picker, r"\bDialog\s*\(")
         self.assertLess(picker.index("val listState = remember"), picker.index("if (!visible) return"))
         chat = (UI / "NotebookChatTab.kt").read_text(encoding="utf-8")
         self.assertIn("AppNavigation.openApiFromModelPicker(notebookId)", chat)

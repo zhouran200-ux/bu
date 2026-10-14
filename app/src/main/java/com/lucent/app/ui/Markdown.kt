@@ -26,11 +26,13 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.BaselineShift
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.lucent.app.data.SourceCitations
 
 internal sealed interface MdBlock {
     data class Heading(val level: Int, val text: String) : MdBlock
@@ -227,34 +229,68 @@ private val INLINE = Regex(
 private fun inlineAnnotated(
     line: String,
     textColor: Color,
-    accent: Color
+    accent: Color,
+    citationNumbering: Map<String, Int>
 ): AnnotatedString {
     val linkStyle = SpanStyle(color = accent, textDecoration = TextDecoration.Underline)
 
     return buildAnnotatedString {
         var cursor = 0
-        for (match in INLINE.findAll(line)) {
-            if (match.range.first > cursor) {
-                append(line.substring(cursor, match.range.first))
+        for (mark in SourceCitations.marker.findAll(line)) {
+            if (mark.range.first > cursor) {
+                appendInline(line.substring(cursor, mark.range.first), textColor, accent, linkStyle)
             }
-            val g = match.groupValues
-            when {
-                g[1].isNotEmpty() && g[2].isNotEmpty() -> withLink(
-                    LinkAnnotation.Url(url = g[2], styles = TextLinkStyles(style = linkStyle))
-                ) { append(g[1]) }
-                g[3].isNotEmpty() -> withStyle(
-                    SpanStyle(fontFamily = FontFamily.Monospace, background = textColor.copy(alpha = 0.10f))
-                ) { append(g[3]) }
-                g[4].isNotEmpty() -> withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(g[4]) }
-                g[5].isNotEmpty() -> withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(g[5]) }
-                g[6].isNotEmpty() -> withStyle(SpanStyle(textDecoration = TextDecoration.LineThrough)) { append(g[6]) }
-                g[7].isNotEmpty() -> withStyle(SpanStyle(fontStyle = FontStyle.Italic)) { append(g[7]) }
-                g[8].isNotEmpty() -> withStyle(SpanStyle(fontStyle = FontStyle.Italic)) { append(g[8]) }
+            val number = citationNumbering[mark.value] ?: 0
+            if (number > 0 && SourceCitations.parse(mark.value) != null) {
+                appendCitation(number, accent)
+            } else {
+                append(mark.value)
             }
-            cursor = match.range.last + 1
+            cursor = mark.range.last + 1
         }
-        if (cursor < line.length) append(line.substring(cursor))
+        if (cursor < line.length) appendInline(line.substring(cursor), textColor, accent, linkStyle)
     }
+}
+
+private fun AnnotatedString.Builder.appendCitation(number: Int, accent: Color) {
+    withStyle(
+        SpanStyle(
+            color = accent,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Medium,
+            baselineShift = BaselineShift.Superscript
+        )
+    ) { append("[$number]") }
+}
+
+private fun AnnotatedString.Builder.appendInline(
+    segment: String,
+    textColor: Color,
+    accent: Color,
+    linkStyle: SpanStyle
+) {
+    var cursor = 0
+    for (match in INLINE.findAll(segment)) {
+        if (match.range.first > cursor) {
+            append(segment.substring(cursor, match.range.first))
+        }
+        val g = match.groupValues
+        when {
+            g[1].isNotEmpty() && g[2].isNotEmpty() -> withLink(
+                LinkAnnotation.Url(url = g[2], styles = TextLinkStyles(style = linkStyle))
+            ) { append(g[1]) }
+            g[3].isNotEmpty() -> withStyle(
+                SpanStyle(fontFamily = FontFamily.Monospace, background = textColor.copy(alpha = 0.10f))
+            ) { append(g[3]) }
+            g[4].isNotEmpty() -> withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(g[4]) }
+            g[5].isNotEmpty() -> withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(g[5]) }
+            g[6].isNotEmpty() -> withStyle(SpanStyle(textDecoration = TextDecoration.LineThrough)) { append(g[6]) }
+            g[7].isNotEmpty() -> withStyle(SpanStyle(fontStyle = FontStyle.Italic)) { append(g[7]) }
+            g[8].isNotEmpty() -> withStyle(SpanStyle(fontStyle = FontStyle.Italic)) { append(g[8]) }
+        }
+        cursor = match.range.last + 1
+    }
+    if (cursor < segment.length) append(segment.substring(cursor))
 }
 
 @Composable
@@ -267,6 +303,7 @@ fun MarkdownText(
     val accent = MaterialTheme.colorScheme.primary
     val incrementalParser = remember { IncrementalMarkdownParser() }
     val blocks = remember(text) { incrementalParser.parse(text) }
+    val citationNumbering = remember(text) { SourceCitations.numbering(text) }
 
     Column(modifier = modifier.fillMaxWidth()) {
         blocks.forEachIndexed { index, block ->
@@ -274,7 +311,7 @@ fun MarkdownText(
                 is MdBlock.Heading -> {
                     if (index > 0) Spacer(modifier = Modifier.height(10.dp))
                     Text(
-                        inlineAnnotated(block.text, onGradient, accent),
+                        inlineAnnotated(block.text, onGradient, accent, citationNumbering),
                         color = onGradient,
                         fontSize = when (block.level) {
                             1 -> 22.sp
@@ -290,7 +327,7 @@ fun MarkdownText(
                 is MdBlock.Paragraph -> {
                     if (index > 0) Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                        inlineAnnotated(block.text, onGradient, accent),
+                        inlineAnnotated(block.text, onGradient, accent, citationNumbering),
                         color = onGradient
                     )
                 }
@@ -300,7 +337,7 @@ fun MarkdownText(
                     Row(modifier = Modifier.fillMaxWidth()) {
                         Text("•", color = onGradientMuted, modifier = Modifier.padding(end = 8.dp))
                         Text(
-                            inlineAnnotated(block.text, onGradient, accent),
+                            inlineAnnotated(block.text, onGradient, accent, citationNumbering),
                             color = onGradient,
                             modifier = Modifier.weight(1f)
                         )
@@ -312,7 +349,7 @@ fun MarkdownText(
                     Row(modifier = Modifier.fillMaxWidth()) {
                         Text("${block.marker}.", color = onGradientMuted, modifier = Modifier.padding(end = 8.dp))
                         Text(
-                            inlineAnnotated(block.text, onGradient, accent),
+                            inlineAnnotated(block.text, onGradient, accent, citationNumbering),
                             color = onGradient,
                             modifier = Modifier.weight(1f)
                         )
@@ -329,7 +366,7 @@ fun MarkdownText(
                                 .background(onGradientMuted)
                         )
                         Text(
-                            inlineAnnotated(block.text, onGradientMuted, accent),
+                            inlineAnnotated(block.text, onGradientMuted, accent, citationNumbering),
                             color = onGradientMuted,
                             fontStyle = FontStyle.Italic,
                             modifier = Modifier.padding(start = 8.dp)

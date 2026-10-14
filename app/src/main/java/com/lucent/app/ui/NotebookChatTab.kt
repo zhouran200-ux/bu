@@ -125,6 +125,7 @@ import com.lucent.app.data.ReasoningPreset
 import com.lucent.app.data.ReasoningResolver
 import com.lucent.app.data.SettingsCache
 import com.lucent.app.data.SettingsRepository
+import com.lucent.app.data.SourceTagging
 import com.lucent.app.network.ApiSpec
 import com.lucent.app.network.ChatMessagePayload
 import com.lucent.app.network.LlmClient
@@ -340,13 +341,19 @@ fun NotebookChatTab(
 
         val knowledgeBasePrompt = buildString {
             append("你是一个专业的笔记本知识库与对话助手。用户在此笔记本中上传了参考资料文档（已在本地转换为 Markdown 格式）。\n")
-            append("请严格基于以下参考资料的内容回答用户的问题。如果问题在参考资料中没有提及，请如实告知并结合通用常识客观回答。\n\n")
+            append("关于资料内容的事实性问题必须以资料为依据：资料写了就以资料为准；资料没有提到就直接说明没有提到，不要用常识把不存在的内容补成资料事实。常识只用于解释一般性问题或做常识性说明。\n")
+            append("资料若是小说等文学作品：分析人物、关系、经历、世界观、时间线、事件和角色已知信息时必须依据资料原文；用户要求续写、改写或角色扮演时，新增内容属于创作，不得声称来自资料原文。\n\n")
+            append("资料正文带有两级坐标标签：〔CHn〕为章节坐标，〔Sn-m〕为切片坐标；标签独占一行，标记其后正文的起点，范围直到下一个标签之前。\n")
+            append("引用格式为〔REF:来源编号:修订号:切片编号〕，例如〔REF:42:3f2a91c4:S12-7〕；来源编号与修订号见每份资料的开头。\n")
+            append("只在确实依据了某个切片时标记，标记紧跟在被支持的结论之后；同一结论有多个依据时连续写出多个标记。\n")
+            append("不得编造来源编号、修订号或切片编号；找不到依据时不要标记，直接说明依据不足。不要自行编号或输出脚注列表，编号由应用生成。\n\n")
+
             if (sourceNotes.isNotEmpty()) {
                 append("==================== 参考资料库开始 ====================\n")
                 sourceNotes.forEachIndexed { index, note ->
                     val docTitle = note.title.ifBlank { "资料文档 ${index + 1}" }
-                    append("\n【文档 ${index + 1}：《$docTitle》】\n")
-                    append(note.body)
+                    append("\n【文档 ${index + 1}：《$docTitle》｜来源编号 ${note.id}｜修订号 ${SourceTagging.revisionOf(note.body)}】\n")
+                    append(SourceTagging.tag(docTitle, note.body).text)
                     append("\n")
                 }
                 append("\n==================== 参考资料库结束 ====================\n\n")

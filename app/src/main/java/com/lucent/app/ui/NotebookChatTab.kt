@@ -157,17 +157,13 @@ fun NotebookChatTab(
 ) {
     val context = LocalContext.current
     val openCitation: (CitationRef) -> Unit = { ref ->
-        val target = if (ref.sourceId != null) {
-            sourceNotes.firstOrNull { it.id == ref.sourceId }
-        } else {
-            sourceNotes.singleOrNull()
-        }
-        if (target == null) {
-            LucentToast.show(context, "引用不可用：找不到对应的资料文档")
-        } else {
-            if (ref.revision != null && ref.revision != SourceTagging.revisionOf(target.body)) {
-                LucentToast.show(context, "资料已更新，引用位置可能已变化")
-            }
+        val target = sourceNotes.firstOrNull { it.id == ref.sourceId }
+        val reason = com.lucent.app.data.SourceCitations.rejectionReason(
+            ref, target?.id, target?.let { SourceTagging.revisionOf(it.body, it.title) }
+        )
+        if (reason != null) {
+            LucentToast.show(context, reason)
+        } else if (target != null) {
             onOpenSource(target.id, ref.sliceId)
         }
     }
@@ -361,7 +357,7 @@ fun NotebookChatTab(
             append("关于资料内容的事实性问题必须以资料为依据：资料写了就以资料为准；资料没有提到就直接说明没有提到，不要用常识把不存在的内容补成资料事实。常识只用于解释一般性问题或做常识性说明。\n")
             append("资料若是小说等文学作品：分析人物、关系、经历、世界观、时间线、事件和角色已知信息时必须依据资料原文；用户要求续写、改写或角色扮演时，新增内容属于创作，不得声称来自资料原文。\n\n")
             append("资料正文带有两级坐标标签：〔CHn〕为章节坐标，〔Sn-m〕为切片坐标；标签独占一行，标记其后正文的起点，范围直到下一个标签之前。\n")
-            append("引用格式为〔REF:来源编号:修订号:切片编号〕，例如〔REF:42:3f2a91c4:S12-7〕；来源编号与修订号见每份资料的开头。\n")
+            append("引用格式为〔REF:来源编号:修订号:切片编号〕，修订号包含索引版本与内容摘要，必须完整复制资料开头的真实值；来源编号与修订号见每份资料的开头。\n")
             append("只在确实依据了某个切片时标记，标记紧跟在被支持的结论之后；同一结论有多个依据时连续写出多个标记。\n")
             append("不得编造来源编号、修订号或切片编号；找不到依据时不要标记，直接说明依据不足。不要自行编号或输出脚注列表，编号由应用生成。\n\n")
 
@@ -369,7 +365,7 @@ fun NotebookChatTab(
                 append("==================== 参考资料库开始 ====================\n")
                 sourceNotes.forEachIndexed { index, note ->
                     val docTitle = note.title.ifBlank { "资料文档 ${index + 1}" }
-                    append("\n【文档 ${index + 1}：《$docTitle》｜来源编号 ${note.id}｜修订号 ${SourceTagging.revisionOf(note.body)}】\n")
+                    append("\n【文档 ${index + 1}：《$docTitle》｜来源编号 ${note.id}｜修订号 ${SourceTagging.revisionOf(note.body, note.title)}】\n")
                     append(SourceTagging.tag(docTitle, note.body).text)
                     append("\n")
                 }

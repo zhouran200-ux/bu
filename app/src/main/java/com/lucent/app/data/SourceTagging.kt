@@ -15,8 +15,19 @@ object SourceTagging {
         fun sliceOf(id: String): Slice? = slices.firstOrNull { it.id == id }
     }
 
-    fun revisionOf(body: String): String =
-        String.format(java.util.Locale.US, "%08x", body.hashCode())
+    const val INDEX_VERSION = 1
+
+    fun revisionOf(body: String, title: String = ""): String {
+        val digest = java.security.MessageDigest.getInstance("SHA-256")
+        listOf(INDEX_VERSION.toString(), TARGET_SLICE_CHARS.toString(), MAX_SLICE_CHARS.toString(), title, body)
+            .forEach { field ->
+                val bytes = field.toByteArray(Charsets.UTF_8)
+                digest.update(java.nio.ByteBuffer.allocate(4).putInt(bytes.size).array())
+                digest.update(bytes)
+            }
+        val hex = digest.digest().joinToString("") { "%02x".format(it.toInt() and 255) }
+        return "v$INDEX_VERSION-$hex"
+    }
 
     fun tag(title: String, body: String): Tagged {
         if (body.isBlank()) return Tagged("", emptyList(), emptyList())

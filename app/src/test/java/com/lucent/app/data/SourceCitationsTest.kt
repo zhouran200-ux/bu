@@ -55,6 +55,42 @@ class SourceCitationsTest {
     }
 
     @Test
+    fun invalidFullSourceIdsNeverBecomeShortReferences() {
+        assertNull(SourceCitations.parse("〔REF:999999999999999999999999:0001:S1-1〕", 5L, "0001"))
+        assertNull(SourceCitations.parse("〔REF:0:0001:S1-1〕"))
+    }
+
+    @Test
+    fun versionedDigestIsParsedAndMatchingSourceMayOpen() {
+        val revision = SourceTagging.revisionOf("正文", "书")
+        val ref = SourceCitations.parse("〔REF:42:$revision:S1-1〕")!!
+        assertEquals(revision, ref.revision)
+        assertNull(SourceCitations.rejectionReason(ref, 42L, revision))
+        assertTrue(SourceCitations.rejectionReason(ref, 42L, SourceTagging.revisionOf("新正文", "书")) != null)
+        assertTrue(SourceCitations.rejectionReason(ref, 7L, revision) != null)
+        assertTrue(SourceCitations.rejectionReason(ref, null, null) != null)
+    }
+
+    @Test
+    fun oldAndUnversionedReferencesRemainDisplayableButCannotOpenCurrentSources() {
+        val revision = SourceTagging.revisionOf("正文")
+        val old = SourceCitations.parse("〔REF:42:3f2a91c4:S1-1〕")!!
+        val short = SourceCitations.parse("〔S1-1〕")!!
+        assertTrue(SourceCitations.rejectionReason(old, 42L, revision) != null)
+        assertTrue(SourceCitations.rejectionReason(short, 42L, revision) != null)
+        assertEquals(1, SourceCitations.numbering(old.raw)[old.raw])
+    }
+
+    @Test
+    fun indexVersionChangeAndTruncatedDigestsCannotPass() {
+        val revision = SourceTagging.revisionOf("正文")
+        val next = revision.replace("v1-", "v2-")
+        val ref = SourceCitations.parse("〔REF:42:$next:S1-1〕")!!
+        assertTrue(SourceCitations.rejectionReason(ref, 42L, revision) != null)
+        assertNull(SourceCitations.parse("〔REF:42:v1-abcdef:S1-1〕"))
+    }
+
+    @Test
     fun theMarkerRegexMatchesExactSpansSoRawTextCanBeRebuilt() {
         val text = "甲〔REF:1:00000001:S2-3〕乙"
         val matches = SourceCitations.marker.findAll(text).map { it.value to it.range }.toList()

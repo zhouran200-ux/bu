@@ -51,7 +51,7 @@ class SourceTaggingTest {
     fun revisionChangesWithTheBodyAndIsStableOtherwise() {
         assertEquals(SourceTagging.revisionOf("正文"), SourceTagging.revisionOf("正文"))
         assertNotEquals(SourceTagging.revisionOf("正文"), SourceTagging.revisionOf("正文。"))
-        assertEquals(8, SourceTagging.revisionOf("正文").length)
+        assertTrue(Regex("v1-[0-9a-f]{64}").matches(SourceTagging.revisionOf("正文")))
     }
 
     @Test
@@ -62,6 +62,14 @@ class SourceTaggingTest {
         assertEquals(2, tagged.slices.size)
         assertEquals(listOf("S1-1", "S1-2"), tagged.slices.map { it.id })
         assertTrue(tagged.text.contains("〔S1-2〕"))
+    }
+
+    @Test
+    fun revisionIncludesTitleAndDoesNotReuseJavaHashCollisions() {
+        assertEquals("Aa".hashCode(), "BB".hashCode())
+        assertNotEquals(SourceTagging.revisionOf("Aa"), SourceTagging.revisionOf("BB"))
+        assertNotEquals(SourceTagging.revisionOf("正文", "旧标题"), SourceTagging.revisionOf("正文", "新标题"))
+        assertNotEquals(SourceTagging.revisionOf("c", "ab"), SourceTagging.revisionOf("bc", "a"))
     }
 
     @Test

@@ -196,6 +196,26 @@ class ChatSessionTest {
         assertEquals("complete", session.messages.single().content)
     }
 
+    @Test fun cancelledDeletionPreparationRestoresWritableSession() {
+        val d = QueueDispatcher()
+        val gate = CompletableDeferred<Unit>()
+        val writes = mutableListOf<String>()
+        val session = ChatSession(d, { emptyList() }, { writes.add(it.content) })
+        d.drain()
+        session.write { gate.await() }
+        val deletion = CoroutineScope(Job() + d).launch { session.prepareDelete() }
+        d.drain()
+        assertFalse(session.ready)
+        deletion.cancel()
+        d.drain()
+        assertTrue(session.ready)
+        assertNull(session.storageError)
+        gate.complete(Unit)
+        session.saveMessage(UiChatMessage(3, "assistant", "retained"))
+        d.drain()
+        assertEquals(listOf("retained"), writes)
+    }
+
     @Test fun serviceStartFailureLeavesSessionIdle() {
         val d = QueueDispatcher()
         val session = ChatSession(d, { emptyList() }, {}, { if (it) error("FGS denied") })

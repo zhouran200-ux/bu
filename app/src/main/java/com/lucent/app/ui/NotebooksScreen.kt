@@ -124,8 +124,10 @@ fun NotebooksScreen(
                             NotebookPurge.purge(db, target.id)
                             ReadingPositionMemory.clearNotebook(context, target.id)
                             LucentToast.show(context, com.lucent.app.i18n.S.notebookDeletedToast)
-                        } catch (e: IllegalStateException) {
-                            LucentToast.show(context, e.message ?: "删除失败")
+                        } catch (e: kotlinx.coroutines.CancellationException) {
+                            throw e
+                        } catch (e: Exception) {
+                            LucentToast.show(context, e.message ?: "删除失败，资料库事务已回滚")
                         }
                     }
                 }) { Text(com.lucent.app.i18n.S.actionDelete) }

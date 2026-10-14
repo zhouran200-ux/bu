@@ -6,7 +6,6 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
-import java.io.File
 
 val MIGRATION_2_3 = object : Migration(2, 3) {
     override fun migrate(db: SupportSQLiteDatabase) {
@@ -367,7 +366,6 @@ abstract class AppDatabase : RoomDatabase() {
         @Volatile private var INSTANCE: AppDatabase? = null
 
         private const val DB_NAME = "lucent.db"
-        private val PLAINTEXT_HEADER = "SQLite format 3".toByteArray(Charsets.ISO_8859_1)
 
         fun getInstance(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
@@ -376,7 +374,7 @@ abstract class AppDatabase : RoomDatabase() {
         }
 
         private fun build(appContext: Context): AppDatabase {
-            discardUnreadableDatabase(appContext.getDatabasePath(DB_NAME))
+            DatabaseFileGuard.requireReadable(appContext.getDatabasePath(DB_NAME))
 
             return Room.databaseBuilder(
                 appContext,
@@ -391,24 +389,9 @@ abstract class AppDatabase : RoomDatabase() {
                     MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26,
                     MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30
                 )
-                .fallbackToDestructiveMigration(dropAllTables = true)
                 .build()
         }
 
-        private fun discardUnreadableDatabase(dbFile: File) {
-            runCatching {
-                if (!dbFile.exists()) return
-                val header = ByteArray(PLAINTEXT_HEADER.size)
-                val read = dbFile.inputStream().use { it.read(header) }
-                if (read == header.size && header.contentEquals(PLAINTEXT_HEADER)) return
-                dbFile.delete()
-                listOf("-wal", "-shm", ".encrypting", ".pre-encrypt").forEach { suffix ->
-                    File(dbFile.parentFile, dbFile.name + suffix).delete()
-                }
-                dbFile.parentFile?.listFiles()
-                    ?.filter { it.name.startsWith("${dbFile.name}.locked-") }
-                    ?.forEach { it.delete() }
-            }
-        }
+
     }
 }

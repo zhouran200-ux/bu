@@ -138,10 +138,19 @@ class ChatSession(
 
     suspend fun prepareDelete() {
         check(streamingAnswerId == null) { "请先停止此笔记本中的回答，再删除笔记本" }
+        val previousReady = ready
+        val previousError = storageError
         unavailable = true
         ready = false
         storageError = "笔记本正在删除或已删除"
-        writeTail?.join()
+        try {
+            writeTail?.join()
+        } catch (e: Exception) {
+            unavailable = false
+            ready = previousReady
+            storageError = previousError
+            throw e
+        }
     }
 
     fun deletionFailed() {

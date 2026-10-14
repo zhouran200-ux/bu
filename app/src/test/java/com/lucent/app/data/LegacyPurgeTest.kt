@@ -16,6 +16,7 @@ class LegacyPurgeTest {
 
     @Test
     fun anEditedCopyIsLeftAlone() {
+        assertFalse(LegacyPurge.isSampleDocument("用户预置文档", sampleBody + "后续修改"))
         assertFalse(LegacyPurge.isSampleDocument("用户预置文档", "我自己改过的正文"))
         assertFalse(LegacyPurge.isSampleDocument("我的资料", sampleBody))
     }

@@ -60,7 +60,12 @@ object ChatSessions {
     suspend fun prepareDelete(notebookId: Long) {
         check(!isRunning(notebookId)) { "请先停止此笔记本中的回答，再删除笔记本" }
         check(deletedNotebooks.add(notebookId)) { "笔记本正在删除或已删除" }
-        sessions[notebookId]?.prepareDelete()
+        try {
+            sessions[notebookId]?.prepareDelete()
+        } catch (e: Exception) {
+            deletedNotebooks.remove(notebookId)
+            throw e
+        }
     }
 
     fun finishDelete(notebookId: Long, success: Boolean) {

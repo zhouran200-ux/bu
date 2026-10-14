@@ -5,12 +5,11 @@ import java.security.MessageDigest
 object LegacyPurge {
 
     private const val SAMPLE_TITLE = "用户预置文档"
-    private const val SAMPLE_BODY_PREFIX_LENGTH = 16
-    private const val SAMPLE_BODY_PREFIX_DIGEST =
-        "08e0b7ad6264fd8d98ba45292ebd99d1a7b5d881e00021cdf68208996b494405"
+    private const val SAMPLE_BODY_DIGEST =
+        "1934f4d617f6f75ab2a1aa897c35bf2ae4647f74a643862a1ecceaa5cfe498ef"
 
     fun isSampleDocument(title: String, body: String): Boolean =
-        title.trim() == SAMPLE_TITLE && digestOfPrefix(body) == SAMPLE_BODY_PREFIX_DIGEST
+        title.trim() == SAMPLE_TITLE && digestOf(body) == SAMPLE_BODY_DIGEST
 
     suspend fun release(db: AppDatabase, note: Note) {
         db.notebookDao().getAllItemsOnce()
@@ -19,10 +18,8 @@ object LegacyPurge {
         TrashCleanup.purgeNote(db, note)
     }
 
-    private fun digestOfPrefix(body: String): String? {
-        if (body.length < SAMPLE_BODY_PREFIX_LENGTH) return null
-        val prefix = body.take(SAMPLE_BODY_PREFIX_LENGTH)
-        val bytes = MessageDigest.getInstance("SHA-256").digest(prefix.toByteArray(Charsets.UTF_8))
+    private fun digestOf(body: String): String {
+        val bytes = MessageDigest.getInstance("SHA-256").digest(body.toByteArray(Charsets.UTF_8))
         return bytes.joinToString("") { byte -> "%02x".format(byte) }
     }
 }

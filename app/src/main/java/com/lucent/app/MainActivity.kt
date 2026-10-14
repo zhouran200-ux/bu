@@ -131,20 +131,26 @@ class MainActivity : ComponentActivity() {
         val initialPalette = display.palette
         val initialFont = display.font
 
-        AppScope.io.launch {
-            TrashCleanup.purgeExpired(applicationContext)
-            settingsRepo.dropRemovedFeatureKeys()
-        }
-
-        AppScope.io.launch {
-            try {
-                com.lucent.app.data.AppDatabase.getInstance(applicationContext)
-            } catch (t: Throwable) {
-                android.util.Log.e("LucentStartup", "database init failed at startup", t)
-            }
-        }
-
         setContent {
+            var databaseReady by remember { mutableStateOf(false) }
+            var databaseError by remember { mutableStateOf<String?>(null) }
+            LaunchedEffect(Unit) {
+                try {
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                        val db = com.lucent.app.data.AppDatabase.getInstance(applicationContext)
+                        db.openHelper.writableDatabase
+                    }
+                    databaseReady = true
+                    AppScope.io.launch {
+                        TrashCleanup.purgeExpired(applicationContext)
+                        settingsRepo.dropRemovedFeatureKeys()
+                    }
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    databaseError = "无法打开资料库，原文件未主动删除。请勿清除应用数据或卸载。错误：${e.message ?: e.javaClass.simpleName}"
+                }
+            }
             val themeMode by settingsRepo.themeMode.collectAsState(initial = initialThemeMode)
             val paletteName by settingsRepo.palette.collectAsState(initial = initialPalette)
             val fontKey by settingsRepo.font.collectAsState(initial = initialFont)
@@ -240,12 +246,18 @@ class MainActivity : ComponentActivity() {
                     LocalBackgroundEnvironment provides backgroundEnvironment
                 ) {
                     Box(modifier = Modifier.fillMaxSize()) {
-                        LucentApp(
-                            paletteColors = paletteColors,
-                            backdropColor = backdropColor,
-                            backgroundAnimated = appBackgroundAnimated,
-                            pureWhite = pureWhite
-                        )
+                        if (databaseReady) {
+                            LucentApp(
+                                paletteColors = paletteColors,
+                                backdropColor = backdropColor,
+                                backgroundAnimated = appBackgroundAnimated,
+                                pureWhite = pureWhite
+                            )
+                        } else {
+                            Box(Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
+                                Text(databaseError ?: "正在打开资料库…", color = onGradient)
+                            }
+                        }
                     }
                 }
             }

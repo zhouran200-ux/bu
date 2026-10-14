@@ -28,10 +28,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,14 +48,18 @@ import com.lucent.app.data.AppDatabase
 import com.lucent.app.data.MarkdownDocumentParser
 import com.lucent.app.data.Note
 import com.lucent.app.data.NotebookPurge
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+
+data class SourceFocus(val noteId: Long, val sliceId: String, val requestId: Long)
 
 @Composable
 fun NotebookSourcesTab(
     notebookId: Long,
     sourceNotes: List<Note>,
     onReload: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    focus: SourceFocus? = null
 ) {
     val context = LocalContext.current
     val db = remember { AppDatabase.getInstance(context) }
@@ -85,7 +93,14 @@ fun NotebookSourcesTab(
         }
     }
 
-    val current = sourceNotes.firstOrNull()
+    var selectedNoteId by remember(notebookId) { mutableStateOf<Long?>(null) }
+    LaunchedEffect(focus?.requestId) {
+        focus?.let { selectedNoteId = it.noteId }
+    }
+    LaunchedEffect(sourceNotes) {
+        if (sourceNotes.none { it.id == selectedNoteId }) selectedNoteId = sourceNotes.firstOrNull()?.id
+    }
+    val current = sourceNotes.firstOrNull { it.id == selectedNoteId } ?: sourceNotes.firstOrNull()
     Box(modifier = modifier.fillMaxSize()) {
         if (current == null) {
             Column(
@@ -143,22 +158,49 @@ fun NotebookSourcesTab(
             }
         } else {
             key(current.id) {
-                SourceReader(notebookId = notebookId, note = current, modifier = Modifier.fillMaxSize())
+                SourceReader(
+                    notebookId = notebookId,
+                    note = current,
+                    focus = focus,
+                    modifier = Modifier.fillMaxSize()
+                )
             }
         }
     }
 }
 
 @Composable
-private fun SourceReader(notebookId: Long, note: Note, modifier: Modifier = Modifier) {
+private fun SourceReader(
+    notebookId: Long,
+    note: Note,
+    focus: SourceFocus?,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    val accent = MaterialTheme.colorScheme.primary
     val blocks = remember(note.id, note.body) { splitRenderBlocks(note.body) }
     val readingKeys = remember(blocks) { blocks.indices.map { "block:$it" } + "footer" }
     val listState = rememberReadingListState("source:$notebookId:${note.id}", readingKeys)
     val pureWhite = LocalPureWhite.current
+    var highlightIndex by remember(note.id) { mutableIntStateOf(-1) }
     val currentSectionTitle by remember(blocks, note.title, listState) {
         derivedStateOf {
             currentDocumentSectionTitle(blocks, listState.firstVisibleItemIndex, note.title)
         }
+    }
+
+    LaunchedEffect(focus?.requestId, note.id, blocks) {
+        val target = focus ?: return@LaunchedEffect
+        if (target.noteId != note.id) return@LaunchedEffect
+        val index = SourceLocator.blockIndexForSlice(note.title, note.body, blocks, target.sliceId)
+        if (index < 0) {
+            LucentToast.show(context, "未找到该引用的原文位置")
+            return@LaunchedEffect
+        }
+        highlightIndex = index
+        listState.scrollToItem(index)
+        delay(2600)
+        if (highlightIndex == index) highlightIndex = -1
     }
 
     Box(modifier = modifier.background(lucentPanelBackground())) {
@@ -168,11 +210,23 @@ private fun SourceReader(notebookId: Long, note: Note, modifier: Modifier = Modi
             contentPadding = PaddingValues(start = 18.dp, top = 60.dp, end = 18.dp, bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            itemsIndexed(blocks, key = { index, _ -> readingKeys[index] }) { _, block ->
-                MarkdownText(
-                    text = block.text,
-                    modifier = Modifier.fillMaxWidth()
-                )
+            itemsIndexed(blocks, key = { index, _ -> readingKeys[index] }) { index, block ->
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .then(
+                            if (index == highlightIndex) {
+                                Modifier.background(accent.copy(alpha = 0.16f), RoundedCornerShape(8.dp))
+                            } else {
+                                Modifier
+                            }
+                        )
+                ) {
+                    MarkdownText(
+                        text = block.text,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
             }
             item(key = "footer") { Spacer(modifier = Modifier.height(48.dp)) }
         }

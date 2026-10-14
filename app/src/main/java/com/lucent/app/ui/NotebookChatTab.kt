@@ -120,6 +120,7 @@ import com.lucent.app.data.ApiProfiles
 import com.lucent.app.data.AppDatabase
 import com.lucent.app.data.ChatMessage
 import com.lucent.app.data.ChatScope
+import com.lucent.app.data.CitationRef
 import com.lucent.app.data.Note
 import com.lucent.app.data.ReasoningPreset
 import com.lucent.app.data.ReasoningResolver
@@ -151,9 +152,25 @@ fun NotebookChatTab(
     notebookId: Long,
     sourceNotes: List<Note>,
     modifier: Modifier = Modifier,
-    active: Boolean = true
+    active: Boolean = true,
+    onOpenSource: (Long, String) -> Unit = { _, _ -> }
 ) {
     val context = LocalContext.current
+    val openCitation: (CitationRef) -> Unit = { ref ->
+        val target = if (ref.sourceId != null) {
+            sourceNotes.firstOrNull { it.id == ref.sourceId }
+        } else {
+            sourceNotes.singleOrNull()
+        }
+        if (target == null) {
+            LucentToast.show(context, "引用不可用：找不到对应的资料文档")
+        } else {
+            if (ref.revision != null && ref.revision != SourceTagging.revisionOf(target.body)) {
+                LucentToast.show(context, "资料已更新，引用位置可能已变化")
+            }
+            onOpenSource(target.id, ref.sliceId)
+        }
+    }
     val session = remember(notebookId) { ChatSessions.forNotebook(context, notebookId) }
     if (!session.ready) {
         Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -640,7 +657,8 @@ fun NotebookChatTab(
                             actionsEnabled = actionsEnabled,
                             onRegenerate = { regenerateAnswer(msg.id) },
                             onEditAnswer = { answerToEdit = msg },
-                            onDelete = { deleteMessage(msg) }
+                            onDelete = { deleteMessage(msg) },
+                            onCitationClick = openCitation
                         )
                     }
                 }
@@ -940,7 +958,8 @@ private fun AiMessageCard(
     actionsEnabled: Boolean = true,
     onRegenerate: () -> Unit = {},
     onEditAnswer: () -> Unit = {},
-    onDelete: () -> Unit = {}
+    onDelete: () -> Unit = {},
+    onCitationClick: ((CitationRef) -> Unit)? = null
 ) {
     val context = LocalContext.current
     Column(
@@ -971,7 +990,8 @@ private fun AiMessageCard(
                     Column(modifier = Modifier.padding(16.dp)) {
                         MarkdownText(
                             text = message.content,
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth(),
+                            onCitationClick = onCitationClick
                         )
                     }
                 }

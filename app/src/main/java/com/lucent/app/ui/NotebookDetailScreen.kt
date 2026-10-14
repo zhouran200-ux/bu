@@ -75,6 +75,8 @@ fun NotebookDetailScreen(
     val keyboardController = LocalSoftwareKeyboardController.current
     var sourceNotes by remember { mutableStateOf<List<Note>>(emptyList()) }
     var reloadCount by remember { mutableIntStateOf(0) }
+    var sourceFocus by remember { mutableStateOf<SourceFocus?>(null) }
+    var focusRequest by remember { mutableStateOf(0L) }
 
     LaunchedEffect(selectedTab) {
         if (selectedTab != NotebookDetailTab.CHAT) {
@@ -136,7 +138,14 @@ fun NotebookDetailScreen(
                             notebookId = notebookId,
                             sourceNotes = sourceNotes,
                             modifier = Modifier.fillMaxSize(),
-                            active = active && selectedTab == NotebookDetailTab.CHAT
+                            active = active && selectedTab == NotebookDetailTab.CHAT,
+                            onOpenSource = { noteId, sliceId ->
+                                focusRequest += 1
+                                sourceFocus = SourceFocus(noteId, sliceId, focusRequest)
+                                scope.launch {
+                                    pagerState.animateScrollToPage(tabs.indexOf(NotebookDetailTab.SOURCES))
+                                }
+                            }
                         )
                     }
                     NotebookDetailTab.SOURCES -> {
@@ -144,7 +153,8 @@ fun NotebookDetailScreen(
                             notebookId = notebookId,
                             sourceNotes = sourceNotes,
                             onReload = { reloadCount++ },
-                            modifier = Modifier.fillMaxSize()
+                            modifier = Modifier.fillMaxSize(),
+                            focus = sourceFocus
                         )
                     }
                 }

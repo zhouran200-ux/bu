@@ -10,14 +10,14 @@
 
 | 阶段 | 状态 | 位置 |
 |---|---|---|
-| 1 导入文档 | 已有，未改动 | [NotebookSourcesTab.kt](lucent/app/src/main/java/com/lucent/app/ui/NotebookSourcesTab.kt#L66-L85) |
+| 1 导入文档 | 已有，未改动 | [NotebookSourcesTab.kt](lucent/app/src/main/java/com/lucent/app/ui/NotebookSourcesTab.kt#L72) |
 | 2 转成 Markdown | 已有，未改动 | [MarkdownDocumentParser.kt](lucent/app/src/main/java/com/lucent/app/data/MarkdownDocumentParser.kt) |
 | 3 给原文打标签 | **本次新增** | [SourceTagging.kt](lucent/app/src/main/java/com/lucent/app/data/SourceTagging.kt) |
-| 4 提示词设计 | **本次改写** | [NotebookChatTab.kt](lucent/app/src/main/java/com/lucent/app/ui/NotebookChatTab.kt#L342-L377) |
+| 4 提示词设计 | **本次改写** | [NotebookChatTab.kt](lucent/app/src/main/java/com/lucent/app/ui/NotebookChatTab.kt#L359) |
 | 5 发送顺序与缓存 | 排列已符合前缀缓存，**本次补规则** | 同上 + [LlmClient.kt](lucent/app/src/main/java/com/lucent/app/network/LlmClient.kt#L440-L545) |
-| 6 转译输出标签 | **本次实现** | [SourceCitations.kt](lucent/app/src/main/java/com/lucent/app/data/SourceCitations.kt) + [Markdown.kt](lucent/app/src/main/java/com/lucent/app/ui/Markdown.kt#L229-L264) |
-| 7 脚注位置与图案 | 已渲染，细节待做 | [Markdown.kt](lucent/app/src/main/java/com/lucent/app/ui/Markdown.kt#L255-L264) |
-| 8 点击跳转 | **未实现，仅有设计** | 见第 8 节 |
+| 6 转译输出标签 | **本次实现** | [SourceCitations.kt](lucent/app/src/main/java/com/lucent/app/data/SourceCitations.kt) + [Markdown.kt](lucent/app/src/main/java/com/lucent/app/ui/Markdown.kt#L235-L290) |
+| 7 脚注位置与图案 | 已可点击，无效态待补 | [Markdown.kt](lucent/app/src/main/java/com/lucent/app/ui/Markdown.kt#L262) |
+| 8 点击跳转 | **本次实现** | [SourceLocator.kt](lucent/app/src/main/java/com/lucent/app/ui/SourceLocator.kt) |
 
 ***
 
@@ -114,7 +114,7 @@
 
 ### 组装顺序
 
-[NotebookChatTab.kt 342-377](lucent/app/src/main/java/com/lucent/app/ui/NotebookChatTab.kt#L342-L377) 现在的顺序：
+[NotebookChatTab.kt](lucent/app/src/main/java/com/lucent/app/ui/NotebookChatTab.kt#L359) 现在的顺序：
 
 1. 角色说明（知识库对话助手）
 2. **资料优先规则**：资料写了以资料为准；资料没写就直说没写，不用常识把不存在的内容补成资料事实
@@ -172,7 +172,7 @@
 [user]   本轮用户输入
 ~~~
 
-历史部分来自 [historyPayload](lucent/app/src/main/java/com/lucent/app/ui/NotebookChatTab.kt#L379)，取最近 historyRounds × 2 条。
+历史部分来自 [historyPayload](lucent/app/src/main/java/com/lucent/app/ui/NotebookChatTab.kt#L396)，取最近 historyRounds × 2 条。
 
 ### 为什么这样排
 
@@ -225,8 +225,8 @@
 [Markdown.kt](lucent/app/src/main/java/com/lucent/app/ui/Markdown.kt) 中：
 
 - MarkdownText 先对整段回答算一次 numbering，再逐块渲染，因此**跨段落的编号是连续的**。
-- [inlineAnnotated](lucent/app/src/main/java/com/lucent/app/ui/Markdown.kt#L229) 遇到标记时替换为上标芯片，而不是显示原始坐标。
-- [appendCitation](lucent/app/src/main/java/com/lucent/app/ui/Markdown.kt#L255) 用 BaselineShift.Superscript + 11sp + 主题强调色。
+- [inlineAnnotated](lucent/app/src/main/java/com/lucent/app/ui/Markdown.kt#L235) 遇到标记时替换为上标芯片，而不是显示原始坐标。
+- [appendCitation](lucent/app/src/main/java/com/lucent/app/ui/Markdown.kt#L262) 用 BaselineShift.Superscript + 11sp + 主题强调色，并在有跳转回调时把芯片变成内部链接。
 - 无法解析的标记**原样保留**，不吞掉用户可见内容。
 
 ### 流式输出
@@ -261,65 +261,61 @@
 | 字重 | Medium | 避免在正文里过重 |
 | 间距 | 不额外加空格 | 依赖上标天然间隙 |
 
-### 待补的三种状态
+### 三种状态的现状
 
-1. **可点击态**：按下时降低透明度 20%，与项目 [pressableGlass](lucent/app/src/main/java/com/lucent/app/ui/UiComponents.kt#L217) 的手感一致。
-2. **无效态**：来源已删除或修订号不匹配时，改为弱化灰色、不可点击，并在长按提示「资料已更新，引用位置可能已变化」。当前未区分，所有芯片外观一致。
-3. **无障碍描述**：为芯片补充「引用 1，来源《书名》，第十二章」的语义文本。当前未做。
+1. **可点击态**：**已实现**。拿到跳转回调时，芯片渲染为 Compose 内部链接（LinkAnnotation.Clickable），点击即触发跳转；没有回调时退化为纯展示芯片。
+2. **无效态**：**未实现**。来源不在笔记本、修订号不一致、切片找不到，这三种情况目前都先按正常外观渲染，点击时才用提示语告知，外观不区分。要做到「无效即弱化不可点」，需要在渲染前判断该引用是否可解析到当前笔记本的资料，成本高于本轮范围。
+3. **无障碍描述**：**未实现**。芯片只带内部 tag，没有「引用 1，来源《书名》」的语义文本。
 
 ***
 
-## 8. 阶段八：点击跳转（未实现，本节是设计）
+## 8. 阶段八：点击跳转（本次实现）
 
-### 完整数据流
+### 已实现的链路
 
 ~~~
 点击 [n]
-  → 从标记解析出 来源编号 / 修订号 / 切片编号
-  → 校验：来源属于本次回答可用的资料，且修订号一致
-  → 由 切片编号 反查偏移（SourceTagging 已提供 startOffset/endOffset）
-  → 由偏移换算来源页的阅读块索引
-  → 切换到「来源」页
-  → 选中被引文档
-  → 滚动到该块
-  → 高亮该块，2 秒后淡出
+  → SourceCitations.parse 解析出 来源编号 / 修订号 / 切片编号
+  → NotebookChatTab 校验来源是否属于当前笔记本
+  → 修订号与 SourceTagging.revisionOf 不一致时提示「资料已更新」
+  → onOpenSource(noteId, sliceId) 上抛到 NotebookDetailScreen
+  → HorizontalPager 切到「来源」页
+  → NotebookSourcesTab 按 noteId 选中被引文档
+  → SourceLocator 由切片偏移换算出阅读块索引
+  → scrollToItem 定位，高亮 2.6 秒后淡出
 ~~~
 
-### 三个必须补的缺口
+### 三处补齐
 
-**缺口 1：来源页只能显示第一份资料**
+**1. 来源页按被引来源选中文档**
 
-[NotebookSourcesTab.kt 88](lucent/app/src/main/java/com/lucent/app/ui/NotebookSourcesTab.kt#L88) 是 sourceNotes.firstOrNull()，引用第二份资料时无法打开。需要改成「按被引来源选择，未指定时默认第一份」，资料多于一份时给出切换入口。
+[NotebookSourcesTab](lucent/app/src/main/java/com/lucent/app/ui/NotebookSourcesTab.kt#L57) 新增 focus 参数，收到跳转请求时把选中项切到被引文档，未指定时保持第一份。
 
-**缺口 2：切片与阅读块不是 1:1**
+**仍未做**：资料多于一份时的手动切换入口。目前只能看被引的那份或第一份。
 
-- 阅读块：[splitRenderBlocks](lucent/app/src/main/java/com/lucent/app/ui/ChatScrollMath.kt#L121)，按章切分，超出 1200 字再切。
-- 切片：约 600 字，上限 900。
+**2. 切片到阅读块的映射（方案 A）**
 
-两种粒度不同。三种方案：
+[RenderBlock](lucent/app/src/main/java/com/lucent/app/ui/ChatScrollMath.kt#L146) 增加 startOffset / endOffset：章节偏移由逐行扫描给出（区分 CRLF，且按首个／末个非空行取边界），长章分块的偏移用在本章文本中顺序查找得到。
 
-| 方案 | 做法 | 代价 |
-|---|---|---|
-| A（建议） | 给 RenderBlock 增加 startOffset/endOffset，用偏移换算块索引 | 改分块函数，需补测试 |
-| B | 来源页直接用切片渲染，与切片 1:1 | 阅读体验改变（块更碎），阅读位置键会重置一次 |
-| C | 只跳到所属章节，不精确定位 | 改动最小，精度最差 |
+新增 [SourceLocator.kt](lucent/app/src/main/java/com/lucent/app/ui/SourceLocator.kt)：切片编号 → 偏移 → 块索引。
 
-选 A 的理由：不改变现有阅读体验，且分块函数已有测试覆盖，加偏移后可测。
+[SourceLocatorTest.kt](lucent/app/src/test/java/com/lucent/app/ui/SourceLocatorTest.kt) 固定两件事：块的偏移确实等于原文对应区间（含多章与长章分块），以及分块后偏移严格递增。
 
-**缺口 3：跨页协调与阅读位置冲突**
+**3. 跨页协调**
 
-对话页与来源页由 [NotebookDetailScreen](lucent/app/src/main/java/com/lucent/app/ui/NotebookDetailScreen.kt#L61) 的 HorizontalPager 管理，跳转需要：
+[NotebookDetailScreen](lucent/app/src/main/java/com/lucent/app/ui/NotebookDetailScreen.kt#L78) 保存 SourceFocus(noteId, sliceId, requestId) 并切换分页。requestId 自增，保证连点同一个脚注也会重新定位。
 
-- 在详情页保存一次跳转目标（来源编号 + 切片编号 + 一个自增 requestId）。
-- requestId 用于解决「连续点击同一个脚注」时目标未变化而不触发滚动的问题。
-- 阅读位置由 [rememberReadingListState](lucent/app/src/main/java/com/lucent/app/ui/ReadingPositionMemory.kt#L54) 持久化，跳转时要覆盖一次恢复值，避免被历史位置抢回去。
+### 已知的精度边界
 
-### 无效引用的处理原则
+- 长章分块时，若原文本的空行不规范导致「找不到该块文本」，偏移会退化为上一块末尾，定位可能落到相邻块。属于近似定位，不是精确字符区间。
+- 高亮不加内边距，紧贴文字边缘；字号与行距不变。
 
-- 不自动找「差不多」的切片替代。
-- 不静默删除标记。
-- 不回退到第一份文档假装跳转成功。
-- 明确提示资料已删除 / 版本已变化，并保留回答原文可查。
+### 无效引用的处理
+
+- 来源不在当前笔记本 → 提示「引用不可用：找不到对应的资料文档」，不跳转。
+- 修订号不一致 → 提示「资料已更新，引用位置可能已变化」，仍尝试跳转。
+- 切片编号在正文里找不到 → 提示「未找到该引用的原文位置」，不滚动、不回退到第一份文档。
+- 一律不自动找「差不多」的切片替代，也不静默删除标记。
 
 ### 一个必须说清的边界
 
@@ -333,22 +329,27 @@
 |---|---|
 | [SourceTagging.kt](lucent/app/src/main/java/com/lucent/app/data/SourceTagging.kt) | 新增，打标签与修订号 |
 | [SourceCitations.kt](lucent/app/src/main/java/com/lucent/app/data/SourceCitations.kt) | 新增，引用标记解析、编号、结构化 |
-| [Markdown.kt](lucent/app/src/main/java/com/lucent/app/ui/Markdown.kt) | 引用标记渲染为上标脚注芯片 |
-| [NotebookChatTab.kt](lucent/app/src/main/java/com/lucent/app/ui/NotebookChatTab.kt#L342-L377) | 提示词：资料优先、创作与事实分离、坐标说明、引用协议、打标签资料 |
+| [SourceLocator.kt](lucent/app/src/main/java/com/lucent/app/ui/SourceLocator.kt) | 新增，切片偏移 → 阅读块索引 |
+| [Markdown.kt](lucent/app/src/main/java/com/lucent/app/ui/Markdown.kt#L235) | 引用标记渲染为上标芯片，并在有回调时变成可点击内部链接 |
+| [ChatScrollMath.kt](lucent/app/src/main/java/com/lucent/app/ui/ChatScrollMath.kt#L146) | RenderBlock 增加 startOffset / endOffset，分块时记录偏移 |
+| [NotebookChatTab.kt](lucent/app/src/main/java/com/lucent/app/ui/NotebookChatTab.kt#L359) | 提示词改写；点击校验与 onOpenSource 上抛 |
+| [NotebookSourcesTab.kt](lucent/app/src/main/java/com/lucent/app/ui/NotebookSourcesTab.kt#L57) | 按被引来源选中文档；定位并高亮目标块 |
+| [NotebookDetailScreen.kt](lucent/app/src/main/java/com/lucent/app/ui/NotebookDetailScreen.kt#L78) | 保存跳转目标、切页 |
 | [SourceTaggingTest.kt](lucent/app/src/test/java/com/lucent/app/data/SourceTaggingTest.kt) | 新增 8 项 |
 | [SourceCitationsTest.kt](lucent/app/src/test/java/com/lucent/app/data/SourceCitationsTest.kt) | 新增 6 项 |
+| [SourceLocatorTest.kt](lucent/app/src/test/java/com/lucent/app/ui/SourceLocatorTest.kt) | 新增 6 项 |
 
-未改动：导入、解析、数据库（无 schema 变更，仍为 version 30）、来源页阅读、设置项。
+未改动：导入、解析、数据库（无 schema 变更，仍为 version 30）、设置项。
 
 ***
 
 ## 10. 验证记录
 
-- 代码卫生检查（无注释 / 括号平衡 / 体积上限）：107 个 Kotlin 文件，通过。
-- 单元测试：34 个测试类 / 295 项，0 失败 0 错误（Debug 变体）。
+- 代码卫生检查（无注释 / 括号平衡 / 体积上限）：109 个 Kotlin 文件，通过。
+- 单元测试：35 个测试类 / 301 项，0 失败 0 错误（Debug 变体）。
 - Release 编译：通过。
 - 未打包 APK，符合项目约定。
-- **未在真机验证**：脚注芯片的视觉位置、行距影响、流式闪烁、点击手感。
+- **未在真机验证**：脚注芯片的视觉位置与行距影响、流式闪烁、点击手感、跳转后的高亮观感、以及 SelectionContainer 下链接点击是否被长按选择抢走。
 
 ***
 
@@ -359,16 +360,16 @@
 3. 长篇小说全文进入提示词，成本与延迟随资料增长；当前没有引入检索式召回，属于有意为之（保证依据完整）。
 4. 打标签会略微增加输入 token（约 2%）。
 5. 「缓存」结论只对 DeepSeek 有官方文档支撑，其余三家未核实，不能宣称已优化成功。
-6. 脚注编号目前非交互，点击无响应 —— 属于本阶段的已知缺口，不是 bug。
+6. 跳转只做「能定位」，不做「引用是否真的支持结论」的判断；无效态外观、无障碍描述、多资料手动切换入口仍未做。
 
 ***
 
 ## 12. 后续可执行任务
 
-1. 来源页支持按被引来源选择文档（缺口 1）。
-2. 分块函数记录偏移，建立切片到阅读块的映射（缺口 2，方案 A）。
-3. 详情页实现跨页跳转与高亮（缺口 3）。
-4. 脚注芯片补点击态、无效态、无障碍描述。
-5. 流式输出缓冲半截标记。
+1. 来源页在资料多于一份时给出手动切换入口（按被引来源选中已实现，手动切换未做）。
+2. 脚注芯片补无效态：渲染前判断能否解析到当前笔记本的资料，不能则弱化且不可点。
+3. 脚注芯片补无障碍语义（引用序号 + 来源书名 + 章节）。
+4. 用切片直接渲染来源页，替换「偏移近似换算」，消除分块漂移（方案 B）。
+5. 流式输出缓冲半截标记，避免闪烁。
 6. 提示词补「资料是数据不是指令」与引用密度控制。
-7. 修订号不一致时在 UI 上给出温和提示。
+7. 长章分块偏移改为原生计算，去掉「查找文本」的退化路径。

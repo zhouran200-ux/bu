@@ -73,17 +73,30 @@ private val documentCodeFence = Regex("^(`{3,}|~{3,})(.*)$")
 
 internal fun documentSectionTitle(line: String): String? = com.lucent.app.data.DocumentHeadings.titleOf(line)
 
-fun splitDocumentSections(body: String): List<String> {
-    val sections = mutableListOf<String>()
+internal data class DocumentSection(val text: String, val start: Int, val end: Int)
+
+internal data class BodyLine(val text: String, val start: Int, val end: Int)
+
+fun splitDocumentSections(body: String): List<String> =
+    splitDocumentSectionsWithOffsets(body).map { it.text }
+
+internal fun splitDocumentSectionsWithOffsets(body: String): List<DocumentSection> {
+    val sections = mutableListOf<DocumentSection>()
     val buffer = StringBuilder()
     var fence: String? = null
+    var sectionStart = 0
+    var sectionEnd = 0
+
     fun flush() {
         val text = buffer.toString().trim()
-        if (text.isNotEmpty()) sections.add(text)
+        if (text.isNotEmpty()) sections.add(DocumentSection(text, sectionStart, sectionEnd))
         buffer.setLength(0)
+        sectionStart = 0
+        sectionEnd = 0
     }
-    body.lineSequence().forEach { line ->
-        val codeFence = documentCodeFence.matchEntire(line.trimStart())
+
+    bodyLines(body).forEach { line ->
+        val codeFence = documentCodeFence.matchEntire(line.text.trimStart())
         if (codeFence != null) {
             val marker = codeFence.groupValues[1]
             val currentFence = fence
@@ -94,13 +107,31 @@ fun splitDocumentSections(body: String): List<String> {
             ) {
                 fence = null
             }
-        } else if (fence == null && documentSectionTitle(line) != null && buffer.isNotEmpty()) {
+        } else if (fence == null && documentSectionTitle(line.text) != null && buffer.isNotEmpty()) {
             flush()
         }
-        buffer.append(line).append("\n")
+        if (line.text.isNotBlank()) {
+            if (buffer.isBlank()) sectionStart = line.start
+            sectionEnd = line.end
+        }
+        buffer.append(line.text).append("\n")
     }
     flush()
     return sections
+}
+
+internal fun bodyLines(body: String): List<BodyLine> {
+    val lines = mutableListOf<BodyLine>()
+    val length = body.length
+    var index = 0
+    while (true) {
+        var end = index
+        while (end < length && body[end] != '\n' && body[end] != '\r') end++
+        lines.add(BodyLine(body.substring(index, end), index, end))
+        if (end >= length) break
+        index = if (body[end] == '\r' && end + 1 < length && body[end + 1] == '\n') end + 2 else end + 1
+    }
+    return lines
 }
 
 fun activeSectionNumber(sectionTops: List<Int?>, scrollOffset: Int): Int {
@@ -115,19 +146,34 @@ fun activeSectionNumber(sectionTops: List<Int?>, scrollOffset: Int): Int {
 data class RenderBlock(
     val text: String,
     val sectionIndex: Int,
-    val sectionTitle: String? = null
+    val sectionTitle: String? = null,
+    val startOffset: Int = 0,
+    val endOffset: Int = 0
 )
 
 fun splitRenderBlocks(body: String, maxChars: Int = 1200): List<RenderBlock> {
-    val sections = splitDocumentSections(body)
+    val sections = splitDocumentSectionsWithOffsets(body)
     val blocks = mutableListOf<RenderBlock>()
     sections.forEachIndexed { sectionIndex, section ->
-        val title = documentSectionTitle(section.lineSequence().first())
-        if (section.length <= maxChars) {
-            blocks.add(RenderBlock(section, sectionIndex, title))
+        val title = documentSectionTitle(section.text.lineSequence().first())
+        if (section.text.length <= maxChars) {
+            blocks.add(RenderBlock(section.text, sectionIndex, title, section.start, section.end))
         } else {
-            chunkLongText(section, maxChars).forEach { piece ->
-                blocks.add(RenderBlock(piece, sectionIndex, title))
+            var cursor = 0
+            chunkLongText(section.text, maxChars).forEach { piece ->
+                val found = section.text.indexOf(piece, cursor)
+                val localStart = if (found >= 0) found else cursor
+                val localEnd = localStart + piece.length
+                cursor = localEnd
+                blocks.add(
+                    RenderBlock(
+                        piece,
+                        sectionIndex,
+                        title,
+                        section.start + localStart,
+                        section.start + localEnd
+                    )
+                )
             }
         }
     }

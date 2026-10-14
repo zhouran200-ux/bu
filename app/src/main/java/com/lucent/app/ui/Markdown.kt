@@ -32,6 +32,7 @@ import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.lucent.app.data.CitationRef
 import com.lucent.app.data.SourceCitations
 
 internal sealed interface MdBlock {
@@ -225,12 +226,17 @@ private val INLINE = Regex(
         """|_([^_\n]+)_"""
 )
 
+private class CitationDecor(
+    val numbering: Map<String, Int>,
+    val onClick: ((CitationRef) -> Unit)?
+)
+
 @Composable
 private fun inlineAnnotated(
     line: String,
     textColor: Color,
     accent: Color,
-    citationNumbering: Map<String, Int>
+    citation: CitationDecor
 ): AnnotatedString {
     val linkStyle = SpanStyle(color = accent, textDecoration = TextDecoration.Underline)
 
@@ -240,9 +246,10 @@ private fun inlineAnnotated(
             if (mark.range.first > cursor) {
                 appendInline(line.substring(cursor, mark.range.first), textColor, accent, linkStyle)
             }
-            val number = citationNumbering[mark.value] ?: 0
-            if (number > 0 && SourceCitations.parse(mark.value) != null) {
-                appendCitation(number, accent)
+            val number = citation.numbering[mark.value] ?: 0
+            val ref = SourceCitations.parse(mark.value)
+            if (number > 0 && ref != null) {
+                appendCitation(number, accent, ref, citation.onClick)
             } else {
                 append(mark.value)
             }
@@ -252,15 +259,25 @@ private fun inlineAnnotated(
     }
 }
 
-private fun AnnotatedString.Builder.appendCitation(number: Int, accent: Color) {
-    withStyle(
-        SpanStyle(
-            color = accent,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Medium,
-            baselineShift = BaselineShift.Superscript
-        )
-    ) { append("[$number]") }
+private fun AnnotatedString.Builder.appendCitation(
+    number: Int,
+    accent: Color,
+    ref: CitationRef,
+    onClick: ((CitationRef) -> Unit)?
+) {
+    val style = SpanStyle(
+        color = accent,
+        fontSize = 11.sp,
+        fontWeight = FontWeight.Medium,
+        baselineShift = BaselineShift.Superscript
+    )
+    if (onClick == null) {
+        withStyle(style) { append("[$number]") }
+    } else {
+        withLink(
+            LinkAnnotation.Clickable(tag = ref.raw, styles = TextLinkStyles(style = style)) { onClick(ref) }
+        ) { append("[$number]") }
+    }
 }
 
 private fun AnnotatedString.Builder.appendInline(
@@ -296,7 +313,8 @@ private fun AnnotatedString.Builder.appendInline(
 @Composable
 fun MarkdownText(
     text: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onCitationClick: ((CitationRef) -> Unit)? = null
 ) {
     val onGradient = LocalOnGradient.current
     val onGradientMuted = LocalOnGradientMuted.current
@@ -304,6 +322,7 @@ fun MarkdownText(
     val incrementalParser = remember { IncrementalMarkdownParser() }
     val blocks = remember(text) { incrementalParser.parse(text) }
     val citationNumbering = remember(text) { SourceCitations.numbering(text) }
+    val citation = remember(text, onCitationClick) { CitationDecor(citationNumbering, onCitationClick) }
 
     Column(modifier = modifier.fillMaxWidth()) {
         blocks.forEachIndexed { index, block ->
@@ -311,7 +330,7 @@ fun MarkdownText(
                 is MdBlock.Heading -> {
                     if (index > 0) Spacer(modifier = Modifier.height(10.dp))
                     Text(
-                        inlineAnnotated(block.text, onGradient, accent, citationNumbering),
+                        inlineAnnotated(block.text, onGradient, accent, citation),
                         color = onGradient,
                         fontSize = when (block.level) {
                             1 -> 22.sp
@@ -327,7 +346,7 @@ fun MarkdownText(
                 is MdBlock.Paragraph -> {
                     if (index > 0) Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                        inlineAnnotated(block.text, onGradient, accent, citationNumbering),
+                        inlineAnnotated(block.text, onGradient, accent, citation),
                         color = onGradient
                     )
                 }
@@ -337,7 +356,7 @@ fun MarkdownText(
                     Row(modifier = Modifier.fillMaxWidth()) {
                         Text("•", color = onGradientMuted, modifier = Modifier.padding(end = 8.dp))
                         Text(
-                            inlineAnnotated(block.text, onGradient, accent, citationNumbering),
+                            inlineAnnotated(block.text, onGradient, accent, citation),
                             color = onGradient,
                             modifier = Modifier.weight(1f)
                         )
@@ -349,7 +368,7 @@ fun MarkdownText(
                     Row(modifier = Modifier.fillMaxWidth()) {
                         Text("${block.marker}.", color = onGradientMuted, modifier = Modifier.padding(end = 8.dp))
                         Text(
-                            inlineAnnotated(block.text, onGradient, accent, citationNumbering),
+                            inlineAnnotated(block.text, onGradient, accent, citation),
                             color = onGradient,
                             modifier = Modifier.weight(1f)
                         )
@@ -366,7 +385,7 @@ fun MarkdownText(
                                 .background(onGradientMuted)
                         )
                         Text(
-                            inlineAnnotated(block.text, onGradientMuted, accent, citationNumbering),
+                            inlineAnnotated(block.text, onGradientMuted, accent, citation),
                             color = onGradientMuted,
                             fontStyle = FontStyle.Italic,
                             modifier = Modifier.padding(start = 8.dp)

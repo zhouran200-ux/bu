@@ -24,6 +24,36 @@ class PickerContractTest(unittest.TestCase):
         self.assertNotIn("animateScrollToItem", text)
         self.assertNotIn("remember(position)", text)
 
+    def test_all_bottom_sheets_use_native_handle_and_gestures(self):
+        sheets = []
+        for path in UI.rglob("*.kt"):
+            text = path.read_text(encoding="utf-8")
+            count = text.count("    ModalBottomSheet(")
+            if count:
+                sheets.append(path.name)
+                self.assertEqual(count, text.count("sheetGesturesEnabled = true"), path.name)
+                self.assertEqual(count, text.count("dragHandle = { BottomSheetDefaults.DragHandle() }"), path.name)
+                self.assertNotIn("sheetState.hide", text)
+            self.assertNotIn("LucentDragHandle", text, path.name)
+        self.assertEqual(4, len(sheets))
+
+    def test_history_and_settings_callbacks_do_not_dismiss(self):
+        text = (UI / "NotebookChatTab.kt").read_text(encoding="utf-8")
+        history = text.split("        if (showHistorySheet) {", 1)[1].split("onDismiss =", 1)[0]
+        settings = text.split("        if (showDialogueSettingsDialog) {", 1)[1].split("onDismiss =", 1)[0]
+        self.assertNotIn("showHistorySheet = false", history)
+        self.assertNotIn("showDialogueSettingsDialog = false", settings)
+        api = (UI / "settings/ApiSettingsPage.kt").read_text(encoding="utf-8")
+        callback = api.split("        ApiModelPickerDialog(", 1)[1].split("onDismiss =", 1)[0]
+        self.assertNotIn("pickerOpen = false", callback)
+
+    def test_extra_sheet_close_buttons_are_removed(self):
+        for name in ("ChatHistorySheet.kt", "SettingsComponents.kt"):
+            text = (UI / name).read_text(encoding="utf-8")
+            self.assertNotIn("onClick = onDismiss", text)
+        text = (UI / "NotebookChatTab.kt").read_text(encoding="utf-8").split("private fun DialogueSettingsSheet(", 1)[1]
+        self.assertNotIn("onClick = onDismiss", text)
+
     def test_handle_delegates_dragging_to_entire_native_sheet(self):
         text = (UI / "ProfileModelPickerSheet.kt").read_text(encoding="utf-8")
         self.assertIn("sheetGesturesEnabled = true", text)

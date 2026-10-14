@@ -72,6 +72,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -736,7 +737,7 @@ fun NotebookChatTab(
                 currentMessageId = historyAnchorId,
                 streamingAnswerId = streamingAnswerId,
                 onMessageClick = { id ->
-                    showHistorySheet = false
+                    historyAnchorId = id
                     followStream = false
                     val target = messages.indexOfFirst { it.id == id }
                     if (target >= 0) {
@@ -744,12 +745,12 @@ fun NotebookChatTab(
                     }
                 },
                 onTop = {
-                    showHistorySheet = false
+                    historyAnchorId = messages.firstOrNull()?.id
                     followStream = false
                     scope.launch { listState.animateScrollToItem(0) }
                 },
                 onBottom = {
-                    showHistorySheet = false
+                    historyAnchorId = messages.lastOrNull()?.id
                     followStream = true
                     scope.launch {
                         listState.animateScrollToItem((listState.layoutInfo.totalItemsCount - 1).coerceAtLeast(0))
@@ -771,7 +772,6 @@ fun NotebookChatTab(
                         .putInt("history_rounds_$notebookId", r)
                         .remove("temperature_$notebookId")
                         .apply()
-                    showDialogueSettingsDialog = false
                     LucentToast.show(context, "对话设置已保存")
                 },
                 onDismiss = { showDialogueSettingsDialog = false }
@@ -1584,8 +1584,8 @@ private fun DialogueSettingsSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         containerColor = lucentPanelBackground(),
-        sheetGesturesEnabled = false,
-        dragHandle = { LucentDragHandle(onDismiss) }
+        sheetGesturesEnabled = true,
+        dragHandle = { BottomSheetDefaults.DragHandle() }
     ) {
         Column(
             modifier = Modifier
@@ -1600,9 +1600,7 @@ private fun DialogueSettingsSheet(
                     .height(46.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                TextButton(onClick = onDismiss, modifier = Modifier.width(64.dp)) {
-                    Text(text = "取消", fontSize = 15.sp, color = muted)
-                }
+                Spacer(modifier = Modifier.width(64.dp))
                 Text(
                     text = "对话设置",
                     fontSize = LucentTitles.ItemSize,
@@ -1617,7 +1615,7 @@ private fun DialogueSettingsSheet(
                     modifier = Modifier.width(64.dp)
                 ) {
                     Text(
-                        text = "完成",
+                        text = "保存",
                         fontSize = 15.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = accent

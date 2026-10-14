@@ -1158,10 +1158,10 @@ internal fun ApiConfigSettingsPage(
             onDone = { picked ->
                 val list = choices.filter { it in picked }
                 onModelsChange(list)
-                if (selectedModel.isBlank() && list.isNotEmpty()) {
-                    onSelectedModelChange(list.first())
+                if (selectedModel !in list) {
+                    onSelectedModelChange(list.firstOrNull().orEmpty())
                 }
-                pickerOpen = false
+                LucentToast.show(context, "已应用模型选择，可继续修改或下滑关闭")
             },
             onDismiss = { pickerOpen = false }
         )

@@ -51,20 +51,14 @@ fun SettingsScreen(active: Boolean = true) {
     val savedProfilesJson by repo.apiProfilesJson.collectAsState(initial = SettingsCache.apiProfilesJson)
     val savedSelectedIdx by repo.apiProfileSelected.collectAsState(initial = SettingsCache.apiProfileSelected)
     val profiles = remember(savedProfilesJson) {
-        val parsed = com.lucent.app.data.ApiProfiles.parse(savedProfilesJson)
-        if (parsed.none { it.name == "商汤" || it.baseUrl.contains("sensenova") }) {
-            listOf(com.lucent.app.data.ApiProfiles.DEFAULT_PROFILES.first()) + parsed.filterNot { it.baseUrl.isBlank() && it.apiKey.isBlank() }
-        } else {
-            parsed
-        }
+        com.lucent.app.data.ApiProfiles.parseStored(savedProfilesJson)
+            ?: com.lucent.app.data.ApiProfiles.DEFAULT_PROFILES
     }
     val selectedProfileIdx = savedSelectedIdx.coerceIn(0, (profiles.size - 1).coerceAtLeast(0))
 
-    LaunchedEffect(profiles) {
-        val currentInDb = com.lucent.app.data.ApiProfiles.parse(savedProfilesJson)
-        val hasSenseNova = currentInDb.any { it.name == "商汤" || it.baseUrl.contains("sensenova") }
-        if (!hasSenseNova) {
-            repo.saveApiProfiles(profiles, 0)
+    LaunchedEffect(savedProfilesJson) {
+        if (savedProfilesJson.isBlank()) {
+            repo.saveApiProfiles(com.lucent.app.data.ApiProfiles.DEFAULT_PROFILES, 0)
         }
     }
 

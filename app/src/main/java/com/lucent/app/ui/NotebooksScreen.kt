@@ -78,22 +78,6 @@ fun NotebooksScreen(
         AppNavigation.activeNotebookId = openNotebookId
     }
 
-    LaunchedEffect(notebooks) {
-        if (notebooks.isEmpty()) {
-            AppScope.io.launch {
-                val existing = db.notebookDao().getAllOnce()
-                if (existing.isEmpty()) {
-                    db.notebookDao().insert(
-                        Notebook(
-                            title = "空白笔记本",
-                            updatedAt = System.currentTimeMillis()
-                        )
-                    )
-                }
-            }
-        }
-    }
-
     var creating by remember { mutableStateOf(false) }
     var nameForNew by remember { mutableStateOf("") }
     var renaming by remember { mutableStateOf<Notebook?>(null) }
@@ -209,6 +193,18 @@ fun NotebooksScreen(
 
     Column(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
         if (visible.isEmpty()) {
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = com.lucent.app.i18n.S.notebooksEmptyHint,
+                    color = LocalOnGradientMuted.current,
+                    fontSize = LucentTitles.SectionSize,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
+            }
             return@Column
         }
 

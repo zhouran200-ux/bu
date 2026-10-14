@@ -121,6 +121,7 @@ ENTRIES = [
     ("notebookDeleteTitle", "删除笔记本？"),
     ("notebookDeletedToast", "笔记本已删除"),
     ("notebookEmptyTitle", "未命名"),
+    ("notebooksEmptyHint", "还没有笔记本，点右上角 + 创建"),
     ("notebookName", "笔记本名称"),
     ("notebookNameRequired", "请给笔记本起个名字。"),
     ("notebookNew", "新建笔记本"),

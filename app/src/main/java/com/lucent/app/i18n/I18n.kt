@@ -122,6 +122,7 @@ open class Tr {
     open val notebookDeleteTitle: String = "删除笔记本？"
     open val notebookDeletedToast: String = "笔记本已删除"
     open val notebookEmptyTitle: String = "未命名"
+    open val notebooksEmptyHint: String = "还没有笔记本，点右上角 + 创建"
     open val notebookName: String = "笔记本名称"
     open val notebookNameRequired: String = "请给笔记本起个名字。"
     open val notebookNew: String = "新建笔记本"

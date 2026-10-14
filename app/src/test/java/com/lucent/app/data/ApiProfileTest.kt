@@ -392,4 +392,22 @@ class ApiProfileTest {
         assertEquals(ApiProfiles.DEFAULT_PROFILES, ApiProfiles.parse("not json at all"))
         assertEquals(ApiProfiles.DEFAULT_PROFILES, ApiProfiles.parse("[]"))
     }
+
+    @Test
+    fun storedParsingDistinguishesNeverSavedFromDeliberatelyEmptied() {
+        assertNull(ApiProfiles.parseStored(null))
+        assertNull(ApiProfiles.parseStored(""))
+        assertNull(ApiProfiles.parseStored("   "))
+        assertEquals(emptyList<ApiProfile>(), ApiProfiles.parseStored("[]"))
+        assertNull(ApiProfiles.parseStored("not json at all"))
+        assertEquals(1, ApiProfiles.parseStored("""[{"name":"甲","model":"m"}]""")!!.size)
+    }
+
+    @Test
+    fun deletingEveryStoredProfileStaysDeleted() {
+        val emptied = ApiProfiles.serialize(emptyList())
+        assertEquals("[]", emptied)
+        assertEquals(emptyList<ApiProfile>(), ApiProfiles.parseStored(emptied))
+        assertEquals(ApiProfiles.DEFAULT_PROFILES, ApiProfiles.parse(emptied))
+    }
 }

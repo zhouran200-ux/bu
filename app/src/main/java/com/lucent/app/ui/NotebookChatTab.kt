@@ -227,7 +227,7 @@ fun NotebookChatTab(
     val settingsRepo = remember { SettingsRepository(context) }
     val profilesJson by settingsRepo.apiProfilesJson.collectAsState(initial = SettingsCache.apiProfilesJson)
     val savedProfiles = remember(profilesJson) {
-        ApiProfiles.parse(profilesJson).ifEmpty { ApiProfiles.DEFAULT_PROFILES }
+        ApiProfiles.parseStored(profilesJson) ?: ApiProfiles.DEFAULT_PROFILES
     }
     var selectedProfileId by remember(notebookId) {
         mutableStateOf(prefs.getString("profile_id_$notebookId", "") ?: "")

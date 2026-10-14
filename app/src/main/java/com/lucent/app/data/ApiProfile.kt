@@ -53,7 +53,12 @@ object ApiProfiles {
     }
 
     fun parse(json: String?): List<ApiProfile> {
-        if (json.isNullOrBlank()) return DEFAULT_PROFILES
+        val stored = parseStored(json)
+        return if (stored.isNullOrEmpty()) DEFAULT_PROFILES else stored
+    }
+
+    fun parseStored(json: String?): List<ApiProfile>? {
+        if (json.isNullOrBlank()) return null
         val list = try {
             val arr = JSONArray(json)
             (0 until arr.length()).mapNotNull { i ->
@@ -84,9 +89,8 @@ object ApiProfiles {
                 )
             }.take(MAX)
         } catch (e: Exception) {
-            emptyList()
+            return null
         }
-        if (list.isEmpty()) return DEFAULT_PROFILES
         val reservedIds = list.map { it.id }.toMutableSet()
         val seenIds = mutableSetOf<String>()
         return list.mapIndexed { index, profile ->

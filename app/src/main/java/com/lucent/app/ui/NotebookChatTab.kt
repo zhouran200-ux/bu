@@ -52,6 +52,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -879,13 +880,15 @@ private fun UserMessageCard(
             modifier = Modifier
                 .frostedGlass(cornerRadius = 20.dp)
         ) {
-            Column(modifier = Modifier.padding(14.dp)) {
-                Text(
-                    text = message.content,
-                    color = textColor,
-                    fontSize = 15.sp,
-                    lineHeight = 22.sp
-                )
+            SelectionContainer {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Text(
+                        text = message.content,
+                        color = textColor,
+                        fontSize = 15.sp,
+                        lineHeight = 22.sp
+                    )
+                }
             }
         }
 
@@ -957,11 +960,13 @@ private fun AiMessageCard(
                     .fillMaxWidth()
                     .frostedGlass(cornerRadius = 18.dp)
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    MarkdownText(
-                        text = message.content,
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                SelectionContainer {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        MarkdownText(
+                            text = message.content,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
                 }
             }
 

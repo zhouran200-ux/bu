@@ -8,7 +8,7 @@
 | --- | --- |
 | 源码/静态脚本 | code_hygiene_check、version_check、settings_cache_check、compose_scroll_check 自检及扫描、design_audit（参考评分） |
 | 生成文件 | i18n 重新生成后检查差异 |
-| Python 工具测试 | tools/tests 下的 unittest 自动发现，覆盖本地 Gradle 禁止启动、防止缺报告/全跳过被误报成功 |
+| Python 工具测试 | tools/tests 下的 unittest 自动发现，覆盖默认轻量检查、检测档位不打包、防止缺报告/全跳过被误报成功及弹窗关闭路径约束 |
 | Gradle/Kotlin | app Debug、Release Kotlin 编译，Android 插桩测试编译，baselineprofile Debug Kotlin 编译 |
 | JVM 单元测试 | app/src/test 下全部用例，Debug 和 Release 各执行一次，不按固定用例名筛选 |
 | Android Lint | Debug 与 Release，保留现有 baseline，新错误阻断 CI |
@@ -32,9 +32,9 @@ Gradle 检查使用 --continue：独立任务尽量继续收集结果，最终�
 
 ## 本地限制
 
-verify.py 默认 quick，只启动轻量 Python 脚本。logic/full 在非 GitHub Actions 环境直接拒绝；工具单测中的云端路径使用 mock，不启动真实 Gradle/Java。本地不运行 Kotlin 编译、Android 测试、Lint 或 APK 构建。
+用户最新授权允许本地 Java/Gradle、Kotlin 编译、单元测试、Lint 和其他检测，禁止本地打包 APK。verify.py 默认 quick；显式 logic/full 可本地执行，任务列表只含编译和检查，不含 assemble/package/bundle APK 或依赖打包的设备测试。工具单测使用 mock，不隐式启动 Gradle。
 
-既有 Windows 中文类路径兼容脚本保留用于工具兼容，不作为执行本地 Gradle 的许可。旧功能修复报告中的本地构建命令是历史记录，不是当前工作流程。
+既有 Windows 中文类路径兼容脚本保留用于本地单测。设备测试及 APK 构建仍在 GitHub Actions 上执行；旧报告中的禁止本地 Gradle 约定已被本段新授权替代。
 
 ## 不夸大覆盖
 

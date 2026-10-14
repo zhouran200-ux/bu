@@ -58,9 +58,6 @@ def main():
     for arg in sys.argv[1:]:
         if arg in LEVELS:
             level = arg
-    if level != "quick" and os.environ.get("GITHUB_ACTIONS") != "true":
-        print("本地禁止启动 Java/Gradle；请推送到 GitHub，由 check 工作流运行编译、单测和 Lint。")
-        return 2
     steps = plan(level)
     print(f"验证档位: {level}  (共 {len(steps)} 项)")
 

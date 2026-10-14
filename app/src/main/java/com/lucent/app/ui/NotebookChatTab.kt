@@ -792,7 +792,6 @@ fun NotebookChatTab(
                         .putString("profile_name_$notebookId", profile.name)
                         .putString("model_$notebookId", modelName)
                         .apply()
-                    showProfileModelPickerSheet = false
                 },
                 onDismiss = { showProfileModelPickerSheet = false }
             )

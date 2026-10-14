@@ -80,11 +80,14 @@ class LocalGuardTest(unittest.TestCase):
             self.assertEqual(0, verify.main())
             self.assertFalse(any("gradlew" in str(call) for call in run.call_args_list))
 
-    def test_local_logic_and_full_are_rejected_before_execution(self):
+    def test_local_logic_and_full_allow_checks_but_never_package(self):
         for level in ("logic", "full"):
-            with patch.dict(os.environ, {"GITHUB_ACTIONS": "false"}), patch.object(verify.sys, "argv", ["verify", level]), patch.object(verify, "run_step") as run:
-                self.assertEqual(2, verify.main())
-                run.assert_not_called()
+            with patch.dict(os.environ, {"GITHUB_ACTIONS": "false"}), patch.object(verify.sys, "argv", ["verify", level]), patch.object(verify, "run_step", return_value=True) as run:
+                self.assertEqual(0, verify.main())
+                self.assertTrue(any("gradlew" in str(call) for call in run.call_args_list))
+                for call in run.call_args_list:
+                    for argument in call.args[1]:
+                        self.assertFalse(any(word in argument.lower() for word in ("assemble", "package", "bundle", "connected")))
 
     def test_cloud_full_includes_instrumentation_compile(self):
         with patch.dict(os.environ, {"GITHUB_ACTIONS": "true"}), patch.object(verify.sys, "argv", ["verify", "full"]), patch.object(verify, "run_step", return_value=True) as run:

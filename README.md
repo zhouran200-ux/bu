@@ -14,14 +14,14 @@
 
 ## 验证与交付
 
-本地不启动 Java/OpenJDK、Gradle、编译、Android 单元测试、Lint 或 APK 打包。修改代码并补充测试后，只运行轻量 Python 检查：
+允许本地运行 Java/OpenJDK、Gradle、编译、单元测试与 Lint，但不打包 APK。修改代码并补充测试后，可按需执行：
 
 ```bash
 python tools/verify.py quick
 python -m unittest discover -s tools/tests -v
 ```
 
-`verify.py` 默认采用 `quick`，本地请求 `logic` / `full` 会直接拒绝，不启动 Gradle。完整验证在 GitHub Actions 的 `check` 工作流执行：Debug/Release 编译与 JVM 单测、两种变体的 Lint、Room schema、Android 插桩测试编译及云端模拟器运行。报告无论成功失败都尽量上传为 artifacts。
+`verify.py` 默认采用 `quick`；可显式选择 `logic` / `full` 执行本地编译、单元测试及 Lint，所有档位均不包含 APK 打包任务。完整验证在 GitHub Actions 的 `check` 工作流执行：Debug/Release 编译与 JVM 单测、两种变体的 Lint、Room schema、Android 插桩测试编译及云端模拟器运行。报告无论成功失败都尽量上传为 artifacts。
 
 推送成功后结束本轮，不等待 CI；下一次开发任务开始时，由独立子代理检查上一轮提交的结果和报告，发现问题在当轮修复。覆盖范围及限制见 [云端验证说明](docs/CLOUD-VALIDATION.md)。
 

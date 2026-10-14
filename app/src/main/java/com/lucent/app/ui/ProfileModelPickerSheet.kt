@@ -33,9 +33,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
-import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
@@ -61,36 +59,26 @@ internal fun ProfileModelPickerSheet(
     onDismiss: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val position = remember(profiles, currentProfileId, currentModel) {
+    val initialPosition = remember {
         modelPickerPosition(profiles, currentProfileId, currentModel)
     }
-    var expandedProfileId by remember(position) { mutableStateOf(position.expandedProfileId) }
-    val listState = remember(position) { LazyListState(position.firstVisibleItemIndex, 0) }
-    val scope = rememberCoroutineScope()
-    var closing by remember { mutableStateOf(false) }
+    var expandedProfileId by remember { mutableStateOf(initialPosition.expandedProfileId) }
+    val listState = remember { LazyListState(initialPosition.firstVisibleItemIndex, 0) }
+    var openManagementAfterDismiss by remember { mutableStateOf(false) }
     val latestDismiss by rememberUpdatedState(onDismiss)
-    fun closeSheet(afterHidden: () -> Unit = {}) {
-        if (closing) return
-        closing = true
-        scope.launch {
-            try {
-                sheetState.hide()
-                if (!sheetState.isVisible) {
-                    latestDismiss()
-                    afterHidden()
-                }
-            } finally {
-                closing = false
-            }
-        }
-    }
     val ink = LocalOnGradient.current
     val accent = MaterialTheme.colorScheme.primary
     ModalBottomSheet(
-        onDismissRequest = { latestDismiss() },
+        onDismissRequest = {
+            latestDismiss()
+            if (openManagementAfterDismiss) {
+                SettingsNav.go(SettingsRoute.Api)
+                AppNavigation.requestScreen(Screen.Settings)
+            }
+        },
         sheetState = sheetState,
         containerColor = lucentPanelBackground(),
-        sheetGesturesEnabled = !closing,
+        sheetGesturesEnabled = true,
         dragHandle = { BottomSheetDefaults.DragHandle() }
     ) {
         LazyColumn(
@@ -113,7 +101,7 @@ internal fun ProfileModelPickerSheet(
                     Row(
                         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
                             .background(if (selected) accent.copy(alpha = 0.22f) else Color.Transparent)
-                            .clickable(enabled = !closing && models.isNotEmpty(), role = Role.Button) {
+                            .clickable(enabled = models.isNotEmpty(), role = Role.Button) {
                                 expandedProfileId = if (expanded) null else profile.id
                             }.heightIn(min = 48.dp).padding(horizontal = 8.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically
@@ -146,8 +134,8 @@ internal fun ProfileModelPickerSheet(
                             Row(
                                 modifier = Modifier.fillMaxWidth().padding(start = 24.dp)
                                     .clip(RoundedCornerShape(8.dp))
-                                    .selectable(selected = modelSelected, enabled = !closing, role = Role.RadioButton) {
-                                        closeSheet { onSelect(profile, model) }
+                                    .selectable(selected = modelSelected, role = Role.RadioButton) {
+                                        onSelect(profile, model)
                                     }
                                     .heightIn(min = 48.dp).padding(horizontal = 12.dp, vertical = 10.dp),
                                 verticalAlignment = Alignment.CenterVertically
@@ -168,17 +156,14 @@ internal fun ProfileModelPickerSheet(
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp)
                         .clip(RoundedCornerShape(12.dp)).background(ink.copy(alpha = 0.06f))
-                        .clickable(enabled = !closing, role = Role.Button) {
-                            closeSheet {
-                                SettingsNav.go(SettingsRoute.Api)
-                                AppNavigation.requestScreen(Screen.Settings)
-                            }
+                        .clickable(role = Role.Button) {
+                            openManagementAfterDismiss = !openManagementAfterDismiss
                         }.heightIn(min = 48.dp).padding(14.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(Icons.Default.Tune, null, tint = ink, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(10.dp))
-                    Text("管理与添加 API 方案", modifier = Modifier.weight(1f), color = ink)
+                    Text(if (openManagementAfterDismiss) "已准备打开 API 设置，请手动关闭弹窗（再点取消）" else "管理与添加 API 方案", modifier = Modifier.weight(1f), color = ink)
                     Icon(Icons.AutoMirrored.Filled.ArrowForward, "前往 API 设置", tint = ink, modifier = Modifier.size(18.dp))
                 }
             }

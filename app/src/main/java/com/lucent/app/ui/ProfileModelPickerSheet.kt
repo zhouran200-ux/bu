@@ -43,9 +43,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.lucent.app.AppNavigation
-import com.lucent.app.Screen
-import com.lucent.app.SettingsNav
 import com.lucent.app.data.ApiProfile
 import com.lucent.app.data.ApiProfiles
 
@@ -56,7 +53,9 @@ internal fun ProfileModelPickerSheet(
     currentProfileId: String,
     currentModel: String,
     onSelect: (ApiProfile, String) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    visible: Boolean = true,
+    onManageApi: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val initialPosition = remember {
@@ -64,18 +63,12 @@ internal fun ProfileModelPickerSheet(
     }
     var expandedProfileId by remember { mutableStateOf(initialPosition.expandedProfileId) }
     val listState = remember { LazyListState(initialPosition.firstVisibleItemIndex, 0) }
-    var openManagementAfterDismiss by remember { mutableStateOf(false) }
     val latestDismiss by rememberUpdatedState(onDismiss)
     val ink = LocalOnGradient.current
     val accent = MaterialTheme.colorScheme.primary
+    if (!visible) return
     ModalBottomSheet(
-        onDismissRequest = {
-            latestDismiss()
-            if (openManagementAfterDismiss) {
-                SettingsNav.go(SettingsRoute.Api)
-                AppNavigation.requestScreen(Screen.Settings)
-            }
-        },
+        onDismissRequest = { latestDismiss() },
         sheetState = sheetState,
         containerColor = lucentPanelBackground(),
         sheetGesturesEnabled = true,
@@ -157,13 +150,13 @@ internal fun ProfileModelPickerSheet(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp)
                         .clip(RoundedCornerShape(12.dp)).background(ink.copy(alpha = 0.06f))
                         .clickable(role = Role.Button) {
-                            openManagementAfterDismiss = !openManagementAfterDismiss
+                            onManageApi()
                         }.heightIn(min = 48.dp).padding(14.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(Icons.Default.Tune, null, tint = ink, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(10.dp))
-                    Text(if (openManagementAfterDismiss) "已准备打开 API 设置，请手动关闭弹窗（再点取消）" else "管理与添加 API 方案", modifier = Modifier.weight(1f), color = ink)
+                    Text("管理API配置", modifier = Modifier.weight(1f), color = ink)
                     Icon(Icons.AutoMirrored.Filled.ArrowForward, "前往 API 设置", tint = ink, modifier = Modifier.size(18.dp))
                 }
             }

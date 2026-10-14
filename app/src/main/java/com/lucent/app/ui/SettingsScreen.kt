@@ -157,7 +157,7 @@ fun SettingsScreen(active: Boolean = true) {
     SideEffect { com.lucent.app.SettingsNav.handler = ::navigate }
     DisposableEffect(Unit) { onDispose { com.lucent.app.SettingsNav.handler = null } }
 
-    BackHandler(enabled = route != SettingsRoute.Root) { goBack() }
+    BackHandler(enabled = active && route != SettingsRoute.Root) { goBack() }
     BackClaim(active && route != SettingsRoute.Root)
 
     var manualReveal by remember { mutableStateOf(false) }

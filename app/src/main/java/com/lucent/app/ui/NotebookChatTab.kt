@@ -359,7 +359,7 @@ fun NotebookChatTab(
             val pendingAi = UiChatMessage(
                 id = aiMsgId,
                 role = "assistant",
-                content = "【未配置 API 密钥】\n当前所选方案未设置有效的 API Key。请点击底部右侧「模型选择」卡片中的「管理与添加 API 方案」，或前往「设置 -> API 配置」填入 API Key 与基础 URL，即可开始基于本地 Markdown 知识库与大模型对话。"
+                content = "【未配置 API 密钥】\n当前所选方案未设置有效的 API Key。请点击底部右侧「模型选择」卡片中的「管理API配置」，或前往「设置 -> API 配置」填入 API Key 与基础 URL，即可开始基于本地 Markdown 知识库与大模型对话。"
             )
             upsertAnswerSlot(pendingAi.copy(timestamp = answerStamp))
             session.saveMessage(pendingAi.copy(timestamp = answerStamp))
@@ -793,7 +793,9 @@ fun NotebookChatTab(
                         .putString("model_$notebookId", modelName)
                         .apply()
                 },
-                onDismiss = { showProfileModelPickerSheet = false }
+                onDismiss = { showProfileModelPickerSheet = false },
+                visible = active && com.lucent.app.AppNavigation.apiReturnNotebookId != notebookId,
+                onManageApi = { com.lucent.app.AppNavigation.openApiFromModelPicker(notebookId) }
             )
         }
 

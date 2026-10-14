@@ -54,6 +54,20 @@ class PickerContractTest(unittest.TestCase):
         text = (UI / "NotebookChatTab.kt").read_text(encoding="utf-8").split("private fun DialogueSettingsSheet(", 1)[1]
         self.assertNotIn("onClick = onDismiss", text)
 
+    def test_manage_api_uses_existing_settings_without_overlay_or_dismiss(self):
+        picker = (UI / "ProfileModelPickerSheet.kt").read_text(encoding="utf-8")
+        self.assertIn('Text("管理API配置"', picker)
+        self.assertIn("onManageApi()", picker)
+        self.assertIn("if (!visible) return", picker)
+        self.assertNotIn("openManagementAfterDismiss", picker)
+        self.assertNotIn("ApiConfigurationPage", picker)
+        self.assertNotIn("Dialog(", picker)
+        self.assertLess(picker.index("val listState = remember"), picker.index("if (!visible) return"))
+        chat = (UI / "NotebookChatTab.kt").read_text(encoding="utf-8")
+        self.assertIn("AppNavigation.openApiFromModelPicker(notebookId)", chat)
+        settings = (UI / "SettingsScreen.kt").read_text(encoding="utf-8")
+        self.assertNotIn("apiOnly", settings)
+
     def test_handle_delegates_dragging_to_entire_native_sheet(self):
         text = (UI / "ProfileModelPickerSheet.kt").read_text(encoding="utf-8")
         self.assertIn("sheetGesturesEnabled = true", text)

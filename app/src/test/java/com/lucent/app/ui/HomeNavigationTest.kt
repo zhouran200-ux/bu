@@ -26,6 +26,7 @@ class HomeNavigationTest {
     private fun drain() {
         AppNavigation.consumeScreen()
         AppNavigation.resetSettingsRoute()
+        AppNavigation.activeNotebookId = null
         com.lucent.app.SettingsNav.handler = null
     }
 
@@ -57,6 +58,42 @@ class HomeNavigationTest {
         com.lucent.app.SettingsNav.go(SettingsRoute.Api)
         assertEquals(SettingsRoute.Api, delivered)
         assertEquals(SettingsRoute.Api, AppNavigation.settingsRoute)
+    }
+
+    @Test
+    fun apiManagementUsesExistingSettingsAndReturnsToOwningNotebook() {
+        AppNavigation.activeNotebookId = 42L
+        AppNavigation.openApiFromModelPicker(42L)
+        assertEquals(Screen.Settings, AppNavigation.consumeScreen())
+        assertEquals(SettingsRoute.Api, AppNavigation.settingsRoute)
+        assertEquals(42L, AppNavigation.apiReturnNotebookId)
+        AppNavigation.rememberSettingsRoute(SettingsRoute.Root)
+        assertEquals(Screen.Notebooks, AppNavigation.consumeScreen())
+        assertNull(AppNavigation.apiReturnNotebookId)
+        assertEquals(SettingsRoute.Root, AppNavigation.settingsRoute)
+        assertEquals(false, AppNavigation.returnFromApiToModelPicker())
+    }
+
+    @Test
+    fun ordinaryApiSettingsReturnDoesNotReopenAModelPicker() {
+        AppNavigation.rememberSettingsRoute(SettingsRoute.Api)
+        AppNavigation.rememberSettingsRoute(SettingsRoute.Root)
+        assertNull(AppNavigation.consumeScreen())
+        assertNull(AppNavigation.apiReturnNotebookId)
+    }
+
+    @Test
+    fun staleNotebookAndOtherSettingsRoutesClearReturnOrigin() {
+        AppNavigation.activeNotebookId = 10L
+        AppNavigation.openApiFromModelPicker(9L)
+        AppNavigation.consumeScreen()
+        AppNavigation.rememberSettingsRoute(SettingsRoute.Root)
+        assertNull(AppNavigation.consumeScreen())
+        assertNull(AppNavigation.apiReturnNotebookId)
+        AppNavigation.openApiFromModelPicker(10L)
+        AppNavigation.consumeScreen()
+        AppNavigation.rememberSettingsRoute(SettingsRoute.Font)
+        assertNull(AppNavigation.apiReturnNotebookId)
     }
 
     @Test

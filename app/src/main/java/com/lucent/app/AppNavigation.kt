@@ -26,6 +26,25 @@ object AppNavigation {
 
     var activeNotebookId by mutableStateOf<Long?>(null)
 
+    internal var apiReturnNotebookId by mutableStateOf<Long?>(null)
+        private set
+
+    internal fun openApiFromModelPicker(notebookId: Long) {
+        apiReturnNotebookId = notebookId
+        settingsRoute = SettingsRoute.Api
+        requestedScreen = Screen.Settings
+    }
+
+    internal fun returnFromApiToModelPicker(): Boolean {
+        val notebookId = apiReturnNotebookId ?: return false
+        if (settingsRoute != SettingsRoute.Api) return false
+        apiReturnNotebookId = null
+        settingsRoute = SettingsRoute.Root
+        if (activeNotebookId != notebookId) return false
+        requestedScreen = Screen.Notebooks
+        return true
+    }
+
     var createNotebookRequested by mutableStateOf(false)
         private set
 
@@ -45,10 +64,13 @@ object AppNavigation {
     }
 
     internal fun rememberSettingsRoute(route: SettingsRoute) {
+        if (route == SettingsRoute.Root && returnFromApiToModelPicker()) return
+        if (route != SettingsRoute.Api) apiReturnNotebookId = null
         settingsRoute = route
     }
 
     internal fun resetSettingsRoute() {
+        apiReturnNotebookId = null
         settingsRoute = SettingsRoute.Root
     }
 

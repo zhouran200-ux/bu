@@ -336,7 +336,7 @@ fun LucentApp(paletteColors: List<Color>, backdropColor: Color, backgroundAnimat
             Scaffold(
                 containerColor = Color.Transparent,
                 topBar = {
-                    if (AppNavigation.activeNotebookId == null) {
+                    if (AppNavigation.activeNotebookId == null || currentScreen == Screen.Settings) {
                         TopAppBar(
                             title = {
                                 if (currentTab == HomeTab.Settings) {
@@ -467,7 +467,7 @@ fun LucentApp(paletteColors: List<Color>, backdropColor: Color, backgroundAnimat
                     }
                 }
             ) { padding ->
-                val topPad = if (AppNavigation.activeNotebookId == null) padding.calculateTopPadding() else 0.dp
+                val topPad = if (AppNavigation.activeNotebookId == null || currentScreen == Screen.Settings) padding.calculateTopPadding() else 0.dp
                 val bottomInset = if (AppNavigation.activeNotebookId == null) padding.calculateBottomPadding() else 0.dp
                 val contentModifier = Modifier.padding(top = topPad).fillMaxSize()
                 CompositionLocalProvider(LocalBottomBarInset provides bottomInset) {

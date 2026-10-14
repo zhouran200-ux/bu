@@ -31,6 +31,92 @@ class MarkdownDocumentParserTest {
     }
 
     @Test
+    fun txtBomVariantsAreStrippedInsteadOfLeakingIntoTheText() {
+        val utf8Bom = byteArrayOf(0xEF.toByte(), 0xBB.toByte(), 0xBF.toByte()) + "标题".toByteArray(Charsets.UTF_8)
+        assertEquals("标题", MarkdownDocumentParser.parseTxtToMarkdown(utf8Bom))
+
+        val utf16Le = byteArrayOf(0xFF.toByte(), 0xFE.toByte()) + "标题".toByteArray(Charsets.UTF_16LE)
+        assertEquals("标题", MarkdownDocumentParser.parseTxtToMarkdown(utf16Le))
+
+        val utf16Be = byteArrayOf(0xFE.toByte(), 0xFF.toByte()) + "标题".toByteArray(Charsets.UTF_16BE)
+        assertEquals("标题", MarkdownDocumentParser.parseTxtToMarkdown(utf16Be))
+    }
+
+    @Test
+    fun gb18030TextIsRecoveredWhenItIsNotValidUtf8() {
+        val gbk = "中文段落".toByteArray(java.nio.charset.Charset.forName("GB18030"))
+        assertEquals("中文段落", MarkdownDocumentParser.parseTxtToMarkdown(gbk))
+    }
+
+    @Test
+    fun emptyAndBlankTxtFilesProduceNoContent() {
+        assertEquals("", MarkdownDocumentParser.parseTxtToMarkdown(ByteArray(0)))
+        assertEquals("", MarkdownDocumentParser.parseTxtToMarkdown("   \r\n\r\n  ".toByteArray(Charsets.UTF_8)))
+    }
+
+    private fun docxWith(xml: String, entryName: String = "word/document.xml"): ByteArray {
+        val baos = ByteArrayOutputStream()
+        ZipOutputStream(baos).use { zos ->
+            zos.putNextEntry(ZipEntry(entryName))
+            zos.write(xml.toByteArray(Charsets.UTF_8))
+            zos.closeEntry()
+        }
+        return baos.toByteArray()
+    }
+
+    @Test
+    fun docxWithoutTheDocumentPartFailsInsteadOfReturningSilentGarbage() {
+        val failure = runCatching {
+            MarkdownDocumentParser.parseDocxToMarkdown(docxWith("<xml/>", entryName = "word/other.xml"))
+        }.exceptionOrNull()
+        assertTrue(failure is IllegalStateException, "缺少 document.xml 必须报错")
+    }
+
+    @Test
+    fun docxWithBrokenXmlFailsInsteadOfHanging() {
+        val failure = runCatching {
+            MarkdownDocumentParser.parseDocxToMarkdown(docxWith("<w:document><w:body>"))
+        }.exceptionOrNull()
+        assertTrue(failure is Exception)
+    }
+
+    @Test
+    fun docxHeadingLevelsAndListsBecomeMarkdown() {
+        val xml = """
+            <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+              <w:body>
+                <w:p><w:pPr><w:pStyle w:val="Heading3"/></w:pPr><w:r><w:t>三级标题</w:t></w:r></w:p>
+                <w:p><w:pPr><w:numPr><w:ilvl w:val="0"/></w:numPr></w:pPr><w:r><w:t>列表项</w:t></w:r></w:p>
+                <w:p><w:r><w:rPr><w:b/><w:i/></w:rPr><w:t>粗斜体</w:t></w:r><w:r><w:rPr><w:strike/></w:rPr><w:t>删除线</w:t></w:r></w:p>
+              </w:body>
+            </w:document>
+        """.trimIndent()
+        val md = MarkdownDocumentParser.parseDocxToMarkdown(docxWith(xml))
+        assertTrue(md.contains("### 三级标题"), md)
+        assertTrue(md.contains("- 列表项"), md)
+        assertTrue(md.contains("***粗斜体***"), md)
+        assertTrue(md.contains("~~删除线~~"), md)
+    }
+
+    @Test
+    fun docxTablesBecomeMarkdownTablesWithEscapedPipes() {
+        val xml = """
+            <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+              <w:body>
+                <w:tbl>
+                  <w:tr><w:tc><w:p><w:r><w:t>列A</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>列B</w:t></w:r></w:p></w:tc></w:tr>
+                  <w:tr><w:tc><w:p><w:r><w:t>a|b</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>2</w:t></w:r></w:p></w:tc></w:tr>
+                </w:tbl>
+              </w:body>
+            </w:document>
+        """.trimIndent()
+        val md = MarkdownDocumentParser.parseDocxToMarkdown(docxWith(xml))
+        assertTrue(md.contains("| 列A | 列B |"), md)
+        assertTrue(md.contains("| --- | --- |"), md)
+        assertTrue(md.contains("""a\|b"""), md)
+    }
+
+    @Test
     fun testParseDocxToMarkdown() {
         val docXml = """
             <?xml version="1.0" encoding="UTF-8" standalone="yes"?>

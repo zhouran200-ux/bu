@@ -4,6 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.UUID
 
@@ -337,5 +338,58 @@ class ApiProfileTest {
         assertEquals("甲" to "m-a1", ApiProfiles.selectionFor(profiles, "甲", "m-a1"))
         assertEquals("乙" to "", ApiProfiles.selectionFor(profiles, "乙", "别的方案里的模型"))
         assertEquals("乙" to "", ApiProfiles.selectionFor(profiles, "乙", ""))
+    }
+
+    @Test
+    fun profileCountIsCappedOnBothWriteAndRead() {
+        val many = (1..(ApiProfiles.MAX + 5)).map { profileWithModels("方案 $it", "m$it") }
+        assertEquals(ApiProfiles.MAX, ApiProfiles.parse(ApiProfiles.serialize(many)).size)
+        assertEquals(ApiProfiles.MAX, ApiProfiles.parse(ApiProfiles.serialize(many.take(ApiProfiles.MAX))).size)
+
+        val oversizedJson = ApiProfiles.serialize(many)
+        assertEquals(ApiProfiles.MAX, ApiProfiles.parse(oversizedJson).size)
+    }
+
+    @Test
+    fun nextDefaultNameSkipsNamesAlreadyInUse() {
+        assertEquals("方案 1", ApiProfiles.nextDefaultName(emptyList()))
+        assertEquals("方案 2", ApiProfiles.nextDefaultName(listOf(ApiProfile(name = "方案 1"))))
+        assertEquals("方案 4", ApiProfiles.nextDefaultName(
+            listOf(ApiProfile(name = "方案 1"), ApiProfile(name = "方案 2"), ApiProfile(name = "方案 3"))
+        ))
+        assertEquals("方案 1", ApiProfiles.nextDefaultName(listOf(ApiProfile(name = "商汤"))))
+        assertEquals("方案 3", ApiProfiles.nextDefaultName(
+            listOf(ApiProfile(name = "API 1"), ApiProfile(name = "方案 2"), ApiProfile(name = "自定义"))
+        ))
+        assertEquals("方案 2", ApiProfiles.nextDefaultName(
+            listOf(ApiProfile(name = "方案 1"), ApiProfile(name = "方案 1"))
+        ))
+    }
+
+    @Test
+    fun parseSkipsNonObjectEntriesAndKeepsValidOnes() {
+        val json = """[1,"text",{"name":"有效","spec":"openai","model":"m"},{"spec":"anthropic"}]"""
+        val parsed = ApiProfiles.parse(json)
+        assertEquals(2, parsed.size)
+        assertEquals("有效", parsed[0].name)
+        assertEquals("openai", parsed[0].spec)
+        assertEquals("anthropic", parsed[1].spec)
+        assertEquals(listOf("m"), parsed[0].selectedModels)
+        assertTrue(parsed.none { it.name.isBlank() })
+        assertEquals(parsed.size, parsed.map { it.name }.toSet().size)
+    }
+
+    @Test
+    fun parseDistinctsAndTrimsStoredModels() {
+        val json = """[{"name":"p","selectedModels":[" a ","a","","  ","b"]}]"""
+        assertEquals(listOf("a", "b"), ApiProfiles.parse(json)[0].selectedModels)
+    }
+
+    @Test
+    fun blankOrBrokenJsonFallsBackToTheDefaultProfile() {
+        assertEquals(ApiProfiles.DEFAULT_PROFILES, ApiProfiles.parse(""))
+        assertEquals(ApiProfiles.DEFAULT_PROFILES, ApiProfiles.parse(null))
+        assertEquals(ApiProfiles.DEFAULT_PROFILES, ApiProfiles.parse("not json at all"))
+        assertEquals(ApiProfiles.DEFAULT_PROFILES, ApiProfiles.parse("[]"))
     }
 }

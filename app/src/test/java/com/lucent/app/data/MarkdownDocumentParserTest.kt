@@ -25,9 +25,16 @@ class MarkdownDocumentParserTest {
 
     @Test
     fun testParseTxtToMarkdown() {
-        val raw = "第一行内容\r\n第二行内容\r\n\r\n第三行内容"
+        val raw = "第一行内容。\r\n第二行内容。\r\n\r\n第三行内容。"
         val md = MarkdownDocumentParser.parseTxtToMarkdown(raw.toByteArray(Charsets.UTF_8))
-        assertEquals("第一行内容\n\n第二行内容\n\n第三行内容", md)
+        assertEquals("第一行内容。\n\n第二行内容。\n\n第三行内容。", md)
+    }
+
+    @Test
+    fun txtHardWrappedLinesAreJoinedAndParagraphBreaksAreKept() {
+        val raw = "他站起身，\n看了看窗外。\n她没有说话。"
+        val md = MarkdownDocumentParser.parseTxtToMarkdown(raw.toByteArray(Charsets.UTF_8))
+        assertEquals("他站起身，看了看窗外。\n\n她没有说话。", md)
     }
 
     @Test

@@ -107,6 +107,14 @@ class ChatScrollMathTest {
             )
         )
     }
+
+    @Test
+    fun pausedReadingStaysPausedAfterReleaseAndIncomingLayoutChanges() {
+        assertFalse(ChatScrollMath.shouldFollowAfterScroll(false, false, true))
+        assertFalse(ChatScrollMath.shouldFollowAfterScroll(false, false, false))
+        assertFalse(ChatScrollMath.shouldFollowAfterScroll(false, true, false))
+        assertTrue(ChatScrollMath.shouldFollowAfterScroll(false, true, true))
+    }
 }
 
 class DocumentSectionTest {

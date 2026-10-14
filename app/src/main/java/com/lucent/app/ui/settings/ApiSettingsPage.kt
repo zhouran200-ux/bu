@@ -1120,12 +1120,19 @@ internal fun ApiConfigSettingsPage(
         }
 
         lastTestResult?.let { res ->
-            val prettyBody = res.prettyResponseBody().ifBlank { res.errorMessage ?: "" }
-            val textToCopy = if (res.rawResponseBody.isNotBlank()) res.rawResponseBody else res.toFullReport()
+            val prettyBody = if (res.success) res.prettyResponseBody() else buildString {
+                appendLine("详细信息")
+                if (res.httpCode > 0) appendLine("HTTP 状态码：${res.httpCode}")
+                appendLine("耗时：${res.latencyMs}ms")
+                res.errorMessage?.takeIf { it.isNotBlank() }?.let { appendLine(it) }
+                appendLine("--- 原始响应 / 异常 ---")
+                append(res.prettyResponseBody().ifBlank { "（无响应正文）" })
+            }
+            val textToCopy = prettyBody
             Spacer(modifier = Modifier.height(8.dp))
             ResponseCard(
                 body = prettyBody,
-                charCount = res.rawResponseBody.length,
+                charCount = prettyBody.length,
                 copied = copiedRawHint,
                 onCopy = { copyRawResponse(textToCopy) }
             )

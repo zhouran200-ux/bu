@@ -93,6 +93,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
@@ -177,12 +178,30 @@ fun NotebookChatTab(
     LaunchedEffect(active) {
         if (!active) followStream = false
     }
-    LaunchedEffect(atBottom, listState.isScrollInProgress) {
-        followStream = ChatScrollMath.shouldFollowAfterScroll(
-            wasFollowing = followStream,
-            atBottom = atBottom,
-            userScrolling = listState.isScrollInProgress
-        )
+    val readingScrollConnection = remember(listState) {
+        object : androidx.compose.ui.input.nestedscroll.NestedScrollConnection {
+            override fun onPreScroll(
+                available: androidx.compose.ui.geometry.Offset,
+                source: androidx.compose.ui.input.nestedscroll.NestedScrollSource
+            ): androidx.compose.ui.geometry.Offset {
+                if (source == androidx.compose.ui.input.nestedscroll.NestedScrollSource.UserInput && available.y != 0f) {
+                    followStream = false
+                }
+                return androidx.compose.ui.geometry.Offset.Zero
+            }
+
+            override suspend fun onPostFling(
+                consumed: androidx.compose.ui.unit.Velocity,
+                available: androidx.compose.ui.unit.Velocity
+            ): androidx.compose.ui.unit.Velocity {
+                followStream = ChatScrollMath.shouldFollowAfterScroll(
+                    wasFollowing = followStream,
+                    atBottom = !listState.canScrollForward,
+                    userScrolling = true
+                )
+                return androidx.compose.ui.unit.Velocity.Zero
+            }
+        }
     }
 
     var railExpanded by remember { mutableStateOf(false) }
@@ -422,7 +441,9 @@ fun NotebookChatTab(
         followStream = true
         scope.launch {
             delay(100)
-            listState.animateScrollToItem((messages.size - 1).coerceAtLeast(0))
+            if (followStream && !listState.isScrollInProgress) {
+                listState.animateScrollToItem((messages.size - 1).coerceAtLeast(0))
+            }
         }
         askModel(answerId)
     }
@@ -526,7 +547,9 @@ fun NotebookChatTab(
         }
     }
     LaunchedEffect(streamProgress) {
-        if (active && streamingAnswerId != null && followStream && streamProgress > 0) {
+        if (active && streamingAnswerId != null && followStream &&
+            streamProgress > 0 && !listState.isScrollInProgress
+        ) {
             listState.scrollToItem((listState.layoutInfo.totalItemsCount - 1).coerceAtLeast(0))
         }
     }
@@ -555,7 +578,9 @@ fun NotebookChatTab(
         previousImeVisible = isImeVisible
         if (active && opened && followStream && messages.isNotEmpty()) {
             delay(50)
-            listState.animateScrollToItem((messages.size - 1).coerceAtLeast(0))
+            if (followStream && !listState.isScrollInProgress) {
+                listState.animateScrollToItem((messages.size - 1).coerceAtLeast(0))
+            }
         }
     }
 
@@ -568,6 +593,7 @@ fun NotebookChatTab(
             LazyColumn(
                 state = listState,
                 modifier = Modifier
+                    .nestedScroll(readingScrollConnection)
                     .weight(1f)
                     .fillMaxWidth()
                     .pointerInput(Unit) {

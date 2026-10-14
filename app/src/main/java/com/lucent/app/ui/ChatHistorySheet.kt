@@ -113,29 +113,30 @@ internal fun ChatHistorySheet(
 
             Spacer(modifier = Modifier.size(10.dp))
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                JumpChip(
-                    icon = Icons.Default.KeyboardArrowUp,
-                    label = "跳到顶部",
-                    hint = "首条",
-                    enabled = hasRecords,
-                    modifier = Modifier.weight(1f),
-                    onClick = onTop
-                )
-                JumpChip(
-                    icon = Icons.Default.KeyboardArrowDown,
-                    label = "跳到底部",
-                    hint = "最新",
-                    enabled = hasRecords,
-                    modifier = Modifier.weight(1f),
-                    onClick = onBottom
-                )
+            if (hasRecords) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    JumpChip(
+                        icon = Icons.Default.KeyboardArrowUp,
+                        label = "跳到顶部",
+                        hint = "首条",
+                        enabled = true,
+                        modifier = Modifier.weight(1f),
+                        onClick = onTop
+                    )
+                    JumpChip(
+                        icon = Icons.Default.KeyboardArrowDown,
+                        label = "跳到底部",
+                        hint = "最新",
+                        enabled = true,
+                        modifier = Modifier.weight(1f),
+                        onClick = onBottom
+                    )
+                }
+                Spacer(modifier = Modifier.size(12.dp))
             }
-
-            Spacer(modifier = Modifier.size(12.dp))
 
             if (!hasRecords) {
                 Box(

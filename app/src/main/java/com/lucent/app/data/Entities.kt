@@ -1,5 +1,6 @@
 package com.lucent.app.data
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
@@ -84,7 +85,10 @@ data class ChatMessage(
     val reasoningBlocks: String? = null,
     val reasoningText: String? = null,
     val quotedRole: String? = null,
-    val quotedText: String? = null
+    val quotedText: String? = null,
+    @ColumnInfo(defaultValue = "NULL") val firstTokenMillis: Long? = null,
+    @ColumnInfo(defaultValue = "NULL") val generationMillis: Long? = null,
+    @ColumnInfo(defaultValue = "0") val cachedTokensKnown: Boolean = false
 )
 
 object ChatScope {

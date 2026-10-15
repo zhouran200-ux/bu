@@ -27,7 +27,9 @@ object ChatSessions {
                 dao.getForConversationOnce(conversationId).map { message ->
                     UiChatMessage(message.id, message.role, message.content, message.reasoningText,
                         message.answerSeconds, promptTokens = message.tokens,
-                        cachedTokens = message.cachedTokens, timestamp = message.timestamp)
+                        cachedTokens = message.cachedTokens, timestamp = message.timestamp,
+                        firstTokenMillis = message.firstTokenMillis, generationMillis = message.generationMillis,
+                        cachedTokensKnown = message.cachedTokensKnown)
                 }
             },
             save = { message ->
@@ -35,7 +37,9 @@ object ChatSessions {
                     id = message.id, role = message.role, content = message.content,
                     timestamp = message.timestamp, conversationId = conversationId,
                     reasoningText = message.reasoningText, answerSeconds = message.answerSeconds,
-                    tokens = message.promptTokens, cachedTokens = message.cachedTokens
+                    tokens = message.promptTokens, cachedTokens = message.cachedTokens,
+                    firstTokenMillis = message.firstTokenMillis, generationMillis = message.generationMillis,
+                    cachedTokensKnown = message.cachedTokensKnown
                 ))
             },
             onRunningChanged = { active ->

@@ -1,44 +1,45 @@
 package com.lucent.app.ui
 
+import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Locale
 
 internal object ChatStats {
-
-    fun compactCount(value: Int): String = when {
-        value <= 0 -> "—"
-        value < 1_000 -> value.toString()
-        value < 1_000_000 -> trimTail(kilo(value / 1000.0)) + "k"
-        else -> trimTail(kilo(value / 1_000_000.0)) + "M"
+    private fun duration(millis: Long): String {
+        val tenths = (millis.coerceAtLeast(0L) / 100L)
+        return if (millis in 1..99) "<0.1秒" else if (tenths % 10L == 0L) "${tenths / 10L}秒"
+        else "${tenths / 10L}.${tenths % 10L}秒"
     }
 
-    private fun kilo(tenths: Double): String = String.format(Locale.US, "%.1f", tenths)
+    fun secondsLabel(seconds: Int): String? = if (seconds > 0) "总用时 ${seconds}秒" else null
 
-    private fun trimTail(text: String): String = text.trimEnd('0').trimEnd('.')
-
-    fun secondsLabel(seconds: Int): String? {
-        if (seconds <= 0) return null
-        val span = if (seconds < 60) {
-            "${seconds}秒"
-        } else {
-            "%d分%02d秒".format(Locale.US, seconds / 60, seconds % 60)
-        }
-        return "回复 $span"
-    }
-
-    fun cacheLabel(cachedTokens: Int, promptTokens: Int): String? {
+    fun cacheLabel(cachedTokens: Int, promptTokens: Int, known: Boolean = cachedTokens > 0): String? {
         if (promptTokens <= 0) return null
-        return "缓存 ${compactCount(cachedTokens)}/${compactCount(promptTokens)}"
+        val hit = if (known) cachedTokens.toString() else "—"
+        return "缓存 $hit/${promptTokens}T"
     }
 
-    fun charLabel(chars: Int): String? {
-        if (chars <= 0) return null
-        return "${compactCount(chars)}字"
+    fun charLabel(chars: Int): String? = if (chars > 0) "${chars}字" else null
+
+    fun bodyCharCount(text: String): Int {
+        val withoutRefs = com.lucent.app.data.SourceCitations.marker.replace(text, "")
+        return withoutRefs.codePoints().filter { !Character.isWhitespace(it) && !Character.isSpaceChar(it) }.count().toInt()
     }
 
-    fun summary(seconds: Int, cachedTokens: Int, promptTokens: Int, chars: Int): String =
-        listOfNotNull(
-            secondsLabel(seconds),
-            cacheLabel(cachedTokens, promptTokens),
-            charLabel(chars)
-        ).joinToString(" · ")
+    fun summary(
+        seconds: Int,
+        cachedTokens: Int,
+        promptTokens: Int,
+        chars: Int,
+        firstTokenMillis: Long? = null,
+        generationMillis: Long? = null,
+        cachedTokensKnown: Boolean = cachedTokens > 0,
+        timestamp: Long = 0L
+    ): String = listOfNotNull(
+        firstTokenMillis?.let { "首字延迟${duration(it)}" },
+        generationMillis?.let { "总用时 ${duration(it)}" } ?: secondsLabel(seconds),
+        cacheLabel(cachedTokens, promptTokens, cachedTokensKnown || cachedTokens > 0),
+        charLabel(chars),
+        if (timestamp > 0) SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(timestamp)) else null
+    ).joinToString(" · ")
 }

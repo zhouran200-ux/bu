@@ -678,7 +678,8 @@ object LlmClient {
                             content = fullContent.toString(),
                             reasoningText = fullReasoning.toString().ifBlank { null },
                             promptTokens = usage.promptTokens,
-                            cachedTokens = usage.cachedTokens
+                            cachedTokens = usage.cachedTokens,
+                            cachedTokensKnown = usage.cachedTokensKnown
                         )
                     )
                 }
@@ -704,5 +705,6 @@ data class ChatCompletionResult(
     val content: String,
     val reasoningText: String? = null,
     val promptTokens: Int = 0,
-    val cachedTokens: Int = 0
+    val cachedTokens: Int = 0,
+    val cachedTokensKnown: Boolean = false
 )

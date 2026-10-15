@@ -77,6 +77,15 @@ class StreamUsageParserTest {
     }
 
     @Test
+    fun missingCacheIsUnknownButExplicitZeroIsKnown() {
+        val missing = StreamUsageParser.parse(ApiSpec.OPENAI, JSONObject("""{"usage":{"prompt_tokens":10000}}"""))!!
+        val zero = StreamUsageParser.parse(ApiSpec.OPENAI, JSONObject("""{"usage":{"prompt_tokens":10000,"prompt_tokens_details":{"cached_tokens":0}}}"""))!!
+        assertFalse(missing.cachedTokensKnown)
+        assertTrue(zero.cachedTokensKnown)
+        assertEquals(0, zero.cachedTokens)
+    }
+
+    @Test
     fun streamOptionsAreOnlyRequestedFromHostsKnownToAcceptThem() {
         assertTrue(StreamUsageParser.wantsStreamOptions("https://api.openai.com/v1/chat/completions"))
         assertTrue(StreamUsageParser.wantsStreamOptions("https://api.deepseek.com/v1/chat/completions"))

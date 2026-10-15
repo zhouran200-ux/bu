@@ -22,7 +22,8 @@ class ChatSession(
     private val dispatcher: CoroutineDispatcher,
     private val load: suspend () -> List<UiChatMessage>,
     private val save: suspend (UiChatMessage) -> Unit,
-    private val onRunningChanged: (Boolean) -> Unit = {}
+    private val onRunningChanged: (Boolean) -> Unit = {},
+    private val monotonicNanos: () -> Long = System::nanoTime
 ) {
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
     val messages = mutableStateListOf<UiChatMessage>()
@@ -74,14 +75,16 @@ class ChatSession(
         if (slot < 0) return false
         onRunningChanged(true)
         val initial = messages[slot].copy(content = "", reasoningText = null, reasoningTag = reasoningTag,
-            answerSeconds = 0, promptTokens = 0, cachedTokens = 0)
+            answerSeconds = 0, promptTokens = 0, cachedTokens = 0,
+            firstTokenMillis = null, generationMillis = null, cachedTokensKnown = false)
         messages[slot] = initial
         thought.value = ""
         val callHandle = StreamCallHandle()
         handle = callHandle
         streamingAnswerId = answerId
         val job = scope.launch(start = CoroutineStart.UNDISPATCHED) {
-            val startedAt = System.currentTimeMillis()
+            var startedAt: Long? = null
+            var firstTokenMillis: Long? = null
             val scheduler = StreamUiScheduler(
                 onThought = { thought.value = it },
                 onFlush = { content, reasoning ->
@@ -93,8 +96,15 @@ class ChatSession(
             var failure: Throwable? = null
             try {
                 saveMessage(initial).join()
+                startedAt = monotonicNanos()
                 val response = stream(callHandle) { text, reasoning ->
-                    withContext(dispatcher) { scheduler.append(text, reasoning) }
+                    val arrivedAt = monotonicNanos()
+                    withContext(dispatcher) {
+                        if (firstTokenMillis == null && text.isNotBlank()) {
+                            firstTokenMillis = ((arrivedAt - startedAt!!) / 1_000_000L).coerceAtLeast(0L)
+                        }
+                        scheduler.append(text, reasoning)
+                    }
                 }
                 result = response.getOrNull()
                 failure = response.exceptionOrNull()
@@ -103,6 +113,7 @@ class ChatSession(
             } catch (e: Exception) {
                 failure = e
             } finally {
+                val elapsedMillis = startedAt?.let { ((monotonicNanos() - it) / 1_000_000L).coerceAtLeast(0L) }
                 withContext(NonCancellable) {
                     scheduler.forceFlush()
                     val partial = scheduler.getFinalContent()
@@ -115,9 +126,12 @@ class ChatSession(
                     val final = initial.copy(
                         content = content,
                         reasoningText = result?.reasoningText ?: scheduler.getFinalReasoning(),
-                        answerSeconds = ((System.currentTimeMillis() - startedAt) / 1000).toInt().coerceAtLeast(1),
+                        answerSeconds = elapsedMillis?.div(1000L)?.coerceAtMost(Int.MAX_VALUE.toLong())?.toInt() ?: 0,
+                        firstTokenMillis = firstTokenMillis,
+                        generationMillis = elapsedMillis,
                         promptTokens = result?.promptTokens ?: 0,
-                        cachedTokens = result?.cachedTokens ?: 0
+                        cachedTokens = result?.cachedTokens ?: 0,
+                        cachedTokensKnown = result?.cachedTokensKnown ?: false
                     )
                     update(final)
                     try {

@@ -143,7 +143,10 @@ data class UiChatMessage(
     val reasoningTag: String? = null,
     val promptTokens: Int = 0,
     val cachedTokens: Int = 0,
-    val timestamp: Long = System.currentTimeMillis()
+    val timestamp: Long = System.currentTimeMillis(),
+    val firstTokenMillis: Long? = null,
+    val generationMillis: Long? = null,
+    val cachedTokensKnown: Boolean = false
 )
 
 @OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
@@ -999,7 +1002,11 @@ private fun AiMessageCard(
                     seconds = message.answerSeconds,
                     cachedTokens = message.cachedTokens,
                     promptTokens = message.promptTokens,
-                    chars = message.content.length
+                    chars = ChatStats.bodyCharCount(message.content),
+                    firstTokenMillis = message.firstTokenMillis,
+                    generationMillis = message.generationMillis,
+                    cachedTokensKnown = message.cachedTokensKnown,
+                    timestamp = message.timestamp
                 )
                 Column(modifier = Modifier.padding(top = 2.dp, start = 2.dp)) {
                     if (stats.isNotEmpty()) {

@@ -216,6 +216,47 @@ class ChatSessionTest {
         assertEquals(listOf("retained"), writes)
     }
 
+    @Test fun firstBodyLatencyExcludesThinkingAndTimingsSurviveFinalSave() {
+        val d = QueueDispatcher()
+        var nanos = 0L
+        val saved = mutableListOf<UiChatMessage>()
+        val session = ChatSession(d, { emptyList() }, { saved.add(it) }, monotonicNanos = { nanos })
+        d.drain()
+        session.messages.add(UiChatMessage(1, "assistant", "old", firstTokenMillis = 999))
+        session.start(1, null) { _, chunk ->
+            nanos = 300_000_000L
+            chunk("", "思考")
+            nanos = 500_000_000L
+            chunk(" ", null)
+            nanos = 1_200_000_000L
+            chunk("正文", null)
+            nanos = 2_000_000_000L
+            chunk("继续", null)
+            nanos = 10_000_000_000L
+            Result.success(ChatCompletionResult("正文继续", promptTokens = 10000, cachedTokens = 0, cachedTokensKnown = true))
+        }
+        d.drain()
+        val final = saved.last()
+        assertEquals(1200L, final.firstTokenMillis)
+        assertEquals(10000L, final.generationMillis)
+        assertTrue(final.cachedTokensKnown)
+        assertEquals(10, final.answerSeconds)
+    }
+
+    @Test fun noBodyDoesNotInventLatencyOnEmptyOrFailedReply() {
+        val d = QueueDispatcher()
+        val session = ChatSession(d, { emptyList() }, {})
+        d.drain()
+        session.messages.add(UiChatMessage(1, "assistant", ""))
+        session.start(1, null) { _, chunk ->
+            chunk("", "只有思考")
+            Result.failure(IllegalStateException("network error"))
+        }
+        d.drain()
+        assertNull(session.messages.single().firstTokenMillis)
+        assertNotNull(session.messages.single().generationMillis)
+    }
+
     @Test fun serviceStartFailureLeavesSessionIdle() {
         val d = QueueDispatcher()
         val session = ChatSession(d, { emptyList() }, {}, { if (it) error("FGS denied") })

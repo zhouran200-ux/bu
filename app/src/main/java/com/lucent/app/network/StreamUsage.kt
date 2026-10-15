@@ -4,7 +4,8 @@ import org.json.JSONObject
 
 data class StreamUsage(
     val promptTokens: Int = 0,
-    val cachedTokens: Int = 0
+    val cachedTokens: Int = 0,
+    val cachedTokensKnown: Boolean = false
 )
 
 object StreamUsageParser {
@@ -15,7 +16,9 @@ object StreamUsageParser {
             val cached = usage.optJSONObject("prompt_tokens_details")?.optInt("cached_tokens", 0)
                 ?.takeIf { it > 0 }
                 ?: usage.optInt("prompt_cache_hit_tokens", 0)
-            StreamUsage(prompt, cached)
+            val known = usage.optJSONObject("prompt_tokens_details")?.let { it.has("cached_tokens") && !it.isNull("cached_tokens") } == true ||
+                (usage.has("prompt_cache_hit_tokens") && !usage.isNull("prompt_cache_hit_tokens"))
+            StreamUsage(prompt, cached, known)
         }
 
         ApiSpec.ANTHROPIC -> when (chunk.optString("type")) {
@@ -24,7 +27,8 @@ object StreamUsageParser {
                     promptTokens = usage.optInt("input_tokens", 0) +
                         usage.optInt("cache_read_input_tokens", 0) +
                         usage.optInt("cache_creation_input_tokens", 0),
-                    cachedTokens = usage.optInt("cache_read_input_tokens", 0)
+                    cachedTokens = usage.optInt("cache_read_input_tokens", 0),
+                    cachedTokensKnown = usage.has("cache_read_input_tokens") && !usage.isNull("cache_read_input_tokens")
                 )
             }
 
@@ -34,7 +38,8 @@ object StreamUsageParser {
         ApiSpec.GOOGLE -> chunk.optJSONObject("usageMetadata")?.let { usage ->
             StreamUsage(
                 promptTokens = usage.optInt("promptTokenCount", 0),
-                cachedTokens = usage.optInt("cachedContentTokenCount", 0)
+                cachedTokens = usage.optInt("cachedContentTokenCount", 0),
+                cachedTokensKnown = usage.has("cachedContentTokenCount") && !usage.isNull("cachedContentTokenCount")
             )
         }
     }

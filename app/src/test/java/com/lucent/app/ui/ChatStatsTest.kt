@@ -1,42 +1,30 @@
 package com.lucent.app.ui
 
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
+import org.junit.Assert.*
 import org.junit.Test
+import java.util.Calendar
 
 class ChatStatsTest {
-
-    @Test
-    fun compactCountScalesLargeNumbersAndMarksUnknown() {
-        assertEquals("—", ChatStats.compactCount(0))
-        assertEquals("823", ChatStats.compactCount(823))
-        assertEquals("1k", ChatStats.compactCount(1000))
-        assertEquals("1.2k", ChatStats.compactCount(1234))
-        assertEquals("12k", ChatStats.compactCount(12000))
-        assertEquals("1.2M", ChatStats.compactCount(1234567))
+    @Test fun exactCountsAndExplicitZeroAreNotAbbreviated() {
+        assertEquals("缓存 7500/10000T", ChatStats.cacheLabel(7500, 10000))
+        assertEquals("缓存 0/10000T", ChatStats.cacheLabel(0, 10000, true))
+        assertEquals("缓存 —/10000T", ChatStats.cacheLabel(0, 10000, false))
+        assertNull(ChatStats.cacheLabel(0, 0))
+        assertEquals("1000字", ChatStats.charLabel(1000))
     }
-
-    @Test
-    fun secondsLabelSwitchesToMinutesPastAnHour() {
-        assertNull(ChatStats.secondsLabel(0))
-        assertEquals("回复 12秒", ChatStats.secondsLabel(12))
-        assertEquals("回复 1分05秒", ChatStats.secondsLabel(65))
+    @Test fun requestedOrderUsesLocalClockAndMeasuredTimings() {
+        val time = Calendar.getInstance().apply { set(2026, 9, 15, 18, 40, 0) }.timeInMillis
+        assertEquals("首字延迟1秒 · 总用时 10秒 · 缓存 7500/10000T · 1000字 · 18:40",
+            ChatStats.summary(99, 7500, 10000, 1000, 1000, 10000, true, time))
     }
-
-    @Test
-    fun cacheSegmentIsHiddenWhenTheProviderReportsNothing() {
-        assertNull(ChatStats.cacheLabel(cachedTokens = 0, promptTokens = 0))
-        assertEquals("缓存 —/8.6k", ChatStats.cacheLabel(cachedTokens = 0, promptTokens = 8600))
-        assertEquals("缓存 6.1k/8.6k", ChatStats.cacheLabel(cachedTokens = 6100, promptTokens = 8600))
+    @Test fun legacyRecordsNeverInventFirstTokenLatency() {
+        assertEquals("总用时 30秒 · 缓存 —/118800T · 2800字", ChatStats.summary(30, 0, 118800, 2800))
+        assertEquals("", ChatStats.summary(0, 0, 0, 0))
     }
-
-    @Test
-    fun summaryJoinsOnlyThePartsThatExist() {
-        assertEquals("", ChatStats.summary(seconds = 0, cachedTokens = 0, promptTokens = 0, chars = 0))
-        assertEquals("回复 9秒 · 1.4k字", ChatStats.summary(seconds = 9, cachedTokens = 0, promptTokens = 0, chars = 1380))
-        assertEquals(
-            "回复 9秒 · 缓存 6.1k/8.6k · 1.4k字",
-            ChatStats.summary(seconds = 9, cachedTokens = 6100, promptTokens = 8600, chars = 1380)
-        )
+    @Test fun shortMeasurementsRetainSubsecondResolution() {
+        assertEquals("首字延迟<0.1秒 · 总用时 0.3秒", ChatStats.summary(0, 0, 0, 0, 20, 350))
+    }
+    @Test fun referencesAndWhitespaceAreNotCountedAndEmojiIsOneCharacter() {
+        assertEquals(4, ChatStats.bodyCharCount("你 好\n😀!〔REF:42:0001:S1-1〕"))
     }
 }

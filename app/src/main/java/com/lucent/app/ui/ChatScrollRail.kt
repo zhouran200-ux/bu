@@ -3,7 +3,6 @@ package com.lucent.app.ui
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.padding
@@ -29,7 +28,6 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.setProgress
@@ -41,12 +39,10 @@ fun ChatScrollRail(
     listState: LazyListState,
     itemKeys: List<String>,
     enabled: Boolean,
-    onOpenHistory: () -> Unit,
     onDragStart: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val ink = LocalOnGradient.current
-    val latestHistory by rememberUpdatedState(onOpenHistory)
     val latestDragStart by rememberUpdatedState(onDragStart)
     val measured = remember(listState) { mutableStateMapOf<Any, Int>() }
     var dragging by remember { mutableStateOf(false) }
@@ -98,13 +94,9 @@ fun ChatScrollRail(
     Box(
         modifier = modifier.width(28.dp).fillMaxHeight().padding(vertical = 8.dp)
             .semantics {
-                contentDescription = "对话快速滚动，点按打开对话记录"
+                contentDescription = "对话快速滚动"
                 progressBarRangeInfo = ProgressBarRangeInfo(position, 0f..1f)
                 setProgress { value -> latestDragStart(); seek(value.coerceIn(0f, 1f)); true }
-                onClick { latestHistory(); true }
-            }
-            .pointerInput(listState) {
-                detectTapGestures(onTap = { latestHistory() })
             }
             .pointerInput(listState) {
                 var start = 0f

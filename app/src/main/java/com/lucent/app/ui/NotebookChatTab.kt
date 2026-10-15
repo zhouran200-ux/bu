@@ -45,7 +45,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -64,6 +63,7 @@ import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material.icons.filled.Tune
@@ -476,12 +476,20 @@ fun NotebookChatTab(
             LucentToast.show(context, "找不到这条回答对应的问题，无法重新生成")
             return
         }
+        val selection = ApiProfiles.resolveSelection(savedProfiles, selectedProfileId, selectedProfileName, selectedModel)
+        if (selection == null || selection.second.isBlank() || selection.first.apiKey.isBlank()) {
+            LucentToast.show(context, "当前方案未配置有效模型或密钥，已保留原回答")
+            return
+        }
         messages[idx] = messages[idx].copy(
             content = "",
             reasoningText = null,
             answerSeconds = 0,
             promptTokens = 0,
-            cachedTokens = 0
+            cachedTokens = 0,
+            firstTokenMillis = null,
+            generationMillis = null,
+            cachedTokensKnown = false
         )
         settlePendingDelete()
         session.write { db.chatDao().deleteByIds(listOf(answerId)) }
@@ -660,7 +668,6 @@ fun NotebookChatTab(
                 listState = listState,
                 itemKeys = readingKeys,
                 enabled = active && !isImeVisible,
-                onOpenHistory = { openHistorySheet() },
                 onDragStart = {
                     followStream = false
                     viewportAnchor.userScrolled()
@@ -687,6 +694,7 @@ fun NotebookChatTab(
                         .putString("reasoning_$notebookId", it.key)
                         .apply()
                 },
+                onOpenHistory = { openHistorySheet() },
                 onOpenDialogueSettings = { showDialogueSettingsDialog = true },
                 selectedProfileName = resolvedSelection?.first?.name.orEmpty(),
                 onOpenModelPicker = { showProfileModelPickerSheet = true },
@@ -1362,6 +1370,7 @@ private fun BottomGlassComposer(
     onInputChange: (String) -> Unit,
     reasoningPreset: ReasoningPreset,
     onSelectReasoning: (ReasoningPreset) -> Unit,
+    onOpenHistory: () -> Unit,
     onOpenDialogueSettings: () -> Unit,
     selectedProfileName: String,
     onOpenModelPicker: () -> Unit,
@@ -1373,6 +1382,7 @@ private fun BottomGlassComposer(
     val onGradientMuted = LocalOnGradientMuted.current
     val accent = MaterialTheme.colorScheme.primary
     val onAccent = MaterialTheme.colorScheme.onPrimary
+    val context = LocalContext.current
     var showReasoningMenu by remember { mutableStateOf(false) }
     androidx.activity.compose.BackHandler(enabled = showReasoningMenu) { showReasoningMenu = false }
 
@@ -1414,6 +1424,7 @@ private fun BottomGlassComposer(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Row(
+                    modifier = Modifier.weight(1f).padding(end = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
@@ -1509,6 +1520,27 @@ private fun BottomGlassComposer(
 
                     Surface(
                         shape = CircleShape,
+                        color = onGradient.copy(alpha = 0.08f),
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .clickable {
+                                Haptics.tick(context)
+                                onOpenHistory()
+                            }
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                Icons.Rounded.History,
+                                contentDescription = "对话记录",
+                                tint = onGradient,
+                                modifier = Modifier.size(19.dp)
+                            )
+                        }
+                    }
+
+                    Surface(
+                        shape = CircleShape,
                         color = LocalOnGradient.current.copy(alpha = 0.08f),
                         modifier = Modifier
                             .size(36.dp)
@@ -1529,6 +1561,7 @@ private fun BottomGlassComposer(
                         shape = RoundedCornerShape(18.dp),
                         color = accent.copy(alpha = 0.22f),
                         modifier = Modifier
+                            .weight(1f)
                             .clip(RoundedCornerShape(18.dp))
                             .clickable { onOpenModelPicker() }
                             .border(1.dp, accent.copy(alpha = 0.35f), RoundedCornerShape(18.dp))
@@ -1554,7 +1587,7 @@ private fun BottomGlassComposer(
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
                                 text = selectedProfileName.ifBlank { "选择方案" },
-                                modifier = Modifier.widthIn(max = 150.dp),
+                                modifier = Modifier.weight(1f),
                                 maxLines = 1,
                                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                                 color = accent,

@@ -18,7 +18,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -35,6 +34,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
@@ -95,6 +97,11 @@ internal fun ProfileModelPickerSheet(
                 val expanded = expandedProfileId == profile.id
                 item(key = "profile:${profile.id}") {
                     if (profileIndex > 0) HorizontalDivider(color = ink.copy(alpha = 0.12f), modifier = Modifier.padding(vertical = 6.dp))
+                    val arrowRotation = animateFloatAsState(
+                        if (expanded) 90f else 0f,
+                        animationSpec = if (LocalBackgroundEnvironment.current.motionEnabled) LucentMotion.toSpring(LucentMotion.Firm) else snap(),
+                        label = "profileDisclosure"
+                    )
                     Row(
                         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
                             .background(Color.Transparent)
@@ -103,9 +110,9 @@ internal fun ProfileModelPickerSheet(
                             }.heightIn(min = 40.dp).padding(horizontal = 8.dp, vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(if (expanded) Icons.Default.KeyboardArrowDown else Icons.Default.ChevronRight,
+                        Icon(Icons.Default.ChevronRight,
                             contentDescription = if (models.isNotEmpty()) if (expanded) "收起模型列表" else "展开模型列表" else null,
-                            tint = accent, modifier = Modifier.size(20.dp))
+                            tint = accent, modifier = Modifier.size(20.dp).graphicsLayer { rotationZ = arrowRotation.value })
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
                             Text(profile.name, fontSize = 14.sp, color = ink,
@@ -123,7 +130,7 @@ internal fun ProfileModelPickerSheet(
                             Row(
                                 modifier = Modifier.fillMaxWidth().padding(start = 24.dp)
                                     .clip(RoundedCornerShape(8.dp))
-                                    .background(glassControlColor(selected = modelSelected))
+                                    .selectedCard(modelSelected, 8.dp)
                                     .selectable(selected = modelSelected, role = Role.RadioButton) {
                                         onSelect(profile, model)
                                     }

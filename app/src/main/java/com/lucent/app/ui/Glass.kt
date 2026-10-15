@@ -13,6 +13,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -176,12 +177,17 @@ fun Modifier.pressableGlass(
 
 @Composable
 fun Modifier.selectedCard(selected: Boolean, cornerRadius: Dp): Modifier = composed {
-    if (!selected) return@composed this
     val accent = MaterialTheme.colorScheme.primary
     val shape = RoundedCornerShape(cornerRadius)
-    this
-        .clip(shape)
-        .background(accent.copy(alpha = if (isDarkGlass()) 0.13f else 0.09f))
+    val enabled = LocalBackgroundEnvironment.current.motionEnabled
+    val tint = androidx.compose.animation.animateColorAsState(
+        targetValue = if (selected) accent.copy(alpha = if (isDarkGlass()) 0.13f else 0.09f) else Color.Transparent,
+        animationSpec = if (enabled) androidx.compose.animation.core.tween(160) else androidx.compose.animation.core.snap(),
+        label = "selectionWash"
+    )
+    this.clip(shape).drawBehind {
+        drawRoundRect(color = tint.value, cornerRadius = androidx.compose.ui.geometry.CornerRadius(cornerRadius.toPx()))
+    }
 }
 
 enum class PaletteGroup { DAWN, BLOSSOM, EVERGREEN, AQUA, SUNFIRE, VIVID, EARTH, VELVET }

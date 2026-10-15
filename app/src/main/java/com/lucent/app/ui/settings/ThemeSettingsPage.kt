@@ -1,6 +1,5 @@
 package com.lucent.app.ui.settings
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -29,6 +28,11 @@ import com.lucent.app.ui.LucentThemeMode
 import com.lucent.app.ui.LucentThemeSection
 import com.lucent.app.ui.LucentTitles
 import com.lucent.app.ui.PaletteSwatch
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.ui.semantics.Role
+import com.lucent.app.ui.selectedCard
 import com.lucent.app.ui.frostedGlass
 import com.lucent.app.ui.rememberDynamicColorActive
 import com.lucent.app.ui.rememberPureWhiteActive
@@ -56,7 +60,9 @@ internal fun ThemeSettingsPage(repo: SettingsRepository) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable(enabled = !locked) {
+                        .clip(RoundedCornerShape(12.dp))
+                        .selectedCard(savedTheme == mode.key, 12.dp)
+                        .selectable(selected = savedTheme == mode.key, enabled = !locked, role = Role.RadioButton) {
                             SettingsCache.themeMode = mode.key
                             AppScope.io.launch { repo.setThemeMode(mode.key) }
                         }
@@ -66,12 +72,7 @@ internal fun ThemeSettingsPage(repo: SettingsRepository) {
                     RadioButton(
                         selected = savedTheme == mode.key,
                         enabled = !locked,
-                        onClick = {
-                            if (!locked) {
-                                SettingsCache.themeMode = mode.key
-                                AppScope.io.launch { repo.setThemeMode(mode.key) }
-                            }
-                        }
+                        onClick = null
                     )
                     Box(modifier = Modifier.alpha(lockAlpha)) {
                         PaletteSwatch(mode.swatch())

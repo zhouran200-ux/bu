@@ -44,7 +44,8 @@ import com.lucent.app.ui.LucentTitles
 import com.lucent.app.ui.SYSTEM_FONT_KEY
 import com.lucent.app.ui.StepperSlider
 import com.lucent.app.ui.frostedGlass
-import com.lucent.app.ui.glassPanel
+import com.lucent.app.ui.glassPanelColor
+import com.lucent.app.ui.glassPopupPanel
 import kotlinx.coroutines.Dispatchers
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
@@ -497,7 +498,7 @@ internal fun FontSettingsPage(
                 modifier = Modifier
                     .fillMaxWidth()
                     .imePadding()
-                    .glassPanel(20.dp)
+                    .glassPopupPanel(20.dp)
                     .padding(20.dp)
             ) {
                 Text(S.fontNameTitle, fontSize = LucentTitles.ItemSize, fontWeight = LucentTitles.ItemWeight, color = onGradient)
@@ -534,8 +535,7 @@ internal fun FontSettingsPage(
 
     fontPendingDelete?.let { slot ->
         AlertDialog(
-            modifier = Modifier.glassPanel(24.dp),
-            containerColor = Color.Transparent,
+            containerColor = glassPanelColor(),
             tonalElevation = 0.dp,
             onDismissRequest = { fontPendingDelete = null },
             shape = RoundedCornerShape(24.dp),

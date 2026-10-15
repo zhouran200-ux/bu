@@ -21,9 +21,11 @@ import androidx.compose.ui.unit.IntOffset
 import kotlin.math.roundToInt
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreVert
@@ -120,8 +122,8 @@ fun NotebooksScreen(
 
     deleting?.let { notebook ->
         AlertDialog(
-            modifier = Modifier.glassPanel(24.dp),
-            containerColor = Color.Transparent,
+            shape = RoundedCornerShape(24.dp),
+            containerColor = glassPanelColor(),
             tonalElevation = 0.dp,
             onDismissRequest = { deleting = null },
             title = { KeepKeyboardForNonEditingDialog(); Text(com.lucent.app.i18n.S.notebookDeleteTitle, fontSize = LucentTitles.EntrySize, fontWeight = LucentTitles.EntryWeight) },
@@ -245,6 +247,7 @@ fun NotebooksScreen(
                                 if (reorderState.dragging && reorderState.draggingId == notebook.id) alpha = 0f
                             },
                         interactive = !reorderState.dragging,
+                        listScrolling = listState.isScrollInProgress,
                         onOpen = { openNotebookId = notebook.id },
                         onRename = { renaming = notebook },
                         onDelete = { deleting = notebook }
@@ -287,6 +290,7 @@ private fun NotebookShelfItem(
     sourceCount: Int,
     itemModifier: Modifier,
     interactive: Boolean = true,
+    listScrolling: Boolean = false,
     onOpen: () -> Unit,
     onRename: () -> Unit,
     onDelete: () -> Unit
@@ -297,6 +301,7 @@ private fun NotebookShelfItem(
     var menuOpen by remember { mutableStateOf(false) }
     BackHandler(enabled = interactive && menuOpen) { menuOpen = false }
     LaunchedEffect(interactive) { if (!interactive) menuOpen = false }
+    LaunchedEffect(listScrolling) { if (listScrolling) menuOpen = false }
     val title = notebook.title.ifBlank { com.lucent.app.i18n.S.notebookEmptyTitle }
     val formattedDate = remember(notebook.updatedAt) { formatMonthDateTime(notebook.updatedAt) }
 
@@ -344,10 +349,12 @@ private fun NotebookShelfItem(
                 )
             }
             androidx.compose.material3.DropdownMenu(
-                modifier = Modifier.glassPanel(20.dp),
-                containerColor = Color.Transparent,
+                modifier = Modifier.widthIn(min = 176.dp),
+                shape = RoundedCornerShape(16.dp),
+                containerColor = glassPanelColor(),
                 tonalElevation = 0.dp,
                 shadowElevation = 8.dp,
+                border = glassPopupBorder(),
                 expanded = interactive && menuOpen,
                 onDismissRequest = { menuOpen = false },
                 properties = NonEditingPopupProperties
@@ -406,7 +413,7 @@ internal fun NotebookNameDialog(
             modifier = Modifier
                 .fillMaxWidth()
                 .imePadding()
-                .glassPanel(24.dp)
+                .glassPopupPanel(24.dp)
                 .padding(20.dp)
         ) {
             Text(title, fontSize = LucentTitles.EntrySize, fontWeight = LucentTitles.EntryWeight, color = LocalOnGradient.current)

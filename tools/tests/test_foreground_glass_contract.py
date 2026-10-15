@@ -4,6 +4,15 @@ import unittest
 ROOT = Path(__file__).resolve().parents[2]
 UI = ROOT / "app/src/main/java/com/lucent/app/ui"
 
+POPUP_FILES = {
+    "ChatHistorySheet.kt": UI / "ChatHistorySheet.kt",
+    "ProfileModelPickerSheet.kt": UI / "ProfileModelPickerSheet.kt",
+    "SettingsComponents.kt": UI / "SettingsComponents.kt",
+    "NotebooksScreen.kt": UI / "NotebooksScreen.kt",
+    "NotebookChatTab.kt": UI / "NotebookChatTab.kt",
+    "FontSettingsPage.kt": UI / "settings/FontSettingsPage.kt",
+}
+
 
 class ForegroundGlassContractTest(unittest.TestCase):
     def test_cards_have_real_background_sampling_and_pure_white_bypass(self):
@@ -21,14 +30,32 @@ class ForegroundGlassContractTest(unittest.TestCase):
         self.assertIn(".hazeSource(state = glassBackdrop)", main)
         self.assertNotIn("HazeMaterials.ultraThin", main)
 
-    def test_popups_use_stable_panel_and_keep_drawer_gestures(self):
+    def test_popups_let_material_own_position_and_size(self):
+        material = (UI / "ForegroundGlass.kt").read_text(encoding="utf-8")
+        self.assertNotIn("fun Modifier.glassPanel(", material)
+        self.assertIn("fun Modifier.glassPopupPanel(", material)
+        for name, path in POPUP_FILES.items():
+            text = path.read_text(encoding="utf-8")
+            self.assertNotIn("Modifier.glassPanel(", text, name)
         for name in ("ChatHistorySheet.kt", "ProfileModelPickerSheet.kt", "SettingsComponents.kt"):
-            text = (UI / name).read_text(encoding="utf-8")
-            self.assertIn(".glassPanel(", text)
-            self.assertIn("containerColor = Color.Transparent", text)
-        picker = (UI / "ProfileModelPickerSheet.kt").read_text(encoding="utf-8")
+            text = POPUP_FILES[name].read_text(encoding="utf-8")
+            self.assertIn("containerColor = glassPanelColor()", text)
+        dialogs = POPUP_FILES["NotebooksScreen.kt"].read_text(encoding="utf-8") + POPUP_FILES["FontSettingsPage.kt"].read_text(encoding="utf-8")
+        self.assertIn("glassPopupPanel(", dialogs)
+        self.assertIn("containerColor = glassPanelColor()", dialogs)
+        chat = POPUP_FILES["NotebookChatTab.kt"].read_text(encoding="utf-8")
+        self.assertIn("border = glassPopupBorder()", chat)
+        self.assertIn("containerColor = glassPanelColor()", chat)
+
+    def test_tall_sheets_stay_within_the_available_height(self):
+        for name in ("ProfileModelPickerSheet.kt", "SettingsComponents.kt", "NotebookChatTab.kt"):
+            text = POPUP_FILES[name].read_text(encoding="utf-8")
+            self.assertIn("sheetContentHeightLimit()", text)
+        picker = POPUP_FILES["ProfileModelPickerSheet.kt"].read_text(encoding="utf-8")
         self.assertIn("sheetGesturesEnabled = false", picker)
         self.assertIn("dragHandle = drawer.handle", picker)
+        notebooks = POPUP_FILES["NotebooksScreen.kt"].read_text(encoding="utf-8")
+        self.assertIn("LaunchedEffect(listScrolling) { if (listScrolling) menuOpen = false }", notebooks)
 
 
 if __name__ == "__main__":

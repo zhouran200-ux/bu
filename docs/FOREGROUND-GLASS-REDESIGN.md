@@ -22,3 +22,14 @@
 41类321项JVM测试零失败；Release Kotlin编译通过；36项Python契约通过，123个Kotlin文件源码卫生、嵌套滚动扫描通过。材质测试只验证参数与路由，不等于视觉截图验收。Android lintDebug通过（0错误、8警告、1提示；baseline另过滤28警告5提示），告警包括已有scroll rail频繁状态读取、KTX与版本目录建议，不将其说成零警告。移除旧preset依赖后JVM与Release另行集中验证，不重复设备测试。未本地打包APK。真机需检查浅/深/纯白/动态色下长文可读性、菜单/键盘/抽屉、列表帧率与多卡blur性能；低平台Haze fallback使用更厚tint，不承诺所有Android有相同模糊表现。
 
 上轮82d9dfe的check与APK均成功；这不是当前提交云端结果。
+
+## 弹窗容器交回 Material 管理（后续修正）
+
+上一轮把 glassPanel 套在 DropdownMenu/AlertDialog/ModalBottomSheet 上，导致三类实际故障：
+
+1. DropdownMenu 的 modifier 作用于 Material Surface 内部的 Column，自绘阴影会被外层面板裁掉，描边与高光被切。
+2. containerColor=Transparent 让菜单失去 Material 自己的容器，尺寸与边缘由自绘层决定，长文本项在 280dp 上限下更易被截断。
+3. 底部弹窗内容只有硬编码高度（如 520dp）且没有可用高度上限；键盘弹出时下半截直接超出面板被裁。
+
+现改为：菜单/对话框/弹窗统一使用 Material 参数 shape、containerColor=glassPanelColor()、tonalElevation、shadowElevation、border=glassPopupBorder()，不再传自绘 modifier；底部弹窗用 sheetContentHeightLimit() 依据屏幕高度限制内容，对话设置弹窗内容可滚动；笔记 ⋯ 菜单在列表滚动时主动关闭，避免弹窗停留在旧位置。自绘面板仅保留给自定义命名 Dialog（glassPopupPanel，不带自绘阴影）。glassPanel 已无调用方，按死代码清理。
+

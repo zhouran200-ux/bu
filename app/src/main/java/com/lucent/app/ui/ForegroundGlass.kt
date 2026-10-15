@@ -1,6 +1,7 @@
 package com.lucent.app.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -13,6 +14,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.chrisbanes.haze.HazeState
@@ -55,18 +57,20 @@ internal fun glassPanelColor(): Color =
     if (LocalPureWhite.current) LucentGlass.PureWhiteSurface
     else lerp(lucentPanelBackground(), LocalOnGradient.current, if (isDarkGlass()) 0.07f else 0.015f)
 
-internal fun Modifier.glassPanel(cornerRadius: Dp = 24.dp): Modifier = composed {
+internal fun Modifier.glassPopupPanel(cornerRadius: Dp = 20.dp): Modifier = composed {
     val shape = RoundedCornerShape(cornerRadius)
-    val pureWhite = LocalPureWhite.current
-    val rim = foregroundRim()
-    shadow(8.dp, shape, clip = false, ambientColor = Color.Black.copy(alpha = 0.05f),
-        spotColor = Color.Black.copy(alpha = 0.08f))
-        .clip(shape)
+    clip(shape)
         .background(glassPanelColor())
-        .then(if (pureWhite) Modifier else Modifier.background(Brush.verticalGradient(listOf(
-            Color.White.copy(alpha = 0.045f), Color.Transparent
-        ))))
-        .border(0.75.dp, rim, shape)
+        .border(0.75.dp, foregroundRim(), shape)
+}
+
+@Composable
+internal fun glassPopupBorder(): BorderStroke = BorderStroke(0.75.dp, foregroundRim())
+
+@Composable
+internal fun sheetContentHeightLimit(): Dp {
+    val screen = LocalConfiguration.current.screenHeightDp.dp
+    return (screen * 0.55f).coerceIn(200.dp, 520.dp)
 }
 
 internal fun Modifier.foregroundGlass(cornerRadius: Dp = 20.dp, reading: Boolean = false): Modifier = composed {

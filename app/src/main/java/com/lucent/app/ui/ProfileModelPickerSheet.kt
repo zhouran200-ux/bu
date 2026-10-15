@@ -72,16 +72,17 @@ internal fun ProfileModelPickerSheet(
     ModalBottomSheet(
         onDismissRequest = { latestDismiss() },
         sheetState = sheetState,
-        containerColor = Color.Transparent,
+        containerColor = glassPanelColor(),
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
         tonalElevation = 0.dp,
-        modifier = drawer.modifier.glassPanel(),
+        modifier = drawer.modifier,
         sheetGesturesEnabled = false,
         dragHandle = drawer.handle
     ) {
         KeepKeyboardForNonEditingDialog()
         LazyColumn(
             state = listState,
-            modifier = Modifier.fillMaxWidth().heightIn(max = 520.dp).padding(horizontal = 16.dp),
+            modifier = Modifier.fillMaxWidth().heightIn(max = sheetContentHeightLimit()).padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             item(key = "title") {

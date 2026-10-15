@@ -71,8 +71,8 @@ internal fun ChatHistorySheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        containerColor = Color.Transparent,
-        modifier = Modifier.glassPanel(),
+        containerColor = glassPanelColor(),
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
         tonalElevation = 0.dp,
         sheetGesturesEnabled = true,
         dragHandle = { BottomSheetDefaults.DragHandle() }

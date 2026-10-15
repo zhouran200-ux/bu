@@ -44,6 +44,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
@@ -1183,8 +1184,8 @@ private fun EditMessageDialog(
     val inputFocus = remember { androidx.compose.ui.focus.FocusRequester() }
 
     AlertDialog(
-        modifier = Modifier.glassPanel(24.dp),
-        containerColor = Color.Transparent,
+        shape = RoundedCornerShape(24.dp),
+        containerColor = glassPanelColor(),
         tonalElevation = 0.dp,
         onDismissRequest = onDismiss,
         title = { Text(title, fontSize = LucentTitles.SectionSize, fontWeight = LucentTitles.SectionWeight) },
@@ -1463,10 +1464,12 @@ private fun BottomGlassComposer(
                             expanded = showReasoningMenu,
                             onDismissRequest = { showReasoningMenu = false },
                             properties = NonEditingPopupProperties,
-                            modifier = Modifier.glassPanel(20.dp),
-                            containerColor = Color.Transparent,
+                            modifier = Modifier.widthIn(min = 176.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            containerColor = glassPanelColor(),
                             tonalElevation = 0.dp,
-                            shadowElevation = 8.dp
+                            shadowElevation = 8.dp,
+                            border = glassPopupBorder(),
                         ) {
                             Text(
                                 text = "思考强度",
@@ -1660,8 +1663,8 @@ private fun DialogueSettingsSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        modifier = Modifier.glassPanel(),
-        containerColor = Color.Transparent,
+        containerColor = glassPanelColor(),
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
         tonalElevation = 0.dp,
         sheetGesturesEnabled = true,
         dragHandle = { BottomSheetDefaults.DragHandle() }
@@ -1671,6 +1674,8 @@ private fun DialogueSettingsSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .imePadding()
+                .heightIn(max = sheetContentHeightLimit())
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp)
                 .padding(bottom = 28.dp)
         ) {

@@ -225,10 +225,10 @@ internal fun ApiModelPickerDialog(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        containerColor = Color.Transparent,
+        containerColor = glassPanelColor(),
         tonalElevation = 0.dp,
         shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-        modifier = drawer.modifier.glassPanel(),
+        modifier = drawer.modifier,
         sheetGesturesEnabled = false,
         dragHandle = drawer.handle
     ) {
@@ -328,7 +328,7 @@ internal fun ApiModelPickerDialog(
                     LazyColumn(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .heightIn(min = 120.dp, max = 340.dp),
+                            .heightIn(min = 120.dp, max = minOf(340.dp, sheetContentHeightLimit())),
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         items(names, key = { it }) { name ->

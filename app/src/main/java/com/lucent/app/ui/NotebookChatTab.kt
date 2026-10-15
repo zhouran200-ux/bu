@@ -966,7 +966,7 @@ private fun AiMessageCard(
                 color = Color.Transparent,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .frostedGlass(cornerRadius = 18.dp)
+                    .foregroundGlass(cornerRadius = 18.dp, reading = true)
             ) {
                 SelectionContainer {
                     Column(modifier = Modifier.padding(16.dp)) {
@@ -1191,6 +1191,9 @@ private fun EditMessageDialog(
     val inputFocus = remember { androidx.compose.ui.focus.FocusRequester() }
 
     AlertDialog(
+        modifier = Modifier.glassPanel(24.dp),
+        containerColor = Color.Transparent,
+        tonalElevation = 0.dp,
         onDismissRequest = onDismiss,
         title = { Text(title, fontSize = LucentTitles.SectionSize, fontWeight = LucentTitles.SectionWeight) },
         text = {
@@ -1388,9 +1391,9 @@ private fun BottomGlassComposer(
 
     Surface(
         shape = RoundedCornerShape(24.dp),
-        color = if (isDarkGlass()) MaterialTheme.colorScheme.surface else Color.White,
+        color = Color.Transparent,
         shadowElevation = 0.dp,
-        modifier = modifier.clip(RoundedCornerShape(24.dp)).frostedGlass(cornerRadius = 24.dp)
+        modifier = modifier.foregroundGlass(cornerRadius = 24.dp, reading = true)
     ) {
         Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
             BasicTextField(
@@ -1467,7 +1470,11 @@ private fun BottomGlassComposer(
                         DropdownMenu(
                             expanded = showReasoningMenu,
                             onDismissRequest = { showReasoningMenu = false },
-                            properties = NonEditingPopupProperties
+                            properties = NonEditingPopupProperties,
+                            modifier = Modifier.glassPanel(20.dp),
+                            containerColor = Color.Transparent,
+                            tonalElevation = 0.dp,
+                            shadowElevation = 8.dp
                         ) {
                             Text(
                                 text = "思考强度",
@@ -1520,7 +1527,7 @@ private fun BottomGlassComposer(
 
                     Surface(
                         shape = CircleShape,
-                        color = onGradient.copy(alpha = 0.08f),
+                        color = glassControlColor(),
                         modifier = Modifier
                             .size(36.dp)
                             .clip(CircleShape)
@@ -1541,7 +1548,7 @@ private fun BottomGlassComposer(
 
                     Surface(
                         shape = CircleShape,
-                        color = LocalOnGradient.current.copy(alpha = 0.08f),
+                        color = glassControlColor(),
                         modifier = Modifier
                             .size(36.dp)
                             .clip(CircleShape)
@@ -1559,12 +1566,11 @@ private fun BottomGlassComposer(
 
                     Surface(
                         shape = RoundedCornerShape(18.dp),
-                        color = accent.copy(alpha = 0.22f),
+                        color = glassControlColor(selected = true),
                         modifier = Modifier
                             .weight(1f)
                             .clip(RoundedCornerShape(18.dp))
                             .clickable { onOpenModelPicker() }
-                            .border(1.dp, accent.copy(alpha = 0.35f), RoundedCornerShape(18.dp))
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -1662,7 +1668,9 @@ private fun DialogueSettingsSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        containerColor = lucentPanelBackground(),
+        modifier = Modifier.glassPanel(),
+        containerColor = Color.Transparent,
+        tonalElevation = 0.dp,
         sheetGesturesEnabled = true,
         dragHandle = { BottomSheetDefaults.DragHandle() }
     ) {
@@ -1714,10 +1722,10 @@ private fun DialogueSettingsSheet(
 
             Surface(
                 shape = RoundedCornerShape(18.dp),
-                color = ink.copy(alpha = 0.05f),
+                color = glassControlColor(),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .border(1.dp, lucentGlassRim(), RoundedCornerShape(18.dp))
+                    .clip(RoundedCornerShape(18.dp))
             ) {
                 Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
                     BasicTextField(
@@ -1765,10 +1773,10 @@ private fun DialogueSettingsSheet(
 
             Surface(
                 shape = RoundedCornerShape(18.dp),
-                color = ink.copy(alpha = 0.05f),
+                color = glassControlColor(),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .border(1.dp, lucentGlassRim(), RoundedCornerShape(18.dp))
+                    .clip(RoundedCornerShape(18.dp))
             ) {
                 Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)) {
                     StepperSlider(

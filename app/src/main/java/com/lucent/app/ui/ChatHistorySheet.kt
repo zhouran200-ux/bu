@@ -71,7 +71,9 @@ internal fun ChatHistorySheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        containerColor = lucentPanelBackground(),
+        containerColor = Color.Transparent,
+        modifier = Modifier.glassPanel(),
+        tonalElevation = 0.dp,
         sheetGesturesEnabled = true,
         dragHandle = { BottomSheetDefaults.DragHandle() }
     ) {
@@ -207,7 +209,7 @@ private fun JumpChip(
         horizontalArrangement = Arrangement.Center,
         modifier = modifier
             .clip(RoundedCornerShape(14.dp))
-            .background(ink.copy(alpha = 0.06f * fade))
+            .background(glassControlColor().copy(alpha = fade))
             .border(1.dp, lucentGlassRim(), RoundedCornerShape(14.dp))
             .clickable(enabled = enabled) { onClick() }
             .padding(vertical = 10.dp)
@@ -231,7 +233,7 @@ private fun HistoryRow(
     muted: Color,
     onClick: () -> Unit
 ) {
-    val bg = if (current) accent.copy(alpha = 0.12f) else ink.copy(alpha = 0.045f)
+    val bg = glassControlColor(selected = current)
     val border = if (current) accent.copy(alpha = 0.5f) else Color.Transparent
     Row(
         verticalAlignment = Alignment.Top,

@@ -133,7 +133,6 @@ dependencies {
     implementation(libs.androidx.profileinstaller)
 
     implementation(libs.haze)
-    implementation(libs.haze.materials)
 
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit")
     testImplementation(libs.org.json)

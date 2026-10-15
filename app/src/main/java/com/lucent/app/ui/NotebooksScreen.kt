@@ -1,7 +1,6 @@
 package com.lucent.app.ui
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,7 +14,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -41,7 +39,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
@@ -55,7 +53,6 @@ import com.lucent.app.BackClaim
 import com.lucent.app.data.AppDatabase
 import com.lucent.app.data.Notebook
 import com.lucent.app.data.NotebookPurge
-import dev.chrisbanes.haze.hazeSource
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -112,6 +109,9 @@ fun NotebooksScreen(
 
     deleting?.let { notebook ->
         AlertDialog(
+            modifier = Modifier.glassPanel(24.dp),
+            containerColor = Color.Transparent,
+            tonalElevation = 0.dp,
             onDismissRequest = { deleting = null },
             title = { KeepKeyboardForNonEditingDialog(); Text(com.lucent.app.i18n.S.notebookDeleteTitle, fontSize = LucentTitles.EntrySize, fontWeight = LucentTitles.EntryWeight) },
             text = { Text(com.lucent.app.i18n.S.notebookDeleteBody(notebook.title.ifBlank { com.lucent.app.i18n.S.notebookEmptyTitle })) },
@@ -212,7 +212,7 @@ fun NotebooksScreen(
 
         LazyColumn(
             state = listState,
-            modifier = Modifier.fillMaxSize().hazeSource(state = LocalHazeState.current),
+            modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(12.dp),
             contentPadding = PaddingValues(top = 8.dp, bottom = LocalBottomBarInset.current + 12.dp)
         ) {
@@ -311,6 +311,10 @@ private fun NotebookShelfItem(
                 )
             }
             androidx.compose.material3.DropdownMenu(
+                modifier = Modifier.glassPanel(20.dp),
+                containerColor = Color.Transparent,
+                tonalElevation = 0.dp,
+                shadowElevation = 8.dp,
                 expanded = menuOpen,
                 onDismissRequest = { menuOpen = false },
                 properties = NonEditingPopupProperties
@@ -369,8 +373,7 @@ internal fun NotebookNameDialog(
             modifier = Modifier
                 .fillMaxWidth()
                 .imePadding()
-                .clip(RoundedCornerShape(24.dp))
-                .background(lucentPanelBackground())
+                .glassPanel(24.dp)
                 .padding(20.dp)
         ) {
             Text(title, fontSize = LucentTitles.EntrySize, fontWeight = LucentTitles.EntryWeight, color = LocalOnGradient.current)

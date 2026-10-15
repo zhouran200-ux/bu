@@ -225,9 +225,10 @@ internal fun ApiModelPickerDialog(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        containerColor = lucentPanelBackground(),
+        containerColor = Color.Transparent,
+        tonalElevation = 0.dp,
         shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-        modifier = drawer.modifier,
+        modifier = drawer.modifier.glassPanel(),
         sheetGesturesEnabled = false,
         dragHandle = drawer.handle
     ) {
@@ -279,7 +280,7 @@ internal fun ApiModelPickerDialog(
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(6.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .background(glassControlColor())
                         .clickable { draft = draft + names }
                         .padding(horizontal = 8.dp, vertical = 2.dp)
                 ) {
@@ -294,7 +295,7 @@ internal fun ApiModelPickerDialog(
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(6.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .background(glassControlColor())
                         .clickable { draft = emptySet() }
                         .padding(horizontal = 8.dp, vertical = 2.dp)
                 ) {
@@ -332,11 +333,7 @@ internal fun ApiModelPickerDialog(
                     ) {
                         items(names, key = { it }) { name ->
                             val checked = name in draft
-                            val itemBg = if (checked) {
-                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
-                            } else {
-                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
-                            }
+                            val itemBg = glassControlColor(selected = checked)
                             val itemBorder = if (checked) {
                                 MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
                             } else {

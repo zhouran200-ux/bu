@@ -35,7 +35,6 @@ import com.lucent.app.ui.settings.BackgroundSettingsPage
 import com.lucent.app.ui.settings.FontSettingsPage
 import com.lucent.app.ui.settings.RootSettingsPage
 import com.lucent.app.ui.settings.ThemeSettingsPage
-import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -183,7 +182,6 @@ fun SettingsScreen(active: Boolean = true) {
             .fillMaxSize()
             .imePadding()
             .verticalScroll(rootScroll)
-            .hazeSource(state = LocalHazeState.current)
             .padding(16.dp)
             .padding(bottom = if (imeVisible) 0.dp else LocalBottomBarInset.current)
     ) {

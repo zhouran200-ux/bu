@@ -1,38 +1,27 @@
 package com.lucent.app.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import dev.chrisbanes.haze.HazeState
 
-val LocalHazeState = compositionLocalOf { HazeState() }
 val LocalOnGradient = compositionLocalOf { Color.White }
 val LocalOnGradientMuted = compositionLocalOf { Color.White.copy(alpha = 0.65f) }
 val LocalPureWhite = compositionLocalOf { false }
@@ -41,15 +30,6 @@ val LocalBottomBarInset = compositionLocalOf { 0.dp }
 val LocalBackdropColor = compositionLocalOf { Color(0xFF0E0E14) }
 
 object LucentGlass {
-    val HazeContainerDark = Color(0xFF0E0E14)
-    val HazeContainerLight = Color(0xFFF6F5FA)
-
-    const val CARD_FILL_DARK = 0.09f
-    const val CARD_FILL_LIGHT = 0.15f
-
-    const val BLURRED_FILL_DARK = 0.06f
-    const val BLURRED_FILL_LIGHT = 0.14f
-
     val PureWhitePage = Color(0xFFF7F7F8)
     val PureWhiteSurface = Color(0xFFFFFFFF)
     val PureWhiteInk = Color(0xFF1A1D21)
@@ -175,43 +155,9 @@ fun pureWhiteScheme(base: ColorScheme): ColorScheme {
 }
 
 @Composable
-fun lucentGlassRim(strong: Boolean = false): Brush {
-    if (LocalPureWhite.current) return SolidColor(LucentGlass.PureWhiteDivider)
-    val dark = isDarkGlass()
-    val ink = LocalOnGradient.current
-    return if (dark) {
-        Brush.verticalGradient(
-            listOf(
-                Color.White.copy(alpha = if (strong) 0.42f else 0.32f),
-                Color.White.copy(alpha = 0.14f),
-                Color.White.copy(alpha = 0.08f)
-            )
-        )
-    } else {
-        SolidColor(ink.copy(alpha = if (strong) 0.20f else 0.16f))
-    }
-}
+fun lucentGlassRim(strong: Boolean = false): Brush = foregroundRim(strong)
 
-fun Modifier.frostedGlass(cornerRadius: Dp = 20.dp): Modifier = composed {
-    val shape = RoundedCornerShape(cornerRadius)
-    if (LocalPureWhite.current) {
-        return@composed shadow(
-            elevation = 6.dp,
-            shape = shape,
-            clip = false,
-            ambientColor = LucentGlass.PureWhiteShadowAmbient,
-            spotColor = LucentGlass.PureWhiteShadowSpot
-        )
-            .clip(shape)
-            .background(LucentGlass.PureWhiteSurface)
-            .border(1.dp, LucentGlass.PureWhiteDivider, shape)
-    }
-    val fillAlpha = if (isDarkGlass()) LucentGlass.CARD_FILL_DARK else LucentGlass.CARD_FILL_LIGHT
-
-    clip(shape)
-        .background(Color.White.copy(alpha = fillAlpha))
-        .border(1.dp, lucentGlassRim(), shape)
-}
+fun Modifier.frostedGlass(cornerRadius: Dp = 20.dp): Modifier = foregroundGlass(cornerRadius)
 
 @Composable
 fun Modifier.pressableGlass(
@@ -220,71 +166,18 @@ fun Modifier.pressableGlass(
     enabled: Boolean = true,
     emphasized: Boolean = false
 ): Modifier {
-    val shape = RoundedCornerShape(cornerRadius)
-    val dark = isDarkGlass()
-    val pureWhite = LocalPureWhite.current
-    val accent = MaterialTheme.colorScheme.primary
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
-    val targetScale = if (pressed && enabled) 0.97f else 1f
     val scale by androidx.compose.animation.core.animateFloatAsState(
-        targetValue = targetScale,
+        targetValue = if (pressed && enabled) 0.985f else 1f,
         animationSpec = LucentMotion.toSpring(LucentMotion.Settle),
-        label = "pressScale"
+        label = "glassPressScale"
     )
-    if (pureWhite) {
-        val pressWash by androidx.compose.animation.core.animateFloatAsState(
-            targetValue = if (pressed && enabled) 1f else 0f,
-            animationSpec = LucentMotion.toSpring(LucentMotion.Settle),
-            label = "pressWashWhite"
-        )
-        val fill = lerp(LucentGlass.PureWhiteSurface, Color(0xFFECECED), pressWash)
-        return this
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-            }
-            .shadow(
-                elevation = if (emphasized) 8.dp else 6.dp,
-                shape = shape,
-                clip = false,
-                ambientColor = LucentGlass.PureWhiteShadowAmbient,
-                spotColor = LucentGlass.PureWhiteShadowSpot
-            )
-            .clip(shape)
-            .background(fill)
-            .border(1.dp, LucentGlass.PureWhiteDivider, shape)
-            .clickable(
-                interactionSource = interaction,
-                indication = null,
-                enabled = enabled
-            ) { onClick() }
-    }
-    val baseFill = if (dark) LucentGlass.CARD_FILL_DARK else LucentGlass.CARD_FILL_LIGHT
-    val pressWash by androidx.compose.animation.core.animateFloatAsState(
-        targetValue = if (pressed && enabled) 1f else 0f,
-        animationSpec = LucentMotion.toSpring(LucentMotion.Settle),
-        label = "pressWash"
-    )
-    val fill = lerp(
-        Color.White.copy(alpha = baseFill),
-        accent.copy(alpha = if (dark) 0.20f else 0.14f),
-        pressWash * if (emphasized) 0.9f else 0.6f
-    )
-    val rim = if (emphasized) lucentGlassRim(strong = true) else lucentGlassRim()
-    return this
-        .graphicsLayer {
-            scaleX = scale
-            scaleY = scale
-        }
-        .clip(shape)
-        .background(fill)
-        .border(1.dp, rim, shape)
-        .clickable(
-            interactionSource = interaction,
-            indication = null,
-            enabled = enabled
-        ) { onClick() }
+    val shape = RoundedCornerShape(cornerRadius)
+    return this.graphicsLayer { scaleX = scale; scaleY = scale }
+        .foregroundGlass(cornerRadius)
+        .background(if ((pressed && enabled) || emphasized) glassControlColor(true) else Color.Transparent, shape)
+        .clickable(interactionSource = interaction, indication = null, enabled = enabled) { onClick() }
 }
 
 @Composable
@@ -294,8 +187,7 @@ fun Modifier.selectedCard(selected: Boolean, cornerRadius: Dp): Modifier = compo
     val shape = RoundedCornerShape(cornerRadius)
     this
         .clip(shape)
-        .background(accent.copy(alpha = if (isDarkGlass()) 0.26f else 0.16f))
-        .border(1.5.dp, accent, shape)
+        .background(accent.copy(alpha = if (isDarkGlass()) 0.13f else 0.09f))
 }
 
 enum class PaletteGroup { DAWN, BLOSSOM, EVERGREEN, AQUA, SUNFIRE, VIVID, EARTH, VELVET }

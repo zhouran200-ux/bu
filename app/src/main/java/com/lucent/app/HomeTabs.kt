@@ -23,7 +23,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -38,12 +37,10 @@ import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.lucent.app.ui.LocalHazeState
 import com.lucent.app.ui.LocalOnGradient
 import com.lucent.app.ui.LocalOnGradientMuted
 import com.lucent.app.ui.NotebooksScreen
 import com.lucent.app.ui.SettingsScreen
-import dev.chrisbanes.haze.rememberHazeState
 
 enum class HomeTab {
     Notebooks, Settings;
@@ -137,7 +134,6 @@ fun iconFor(tab: HomeTab): ImageVector = when (tab) {
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun KeepAliveTabs(active: Screen, pagerState: PagerState, modifier: Modifier = Modifier) {
-    val sharedHaze = LocalHazeState.current
     val tabs = HomeTab.entries
     val activeTab = HomeTab.of(active)
 
@@ -163,15 +159,10 @@ internal fun KeepAliveTabs(active: Screen, pagerState: PagerState, modifier: Mod
         val tab = tabs[page]
         val isActive = tab == activeTab
         key(tab) {
-            val dummyHaze = rememberHazeState()
             Box(modifier = Modifier.fillMaxSize()) {
-                CompositionLocalProvider(
-                    LocalHazeState provides (if (isActive) sharedHaze else dummyHaze)
-                ) {
-                    when (tab) {
-                        HomeTab.Notebooks -> NotebooksScreen(active = isActive)
-                        HomeTab.Settings -> SettingsScreen(active = isActive)
-                    }
+                when (tab) {
+                    HomeTab.Notebooks -> NotebooksScreen(active = isActive)
+                    HomeTab.Settings -> SettingsScreen(active = isActive)
                 }
             }
         }

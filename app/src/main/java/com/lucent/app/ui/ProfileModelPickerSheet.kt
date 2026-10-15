@@ -70,8 +70,9 @@ internal fun ProfileModelPickerSheet(
     ModalBottomSheet(
         onDismissRequest = { latestDismiss() },
         sheetState = sheetState,
-        containerColor = lucentPanelBackground(),
-        modifier = drawer.modifier,
+        containerColor = Color.Transparent,
+        tonalElevation = 0.dp,
+        modifier = drawer.modifier.glassPanel(),
         sheetGesturesEnabled = false,
         dragHandle = drawer.handle
     ) {
@@ -122,7 +123,7 @@ internal fun ProfileModelPickerSheet(
                             Row(
                                 modifier = Modifier.fillMaxWidth().padding(start = 24.dp)
                                     .clip(RoundedCornerShape(8.dp))
-                                    .background(if (modelSelected) ink.copy(alpha = 0.12f) else Color.Transparent)
+                                    .background(glassControlColor(selected = modelSelected))
                                     .selectable(selected = modelSelected, role = Role.RadioButton) {
                                         onSelect(profile, model)
                                     }
@@ -140,7 +141,7 @@ internal fun ProfileModelPickerSheet(
             item(key = "manage") {
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp)
-                        .clip(RoundedCornerShape(12.dp)).background(ink.copy(alpha = 0.06f))
+                        .clip(RoundedCornerShape(12.dp)).background(glassControlColor())
                         .clickable(role = Role.Button) {
                             onManageApi()
                         }.heightIn(min = 48.dp).padding(14.dp),

@@ -9,7 +9,6 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.graphics.toArgb
 import androidx.core.graphics.drawable.toDrawable
@@ -23,7 +22,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -51,8 +49,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
@@ -66,14 +62,13 @@ import com.lucent.app.data.TrashCleanup
 import com.lucent.app.ui.FluidGlassBackground
 import com.lucent.app.ui.LocalBackgroundEnvironment
 import com.lucent.app.ui.rememberBackgroundEnvironment
-import com.lucent.app.ui.LocalHazeState
 import com.lucent.app.ui.LocalBottomBarInset
 import com.lucent.app.ui.LocalOnGradient
 import com.lucent.app.ui.LocalOnGradientMuted
 import com.lucent.app.ui.LocalBackdropColor
 import com.lucent.app.ui.LocalPureWhite
 import com.lucent.app.ui.LucentGlass
-import com.lucent.app.ui.lucentGlassRim
+import com.lucent.app.ui.foregroundGlass
 import com.lucent.app.ui.lucentScheme
 import com.lucent.app.ui.pureWhiteScheme
 import com.lucent.app.ui.LucentToast
@@ -82,10 +77,7 @@ import com.lucent.app.ui.LucentPalette
 import com.lucent.app.ui.PALETTE_CYCLE
 import com.lucent.app.ui.rememberCyclingPaletteColors
 import com.lucent.app.ui.SettingsRoute
-import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
-import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
-import dev.chrisbanes.haze.materials.HazeMaterials
 import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -279,7 +271,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalHazeMaterialsApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LucentApp(paletteColors: List<Color>, backdropColor: Color, backgroundAnimated: Boolean = true, pureWhite: Boolean = false) {
     var currentScreen by rememberSaveable { mutableStateOf(LastScreen.current) }
@@ -295,7 +287,7 @@ fun LucentApp(paletteColors: List<Color>, backdropColor: Color, backgroundAnimat
     LaunchedEffect(currentScreen) {
         LastScreen.remember(currentScreen)
     }
-    val hazeState = rememberHazeState()
+    val glassBackdrop = rememberHazeState()
     val onGradient = LocalOnGradient.current
     val context = LocalContext.current
 
@@ -333,7 +325,9 @@ fun LucentApp(paletteColors: List<Color>, backdropColor: Color, backgroundAnimat
         }
     }
 
-    CompositionLocalProvider(LocalHazeState provides hazeState) {
+    CompositionLocalProvider(
+        com.lucent.app.ui.LocalGlassBackdrop provides glassBackdrop
+    ) {
         Box(modifier = Modifier.fillMaxSize()) {
             FluidGlassBackground(
                 palette = paletteColors,
@@ -342,7 +336,7 @@ fun LucentApp(paletteColors: List<Color>, backdropColor: Color, backgroundAnimat
                 pureWhite = pureWhite,
                 modifier = Modifier
                     .fillMaxSize()
-                    .hazeSource(state = hazeState)
+                    .hazeSource(state = glassBackdrop)
                     .clearAndSetSemantics { }
             )
             Scaffold(
@@ -394,17 +388,7 @@ fun LucentApp(paletteColors: List<Color>, backdropColor: Color, backgroundAnimat
                     if (AppNavigation.activeNotebookId == null &&
                         AppNavigation.settingsRoute == SettingsRoute.Root
                     ) {
-                        val capsuleShape = RoundedCornerShape(percent = 50)
                         val glassDark = onGradient.luminance() > 0.5f
-                        val capsuleFill = if (pureWhite) {
-                            LucentGlass.PureWhiteSurface
-                        } else {
-                            Color.White.copy(
-                                alpha = if (glassDark) com.lucent.app.ui.LucentGlass.BLURRED_FILL_DARK
-                                else com.lucent.app.ui.LucentGlass.BLURRED_FILL_LIGHT
-                            )
-                        }
-                        val capsuleRim = lucentGlassRim(strong = true)
                         val capsuleDivider = if (pureWhite) LucentGlass.PureWhiteDivider
                             else if (glassDark) Color.White.copy(alpha = 0.08f) else onGradient.copy(alpha = 0.10f)
                         Box(
@@ -418,30 +402,7 @@ fun LucentApp(paletteColors: List<Color>, backdropColor: Color, backgroundAnimat
                                 modifier = Modifier
                                     .fillMaxWidth(0.875f)
                                     .height(76.dp)
-                                    .shadow(
-                                        elevation = if (pureWhite) 10.dp else if (glassDark) 18.dp else 12.dp,
-                                        shape = capsuleShape,
-                                        clip = false,
-                                        ambientColor = if (pureWhite) LucentGlass.PureWhiteShadowAmbient else if (glassDark) Color.Black.copy(alpha = 0.35f) else Color(0xFF2A2A3A).copy(alpha = 0.26f),
-                                        spotColor = if (pureWhite) LucentGlass.PureWhiteShadowSpot else if (glassDark) Color.Black.copy(alpha = 0.45f) else Color(0xFF2A2A3A).copy(alpha = 0.34f)
-                                    )
-                                    .clip(capsuleShape)
-                                    .then(
-                                        if (pureWhite) Modifier
-                                        else Modifier.hazeEffect(
-                                            state = hazeState,
-                                            style = HazeMaterials.ultraThin(
-                                                if (glassDark) com.lucent.app.ui.LucentGlass.HazeContainerDark
-                                                else com.lucent.app.ui.LucentGlass.HazeContainerLight
-                                            )
-                                        )
-                                    )
-                                    .background(capsuleFill)
-                                    .border(
-                                        1.5.dp,
-                                        capsuleRim,
-                                        capsuleShape
-                                    )
+                                    .foregroundGlass(cornerRadius = 38.dp)
                             ) {
                                 Row(
                                     modifier = Modifier

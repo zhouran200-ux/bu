@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalTextStyle
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -24,7 +23,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.LineHeightStyle
@@ -47,7 +45,6 @@ fun GlassButton(
     val onGradient = LocalOnGradient.current
     val context = androidx.compose.ui.platform.LocalContext.current
     val shape = RoundedCornerShape(percent = 50)
-    val glassDark = isDarkGlass()
 
     val padH = 14.dp
     val padV = 8.dp
@@ -58,23 +55,12 @@ fun GlassButton(
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     val scale by animateFloatAsState(
-        targetValue = if (pressed && enabled) 0.95f else 1f,
+        targetValue = if (pressed && enabled) 0.985f else 1f,
         animationSpec = LucentMotion.toSpring(LucentMotion.Settle),
         label = "glassButtonScale"
     )
 
-    val pureWhite = LocalPureWhite.current
-    val baseFill = when {
-        pureWhite -> LucentGlass.PureWhiteControlFill
-        glassDark -> Color.White.copy(alpha = LucentGlass.CARD_FILL_DARK)
-        else -> Color.White.copy(alpha = LucentGlass.CARD_FILL_LIGHT)
-    }
-    val accent = MaterialTheme.colorScheme.primary
-    val fill = when {
-        pureWhite && pressed && enabled -> LucentGlass.PureWhiteControlFillPressed
-        pressed && enabled -> accent.copy(alpha = if (glassDark) 0.22f else 0.16f)
-        else -> baseFill
-    }
+    val fill = glassControlColor(selected = pressed && enabled)
     val label = onGradient
     val fade = if (enabled) 1f else 0.38f
 
@@ -86,7 +72,7 @@ fun GlassButton(
             }
             .clip(shape)
             .background(fill.copy(alpha = fill.alpha * fade))
-            .border(1.dp, lucentGlassRim(strong = true), shape)
+            .border(0.75.dp, foregroundRim(), shape)
             .clickable(
                 interactionSource = interaction,
                 indication = null,

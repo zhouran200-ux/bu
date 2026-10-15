@@ -3,7 +3,6 @@ package com.lucent.app.ui
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -181,7 +180,6 @@ private fun SourceReader(
     val blocks = remember(note.id, note.body) { splitRenderBlocks(note.body) }
     val readingKeys = remember(blocks) { blocks.indices.map { "block:$it" } + "footer" }
     val listState = rememberReadingListState("source:$notebookId:${note.id}", readingKeys)
-    val pureWhite = LocalPureWhite.current
     var highlightIndex by remember(note.id) { mutableIntStateOf(-1) }
     val currentSectionTitle by remember(blocks, note.title, listState) {
         derivedStateOf {
@@ -233,17 +231,14 @@ private fun SourceReader(
 
         Surface(
             shape = RoundedCornerShape(12.dp),
-            color = if (pureWhite) LucentGlass.PureWhiteSurface else MaterialTheme.colorScheme.surfaceContainerHigh,
-            contentColor = if (pureWhite) LucentGlass.PureWhiteInk else MaterialTheme.colorScheme.onSurface,
-            border = BorderStroke(
-                1.dp,
-                if (pureWhite) LucentGlass.PureWhiteDivider else MaterialTheme.colorScheme.outlineVariant
-            ),
-            shadowElevation = 4.dp,
+            color = androidx.compose.ui.graphics.Color.Transparent,
+            contentColor = LocalOnGradient.current,
+            shadowElevation = 0.dp,
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .padding(12.dp)
                 .widthIn(max = 280.dp)
+                .foregroundGlass(12.dp, reading = true)
         ) {
             Text(
                 text = currentSectionTitle,

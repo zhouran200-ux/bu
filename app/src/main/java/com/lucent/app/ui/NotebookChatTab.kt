@@ -190,6 +190,7 @@ fun NotebookChatTab(
         }
     }
     var followStream by remember(notebookId) { mutableStateOf(false) }
+    val viewportAnchor = remember(notebookId) { ChatViewportAnchor() }
     LaunchedEffect(active) {
         if (!active) followStream = false
     }
@@ -201,6 +202,7 @@ fun NotebookChatTab(
             ): androidx.compose.ui.geometry.Offset {
                 if (source == androidx.compose.ui.input.nestedscroll.NestedScrollSource.UserInput && available.y != 0f) {
                     followStream = false
+                    viewportAnchor.userScrolled()
                 }
                 return androidx.compose.ui.geometry.Offset.Zero
             }
@@ -593,14 +595,14 @@ fun NotebookChatTab(
         startAnswer(text)
     }
 
-    var previousImeVisible by remember { mutableStateOf(isImeVisible) }
-    LaunchedEffect(isImeVisible) {
-        val opened = isImeVisible && !previousImeVisible
-        previousImeVisible = isImeVisible
-        if (active && opened && followStream && messages.isNotEmpty()) {
-            delay(50)
-            if (followStream && !listState.isScrollInProgress) {
-                listState.animateScrollToItem((messages.size - 1).coerceAtLeast(0))
+    LaunchedEffect(listState, active, viewportAnchor) {
+        if (!active) return@LaunchedEffect
+        androidx.compose.runtime.snapshotFlow {
+            listState.layoutInfo.viewportSize.height to !listState.canScrollForward
+        }.collect { (height, bottom) ->
+            if (viewportAnchor.update(height, bottom) && messages.isNotEmpty()) {
+                val footer = listState.layoutInfo.totalItemsCount - 1
+                if (footer >= 0) listState.requestScrollToItem(footer)
             }
         }
     }

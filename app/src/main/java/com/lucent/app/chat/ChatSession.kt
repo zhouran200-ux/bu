@@ -68,15 +68,17 @@ class ChatSession(
     fun start(
         answerId: Long,
         reasoningTag: String?,
+        sourceBinding: suspend () -> Pair<Long?, String?> = { null to null },
         stream: suspend (StreamCallHandle, suspend (String, String?) -> Unit) -> Result<ChatCompletionResult>
     ): Boolean {
         if (!ready || streamingAnswerId != null) return false
         val slot = messages.indexOfFirst { it.id == answerId }
         if (slot < 0) return false
         onRunningChanged(true)
-        val initial = messages[slot].copy(content = "", reasoningText = null, reasoningTag = reasoningTag,
+        var initial = messages[slot].copy(content = "", reasoningText = null, reasoningTag = reasoningTag,
             answerSeconds = 0, promptTokens = 0, cachedTokens = 0,
-            firstTokenMillis = null, generationMillis = null, cachedTokensKnown = false)
+            firstTokenMillis = null, generationMillis = null, cachedTokensKnown = false,
+            sourceNoteId = null, sourceRevision = null)
         messages[slot] = initial
         thought.value = ""
         val callHandle = StreamCallHandle()
@@ -95,6 +97,9 @@ class ChatSession(
             var result: ChatCompletionResult? = null
             var failure: Throwable? = null
             try {
+                val binding = sourceBinding()
+                initial = initial.copy(sourceNoteId = binding.first, sourceRevision = binding.second)
+                update(initial)
                 saveMessage(initial).join()
                 startedAt = monotonicNanos()
                 val response = stream(callHandle) { text, reasoning ->

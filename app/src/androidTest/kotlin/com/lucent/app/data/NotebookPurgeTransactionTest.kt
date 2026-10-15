@@ -38,6 +38,22 @@ class NotebookPurgeTransactionTest {
         assertTrue(db.notebookDao().getAllOnce().isEmpty())
     }
 
+    @Test fun secondImportIsRejectedWithoutCreatingOrphanDocument() = runBlocking {
+        val notebook = db.notebookDao().insert(Notebook(id = 900004, title = "single"))
+        val first = NotebookPurge.importDocument(db, notebook, Note(title = "first", body = "original"))
+        try {
+            NotebookPurge.importDocument(db, notebook, Note(title = "second", body = "must not insert"))
+            fail("second document must be rejected")
+        } catch (_: IllegalStateException) { }
+        assertEquals(first, db.noteDao().getAllOnce().single().id)
+        assertEquals(1, db.notebookDao().getItemsOnce(notebook).size)
+        try {
+            NotebookPurge.importDocument(db, 999999, Note(title = "missing", body = "must not insert"))
+            fail("deleted notebook must reject import")
+        } catch (_: IllegalStateException) { }
+        assertEquals(1, db.noteDao().getAllOnce().size)
+    }
+
     @Test fun sharedSourceSurvivesDeletingOnlyOneNotebook() = runBlocking {
         val first = db.notebookDao().insert(Notebook(id = 900002, title = "first"))
         val second = db.notebookDao().insert(Notebook(id = 900003, title = "second"))

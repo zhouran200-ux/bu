@@ -23,6 +23,16 @@ object NotebookPurge {
         )
     }
 
+    suspend fun importDocument(db: AppDatabase, notebookId: Long, note: Note): Long = db.withTransaction {
+        check(db.notebookDao().getAllOnce().any { it.id == notebookId }) { "笔记本已删除，无法导入" }
+        check(db.notebookDao().getItemsOnce(notebookId).none { it.itemKind == NotebookItem.KIND_NOTE }) {
+            "每个笔记本只能导入一份文档"
+        }
+        val noteId = db.noteDao().insert(note)
+        linkNote(db, notebookId, noteId)
+        noteId
+    }
+
     suspend fun releaseNote(db: AppDatabase, notebookId: Long, noteId: Long) {
         val exclusive = noteIdsExclusiveTo(db.notebookDao().getAllItemsOnce(), notebookId).contains(noteId)
         db.notebookDao().removeItem(notebookId, NotebookItem.KIND_NOTE, noteId)

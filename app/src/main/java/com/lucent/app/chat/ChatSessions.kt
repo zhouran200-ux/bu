@@ -29,7 +29,8 @@ object ChatSessions {
                         message.answerSeconds, promptTokens = message.tokens,
                         cachedTokens = message.cachedTokens, timestamp = message.timestamp,
                         firstTokenMillis = message.firstTokenMillis, generationMillis = message.generationMillis,
-                        cachedTokensKnown = message.cachedTokensKnown)
+                        cachedTokensKnown = message.cachedTokensKnown,
+                        sourceNoteId = message.sourceNoteId, sourceRevision = message.sourceRevision)
                 }
             },
             save = { message ->
@@ -39,7 +40,8 @@ object ChatSessions {
                     reasoningText = message.reasoningText, answerSeconds = message.answerSeconds,
                     tokens = message.promptTokens, cachedTokens = message.cachedTokens,
                     firstTokenMillis = message.firstTokenMillis, generationMillis = message.generationMillis,
-                    cachedTokensKnown = message.cachedTokensKnown
+                    cachedTokensKnown = message.cachedTokensKnown,
+                    sourceNoteId = message.sourceNoteId, sourceRevision = message.sourceRevision
                 ))
             },
             onRunningChanged = { active ->

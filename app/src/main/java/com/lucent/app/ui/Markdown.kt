@@ -218,7 +218,6 @@ internal class IncrementalMarkdownParser {
 
 private val INLINE = Regex(
     """\[([^\]]+)]\(([^)\s]+)\)""" +
-        """|`([^`]+)`""" +
         """|\*\*([^*]+)\*\*""" +
         """|__([^_]+)__""" +
         """|~~([^~]+)~~""" +
@@ -226,36 +225,110 @@ private val INLINE = Regex(
         """|_([^_\n]+)_"""
 )
 
-private class CitationDecor(
+internal enum class MdInlineKind { Plain, Code, Link, Bold, Strike, Italic, Citation }
+
+internal data class MdInlineToken(val kind: MdInlineKind, val text: String, val url: String? = null)
+
+private fun inlineCodeRange(text: String, start: Int): IntRange? {
+    var opening = text.indexOf('`', start)
+    while (opening >= 0) {
+        var openingEnd = opening
+        while (openingEnd < text.length && text[openingEnd] == '`') openingEnd++
+        val width = openingEnd - opening
+        var closing = text.indexOf('`', openingEnd)
+        while (closing >= 0) {
+            var closingEnd = closing
+            while (closingEnd < text.length && text[closingEnd] == '`') closingEnd++
+            if (closingEnd - closing == width) return opening until closingEnd
+            closing = text.indexOf('`', closingEnd)
+        }
+        opening = text.indexOf('`', openingEnd)
+    }
+    return null
+}
+
+internal fun markdownInlineTokens(text: String, citationsEnabled: Boolean = true): List<MdInlineToken> {
+    val tokens = mutableListOf<MdInlineToken>()
+    var cursor = 0
+    while (cursor < text.length) {
+        val code = inlineCodeRange(text, cursor)
+        val inline = INLINE.find(text, cursor)?.takeUnless {
+            code != null && it.range.first < code.first && it.range.last in code
+        }
+        val citation = if (citationsEnabled) SourceCitations.marker.find(text, cursor) else null
+        val next = minOf(code?.first ?: text.length, inline?.range?.first ?: text.length, citation?.range?.first ?: text.length)
+        if (next > cursor) tokens += MdInlineToken(MdInlineKind.Plain, text.substring(cursor, next))
+        if (next == text.length) break
+        when {
+            code != null && next == code.first -> {
+                val raw = text.substring(code)
+                val width = raw.takeWhile { it == '`' }.length
+                tokens += MdInlineToken(MdInlineKind.Code, raw.substring(width, raw.length - width))
+                cursor = code.last + 1
+            }
+            inline != null && next == inline.range.first -> {
+                val groups = inline.groupValues
+                tokens += when {
+                    groups[1].isNotEmpty() -> MdInlineToken(MdInlineKind.Link, groups[1], groups[2])
+                    groups[3].isNotEmpty() -> MdInlineToken(MdInlineKind.Bold, groups[3])
+                    groups[4].isNotEmpty() -> MdInlineToken(MdInlineKind.Bold, groups[4])
+                    groups[5].isNotEmpty() -> MdInlineToken(MdInlineKind.Strike, groups[5])
+                    groups[6].isNotEmpty() -> MdInlineToken(MdInlineKind.Italic, groups[6])
+                    else -> MdInlineToken(MdInlineKind.Italic, groups[7])
+                }
+                cursor = inline.range.last + 1
+            }
+            else -> {
+                tokens += MdInlineToken(MdInlineKind.Citation, citation!!.value)
+                cursor = citation.range.last + 1
+            }
+        }
+    }
+    return tokens
+}
+
+internal fun markdownCitationNumbering(blocks: List<MdBlock>, citationsEnabled: Boolean = true): Map<String, Int> {
+    if (!citationsEnabled) return emptyMap()
+    val markers = mutableListOf<String>()
+    fun collect(text: String) {
+        for (token in markdownInlineTokens(text)) {
+            when (token.kind) {
+                MdInlineKind.Citation -> markers += token.text
+                MdInlineKind.Bold, MdInlineKind.Strike, MdInlineKind.Italic -> collect(token.text)
+                else -> Unit
+            }
+        }
+    }
+    for (block in blocks) {
+        when (block) {
+            is MdBlock.Heading -> collect(block.text)
+            is MdBlock.Paragraph -> collect(block.text)
+            is MdBlock.Bullet -> collect(block.text)
+            is MdBlock.Numbered -> collect(block.text)
+            is MdBlock.Quote -> collect(block.text)
+            else -> Unit
+        }
+    }
+    return SourceCitations.numbering(markers.joinToString("\n"))
+}
+
+internal class CitationDecor(
     val numbering: Map<String, Int>,
-    val onClick: ((CitationRef) -> Unit)?
+    val onClick: ((CitationRef) -> Unit)?,
+    val sourceNoteId: Long?,
+    val sourceRevision: String?,
+    val enabled: Boolean,
+    val emphasized: Boolean
 )
 
-@Composable
-private fun inlineAnnotated(
+internal fun inlineAnnotated(
     line: String,
     textColor: Color,
     accent: Color,
     citation: CitationDecor
-): AnnotatedString {
-    val linkStyle = SpanStyle(color = accent, textDecoration = TextDecoration.Underline)
-
-    return buildAnnotatedString {
-        var cursor = 0
-        for (mark in SourceCitations.marker.findAll(line)) {
-            if (mark.range.first > cursor) {
-                appendInline(line.substring(cursor, mark.range.first), textColor, accent, linkStyle)
-            }
-            val number = citation.numbering[mark.value] ?: 0
-            val ref = SourceCitations.parse(mark.value)
-            if (number > 0 && ref != null) {
-                appendCitation(number, accent, ref, citation.onClick)
-            } else {
-                append(mark.value)
-            }
-            cursor = mark.range.last + 1
-        }
-        if (cursor < line.length) appendInline(line.substring(cursor), textColor, accent, linkStyle)
+): AnnotatedString = buildAnnotatedString {
+    withStyle(SpanStyle(fontWeight = if (citation.emphasized) FontWeight.Bold else null)) {
+        appendInline(line, textColor, accent, citation, citation.emphasized)
     }
 }
 
@@ -263,12 +336,13 @@ private fun AnnotatedString.Builder.appendCitation(
     number: Int,
     accent: Color,
     ref: CitationRef,
-    onClick: ((CitationRef) -> Unit)?
+    onClick: ((CitationRef) -> Unit)?,
+    emphasized: Boolean
 ) {
     val style = SpanStyle(
         color = accent,
         fontSize = 11.sp,
-        fontWeight = FontWeight.Medium,
+        fontWeight = if (emphasized) FontWeight.Bold else FontWeight.Medium,
         baselineShift = BaselineShift.Superscript
     )
     if (onClick == null) {
@@ -284,45 +358,68 @@ private fun AnnotatedString.Builder.appendInline(
     segment: String,
     textColor: Color,
     accent: Color,
-    linkStyle: SpanStyle
+    citation: CitationDecor,
+    emphasized: Boolean
 ) {
-    var cursor = 0
-    for (match in INLINE.findAll(segment)) {
-        if (match.range.first > cursor) {
-            append(segment.substring(cursor, match.range.first))
+    for (token in markdownInlineTokens(segment, citation.enabled)) {
+        when (token.kind) {
+            MdInlineKind.Plain -> append(token.text)
+            MdInlineKind.Code -> withStyle(
+                SpanStyle(
+                    fontFamily = FontFamily.Monospace,
+                    background = textColor.copy(alpha = 0.10f),
+                    fontWeight = if (emphasized) FontWeight.Bold else null
+                )
+            ) { append(token.text) }
+            MdInlineKind.Link -> withLink(
+                LinkAnnotation.Url(
+                    url = token.url!!,
+                    styles = TextLinkStyles(style = SpanStyle(
+                        color = accent,
+                        textDecoration = TextDecoration.Underline,
+                        fontWeight = if (emphasized) FontWeight.Bold else null
+                    ))
+                )
+            ) { append(token.text) }
+            MdInlineKind.Citation -> {
+                val number = citation.numbering[token.text] ?: 0
+                val ref = SourceCitations.parse(token.text, citation.sourceNoteId, citation.sourceRevision)
+                if (number > 0 && ref != null) appendCitation(number, accent, ref, citation.onClick, emphasized)
+                else append(token.text)
+            }
+            else -> {
+                val bold = emphasized || token.kind == MdInlineKind.Bold
+                val style = SpanStyle(
+                    fontWeight = if (bold) FontWeight.Bold else null,
+                    fontStyle = if (token.kind == MdInlineKind.Italic) FontStyle.Italic else null,
+                    textDecoration = if (token.kind == MdInlineKind.Strike) TextDecoration.LineThrough else null
+                )
+                withStyle(style) { appendInline(token.text, textColor, accent, citation, bold) }
+            }
         }
-        val g = match.groupValues
-        when {
-            g[1].isNotEmpty() && g[2].isNotEmpty() -> withLink(
-                LinkAnnotation.Url(url = g[2], styles = TextLinkStyles(style = linkStyle))
-            ) { append(g[1]) }
-            g[3].isNotEmpty() -> withStyle(
-                SpanStyle(fontFamily = FontFamily.Monospace, background = textColor.copy(alpha = 0.10f))
-            ) { append(g[3]) }
-            g[4].isNotEmpty() -> withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(g[4]) }
-            g[5].isNotEmpty() -> withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(g[5]) }
-            g[6].isNotEmpty() -> withStyle(SpanStyle(textDecoration = TextDecoration.LineThrough)) { append(g[6]) }
-            g[7].isNotEmpty() -> withStyle(SpanStyle(fontStyle = FontStyle.Italic)) { append(g[7]) }
-            g[8].isNotEmpty() -> withStyle(SpanStyle(fontStyle = FontStyle.Italic)) { append(g[8]) }
-        }
-        cursor = match.range.last + 1
     }
-    if (cursor < segment.length) append(segment.substring(cursor))
 }
 
 @Composable
 fun MarkdownText(
     text: String,
     modifier: Modifier = Modifier,
-    onCitationClick: ((CitationRef) -> Unit)? = null
+    onCitationClick: ((CitationRef) -> Unit)? = null,
+    sourceNoteId: Long? = null,
+    sourceRevision: String? = null,
+    emphasized: Boolean = false,
+    citationsEnabled: Boolean = true
 ) {
     val onGradient = LocalOnGradient.current
     val onGradientMuted = LocalOnGradientMuted.current
     val accent = MaterialTheme.colorScheme.primary
     val incrementalParser = remember { IncrementalMarkdownParser() }
     val blocks = remember(text) { incrementalParser.parse(text) }
-    val citationNumbering = remember(text) { SourceCitations.numbering(text) }
-    val citation = remember(text, onCitationClick) { CitationDecor(citationNumbering, onCitationClick) }
+    val citationNumbering = remember(blocks, citationsEnabled) { markdownCitationNumbering(blocks, citationsEnabled) }
+    val citation = remember(citationNumbering, onCitationClick, sourceNoteId, sourceRevision, emphasized, citationsEnabled) {
+        CitationDecor(citationNumbering, onCitationClick, sourceNoteId, sourceRevision, citationsEnabled, emphasized)
+    }
+    val fontWeight = if (emphasized) FontWeight.Bold else null
 
     Column(modifier = modifier.fillMaxWidth()) {
         blocks.forEachIndexed { index, block ->
@@ -347,17 +444,19 @@ fun MarkdownText(
                     if (index > 0) Spacer(modifier = Modifier.height(6.dp))
                     Text(
                         inlineAnnotated(block.text, onGradient, accent, citation),
-                        color = onGradient
+                        color = onGradient,
+                        fontWeight = fontWeight
                     )
                 }
 
                 is MdBlock.Bullet -> {
                     if (index > 0) Spacer(modifier = Modifier.height(6.dp))
                     Row(modifier = Modifier.fillMaxWidth()) {
-                        Text("•", color = onGradientMuted, modifier = Modifier.padding(end = 8.dp))
+                        Text("•", color = onGradientMuted, fontWeight = fontWeight, modifier = Modifier.padding(end = 8.dp))
                         Text(
                             inlineAnnotated(block.text, onGradient, accent, citation),
                             color = onGradient,
+                            fontWeight = fontWeight,
                             modifier = Modifier.weight(1f)
                         )
                     }
@@ -366,10 +465,11 @@ fun MarkdownText(
                 is MdBlock.Numbered -> {
                     if (index > 0) Spacer(modifier = Modifier.height(6.dp))
                     Row(modifier = Modifier.fillMaxWidth()) {
-                        Text("${block.marker}.", color = onGradientMuted, modifier = Modifier.padding(end = 8.dp))
+                        Text("${block.marker}.", color = onGradientMuted, fontWeight = fontWeight, modifier = Modifier.padding(end = 8.dp))
                         Text(
                             inlineAnnotated(block.text, onGradient, accent, citation),
                             color = onGradient,
+                            fontWeight = fontWeight,
                             modifier = Modifier.weight(1f)
                         )
                     }
@@ -387,6 +487,7 @@ fun MarkdownText(
                         Text(
                             inlineAnnotated(block.text, onGradientMuted, accent, citation),
                             color = onGradientMuted,
+                            fontWeight = fontWeight,
                             fontStyle = FontStyle.Italic,
                             modifier = Modifier.padding(start = 8.dp)
                         )
@@ -405,6 +506,7 @@ fun MarkdownText(
                         Text(
                             block.lines.joinToString("\n"),
                             color = onGradient,
+                            fontWeight = fontWeight,
                             fontFamily = FontFamily.Monospace,
                             fontSize = 13.sp
                         )

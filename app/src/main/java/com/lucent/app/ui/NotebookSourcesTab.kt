@@ -31,7 +31,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -47,10 +47,20 @@ import com.lucent.app.data.AppDatabase
 import com.lucent.app.data.MarkdownDocumentParser
 import com.lucent.app.data.Note
 import com.lucent.app.data.NotebookPurge
-import kotlinx.coroutines.delay
+import com.lucent.app.data.IndexedSource
+import com.lucent.app.data.NovelSourceIndex
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlin.math.abs
 import kotlinx.coroutines.launch
 
-data class SourceFocus(val noteId: Long, val sliceId: String, val requestId: Long)
+data class SourceFocus(
+    val noteId: Long,
+    val sliceId: String,
+    val requestId: Long,
+    val revision: String? = null
+)
 
 @Composable
 fun NotebookSourcesTab(
@@ -71,31 +81,43 @@ fun NotebookSourcesTab(
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     )
 
+    var importing by remember(notebookId) { mutableStateOf(false) }
     val openDocumentLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
-        if (uri == null) return@rememberLauncherForActivityResult
+        if (uri == null || importing) return@rememberLauncherForActivityResult
+        importing = true
         AppScope.io.launch {
-            val result = MarkdownDocumentParser.parseUri(context, uri)
-            result.onSuccess { parsed ->
-                val newId = db.noteDao().insert(
-                    Note(
-                        title = parsed.title,
-                        body = parsed.markdown
-                    )
-                )
-                NotebookPurge.linkNote(db, notebookId, newId)
-                onReload()
-                LucentToast.show(context, "已导入文档《${parsed.title}》并解析为 Markdown")
-            }.onFailure { err ->
-                LucentToast.show(context, err.message ?: "解析文件失败")
+            try {
+                val parsed = MarkdownDocumentParser.parseUri(context, uri).getOrThrow()
+                val document = Note(title = parsed.title, body = parsed.markdown)
+                val noteId = NotebookPurge.importDocument(db, notebookId, document)
+                withContext(Dispatchers.Default) { NovelSourceIndex.get(document.copy(id = noteId)) }
+                withContext(Dispatchers.Main) {
+                    onReload()
+                    LucentToast.show(context, "已导入文档《${parsed.title}》并解析为 Markdown")
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (failure: Exception) {
+                withContext(Dispatchers.Main) {
+                    LucentToast.show(context, failure.message ?: "导入文件失败")
+                }
+            } finally {
+                withContext(kotlinx.coroutines.NonCancellable + Dispatchers.Main) { importing = false }
             }
         }
     }
 
     var selectedNoteId by remember(notebookId) { mutableStateOf<Long?>(null) }
-    LaunchedEffect(focus?.requestId) {
-        focus?.let { selectedNoteId = it.noteId }
+    var emphasizedFocus by remember(notebookId) { mutableStateOf<SourceFocus?>(null) }
+    LaunchedEffect(notebookId, active, focus, sourceNotes) {
+        if (!active) return@LaunchedEffect
+        focus?.let {
+            if (emphasizedFocus?.requestId != it.requestId) emphasizedFocus = null
+            if (sourceNotes.any { note -> note.id == it.noteId }) selectedNoteId = it.noteId
+            else LucentToast.show(context, "未找到该引用的资料文档")
+        }
     }
     LaunchedEffect(sourceNotes) {
         if (sourceNotes.none { it.id == selectedNoteId }) selectedNoteId = sourceNotes.firstOrNull()?.id
@@ -128,7 +150,7 @@ fun NotebookSourcesTab(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
-                    text = "暂无关联资料文档",
+                    text = if (importing) "正在导入资料…" else "暂无关联资料文档",
                     fontSize = LucentTitles.SectionSize,
                     fontWeight = LucentTitles.SectionWeight,
                     color = LocalOnGradient.current
@@ -145,7 +167,7 @@ fun NotebookSourcesTab(
                     .navigationBarsPadding()
                     .size(58.dp)
                     .clip(RoundedCornerShape(20.dp))
-                    .pressableGlass(onClick = { openDocumentLauncher.launch(documentMimeTypes) }, cornerRadius = 20.dp)
+                    .pressableGlass(onClick = { if (!importing) openDocumentLauncher.launch(documentMimeTypes) }, cornerRadius = 20.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
@@ -161,8 +183,10 @@ fun NotebookSourcesTab(
                 SourceReader(
                     notebookId = notebookId,
                     note = current,
-                    focus = focus,
+                    focus = focus?.takeIf { it.noteId == current.id },
                     active = active,
+                    emphasizedFocus = emphasizedFocus,
+                    onEmphasize = { emphasizedFocus = it },
                     modifier = Modifier.fillMaxSize()
                 )
             }
@@ -170,40 +194,86 @@ fun NotebookSourcesTab(
     }
 }
 
+private data class SourceReaderContent(
+    val source: IndexedSource,
+    val items: List<SourceReadingItem>
+)
+
 @Composable
 private fun SourceReader(
     notebookId: Long,
     note: Note,
     focus: SourceFocus?,
     active: Boolean,
+    emphasizedFocus: SourceFocus?,
+    onEmphasize: (SourceFocus?) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var content by remember(note.id, note.body, note.title) { mutableStateOf<SourceReaderContent?>(null) }
+    var error by remember(note.id, note.body, note.title) { mutableStateOf<String?>(null) }
+    LaunchedEffect(note.id, note.body, note.title) {
+        try {
+            content = withContext(Dispatchers.Default) {
+                val source = NovelSourceIndex.get(note)
+                SourceReaderContent(source, sourceReadingItems(source.body, source.tagged))
+            }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (failure: Exception) {
+            error = failure.message ?: "资料加载失败"
+        }
+    }
+    val loaded = content
+    if (loaded == null) {
+        Box(modifier = modifier.background(lucentPanelBackground()), contentAlignment = Alignment.Center) {
+            Text(text = error?.let { "资料加载失败：$it" } ?: "正在加载资料…", color = LocalOnGradient.current)
+        }
+        return
+    }
+    key(loaded.source.noteId, loaded.source.revision) {
+        SourceReaderDocument(notebookId, loaded, focus, active, emphasizedFocus, onEmphasize, modifier)
+    }
+}
+
+@Composable
+private fun SourceReaderDocument(
+    notebookId: Long,
+    content: SourceReaderContent,
+    focus: SourceFocus?,
+    active: Boolean,
+    emphasizedFocus: SourceFocus?,
+    onEmphasize: (SourceFocus?) -> Unit,
+    modifier: Modifier
+) {
     val context = LocalContext.current
-    val accent = MaterialTheme.colorScheme.primary
-    val blocks = remember(note.id, note.body) { splitRenderBlocks(note.body) }
-    val readingKeys = remember(blocks) { blocks.indices.map { "block:$it" } + "footer" }
-    val listState = rememberReadingListState("source:$notebookId:${note.id}", readingKeys)
-    var highlightIndex by remember(note.id) { mutableIntStateOf(-1) }
-    val currentSectionTitle by remember(blocks, note.title, listState) {
-        derivedStateOf {
-            currentDocumentSectionTitle(blocks, listState.firstVisibleItemIndex, note.title)
-        }
+    val source = content.source
+    val items = content.items
+    val motionEnabled = LocalBackgroundEnvironment.current.motionEnabled
+    val readingKeys = remember(items) { items.map { it.key } + "footer" }
+    val listState = rememberReadingListState("source:$notebookId:${source.noteId}:slices:${source.revision}", readingKeys)
+    val currentSectionTitle by remember(items, source.title, listState) {
+        derivedStateOf { sourceSectionTitle(items, listState.firstVisibleItemIndex, source.title) }
     }
-
-    LaunchedEffect(focus?.requestId, note.id, blocks) {
+    var consumedRequest by remember { mutableStateOf<Long?>(null) }
+    LaunchedEffect(active, focus, source.noteId, source.revision) {
+        if (!active) return@LaunchedEffect
         val target = focus ?: return@LaunchedEffect
-        if (target.noteId != note.id) return@LaunchedEffect
-        val index = SourceLocator.blockIndexForSlice(note.title, note.body, blocks, target.sliceId)
-        if (index < 0) {
-            LucentToast.show(context, "未找到该引用的原文位置")
-            return@LaunchedEffect
+        if (consumedRequest == target.requestId) return@LaunchedEffect
+        consumedRequest = target.requestId
+        onEmphasize(null)
+        when (val location = sourceFocusLocation(target, source.noteId, source.revision, items)) {
+            is SourceFocusLocation.Unavailable -> LucentToast.show(context, location.message)
+            is SourceFocusLocation.Found -> {
+                onEmphasize(target)
+                withFrameNanos { }
+                if (motionEnabled && abs(listState.firstVisibleItemIndex - location.index) <= 3) {
+                    listState.animateScrollToItem(location.index)
+                } else {
+                    listState.scrollToItem(location.index)
+                }
+            }
         }
-        highlightIndex = index
-        listState.scrollToItem(index)
-        delay(2600)
-        if (highlightIndex == index) highlightIndex = -1
     }
-
     Box(modifier = modifier.background(lucentPanelBackground())) {
         LazyColumn(
             state = listState,
@@ -211,23 +281,14 @@ private fun SourceReader(
             contentPadding = PaddingValues(start = 18.dp, top = 60.dp, end = 18.dp, bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            itemsIndexed(blocks, key = { index, _ -> readingKeys[index] }) { index, block ->
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .then(
-                            if (index == highlightIndex) {
-                                Modifier.background(accent.copy(alpha = 0.16f), RoundedCornerShape(8.dp))
-                            } else {
-                                Modifier
-                            }
-                        )
-                ) {
-                    MarkdownText(
-                        text = block.text,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
+            itemsIndexed(items, key = { _, item -> item.key }) { _, item ->
+                MarkdownText(
+                    text = item.text,
+                    emphasized = item.sliceId != null && emphasizedFocus?.noteId == source.noteId &&
+                        emphasizedFocus.revision == source.revision && emphasizedFocus.sliceId == item.sliceId,
+                    citationsEnabled = false,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
             item(key = "footer") { Spacer(modifier = Modifier.height(48.dp)) }
         }

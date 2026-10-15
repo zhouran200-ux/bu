@@ -88,7 +88,9 @@ data class ChatMessage(
     val quotedText: String? = null,
     @ColumnInfo(defaultValue = "NULL") val firstTokenMillis: Long? = null,
     @ColumnInfo(defaultValue = "NULL") val generationMillis: Long? = null,
-    @ColumnInfo(defaultValue = "0") val cachedTokensKnown: Boolean = false
+    @ColumnInfo(defaultValue = "0") val cachedTokensKnown: Boolean = false,
+    @ColumnInfo(defaultValue = "NULL") val sourceNoteId: Long? = null,
+    @ColumnInfo(defaultValue = "NULL") val sourceRevision: String? = null
 )
 
 object ChatScope {

@@ -257,6 +257,22 @@ class ChatSessionTest {
         assertNotNull(session.messages.single().generationMillis)
     }
 
+    @Test fun sourceIdentityIsSavedBeforeChunksAndSurvivesCompletion() {
+        val d = QueueDispatcher()
+        val saved = mutableListOf<UiChatMessage>()
+        val session = ChatSession(d, { emptyList() }, { saved.add(it) })
+        d.drain()
+        session.messages.add(UiChatMessage(1, "assistant", ""))
+        session.start(1, null, sourceBinding = { 42L to "v2-bound" }) { _, chunk ->
+            assertEquals(42L, saved.last().sourceNoteId)
+            chunk("原文依据。〔S：1-1〕", null)
+            Result.success(ChatCompletionResult("原文依据。〔S：1-1〕"))
+        }
+        d.drain()
+        assertEquals("v2-bound", session.messages.single().sourceRevision)
+        assertEquals(42L, saved.last().sourceNoteId)
+    }
+
     @Test fun serviceStartFailureLeavesSessionIdle() {
         val d = QueueDispatcher()
         val session = ChatSession(d, { emptyList() }, {}, { if (it) error("FGS denied") })

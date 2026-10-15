@@ -25,6 +25,6 @@ class ChatStatsTest {
         assertEquals("首字延迟<0.1秒 · 总用时 0.3秒", ChatStats.summary(0, 0, 0, 0, 20, 350))
     }
     @Test fun referencesAndWhitespaceAreNotCountedAndEmojiIsOneCharacter() {
-        assertEquals(4, ChatStats.bodyCharCount("你 好\n😀!〔REF:42:0001:S1-1〕"))
+        assertEquals(4, ChatStats.bodyCharCount("你 好\n😀!〔REF:42:0001:S1-1〕〔S：1-1〕"))
     }
 }

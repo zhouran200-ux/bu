@@ -71,6 +71,8 @@ fun NotebookDetailScreen(
     val keyboardController = LocalSoftwareKeyboardController.current
     var sourceNotes by remember { mutableStateOf<List<Note>>(emptyList()) }
     var reloadCount by remember { mutableIntStateOf(0) }
+    var sourcesLoaded by remember(notebookId) { mutableStateOf(false) }
+    var sourceError by remember(notebookId) { mutableStateOf<String?>(null) }
     var sourceFocus by remember { mutableStateOf<SourceFocus?>(null) }
     var focusRequest by remember { mutableStateOf(0L) }
 
@@ -96,15 +98,27 @@ fun NotebookDetailScreen(
     BackHandler(enabled = active, onBack = navigateBack)
 
     LaunchedEffect(notebookId, reloadCount) {
-        val items = db.notebookDao().getItemsOnce(notebookId)
-        val itemIds = items.map { it.itemId }
-        sourceNotes = if (itemIds.isNotEmpty()) {
-            db.noteDao().getByIds(itemIds)
-        } else {
-            emptyList()
+        try {
+            val items = db.notebookDao().getItemsOnce(notebookId)
+            val itemIds = items.filter { it.itemKind == com.lucent.app.data.NotebookItem.KIND_NOTE }.map { it.itemId }
+            sourceNotes = if (itemIds.isNotEmpty()) db.noteDao().getByIds(itemIds) else emptyList()
+            sourcesLoaded = true
+            sourceError = null
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            sourceError = "读取文档失败：${e.message}"
         }
     }
 
+    if (!sourcesLoaded || sourceError != null) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            androidx.compose.material3.TextButton(onClick = { reloadCount++ }) {
+                Text(sourceError?.plus("，点击重试") ?: "正在读取文档…")
+            }
+        }
+        return
+    }
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
@@ -134,9 +148,9 @@ fun NotebookDetailScreen(
                             sourceNotes = sourceNotes,
                             modifier = Modifier.fillMaxSize(),
                             active = active && selectedTab == NotebookDetailTab.CHAT,
-                            onOpenSource = { noteId, sliceId ->
+                            onOpenSource = { noteId, sliceId, revision ->
                                 focusRequest += 1
-                                sourceFocus = SourceFocus(noteId, sliceId, focusRequest)
+                                sourceFocus = SourceFocus(noteId, sliceId, focusRequest, revision)
                                 scope.launch {
                                     pagerState.animateScrollToPage(tabs.indexOf(NotebookDetailTab.SOURCES))
                                 }

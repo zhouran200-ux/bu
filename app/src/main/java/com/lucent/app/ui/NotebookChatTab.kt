@@ -126,7 +126,6 @@ import com.lucent.app.data.ReasoningPreset
 import com.lucent.app.data.ReasoningResolver
 import com.lucent.app.data.SettingsCache
 import com.lucent.app.data.SettingsRepository
-import com.lucent.app.data.SourceTagging
 import com.lucent.app.network.ApiSpec
 import com.lucent.app.network.ChatMessagePayload
 import com.lucent.app.network.LlmClient
@@ -146,7 +145,9 @@ data class UiChatMessage(
     val timestamp: Long = System.currentTimeMillis(),
     val firstTokenMillis: Long? = null,
     val generationMillis: Long? = null,
-    val cachedTokensKnown: Boolean = false
+    val cachedTokensKnown: Boolean = false,
+    val sourceNoteId: Long? = null,
+    val sourceRevision: String? = null
 )
 
 @OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
@@ -156,18 +157,22 @@ fun NotebookChatTab(
     sourceNotes: List<Note>,
     modifier: Modifier = Modifier,
     active: Boolean = true,
-    onOpenSource: (Long, String) -> Unit = { _, _ -> }
+    onOpenSource: (Long, String, String) -> Unit = { _, _, _ -> }
 ) {
     val context = LocalContext.current
+    val citationScope = rememberCoroutineScope()
     val openCitation: (CitationRef) -> Unit = { ref ->
         val target = sourceNotes.firstOrNull { it.id == ref.sourceId }
-        val reason = com.lucent.app.data.SourceCitations.rejectionReason(
-            ref, target?.id, target?.let { SourceTagging.revisionOf(it.body, it.title) }
-        )
-        if (reason != null) {
-            LucentToast.show(context, reason)
-        } else if (target != null) {
-            onOpenSource(target.id, ref.sliceId)
+        citationScope.launch {
+            val index = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                target?.let { com.lucent.app.data.NovelSourceIndex.get(it) }
+            }
+            val reason = com.lucent.app.data.SourceCitations.rejectionReason(ref, index?.noteId, index?.revision)
+            when {
+                reason != null -> LucentToast.show(context, reason)
+                index?.tagged?.sliceOf(ref.sliceId) == null -> LucentToast.show(context, "引用切片不存在，无法定位原文")
+                else -> onOpenSource(index.noteId, ref.sliceId, index.revision)
+            }
         }
     }
     val session = remember(notebookId) { ChatSessions.forNotebook(context, notebookId) }
@@ -346,42 +351,12 @@ fun NotebookChatTab(
         )
         val effortLabel = resolvedReasoning.displayTag
 
-        val knowledgeBasePrompt = buildString {
-            append("你是一个专业的笔记本知识库与对话助手。用户在此笔记本中上传了参考资料文档（已在本地转换为 Markdown 格式）。\n")
-            append("关于资料内容的事实性问题必须以资料为依据：资料写了就以资料为准；资料没有提到就直接说明没有提到，不要用常识把不存在的内容补成资料事实。常识只用于解释一般性问题或做常识性说明。\n")
-            append("资料若是小说等文学作品：分析人物、关系、经历、世界观、时间线、事件和角色已知信息时必须依据资料原文；用户要求续写、改写或角色扮演时，新增内容属于创作，不得声称来自资料原文。\n\n")
-            append("资料正文带有两级坐标标签：〔CHn〕为章节坐标，〔Sn-m〕为切片坐标；标签独占一行，标记其后正文的起点，范围直到下一个标签之前。\n")
-            append("引用格式为〔REF:来源编号:修订号:切片编号〕，修订号包含索引版本与内容摘要，必须完整复制资料开头的真实值；来源编号与修订号见每份资料的开头。\n")
-            append("只在确实依据了某个切片时标记，标记紧跟在被支持的结论之后；同一结论有多个依据时连续写出多个标记。\n")
-            append("不得编造来源编号、修订号或切片编号；找不到依据时不要标记，直接说明依据不足。不要自行编号或输出脚注列表，编号由应用生成。\n\n")
-
-            if (sourceNotes.isNotEmpty()) {
-                append("==================== 参考资料库开始 ====================\n")
-                sourceNotes.forEachIndexed { index, note ->
-                    val docTitle = note.title.ifBlank { "资料文档 ${index + 1}" }
-                    append("\n【文档 ${index + 1}：《$docTitle》｜来源编号 ${note.id}｜修订号 ${SourceTagging.revisionOf(note.body, note.title)}】\n")
-                    append(SourceTagging.tag(docTitle, note.body).text)
-                    append("\n")
-                }
-                append("\n==================== 参考资料库结束 ====================\n\n")
-            } else {
-                append("（当前笔记本暂无关联参考资料，请按通用笔记助手角色回答）\n\n")
-            }
-
-            if (systemPrompt.isNotBlank()) {
-                append("【自定义提示词与设定】\n")
-                append(systemPrompt.trim())
-                append("\n\n")
-            }
-
-            when (reasoningPreset) {
-                ReasoningPreset.FAST -> append("【思考规范】请进行简明精炼的快速推理后再作答。\n")
-                ReasoningPreset.BALANCED -> append("【思考规范】请进行条理清晰、层次分明的逻辑分析后再给出结论。\n")
-                ReasoningPreset.DEEP -> append("【思考规范】请进行深度、细致、详尽的逻辑推理，充分论证每一个要点后再给出最终结论。\n")
-                ReasoningPreset.MAXIMUM -> append("【思考规范】请调用最高复杂度逻辑推演与多角度攻坚，严格反思校验每一个假设后再给出结论。\n")
-                ReasoningPreset.AUTO -> {}
-            }
+        if (sourceNotes.size > 1) {
+            LucentToast.show(context, "当前笔记本资料关联异常，请先整理为一份文档")
+            return
         }
+        val sourceNote = sourceNotes.singleOrNull()
+        val customPrompt = systemPrompt
 
         val historyPayload = messages.takeWhile { it.id != aiMsgId }.takeLast(historyRounds * 2).map {
             ChatMessagePayload(
@@ -408,13 +383,26 @@ fun NotebookChatTab(
                 notificationPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
             }
             try {
-                session.start(aiMsgId, effortLabel) { handle, onChunk ->
+                var knowledgeBasePrompt = ""
+                session.start(aiMsgId, effortLabel, sourceBinding = {
+                    val index = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                        sourceNote?.let { com.lucent.app.data.NovelSourceIndex.get(it) }
+                    }
+                    knowledgeBasePrompt = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                        com.lucent.app.data.NovelPromptBuilder.system(index, customPrompt)
+                    }
+                    index?.noteId to index?.revision
+                }) { handle, onChunk ->
                     LlmClient.chatStream(
                         baseUrl = baseUrl,
                         spec = spec,
                         apiKey = apiKey,
                         model = targetModel,
-                        messages = historyPayload,
+                        messages = historyPayload.mapIndexed { index, message ->
+                            if (index == historyPayload.lastIndex && message.role == "user")
+                                message.copy(content = com.lucent.app.data.NovelPromptBuilder.user(message.content, sourceNote != null))
+                            else message
+                        },
                         systemInstruction = knowledgeBasePrompt,
                         reasoningConfig = resolvedReasoning,
                         handle = handle,
@@ -489,7 +477,9 @@ fun NotebookChatTab(
             cachedTokens = 0,
             firstTokenMillis = null,
             generationMillis = null,
-            cachedTokensKnown = false
+            cachedTokensKnown = false,
+            sourceNoteId = null,
+            sourceRevision = null
         )
         settlePendingDelete()
         session.write { db.chatDao().deleteByIds(listOf(answerId)) }
@@ -973,7 +963,9 @@ private fun AiMessageCard(
                         MarkdownText(
                             text = message.content,
                             modifier = Modifier.fillMaxWidth(),
-                            onCitationClick = onCitationClick
+                            onCitationClick = onCitationClick,
+                            sourceNoteId = message.sourceNoteId,
+                            sourceRevision = message.sourceRevision
                         )
                     }
                 }

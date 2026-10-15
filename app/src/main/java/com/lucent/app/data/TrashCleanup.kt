@@ -27,5 +27,6 @@ object TrashCleanup {
 
     suspend fun purgeNote(db: AppDatabase, note: Note) {
         db.noteDao().delete(note)
+        NovelSourceIndex.evict(note.id)
     }
 }

@@ -84,10 +84,21 @@ class SourceCitationsTest {
     @Test
     fun indexVersionChangeAndTruncatedDigestsCannotPass() {
         val revision = SourceTagging.revisionOf("正文")
-        val next = revision.replace("v1-", "v2-")
+        val next = revision.replace("v2-", "v3-")
         val ref = SourceCitations.parse("〔REF:42:$next:S1-1〕")!!
         assertTrue(SourceCitations.rejectionReason(ref, 42L, revision) != null)
         assertNull(SourceCitations.parse("〔REF:42:v1-abcdef:S1-1〕"))
+    }
+
+    @Test
+    fun colonTagsResolveOnlyUsingSavedReplyBinding() {
+        val bound = SourceCitations.parse("〔S：12-7〕", 42L, "v2-saved")!!
+        assertEquals("S12-7", bound.sliceId)
+        assertNull(SourceCitations.rejectionReason(bound, 42L, "v2-saved"))
+        assertTrue(SourceCitations.rejectionReason(bound, 42L, "v2-new") != null)
+        assertTrue(SourceCitations.rejectionReason(SourceCitations.parse("〔S：12-7〕")!!, 42L, "v2-new") != null)
+        assertEquals("S12-7", SourceCitations.parse("〔S:12-7〕")?.sliceId)
+        assertNull(SourceCitations.parse("〔S：0-0〕"))
     }
 
     @Test

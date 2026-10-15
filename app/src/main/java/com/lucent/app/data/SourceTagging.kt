@@ -2,8 +2,8 @@ package com.lucent.app.data
 
 object SourceTagging {
 
-    const val TARGET_SLICE_CHARS = 600
-    const val MAX_SLICE_CHARS = 900
+    const val TARGET_SLICE_CHARS = 500
+    const val INDEX_VERSION = 2
 
     data class Chapter(val number: Int, val title: String, val startOffset: Int, val endOffset: Int)
 
@@ -15,11 +15,9 @@ object SourceTagging {
         fun sliceOf(id: String): Slice? = slices.firstOrNull { it.id == id }
     }
 
-    const val INDEX_VERSION = 1
-
     fun revisionOf(body: String, title: String = ""): String {
         val digest = java.security.MessageDigest.getInstance("SHA-256")
-        listOf(INDEX_VERSION.toString(), TARGET_SLICE_CHARS.toString(), MAX_SLICE_CHARS.toString(), title, body)
+        listOf(INDEX_VERSION.toString(), TARGET_SLICE_CHARS.toString(), title, body)
             .forEach { field ->
                 val bytes = field.toByteArray(Charsets.UTF_8)
                 digest.update(java.nio.ByteBuffer.allocate(4).putInt(bytes.size).array())
@@ -32,157 +30,133 @@ object SourceTagging {
     fun tag(title: String, body: String): Tagged {
         if (body.isBlank()) return Tagged("", emptyList(), emptyList())
 
+        val lines = linesOf(body)
+        val boundaries = lines.indices.filter { lines[it].heading != null }.toMutableList()
+        val firstHeading = boundaries.firstOrNull() ?: lines.size
+        if (lines.take(firstHeading).any { !it.blank }) boundaries.add(0, 0)
         val chapters = mutableListOf<Chapter>()
         val slices = mutableListOf<Slice>()
         val out = StringBuilder()
 
-        sectionsOf(body).forEachIndexed { index, section ->
+        boundaries.forEachIndexed { index, first ->
+            val until = boundaries.getOrNull(index + 1) ?: lines.size
             val number = index + 1
-            val headingText = section.heading ?: title.ifBlank { "正文 ${index + 1}" }
+            val heading = lines[first].heading
+            val headingText = heading ?: title.ifBlank { "正文 $number" }
+            val end = if (until < lines.size) lines[until].start else body.length
+            chapters += Chapter(number, headingText, lines[first].start, end)
+            if (out.isNotEmpty()) out.append("\n\n")
             out.append("〔CH").append(number).append("〕\n")
-            out.append(section.heading ?: "# $headingText").append("\n\n")
-            chapters += Chapter(number, headingText, section.start, section.end)
+            out.append(heading ?: "# $headingText")
 
-            var sliceNumber = 1
-            for (piece in slicesOf(section.paragraphs)) {
-                out.append("〔S").append(number).append('-').append(sliceNumber).append("〕\n")
-                out.append(piece.text).append("\n\n")
+            val paragraphs = paragraphsOf(lines, if (heading != null) first + 1 else first, until)
+            slicesOf(paragraphs).forEachIndexed { sliceIndex, piece ->
+                val sliceNumber = sliceIndex + 1
+                out.append("\n\n〔S：").append(number).append('-').append(sliceNumber).append("〕\n")
+                out.append(body.substring(piece.start, piece.end))
                 slices += Slice(number, sliceNumber, piece.start, piece.end)
-                sliceNumber++
             }
         }
 
-        return Tagged(out.toString().trimEnd(), chapters, slices)
+        return Tagged(out.toString(), chapters, slices)
     }
 
-    private class Section(
-        val heading: String?,
+    private class Line(
         val start: Int,
         val end: Int,
-        val paragraphs: List<Piece>
+        val blank: Boolean,
+        val fenced: Boolean,
+        val heading: String?
     )
 
-    private class Piece(val text: String, val start: Int, val end: Int)
+    private class Piece(val start: Int, val end: Int)
 
-    private fun sectionsOf(body: String): List<Section> {
-        val lines = body.split("\n")
-        val lineOffsets = IntArray(lines.size)
-        var offset = 0
-        for (i in lines.indices) {
-            lineOffsets[i] = offset
-            offset += lines[i].length + 1
-        }
+    private class Fence(val marker: Char, val length: Int)
 
-        val boundaries = mutableListOf<Int>()
-        val firstHeading = lines.indexOfFirst { DocumentHeadings.titleOf(it) != null }
-        if (firstHeading != 0) boundaries += 0
-        for (i in lines.indices) {
-            if (DocumentHeadings.titleOf(lines[i]) != null) boundaries += i
-        }
-
-        val sections = mutableListOf<Section>()
-        boundaries.forEachIndexed { position, first ->
-            val lastExclusive = if (position + 1 < boundaries.size) boundaries[position + 1] else lines.size
-            if (first >= lastExclusive) return@forEachIndexed
-            val isHeading = DocumentHeadings.titleOf(lines[first]) != null
-            val heading = if (isHeading) lines[first].trimEnd('\r').trim() else null
-            val bodyFirst = if (isHeading) first + 1 else first
-            val start = lineOffsets[first]
-            val lastLine = lines[lastExclusive - 1].trimEnd('\r')
-            val end = lineOffsets[lastExclusive - 1] + lastLine.length
-            val paragraphs = if (bodyFirst >= lastExclusive) {
-                emptyList()
-            } else {
-                paragraphsOf(lines, lineOffsets, bodyFirst, lastExclusive)
+    private fun linesOf(body: String): List<Line> {
+        val lines = mutableListOf<Line>()
+        var start = 0
+        var fence: Fence? = null
+        while (start < body.length) {
+            var end = start
+            while (end < body.length && body[end] != '\r' && body[end] != '\n') end++
+            var next = end
+            if (next < body.length && body[next] == '\r') next++
+            if (next < body.length && body[next] == '\n') next++
+            val text = body.substring(start, end)
+            val activeFence = fence
+            val opening = if (activeFence == null) openingFence(text) else null
+            val fenced = activeFence != null || opening != null
+            if (activeFence != null) {
+                if (closesFence(text, activeFence)) fence = null
+            } else if (opening != null) {
+                fence = opening
             }
-            sections += Section(heading, start, end, paragraphs)
+            val heading = if (!fenced && DocumentHeadings.titleOf(text) != null) text else null
+            lines += Line(start, end, text.isBlank(), fenced, heading)
+            start = next
         }
-        return sections
+        return lines
     }
 
-    private fun paragraphsOf(
-        lines: List<String>,
-        lineOffsets: IntArray,
-        from: Int,
-        until: Int
-    ): List<Piece> {
+    private fun openingFence(text: String): Fence? {
+        val indent = text.takeWhile { it == ' ' }.length
+        if (indent > 3 || indent == text.length) return null
+        val marker = text[indent]
+        if (marker != '`' && marker != '~') return null
+        val length = text.drop(indent).takeWhile { it == marker }.length
+        if (length < 3) return null
+        if (marker == '`' && text.drop(indent + length).contains('`')) return null
+        return Fence(marker, length)
+    }
+
+    private fun closesFence(text: String, fence: Fence): Boolean {
+        val indent = text.takeWhile { it == ' ' }.length
+        if (indent > 3) return false
+        val length = text.drop(indent).takeWhile { it == fence.marker }.length
+        return length >= fence.length && text.drop(indent + length).isBlank()
+    }
+
+    private fun paragraphsOf(lines: List<Line>, from: Int, until: Int): List<Piece> {
         val pieces = mutableListOf<Piece>()
-        val buffer = StringBuilder()
         var start = -1
         var end = -1
-
-        fun flush() {
-            if (buffer.isNotEmpty()) {
-                pieces += Piece(buffer.toString().trim(), start, end)
-                buffer.setLength(0)
+        for (index in from until until) {
+            val line = lines[index]
+            if (line.blank && !line.fenced) {
+                if (start >= 0) pieces += Piece(start, end)
+                start = -1
+            } else {
+                if (start < 0) start = line.start
+                end = line.end
             }
-            start = -1
-            end = -1
         }
-
-        for (i in from until until) {
-            val text = lines[i].trimEnd('\r')
-            if (text.isBlank()) {
-                flush()
-                continue
-            }
-            if (buffer.isEmpty()) start = lineOffsets[i] else buffer.append('\n')
-            buffer.append(text)
-            end = lineOffsets[i] + text.length
-        }
-        flush()
+        if (start >= 0) pieces += Piece(start, end)
         return pieces
     }
 
     private fun slicesOf(paragraphs: List<Piece>): List<Piece> {
         val slices = mutableListOf<Piece>()
-        val buffer = StringBuilder()
-        var start = -1
-        var end = -1
-
-        fun flush() {
-            if (buffer.isNotEmpty()) {
-                slices += Piece(buffer.toString(), start, end)
-                buffer.setLength(0)
+        var current: Piece? = null
+        for (paragraph in paragraphs) {
+            val previous = current
+            if (previous == null) {
+                current = paragraph
+                continue
             }
-            start = -1
-            end = -1
+            val length = previous.end - previous.start
+            val combinedLength = paragraph.end - previous.start
+            if (length >= TARGET_SLICE_CHARS ||
+                (combinedLength >= TARGET_SLICE_CHARS &&
+                    TARGET_SLICE_CHARS - length <= combinedLength - TARGET_SLICE_CHARS)
+            ) {
+                slices += previous
+                current = paragraph
+            } else {
+                current = Piece(previous.start, paragraph.end)
+            }
         }
-
-        paragraphs.flatMap { splitLongParagraph(it) }.forEach { piece ->
-            val overflow = buffer.length + piece.text.length + 2 > MAX_SLICE_CHARS
-            if (buffer.isNotEmpty() && (overflow || buffer.length >= TARGET_SLICE_CHARS)) flush()
-            if (buffer.isEmpty()) start = piece.start else buffer.append("\n\n")
-            buffer.append(piece.text)
-            end = piece.end
-        }
-        flush()
+        current?.let { slices += it }
         return slices
-    }
-
-    private fun splitLongParagraph(piece: Piece): List<Piece> {
-        if (piece.text.length <= MAX_SLICE_CHARS) return listOf(piece)
-
-        val result = mutableListOf<Piece>()
-        val text = piece.text
-        val buffer = StringBuilder()
-        var pieceStart = 0
-        var cursor = 0
-        while (cursor < text.length) {
-            val ch = text[cursor]
-            buffer.append(ch)
-            val sentenceEnd = ch == '。' || ch == '！' || ch == '？' || ch == '…' || ch == '\n' ||
-                ch == '.' || ch == '!' || ch == '?'
-            if ((sentenceEnd && buffer.length >= MAX_SLICE_CHARS) || buffer.length >= MAX_SLICE_CHARS * 2) {
-                result += Piece(buffer.toString().trim(), piece.start + pieceStart, piece.start + cursor + 1)
-                buffer.setLength(0)
-                pieceStart = cursor + 1
-            }
-            cursor++
-        }
-        if (buffer.isNotEmpty()) {
-            result += Piece(buffer.toString().trim(), piece.start + pieceStart, piece.end)
-        }
-        return result
     }
 }

@@ -128,7 +128,17 @@ def main():
             continue
         if "\t" in text:
             problems.append(f"{rel}: contains tab characters")
-        scan(text, 0, len(text), problems, rel)
+        if rel == "app/src/main/java/com/lucent/app/ui/ScaleIndication.kt":
+            end = text.find("package com.lucent.app.ui")
+            header = text[:end] if end >= 0 else ""
+            if "Copyright 2025 The Android Open Source Project" not in header or "Modified for Lucent" not in header:
+                problems.append(f"{rel}: missing upstream attribution or modification notice")
+            elif "Licensed under the Apache License, Version 2.0" not in header:
+                problems.append(f"{rel}: missing upstream license header")
+            else:
+                scan(text, end, len(text), problems, rel)
+        else:
+            scan(text, 0, len(text), problems, rel)
     print(f"Kotlin files checked: {checked}")
     print(f"Largest hand-written file: {largest[1]} ({largest[0]} lines)")
     if problems:

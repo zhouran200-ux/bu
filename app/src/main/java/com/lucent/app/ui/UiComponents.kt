@@ -1,7 +1,6 @@
 package com.lucent.app.ui
 
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -23,7 +22,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.unit.dp
@@ -54,11 +52,7 @@ fun GlassButton(
 
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
-    val scale by animateFloatAsState(
-        targetValue = if (pressed && enabled) 0.985f else 1f,
-        animationSpec = LucentMotion.toSpring(LucentMotion.Settle),
-        label = "glassButtonScale"
-    )
+    val pressIndication = rememberScaleIndication()
 
     val fill = glassControlColor(selected = pressed && enabled)
     val label = onGradient
@@ -66,16 +60,12 @@ fun GlassButton(
 
     Row(
         modifier = modifier
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-            }
             .clip(shape)
             .background(fill.copy(alpha = fill.alpha * fade))
             .border(0.75.dp, foregroundRim(), shape)
             .clickable(
                 interactionSource = interaction,
-                indication = null,
+                indication = pressIndication,
                 enabled = enabled
             ) {
                 Haptics.tick(context)

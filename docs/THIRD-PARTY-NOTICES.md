@@ -13,6 +13,7 @@ The following components are licensed under the Apache License, Version 2.0. A f
 - **Kotlin** — © JetBrains s.r.o. and Kotlin Programming Language contributors — https://github.com/JetBrains/kotlin
 - **Kotlin Coroutines (kotlinx.coroutines)** — © JetBrains s.r.o. — https://github.com/Kotlin/kotlinx.coroutines
 - **Jetpack Compose and AndroidX libraries** (including Activity, Core-KTX, DataStore, Room, SQLite-KTX, Compose UI/Material3) — © The Android Open Source Project — https://developer.android.com/jetpack/androidx
+- **Androidify ScaleIndication** — Copyright 2025 The Android Open Source Project — https://github.com/android/androidify — adapted from commit 931cfdd682279f15bdc63a15420f2bda9a4ac712. Modified package, scale parameter, reduced-motion policy, factory equality and pooled-node reset. Source header retained; APK includes assets/licenses/androidify-APACHE-2.0.txt and androidify-NOTICE.txt.
 - **Material Design Icons** — © Google LLC — https://github.com/google/material-design-icons
 - **Haze** — © 2023–2024 Chris Banes and the Haze project contributors — https://github.com/chrisbanes/haze
 - **OkHttp** — © Square, Inc. — https://github.com/square/okhttp

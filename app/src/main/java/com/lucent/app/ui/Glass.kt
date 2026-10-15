@@ -16,7 +16,6 @@ import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.Dp
@@ -168,16 +167,11 @@ fun Modifier.pressableGlass(
 ): Modifier {
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
-    val scale by androidx.compose.animation.core.animateFloatAsState(
-        targetValue = if (pressed && enabled) 0.985f else 1f,
-        animationSpec = LucentMotion.toSpring(LucentMotion.Settle),
-        label = "glassPressScale"
-    )
+    val pressIndication = rememberScaleIndication()
     val shape = RoundedCornerShape(cornerRadius)
-    return this.graphicsLayer { scaleX = scale; scaleY = scale }
-        .foregroundGlass(cornerRadius)
+    return this.foregroundGlass(cornerRadius)
         .background(if ((pressed && enabled) || emphasized) glassControlColor(true) else Color.Transparent, shape)
-        .clickable(interactionSource = interaction, indication = null, enabled = enabled) { onClick() }
+        .clickable(interactionSource = interaction, indication = pressIndication, enabled = enabled) { onClick() }
 }
 
 @Composable

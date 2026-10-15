@@ -1,0 +1,5 @@
+Androidify ScaleIndication adaptation
+Copyright 2025 The Android Open Source Project
+Apache License 2.0; see androidify-APACHE-2.0.txt.
+Source: android/androidify commit 931cfdd682279f15bdc63a15420f2bda9a4ac712, core/theme/src/main/java/com/android/developers/androidify/theme/components/ScaleIndication.kt
+Modified for Lucent: package, configurable press scale, factory value equality, pooled-node reset, reduced-motion adapter; original algorithm and copyright preserved.

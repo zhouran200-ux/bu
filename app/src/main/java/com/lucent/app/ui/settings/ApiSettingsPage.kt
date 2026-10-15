@@ -4,6 +4,7 @@ import android.content.ClipData
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -65,9 +66,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
@@ -109,6 +116,7 @@ import com.lucent.app.ui.LocalOnGradient
 import com.lucent.app.ui.LocalOnGradientMuted
 import com.lucent.app.ui.LucentToast
 import com.lucent.app.ui.LucentTitles
+import com.lucent.app.ui.edgeScrollVelocity
 import com.lucent.app.ui.frostedGlass
 import com.lucent.app.ui.selectedCard
 import kotlinx.coroutines.delay
@@ -474,6 +482,9 @@ private fun ResponseCard(
 @Composable
 internal fun ApiConfigSettingsPage(
     repo: SettingsRepository,
+    scrollState: ScrollState,
+    viewportBounds: Rect?,
+    active: Boolean,
     profiles: List<ApiProfile>,
     selectedProfileIdx: Int,
     editingProfileName: String,
@@ -519,6 +530,11 @@ internal fun ApiConfigSettingsPage(
 
     var drag by remember { mutableStateOf<ProfileDrag?>(null) }
     var rowStride by remember { mutableFloatStateOf(0f) }
+    var rootPointer by remember { mutableStateOf<Offset?>(null) }
+    val liveViewport = rememberUpdatedState(viewportBounds)
+    val density = LocalDensity.current
+    val edgeZone = with(density) { 72.dp.toPx() }
+    val maxEdgeSpeed = with(density) { 900.dp.toPx() }
     val baseKeys = remember(profiles) { ApiProfiles.orderKeys(profiles) }
     val shownProfiles = drag?.order ?: profiles
     val shownKeys = drag?.keys ?: baseKeys
@@ -548,6 +564,7 @@ internal fun ApiConfigSettingsPage(
     }
 
     fun endDrag() {
+        rootPointer = null
         val current = drag ?: return
         if (current.held < 0) return
         if (current.order == liveProfiles.value) {
@@ -555,6 +572,69 @@ internal fun ApiConfigSettingsPage(
         } else {
             drag = current.copy(held = -1)
             liveReorder.value(current.order, current.selected)
+        }
+    }
+
+    fun cancelDrag() {
+        rootPointer = null
+        if (drag?.held?.let { it >= 0 } == true) drag = null
+    }
+
+    fun moveDrag(distance: Float) {
+        val current = drag ?: return
+        val stride = rowStride
+        if (current.held < 0 || stride <= 0f) return
+        var travelled = current.travel + distance
+        var next = current
+        while (travelled >= stride) {
+            val stepped = next.stepped(+1)
+            if (stepped === next) {
+                travelled = 0f
+                break
+            }
+            next = stepped
+            travelled -= stride
+        }
+        while (travelled <= -stride) {
+            val stepped = next.stepped(-1)
+            if (stepped === next) {
+                travelled = 0f
+                break
+            }
+            next = stepped
+            travelled += stride
+        }
+        val edge = when {
+            next.held == 0 -> travelled.coerceIn(0f, stride)
+            next.held == next.order.lastIndex -> travelled.coerceIn(-stride, 0f)
+            else -> travelled.coerceIn(-stride, stride)
+        }
+        drag = next.copy(travel = edge)
+        if (next !== current) Haptics.tick(context)
+    }
+
+    LaunchedEffect(active) {
+        if (!active) cancelDrag()
+    }
+
+    LaunchedEffect(active, drag?.held?.let { it >= 0 } == true, scrollState, edgeZone, maxEdgeSpeed) {
+        if (!active || drag?.held?.let { it >= 0 } != true) return@LaunchedEffect
+        scrollState.scroll {
+            var previousFrame = withFrameNanos { it }
+            while (drag?.held?.let { it >= 0 } == true) {
+                val frame = withFrameNanos { it }
+                val seconds = ((frame - previousFrame) / 1_000_000_000f).coerceIn(0f, 0.05f)
+                previousFrame = frame
+                if (drag?.held?.let { it >= 0 } != true) break
+                val pointer = rootPointer ?: continue
+                val viewport = liveViewport.value ?: continue
+                if (pointer.x < viewport.left || pointer.x > viewport.right) continue
+                val velocity = edgeScrollVelocity(pointer.y, viewport.top, viewport.bottom, edgeZone, maxEdgeSpeed)
+                if (velocity != 0f) {
+                    val consumed = scrollBy(velocity * seconds)
+                    if (consumed != 0f) moveDrag(consumed)
+                }
+            }
         }
     }
 
@@ -597,6 +677,7 @@ internal fun ApiConfigSettingsPage(
                     var restingIdx by remember { mutableIntStateOf(idx) }
                     val slide = remember { Animatable(0f) }
                     val liveIdx = rememberUpdatedState(idx)
+                    var handleCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
                     val held = drag?.held == idx
                     val isActive = idx == activeProfileIdx
                     LaunchedEffect(idx, held) {
@@ -640,50 +721,36 @@ internal fun ApiConfigSettingsPage(
                             Box(
                                 modifier = Modifier
                                     .size(30.dp)
-                                    .pointerInput(identity) {
-                                        var travelled = 0f
-                                        detectDragGesturesAfterLongPress(
-                                            onDragStart = {
-                                                travelled = 0f
-                                                beginDrag(liveIdx.value)
-                                            },
-                                            onDrag = { change, delta ->
-                                                change.consume()
-                                                val stride = rowStride
-                                                val current = drag
-                                                if (stride > 0f && current != null && current.held >= 0) {
-                                                    travelled += delta.y
-                                                    var next: ProfileDrag = current
-                                                    while (travelled >= stride) {
-                                                        val stepped = next.stepped(+1)
-                                                        if (stepped === next) {
-                                                            travelled = 0f
-                                                            break
-                                                        }
-                                                        next = stepped
-                                                        travelled -= stride
+                                    .onGloballyPositioned { handleCoordinates = it }
+                                    .pointerInput(identity, active) {
+                                        if (!active) return@pointerInput
+                                        try {
+                                            detectDragGesturesAfterLongPress(
+                                                onDragStart = { position ->
+                                                    val coordinates = handleCoordinates
+                                                    if (coordinates != null && coordinates.isAttached) {
+                                                        beginDrag(liveIdx.value)
+                                                        rootPointer = coordinates.localToRoot(position)
                                                     }
-                                                    while (travelled <= -stride) {
-                                                        val stepped = next.stepped(-1)
-                                                        if (stepped === next) {
-                                                            travelled = 0f
-                                                            break
-                                                        }
-                                                        next = stepped
-                                                        travelled += stride
+                                                },
+                                                onDrag = { change, _ ->
+                                                    change.consume()
+                                                    val coordinates = handleCoordinates
+                                                    if (coordinates != null && coordinates.isAttached) {
+                                                        val pointer = coordinates.localToRoot(change.position)
+                                                        val previous = rootPointer
+                                                        rootPointer = pointer
+                                                        if (previous != null) moveDrag(pointer.y - previous.y)
+                                                    } else {
+                                                        cancelDrag()
                                                     }
-                                                    val edge = when {
-                                                        next.held == 0 -> travelled.coerceIn(0f, stride)
-                                                        next.held == next.order.lastIndex -> travelled.coerceIn(-stride, 0f)
-                                                        else -> travelled.coerceIn(-stride, stride)
-                                                    }
-                                                    drag = next.copy(travel = edge)
-                                                    if (next !== current) Haptics.tick(context)
-                                                }
-                                            },
-                                            onDragEnd = { endDrag() },
-                                            onDragCancel = { endDrag() }
-                                        )
+                                                },
+                                                onDragEnd = { endDrag() },
+                                                onDragCancel = { cancelDrag() }
+                                            )
+                                        } finally {
+                                            if (drag?.keys?.getOrNull(drag?.held ?: -1) == identity) cancelDrag()
+                                        }
                                     },
                                 contentAlignment = Alignment.Center
                             ) {

@@ -12,6 +12,9 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.scrollBy
+import androidx.compose.runtime.DisposableEffect
+import kotlinx.coroutines.isActive
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
@@ -28,7 +31,6 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
@@ -64,7 +66,42 @@ class ReorderDragState internal constructor() {
     internal var dragToken: Int by mutableStateOf(0)
         private set
 
+    internal var pointerY: Float by mutableFloatStateOf(0f)
+    internal var sourceTop: Float by mutableFloatStateOf(0f)
+    internal var grabbedY: Float by mutableFloatStateOf(0f)
+    internal var draggedSize: IntSize by mutableStateOf(IntSize.Zero)
+    internal var overlayDrag: Boolean by mutableStateOf(false)
+    private var pointerTravel = 0f
+
+    internal fun grab(id: Long, top: Float, pointer: Float, size: IntSize) {
+        begin(id)
+        overlayDrag = true
+        sourceTop = top
+        pointerY = pointer
+        grabbedY = pointer - top
+        draggedSize = size
+    }
+
+    internal fun movePointer(delta: Float, slop: Float) {
+        if (!dragging) return
+        pointerY += delta
+        pointerTravel += delta
+        dragY += delta
+        if (abs(pointerTravel) > slop) moved = true
+    }
+
+    internal fun compensateScroll(consumed: Float) {
+        if (!dragging) return
+        sourceTop -= consumed
+        dragY += consumed
+        if (consumed != 0f) moved = true
+    }
+
+    internal val overlayTop: Float get() = sourceTop + dragY
+
     internal fun begin(id: Long) {
+        overlayDrag = false
+        pointerTravel = 0f
         dragToken += 1
         dragging = true
         settling = false
@@ -114,6 +151,11 @@ class ReorderDragState internal constructor() {
         settling = false
         settleOrder = null
         draggingId = null
+        overlayDrag = false
+        pointerY = 0f
+        sourceTop = 0f
+        grabbedY = 0f
+        draggedSize = IntSize.Zero
         dragY = 0f
         moved = false
         gapBeforeId = null
@@ -142,6 +184,17 @@ class ReorderSlots internal constructor(
     fun sizeOf(key: Long?): IntSize? = sizes.getOrNull(indexOfKey(key))
 
     fun visibleKeys(): List<Long> = keys
+
+    internal fun gapAtY(y: Float, dragged: Long): Pair<Long?, Long?> {
+        var before: Long? = null
+        for (index in keys.indices) {
+            if (keys[index] == dragged) continue
+            val mid = offsets[index].y + sizes[index].height / 2f
+            if (y <= mid) return before to keys[index]
+            before = keys[index]
+        }
+        return before to null
+    }
 
     fun slotFor(dragging: Long?, gapBeforeId: Long?, gapAfterId: Long?): Pair<IntOffset, IntSize>? =
         boundsAt(landingIndex(dragging, gapBeforeId, gapAfterId))
@@ -262,48 +315,88 @@ private fun reorderJelly(active: Boolean): State<Float>? {
 @Composable
 fun rememberReorderDragState(): ReorderDragState = remember { ReorderDragState() }
 
-fun Modifier.reorderableItem(
-    id: Long,
+fun Modifier.reorderableList(
     listState: LazyListState,
     state: ReorderDragState,
+    enabled: Boolean = true,
     onLongPress: () -> Unit,
     onDrop: (beforeId: Long?, afterId: Long?) -> Unit
 ): Modifier = composed {
     val press by rememberUpdatedState(onLongPress)
     val drop by rememberUpdatedState(onDrop)
-    this
-        .pointerInput(id) {
-            val slop = viewConfiguration.touchSlop
-            var grabbedAt = Offset.Zero
-            var travelledY = 0f
+    this.pointerInput(listState, state, enabled) {
+        if (!enabled) return@pointerInput
+        try {
             detectDragGesturesAfterLongPress(
                 onDragStart = { local ->
-                    grabbedAt = local
-                    travelledY = 0f
-                    state.begin(id)
-                    press()
+                    val info = listState.layoutInfo
+                    val y = local.y + info.viewportStartOffset
+                    val item = info.visibleItemsInfo.firstOrNull {
+                        it.key is Long && y >= it.offset && y < it.offset + it.size
+                    }
+                    if (item != null) {
+                        state.grab(item.key as Long, item.offset.toFloat(), y,
+                            IntSize(info.viewportSize.width, item.size))
+                        press()
+                    }
                 },
                 onDragEnd = {
-                    val slots = listState.visibleSlots()
-                    val from = slots.offsetOf(id)
-                    val landing = slots.targetFor(id, id, state.gapBeforeId, state.gapAfterId)
-                    val moved = landing != null && landing != from
-                    val (b, a) = state.finish(if (moved) slots.visibleKeys() else null)
-                    drop(b, a)
+                    if (state.dragging) {
+                        listState.updateGap(state)
+                        val gap = state.finish(if (state.moved) listState.visibleSlots().visibleKeys() else null)
+                        drop(gap.first, gap.second)
+                    }
                 },
-                onDragCancel = { state.cancel() },
+                onDragCancel = { if (state.dragging) state.cancel() },
                 onDrag = { change, amount ->
-                    change.consume()
-                    travelledY += amount.y
-                    state.dragY = travelledY
-                    if (!state.moved && abs(travelledY) > slop) state.moved = true
-                    val top = listState.topOf(id)
-                    val (b, a) = listState.gapAtY(top + grabbedAt.y + travelledY, id)
-                    state.gapBeforeId = b
-                    state.gapAfterId = a
+                    if (state.dragging) {
+                        change.consume()
+                        state.movePointer(amount.y, viewConfiguration.touchSlop)
+                        listState.updateGap(state)
+                    }
                 }
             )
+        } finally {
+            if (state.dragging) state.cancel()
         }
+    }
+}
+
+private fun LazyListState.updateGap(state: ReorderDragState) {
+    val id = state.draggingId ?: return
+    val (before, after) = visibleSlots().gapAtY(state.pointerY, id)
+    state.gapBeforeId = before
+    state.gapAfterId = after
+}
+
+@Composable
+fun ReorderAutoScrollEffect(listState: LazyListState, state: ReorderDragState) {
+    val density = LocalDensity.current
+    val zone = with(density) { 72.dp.toPx() }
+    val maxSpeed = with(density) { 900.dp.toPx() }
+    DisposableEffect(listState, state) {
+        onDispose { if (state.dragging) state.cancel() }
+    }
+    LaunchedEffect(listState, state, state.dragging, state.dragToken, zone, maxSpeed) {
+        if (!state.dragging || !state.overlayDrag) return@LaunchedEffect
+        val token = state.dragToken
+        var previous = withFrameNanos { it }
+        while (isActive && state.dragging && state.dragToken == token) {
+            val now = withFrameNanos { it }
+            if (!state.dragging || state.dragToken != token) break
+            val info = listState.layoutInfo
+            val velocity = edgeScrollVelocity(state.pointerY, info.viewportStartOffset.toFloat(),
+                info.viewportEndOffset.toFloat(), zone, maxSpeed)
+            val seconds = ((now - previous).coerceIn(0L, 50_000_000L) / 1_000_000_000f)
+            previous = now
+            if (velocity != 0f) {
+                val consumed = listState.scrollBy(velocity * seconds)
+                if (!state.dragging || state.dragToken != token) break
+                state.compensateScroll(consumed)
+            }
+            listState.updateGap(state)
+        }
+    }
 }
 
 fun Modifier.reorderVisuals(
@@ -441,25 +534,6 @@ private fun boundedTravel(delta: Float, lower: Float, upper: Float): Float {
     val low = if (lower < 0f) lower else 0f
     val high = if (upper > 0f) upper else 0f
     return if (delta < low) low else if (delta > high) high else delta
-}
-
-private fun LazyListState.topOf(id: Long): Float =
-    (layoutInfo.visibleItemsInfo.firstOrNull { it.key == id }?.offset ?: 0).toFloat()
-
-private fun LazyListState.gapAtY(y: Float, dragged: Long): Pair<Long?, Long?> {
-    val cards = layoutInfo.visibleItemsInfo.filter { (it.key as? Long)?.let { k -> k != dragged } == true }
-    if (cards.isEmpty()) return null to null
-    val firstCard = cards.first()
-    if (y <= firstCard.offset + firstCard.size / 2f) {
-        return null to (firstCard.key as Long)
-    }
-    var before: Long? = null
-    var after: Long? = null
-    for (item in cards) {
-        val mid = item.offset + item.size / 2f
-        if (y >= mid) before = item.key as Long else { after = item.key as Long; break }
-    }
-    return before to after
 }
 
 fun <T> reorderedAround(

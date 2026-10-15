@@ -12,6 +12,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.requiredSize
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
+import kotlin.math.roundToInt
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.size
@@ -90,6 +97,10 @@ fun NotebooksScreen(
     val listState = rememberRestoredListState("NotebooksScreen#list")
     val reorderSlots = rememberListSlots(listState)
     ReorderSettleEffect(reorderState, reorderSlots)
+    if (active && openNotebookId == null) ReorderAutoScrollEffect(listState, reorderState)
+    LaunchedEffect(active, openNotebookId) {
+        if (!active || openNotebookId != null) reorderState.cancel()
+    }
     val placementSpec = rememberReorderPlacementSpec()
 
     BackClaim(active && openNotebookId != null)
@@ -210,31 +221,52 @@ fun NotebooksScreen(
             return@Column
         }
 
-        LazyColumn(
-            state = listState,
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            contentPadding = PaddingValues(top = 8.dp, bottom = LocalBottomBarInset.current + 12.dp)
-        ) {
-            items(visible, key = { it.id }) { notebook ->
+        Box(Modifier.fillMaxSize().clipToBounds()) {
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize().reorderableList(
+                    listState = listState,
+                    state = reorderState,
+                    enabled = active && openNotebookId == null,
+                    onLongPress = { Haptics.tick(context) },
+                    onDrop = { beforeId, afterId -> drop(beforeId, afterId) }
+                ),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = PaddingValues(top = 8.dp, bottom = LocalBottomBarInset.current + 12.dp)
+            ) {
+                items(visible, key = { it.id }) { notebook ->
+                    NotebookShelfItem(
+                        notebook = notebook,
+                        sourceCount = notebookSourceCount(countById[notebook.id]),
+                        itemModifier = Modifier
+                            .animateItem(placementSpec = placementSpec)
+                            .reorderVisuals(notebook.id, reorderState, reorderSlots)
+                            .graphicsLayer {
+                                if (reorderState.dragging && reorderState.draggingId == notebook.id) alpha = 0f
+                            },
+                        interactive = !reorderState.dragging,
+                        onOpen = { openNotebookId = notebook.id },
+                        onRename = { renaming = notebook },
+                        onDelete = { deleting = notebook }
+                    )
+                }
+            }
+            val grabbed = visible.firstOrNull { it.id == reorderState.draggingId }
+            if (reorderState.dragging && grabbed != null) {
+                val density = LocalDensity.current
                 NotebookShelfItem(
-                    notebook = notebook,
-                    sourceCount = (countById[notebook.id] ?: 0).coerceAtLeast(1),
+                    notebook = grabbed,
+                    sourceCount = notebookSourceCount(countById[grabbed.id]),
                     itemModifier = Modifier
-                        .animateItem(placementSpec = placementSpec)
-                        .reorderVisuals(notebook.id, reorderState, reorderSlots),
-                    reorderModifier = Modifier.reorderableItem(
-                        id = notebook.id,
-                        listState = listState,
-                        state = reorderState,
-                        onLongPress = { Haptics.tick(context) },
-                        onDrop = { beforeId, afterId -> drop(beforeId, afterId) }
-                    ),
-                    onOpen = {
-                        openNotebookId = notebook.id
-                    },
-                    onRename = { renaming = notebook },
-                    onDelete = { deleting = notebook }
+                        .offset {
+                            IntOffset(0, (reorderState.overlayTop - listState.layoutInfo.viewportStartOffset).roundToInt())
+                        }
+                        .requiredSize(
+                            with(density) { reorderState.draggedSize.width.toDp() },
+                            with(density) { reorderState.draggedSize.height.toDp() }
+                        ),
+                    interactive = false,
+                    onOpen = {}, onRename = {}, onDelete = {}
                 )
             }
         }
@@ -254,7 +286,7 @@ private fun NotebookShelfItem(
     notebook: Notebook,
     sourceCount: Int,
     itemModifier: Modifier,
-    reorderModifier: Modifier,
+    interactive: Boolean = true,
     onOpen: () -> Unit,
     onRename: () -> Unit,
     onDelete: () -> Unit
@@ -263,7 +295,8 @@ private fun NotebookShelfItem(
     val onGradient = LocalOnGradient.current
     val onGradientMuted = LocalOnGradientMuted.current
     var menuOpen by remember { mutableStateOf(false) }
-    BackHandler(enabled = menuOpen) { menuOpen = false }
+    BackHandler(enabled = interactive && menuOpen) { menuOpen = false }
+    LaunchedEffect(interactive) { if (!interactive) menuOpen = false }
     val title = notebook.title.ifBlank { com.lucent.app.i18n.S.notebookEmptyTitle }
     val formattedDate = remember(notebook.updatedAt) { formatMonthDateTime(notebook.updatedAt) }
 
@@ -271,11 +304,10 @@ private fun NotebookShelfItem(
         modifier = itemModifier
             .fillMaxWidth()
             .frostedGlass(cornerRadius = 22.dp)
-            .clickable {
+            .clickable(enabled = interactive) {
                 Haptics.tick(context)
                 onOpen()
             }
-            .then(reorderModifier)
             .padding(horizontal = 16.dp, vertical = 18.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -301,6 +333,7 @@ private fun NotebookShelfItem(
         Box {
             IconButton(
                 onClick = { menuOpen = true },
+                enabled = interactive,
                 modifier = Modifier.size(36.dp)
             ) {
                 Icon(
@@ -315,7 +348,7 @@ private fun NotebookShelfItem(
                 containerColor = Color.Transparent,
                 tonalElevation = 0.dp,
                 shadowElevation = 8.dp,
-                expanded = menuOpen,
+                expanded = interactive && menuOpen,
                 onDismissRequest = { menuOpen = false },
                 properties = NonEditingPopupProperties
             ) {

@@ -6,6 +6,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -40,7 +41,6 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventPass
-import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -95,6 +95,8 @@ fun StepperSlider(
         onValueChange(snapped)
     }
     val finish = rememberUpdatedState(onValueChangeFinished)
+    val currentValue = rememberUpdatedState(value)
+    val restoreValue = rememberUpdatedState(onValueChange)
 
     fun nudge(delta: Float) {
         commit.value(shown + delta)
@@ -138,27 +140,56 @@ fun StepperSlider(
                         fun fractionAt(x: Float): Float =
                             ((x - thumbPx) / (size.width - 2f * thumbPx).coerceAtLeast(1f)).coerceIn(0f, 1f)
                         awaitEachGesture {
-                            var down: PointerInputChange? = null
-                            while (down == null) {
-                                down = awaitPointerEvent(PointerEventPass.Initial)
-                                    .changes.firstOrNull { it.pressed }
-                            }
-                            val tracked = down!!
-                            dragging = true
-                            commit.value(low + fractionAt(tracked.position.x) * span)
-                            var running = true
-                            while (running) {
-                                val change: PointerInputChange? = awaitPointerEvent()
-                                    .changes.firstOrNull { it.id == tracked.id }
-                                if (change == null || !change.pressed) {
-                                    running = false
-                                } else {
-                                    commit.value(low + fractionAt(change.position.x) * span)
-                                    change.consume()
+                            val down = awaitFirstDown(requireUnconsumed = true)
+                            val initialValue = currentValue.value
+                            var direction = StepperGestureDirection.Waiting
+                            var changedDraft = false
+                            var completed = false
+                            try {
+                                while (true) {
+                                    val change = awaitPointerEvent(PointerEventPass.Main)
+                                        .changes.firstOrNull { it.id == down.id } ?: break
+                                    if (change.isConsumed) break
+                                    if (direction == StepperGestureDirection.Waiting) {
+                                        val delta = change.position - down.position
+                                        direction = stepperGestureDirection(
+                                            delta.x, delta.y, viewConfiguration.touchSlop
+                                        )
+                                    }
+                                    if (direction == StepperGestureDirection.Vertical) break
+                                    if (!change.pressed) {
+                                        if (direction == StepperGestureDirection.Waiting) {
+                                            val finalChange = awaitPointerEvent(PointerEventPass.Final)
+                                                .changes.firstOrNull { it.id == down.id } ?: break
+                                            if (finalChange.isConsumed) break
+                                            finalChange.consume()
+                                        } else {
+                                            change.consume()
+                                        }
+                                        changedDraft = true
+                                        commit.value(low + fractionAt(change.position.x) * span)
+                                        completed = true
+                                        finish.value()
+                                        break
+                                    }
+                                    if (direction == StepperGestureDirection.Horizontal) {
+                                        dragging = true
+                                        change.consume()
+                                        changedDraft = true
+                                        commit.value(low + fractionAt(change.position.x) * span)
+                                    } else {
+                                        val finalChange = awaitPointerEvent(PointerEventPass.Final)
+                                            .changes.firstOrNull { it.id == down.id } ?: break
+                                        if (finalChange.isConsumed) break
+                                    }
                                 }
+                            } finally {
+                                if (!completed && changedDraft) {
+                                    liveValue = initialValue
+                                    restoreValue.value(initialValue)
+                                }
+                                dragging = false
                             }
-                            dragging = false
-                            finish.value()
                         }
                     }
             )

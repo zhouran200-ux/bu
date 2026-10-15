@@ -26,6 +26,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.lucent.app.AppNavigation
@@ -193,12 +196,14 @@ fun SettingsScreen(active: Boolean = true) {
         } else if (!motionEnabled) enterProgress.snapTo(1f)
     }
     val imeVisible = WindowInsets.isImeVisible
+    var viewportBounds by remember { mutableStateOf<Rect?>(null) }
     CompositionLocalProvider(LocalLiveGlassEnabled provides false) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .imePadding()
                 .graphicsLayer { alpha = 0.85f + enterProgress.value * 0.15f }
+                .onGloballyPositioned { viewportBounds = it.boundsInRoot() }
                 .verticalScroll(rootScroll)
                 .padding(16.dp)
                 .padding(bottom = if (imeVisible) 0.dp else LocalBottomBarInset.current)
@@ -214,6 +219,9 @@ fun SettingsScreen(active: Boolean = true) {
 
                 SettingsRoute.Api -> ApiConfigSettingsPage(
                     repo = repo,
+                    scrollState = rootScroll,
+                    viewportBounds = viewportBounds,
+                    active = active,
                     profiles = profiles,
                     selectedProfileIdx = selectedProfileIdx,
                     editingProfileName = editingProfileName,
@@ -244,4 +252,3 @@ fun SettingsScreen(active: Boolean = true) {
         }
     }
 }
-

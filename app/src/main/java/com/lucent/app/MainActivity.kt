@@ -283,7 +283,6 @@ fun LucentApp(paletteColors: List<Color>, backdropColor: Color, backgroundAnimat
     val currentTab by remember(pagerState, tabs) {
         derivedStateOf { tabs[pagerState.currentPage.coerceIn(tabs.indices)] }
     }
-    val tabScope = rememberCoroutineScope()
     LaunchedEffect(currentScreen) {
         LastScreen.remember(currentScreen)
     }
@@ -424,12 +423,6 @@ fun LucentApp(paletteColors: List<Color>, backdropColor: Color, backgroundAnimat
                                             selected = currentTab == tab,
                                             onClick = {
                                                 currentScreen = tab.screen()
-                                                tabScope.launch {
-                                                    pagerState.animateScrollToPage(
-                                                        tabs.indexOf(tab),
-                                                        animationSpec = androidx.compose.animation.core.tween(280, easing = androidx.compose.animation.core.FastOutSlowInEasing)
-                                                    )
-                                                }
                                             },
                                             modifier = Modifier.weight(1f)
                                         )

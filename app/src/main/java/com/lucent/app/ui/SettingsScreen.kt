@@ -11,6 +11,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -176,52 +180,67 @@ fun SettingsScreen(active: Boolean = true) {
         snapshotFlow { rootScroll.value }.collect { SettingsScrollMemory.write(route, it) }
     }
 
+    val motionEnabled = LocalBackgroundEnvironment.current.motionEnabled
+    val enterProgress = remember { Animatable(1f) }
+    var displayedRoute by remember { mutableStateOf(route) }
+    LaunchedEffect(route, motionEnabled) {
+        if (route != displayedRoute) {
+            displayedRoute = route
+            if (motionEnabled) {
+                enterProgress.snapTo(0f)
+                enterProgress.animateTo(1f, tween(180))
+            } else enterProgress.snapTo(1f)
+        } else if (!motionEnabled) enterProgress.snapTo(1f)
+    }
     val imeVisible = WindowInsets.isImeVisible
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .imePadding()
-            .verticalScroll(rootScroll)
-            .padding(16.dp)
-            .padding(bottom = if (imeVisible) 0.dp else LocalBottomBarInset.current)
-    ) {
-        when (route) {
-            SettingsRoute.Root -> RootSettingsPage(repo = repo, onRoute = { navigate(it) })
+    CompositionLocalProvider(LocalLiveGlassEnabled provides false) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .imePadding()
+                .graphicsLayer { alpha = 0.85f + enterProgress.value * 0.15f }
+                .verticalScroll(rootScroll)
+                .padding(16.dp)
+                .padding(bottom = if (imeVisible) 0.dp else LocalBottomBarInset.current)
+        ) {
+            when (route) {
+                SettingsRoute.Root -> RootSettingsPage(repo = repo, onRoute = { navigate(it) })
 
-            SettingsRoute.Theme -> ThemeSettingsPage(repo = repo)
+                SettingsRoute.Theme -> ThemeSettingsPage(repo = repo)
 
-            SettingsRoute.Background -> BackgroundSettingsPage(repo = repo)
+                SettingsRoute.Background -> BackgroundSettingsPage(repo = repo)
 
-            SettingsRoute.Font -> FontSettingsPage(repo = repo)
+                SettingsRoute.Font -> FontSettingsPage(repo = repo)
 
-            SettingsRoute.Api -> ApiConfigSettingsPage(
-                repo = repo,
-                profiles = profiles,
-                selectedProfileIdx = selectedProfileIdx,
-                editingProfileName = editingProfileName,
-                onEditingProfileNameChange = { editingProfileName = it },
-                url = url,
-                onUrlChange = { url = it },
-                spec = spec,
-                onSpecChange = { spec = it },
-                key = key,
-                onKeyChange = { key = it; typingReveal = true; keystrokeSeq++ },
-                keyVisible = keyVisible,
-                onRevealKey = { manualReveal = true },
-                selectedModel = selectedModel,
-                onSelectedModelChange = { selectedModel = it },
-                models = models,
-                onModelsChange = { picked -> models = picked },
-                loading = loading,
-                onLoadingChange = { loading = it },
-                errorText = errorText,
-                onErrorTextChange = { errorText = it },
-                onRequestDeleteProfile = { deleteProfile(it) },
-                onSelectProfile = { selectProfile(it) },
-                onReorderProfiles = { order, selected -> reorderProfiles(order, selected) },
-                onAddProfile = { addProfile() },
-                onSaveProfile = { saveActiveProfile(selectedProfileIdx, models) }
-            )
+                SettingsRoute.Api -> ApiConfigSettingsPage(
+                    repo = repo,
+                    profiles = profiles,
+                    selectedProfileIdx = selectedProfileIdx,
+                    editingProfileName = editingProfileName,
+                    onEditingProfileNameChange = { editingProfileName = it },
+                    url = url,
+                    onUrlChange = { url = it },
+                    spec = spec,
+                    onSpecChange = { spec = it },
+                    key = key,
+                    onKeyChange = { key = it; typingReveal = true; keystrokeSeq++ },
+                    keyVisible = keyVisible,
+                    onRevealKey = { manualReveal = true },
+                    selectedModel = selectedModel,
+                    onSelectedModelChange = { selectedModel = it },
+                    models = models,
+                    onModelsChange = { picked -> models = picked },
+                    loading = loading,
+                    onLoadingChange = { loading = it },
+                    errorText = errorText,
+                    onErrorTextChange = { errorText = it },
+                    onRequestDeleteProfile = { deleteProfile(it) },
+                    onSelectProfile = { selectProfile(it) },
+                    onReorderProfiles = { order, selected -> reorderProfiles(order, selected) },
+                    onAddProfile = { addProfile() },
+                    onSaveProfile = { saveActiveProfile(selectedProfileIdx, models) }
+                )
+            }
         }
     }
 }

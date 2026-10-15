@@ -21,6 +21,7 @@ import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeEffect
 
 internal val LocalGlassBackdrop = compositionLocalOf<HazeState?> { null }
+internal val LocalLiveGlassEnabled = compositionLocalOf { true }
 
 internal data class ForegroundMaterialSpec(val tintAlpha: Float, val fallbackAlpha: Float, val blur: Float)
 
@@ -80,6 +81,12 @@ internal fun Modifier.foregroundGlass(cornerRadius: Dp = 20.dp, reading: Boolean
     val spec = foregroundMaterialSpec(dark, reading)
     val background = LocalBackdropColor.current
     val tint = if (dark) lucentPanelBackground() else Color.White
+    val liveGlass = LocalLiveGlassEnabled.current
+    if (!liveGlass) {
+        return@composed clip(shape)
+            .background(tint.copy(alpha = spec.tintAlpha))
+            .border(0.75.dp, rim, shape)
+    }
     val source = LocalGlassBackdrop.current
     val material = if (source != null) Modifier.hazeEffect(source, style = HazeStyle(
         backgroundColor = background,

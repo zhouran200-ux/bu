@@ -515,7 +515,7 @@ internal fun ApiConfigSettingsPage(
     var fetchModelsError by remember { mutableStateOf("") }
     var copiedRawHint by remember { mutableStateOf(false) }
     var customModelInput by remember { mutableStateOf("") }
-    val choices = modelChoices(fetchedModels, models)
+    val choices = remember(fetchedModels, models) { modelChoices(fetchedModels, models) }
 
     var drag by remember { mutableStateOf<ProfileDrag?>(null) }
     var rowStride by remember { mutableFloatStateOf(0f) }
@@ -1120,13 +1120,15 @@ internal fun ApiConfigSettingsPage(
         }
 
         lastTestResult?.let { res ->
-            val prettyBody = if (res.success) res.prettyResponseBody() else buildString {
+            val prettyBody = remember(res) {
+                if (res.success) res.prettyResponseBody() else buildString {
                 appendLine("详细信息")
                 if (res.httpCode > 0) appendLine("HTTP 状态码：${res.httpCode}")
                 appendLine("耗时：${res.latencyMs}ms")
                 res.errorMessage?.takeIf { it.isNotBlank() }?.let { appendLine(it) }
                 appendLine("--- 原始响应 / 异常 ---")
                 append(res.prettyResponseBody().ifBlank { "（无响应正文）" })
+                }
             }
             val textToCopy = prettyBody
             Spacer(modifier = Modifier.height(8.dp))

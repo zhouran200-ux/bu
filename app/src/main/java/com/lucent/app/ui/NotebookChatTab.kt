@@ -664,7 +664,7 @@ fun NotebookChatTab(
 
                 item(key = "footer") { Spacer(modifier = Modifier.height(8.dp)) }
             }
-            ChatScrollRail(
+            FloatingScrollCapsule(
                 listState = listState,
                 itemKeys = readingKeys,
                 enabled = active && !isImeVisible,

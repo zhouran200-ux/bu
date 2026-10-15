@@ -58,7 +58,8 @@ fun NotebookSourcesTab(
     sourceNotes: List<Note>,
     onReload: () -> Unit,
     modifier: Modifier = Modifier,
-    focus: SourceFocus? = null
+    focus: SourceFocus? = null,
+    active: Boolean = true
 ) {
     val context = LocalContext.current
     val db = remember { AppDatabase.getInstance(context) }
@@ -161,6 +162,7 @@ fun NotebookSourcesTab(
                     notebookId = notebookId,
                     note = current,
                     focus = focus,
+                    active = active,
                     modifier = Modifier.fillMaxSize()
                 )
             }
@@ -173,6 +175,7 @@ private fun SourceReader(
     notebookId: Long,
     note: Note,
     focus: SourceFocus?,
+    active: Boolean,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -228,6 +231,13 @@ private fun SourceReader(
             }
             item(key = "footer") { Spacer(modifier = Modifier.height(48.dp)) }
         }
+        FloatingScrollCapsule(
+            listState = listState,
+            itemKeys = readingKeys,
+            enabled = active,
+            label = "文档快速滚动",
+            modifier = Modifier.align(Alignment.CenterEnd)
+        )
 
         Surface(
             shape = RoundedCornerShape(12.dp),

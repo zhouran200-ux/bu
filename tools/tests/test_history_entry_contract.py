@@ -29,6 +29,12 @@ class HistoryEntryContractTest(unittest.TestCase):
             self.assertNotIn(old, text)
         self.assertIn("detectVerticalDragGestures", text)
         self.assertIn("setProgress", text)
+        self.assertIn("if (show || dragging || shown > 0.01f)", text)
+        self.assertIn(".size(width = 28.dp, height = hitHeight)", text)
+        self.assertIn("localToRoot", text)
+        source = (UI / "NotebookSourcesTab.kt").read_text(encoding="utf-8")
+        self.assertIn("FloatingScrollCapsule(", source)
+        self.assertIn("enabled = active", source)
 
 
 if __name__ == "__main__":

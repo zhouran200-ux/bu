@@ -149,7 +149,8 @@ fun NotebookDetailScreen(
                             sourceNotes = sourceNotes,
                             onReload = { reloadCount++ },
                             modifier = Modifier.fillMaxSize(),
-                            focus = sourceFocus
+                            focus = sourceFocus,
+                            active = active && selectedTab == NotebookDetailTab.SOURCES
                         )
                     }
                 }

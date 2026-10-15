@@ -224,19 +224,8 @@ fun NotebookChatTab(
         }
     }
 
-    var railExpanded by remember { mutableStateOf(false) }
-    var railDragging by remember { mutableStateOf(false) }
     var showHistorySheet by remember { mutableStateOf(false) }
     var historyAnchorId by remember { mutableStateOf<Long?>(null) }
-    val railVisible by remember {
-        derivedStateOf { listState.isScrollInProgress || railExpanded || railDragging }
-    }
-    LaunchedEffect(railVisible, railExpanded) {
-        if (railVisible && railExpanded) {
-            delay(2600)
-            if (!railDragging) railExpanded = false
-        }
-    }
 
     val prefs = remember(notebookId) {
         context.getSharedPreferences("lucent_notebook_chat_prefs", Context.MODE_PRIVATE)
@@ -616,11 +605,12 @@ fun NotebookChatTab(
                 .fillMaxSize()
                 .imePadding()
         ) {
+            Box(Modifier.weight(1f).fillMaxWidth()) {
             LazyColumn(
                 state = listState,
                 modifier = Modifier
                     .nestedScroll(readingScrollConnection)
-                    .weight(1f)
+                    .fillMaxSize()
                     .fillMaxWidth()
                     .pointerInput(Unit) {
                         detectTapGestures(onTap = {
@@ -665,6 +655,18 @@ fun NotebookChatTab(
                 }
 
                 item(key = "footer") { Spacer(modifier = Modifier.height(8.dp)) }
+            }
+            ChatScrollRail(
+                listState = listState,
+                itemKeys = readingKeys,
+                enabled = active && !isImeVisible,
+                onOpenHistory = { openHistorySheet() },
+                onDragStart = {
+                    followStream = false
+                    viewportAnchor.userScrolled()
+                },
+                modifier = Modifier.align(Alignment.CenterEnd)
+            )
             }
 
             BottomGlassComposer(
@@ -755,34 +757,6 @@ fun NotebookChatTab(
                 }
             }
         }
-
-        ChatScrollRail(
-            listState = listState,
-            visible = railVisible && !isImeVisible,
-            expanded = railExpanded,
-            dragging = railDragging,
-            onRequestExpand = {
-                Haptics.tick(context)
-                railExpanded = true
-            },
-            onOpenHistory = {
-                Haptics.tick(context)
-                openHistorySheet()
-            },
-            onDragStart = {
-                railExpanded = true
-                railDragging = true
-                followStream = false
-            },
-            onDragFraction = { fraction ->
-                scope.launch { scrollChatToFraction(listState, fraction) }
-            },
-            onDragEnd = { railDragging = false },
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .navigationBarsPadding()
-                .padding(end = 6.dp)
-        )
 
         if (showHistorySheet) {
             ChatHistorySheet(
@@ -1404,9 +1378,9 @@ private fun BottomGlassComposer(
 
     Surface(
         shape = RoundedCornerShape(24.dp),
-        color = Color.Transparent,
+        color = if (isDarkGlass()) MaterialTheme.colorScheme.surface else Color.White,
         shadowElevation = 0.dp,
-        modifier = modifier.frostedGlass(cornerRadius = 24.dp)
+        modifier = modifier.clip(RoundedCornerShape(24.dp)).frostedGlass(cornerRadius = 24.dp)
     ) {
         Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
             BasicTextField(

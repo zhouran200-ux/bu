@@ -1,192 +1,142 @@
 package com.lucent.app.ui
 
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.snap
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.progressBarRangeInfo
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.util.fastSumBy
-
-private fun averageItemSize(listState: LazyListState): Int {
-    val visible = listState.layoutInfo.visibleItemsInfo
-    if (visible.isEmpty()) return 1
-    return (visible.fastSumBy { it.size } / visible.size).coerceAtLeast(1)
-}
-
-fun chatScrollMetrics(listState: LazyListState): ChatScrollMetrics {
-    val info = listState.layoutInfo
-    val visible = info.visibleItemsInfo
-    if (info.totalItemsCount == 0 || visible.isEmpty()) {
-        return ChatScrollMetrics(fraction = 0f, thumbFraction = 1f, scrollable = false)
-    }
-    val lead = visible.first()
-    return ChatScrollMath.metrics(
-        totalItems = info.totalItemsCount,
-        averageItemSize = averageItemSize(listState),
-        spacing = info.mainAxisItemSpacing,
-        viewport = info.viewportEndOffset - info.viewportStartOffset,
-        leadIndex = lead.index,
-        leadOffset = lead.offset
-    )
-}
-
-suspend fun scrollChatToFraction(listState: LazyListState, fraction: Float) {
-    val info = listState.layoutInfo
-    if (info.totalItemsCount == 0) return
-    val target = ChatScrollMath.targetForFraction(
-        totalItems = info.totalItemsCount,
-        averageItemSize = averageItemSize(listState),
-        spacing = info.mainAxisItemSpacing,
-        viewport = info.viewportEndOffset - info.viewportStartOffset,
-        fraction = fraction
-    )
-    listState.scrollToItem(target.index, target.offset)
-}
+import kotlinx.coroutines.delay
 
 @Composable
 fun ChatScrollRail(
     listState: LazyListState,
-    visible: Boolean,
-    expanded: Boolean,
-    dragging: Boolean,
-    onRequestExpand: () -> Unit,
+    itemKeys: List<String>,
+    enabled: Boolean,
     onOpenHistory: () -> Unit,
     onDragStart: () -> Unit,
-    onDragFraction: (Float) -> Unit,
-    onDragEnd: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val context = LocalContext.current
     val ink = LocalOnGradient.current
-    val metrics = chatScrollMetrics(listState)
-    val motionOn = LocalBackgroundEnvironment.current.motionEnabled
-
-    val animatedWidth by animateFloatAsState(
-        targetValue = if (expanded) 10f else 4f,
-        animationSpec = if (motionOn) LucentMotion.toSpring(LucentMotion.Settle) else snap(),
-        label = "railWidth"
-    )
-    val shownAlpha by animateFloatAsState(
-        targetValue = if (visible && metrics.scrollable) 1f else 0f,
-        animationSpec = if (motionOn) LucentMotion.toSpring(LucentMotion.Settle) else snap(),
-        label = "railAlpha"
-    )
-
-    val trackColor = ink.copy(alpha = 0.14f)
-    val thumbColor = ink.copy(alpha = if (dragging) 0.85f else 0.42f)
-    val thumbCorner = with(LocalDensity.current) { 6.dp.toPx() }
-
-    fun fractionAt(y: Float, height: Float): Float {
-        val trackHeight = (height - 2f * thumbCorner).coerceAtLeast(1f)
-        return ((y - thumbCorner) / trackHeight).coerceIn(0f, 1f)
+    val latestHistory by rememberUpdatedState(onOpenHistory)
+    val latestDragStart by rememberUpdatedState(onDragStart)
+    val measured = remember(listState) { mutableStateMapOf<Any, Int>() }
+    var dragging by remember { mutableStateOf(false) }
+    var heldFraction by remember { mutableFloatStateOf(0f) }
+    var show by remember { mutableStateOf(false) }
+    val info = listState.layoutInfo
+    val scrollable = listState.canScrollBackward || listState.canScrollForward
+    val defaultHeight = info.viewportSize.height.coerceAtLeast(1)
+    val sizes = (0 until info.totalItemsCount).map { index -> itemKeys.getOrNull(index)?.let { measured[it] } ?: defaultHeight }
+    val geometry = remember(sizes, defaultHeight, info.mainAxisItemSpacing) {
+        ChatRailGeometry(sizes, defaultHeight, info.mainAxisItemSpacing)
     }
+    val position = geometry.fraction(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset,
+        listState.canScrollBackward, listState.canScrollForward)
+    val currentGeometry by rememberUpdatedState(geometry)
+    val currentPosition by rememberUpdatedState(position)
+    val thumbPx = with(LocalDensity.current) { 40.dp.toPx() }
+    val insetPx = with(LocalDensity.current) { 8.dp.toPx() }
+    val railWidth = with(LocalDensity.current) { 3.dp.toPx() }
+    val shown by animateFloatAsState(if (enabled && scrollable && (show || dragging)) 1f else 0f,
+        animationSpec = tween(150), label = "chatRailVisibility")
 
-    fun insideThumb(y: Float, height: Float): Boolean {
-        val trackHeight = (height - 2f * thumbCorner).coerceAtLeast(1f)
-        val thumbHeight = (metrics.thumbFraction * trackHeight).coerceAtLeast(thumbCorner * 2f)
-        val thumbTop = thumbCorner + metrics.fraction * (trackHeight - thumbHeight)
-        return y in thumbTop..(thumbTop + thumbHeight)
+    LaunchedEffect(itemKeys) {
+        measured.keys.retainAll(itemKeys.toSet())
     }
-
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.layoutInfo.visibleItemsInfo.map { Triple(it.index, it.key, it.size) } }.collect { visible ->
+            if (!dragging) visible.forEach { measured[it.second] = it.third }
+        }
+    }
+    LaunchedEffect(listState.isScrollInProgress, dragging, enabled) {
+        if (enabled && (listState.isScrollInProgress || dragging)) show = true
+        else {
+            delay(1200)
+            show = false
+        }
+    }
+    fun seek(fraction: Float, snapshot: ChatRailGeometry = currentGeometry) {
+        when {
+            fraction <= 0f -> listState.requestScrollToItem(0)
+            fraction >= 1f -> listState.requestScrollToItem((listState.layoutInfo.totalItemsCount - 1).coerceAtLeast(0))
+            else -> {
+                val target = snapshot.target(fraction)
+                listState.requestScrollToItem(target.index, target.offset)
+            }
+        }
+    }
+    if (!enabled || !scrollable) return
     Box(
-        modifier = modifier
-            .graphicsLayer { alpha = shownAlpha }
-            .width(if (expanded) 30.dp else 20.dp)
-            .fillMaxHeight()
-            .padding(vertical = 10.dp, horizontal = 4.dp)
-            .pointerInput(expanded, metrics.scrollable, metrics.thumbFraction, metrics.fraction) {
-                if (!metrics.scrollable) return@pointerInput
-                awaitEachGesture {
-                    val down = awaitFirstDown(requireUnconsumed = false)
-                    val height = size.height.toFloat()
-                    if (!expanded) {
-                        onRequestExpand()
-                        return@awaitEachGesture
+        modifier = modifier.width(28.dp).fillMaxHeight().padding(vertical = 8.dp)
+            .semantics {
+                contentDescription = "对话快速滚动，点按打开对话记录"
+                progressBarRangeInfo = ProgressBarRangeInfo(position, 0f..1f)
+                setProgress { value -> latestDragStart(); seek(value.coerceIn(0f, 1f)); true }
+                onClick { latestHistory(); true }
+            }
+            .pointerInput(listState) {
+                detectTapGestures(onTap = { latestHistory() })
+            }
+            .pointerInput(listState) {
+                var start = 0f
+                var travel = 0f
+                var frozen: ChatRailGeometry? = null
+                detectVerticalDragGestures(
+                    onDragStart = {
+                        start = currentPosition
+                        heldFraction = start
+                        travel = 0f
+                        frozen = currentGeometry
+                        dragging = true
+                        latestDragStart()
+                    },
+                    onDragEnd = { dragging = false; frozen = null },
+                    onDragCancel = { dragging = false; frozen = null },
+                    onVerticalDrag = { change, amount ->
+                        change.consume()
+                        travel += amount
+                        heldFraction = railDragFraction(start, travel, size.height - thumbPx - insetPx * 2f)
+                        frozen?.let { seek(heldFraction, it) }
                     }
-                    val longPressMs = viewConfiguration.longPressTimeoutMillis
-                    val startedAt = System.currentTimeMillis()
-                    var dragArmed = false
-                    var released = false
-                    while (true) {
-                        val event = awaitPointerEvent(PointerEventPass.Main)
-                        val change = event.changes.firstOrNull { it.id == down.id }
-                        if (change == null) break
-                        if (!change.pressed) {
-                            released = true
-                            break
-                        }
-                        if (!dragArmed && System.currentTimeMillis() - startedAt >= longPressMs) {
-                            dragArmed = true
-                            Haptics.tick(context)
-                            onDragStart()
-                        }
-                        if (dragArmed) {
-                            onDragFraction(fractionAt(change.position.y, height))
-                            change.consume()
-                        }
-                    }
-                    when {
-                        dragArmed -> onDragEnd()
-                        released && !insideThumb(down.position.y, height) -> onOpenHistory()
-                    }
-                }
+                )
             }
     ) {
-        Box(
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .width(animatedWidth.dp)
-                .fillMaxHeight()
-                .clip(RoundedCornerShape(50))
-                .drawBehind {
-                    drawTrack(trackColor, thumbColor, metrics, thumbCorner)
-                }
-        )
+        Box(Modifier.width(28.dp).fillMaxHeight().graphicsLayer { alpha = shown }.drawBehind {
+            val thumbHeight = thumbPx.coerceAtMost((size.height - insetPx * 2f).coerceAtLeast(0f))
+            val fraction = if (dragging) heldFraction else position
+            val top = insetPx + fraction * (size.height - insetPx * 2f - thumbHeight).coerceAtLeast(0f)
+            drawRoundRect(ink.copy(alpha = if (dragging) 0.65f else 0.35f),
+                topLeft = Offset(size.width - railWidth - 3.dp.toPx(), top),
+                size = Size(railWidth, thumbHeight), cornerRadius = CornerRadius(railWidth))
+        })
     }
-}
-
-private fun DrawScope.drawTrack(
-    trackColor: Color,
-    thumbColor: Color,
-    metrics: ChatScrollMetrics,
-    corner: Float
-) {
-    val w = size.width
-    drawRoundRect(
-        color = trackColor,
-        topLeft = Offset(0f, 0f),
-        size = Size(w, size.height),
-        cornerRadius = CornerRadius(corner, corner)
-    )
-    val trackHeight = (size.height - 2f * corner).coerceAtLeast(1f)
-    val thumbHeight = (metrics.thumbFraction * trackHeight).coerceAtLeast(corner * 2f)
-    val thumbTop = corner + metrics.fraction * (trackHeight - thumbHeight)
-    drawRoundRect(
-        color = thumbColor,
-        topLeft = Offset(0f, thumbTop - corner),
-        size = Size(w, thumbHeight),
-        cornerRadius = CornerRadius(corner, corner)
-    )
 }

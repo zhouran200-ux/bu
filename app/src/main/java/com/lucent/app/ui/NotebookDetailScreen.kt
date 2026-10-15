@@ -15,10 +15,6 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -120,8 +116,7 @@ fun NotebookDetailScreen(
                 sourceCount = sourceNotes.size,
                 onSelectTab = { tab ->
                     scope.launch { pagerState.animateScrollToPage(tabs.indexOf(tab)) }
-                },
-                onBack = navigateBack
+                }
             )
 
             HorizontalPager(
@@ -167,10 +162,8 @@ fun NotebookDetailScreen(
 private fun NotebookDetailHeader(
     selectedTab: NotebookDetailTab,
     sourceCount: Int,
-    onSelectTab: (NotebookDetailTab) -> Unit,
-    onBack: () -> Unit
+    onSelectTab: (NotebookDetailTab) -> Unit
 ) {
-    val onGradient = LocalOnGradient.current
     val onGradientMuted = LocalOnGradientMuted.current
     val dark = isDarkGlass()
     val accent = MaterialTheme.colorScheme.primary
@@ -181,21 +174,9 @@ private fun NotebookDetailHeader(
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        IconButton(
-            onClick = onBack,
-            modifier = Modifier.padding(end = 8.dp)
-        ) {
-            Icon(
-                Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = "返回",
-                tint = onGradient
-            )
-        }
-
         Box(
             modifier = Modifier
                 .weight(1f)
-                .padding(end = 40.dp)
                 .frostedGlass(cornerRadius = 24.dp)
         ) {
             Row(

@@ -3,7 +3,7 @@ package com.lucent.app.data
 object SourceCitations {
 
     private const val FULL = """〔REF:(\d+):(v[1-9][0-9]*-[0-9a-fA-F]{64}|[0-9a-fA-F]{1,16}):(S\d+-\d+)〕"""
-    private const val SHORT = """〔S[：:]?([1-9][0-9]*-[1-9][0-9]*)〕"""
+    private const val SHORT = """(?:〔|【|\[)S[：:]?([1-9][0-9]*-[1-9][0-9]*)(?:〕|】|\])"""
 
     val marker = Regex("$FULL|$SHORT")
 

@@ -135,6 +135,7 @@ import com.lucent.app.network.ChatMessagePayload
 import com.lucent.app.network.LlmClient
 import kotlin.math.abs
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 data class UiChatMessage(
@@ -571,12 +572,17 @@ fun NotebookChatTab(
             body + streamingThought.value.length
         }
     }
-    LaunchedEffect(streamProgress) {
-        if (active && streamingAnswerId != null && followStream &&
-            streamProgress > 0 && !listState.isScrollInProgress
-        ) {
-            listState.scrollToItem((listState.layoutInfo.totalItemsCount - 1).coerceAtLeast(0))
-        }
+    LaunchedEffect(streamingAnswerId, active) {
+        if (!active || streamingAnswerId == null) return@LaunchedEffect
+        androidx.compose.runtime.snapshotFlow { streamProgress }
+            .collectLatest { progress ->
+                if (progress <= 0 || !followStream || listState.isScrollInProgress) return@collectLatest
+                // Coalesce bursts and use a non-animated request so content growth cannot fight a fling.
+                delay(80)
+                if (followStream && !listState.isScrollInProgress) {
+                    listState.requestScrollToItem((listState.layoutInfo.totalItemsCount - 1).coerceAtLeast(0))
+                }
+            }
     }
 
     val onSendMessage: () -> Unit = send@{
@@ -647,11 +653,16 @@ fun NotebookChatTab(
 
                 itemsIndexed(messages, key = { _, msg -> "message:${msg.id}" }) { _, msg ->
                     val actionsEnabled = session.ready && streamingAnswerId == null
-                    val itemModifier = Modifier.animateItem(
-                        fadeInSpec = tween(200),
-                        placementSpec = placementSpec,
-                        fadeOutSpec = tween(140)
-                    )
+                    val itemModifier = if (msg.id == streamingAnswerId) {
+                        // The streaming item changes height continuously; placement animation makes it visibly jump.
+                        Modifier
+                    } else {
+                        Modifier.animateItem(
+                            fadeInSpec = tween(200),
+                            placementSpec = placementSpec,
+                            fadeOutSpec = tween(140)
+                        )
+                    }
                     if (msg.role == "user") {
                         UserMessageCard(
                             modifier = itemModifier,

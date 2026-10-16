@@ -27,6 +27,13 @@ class SourceCitationsTest {
     }
 
     @Test
+    fun commonModelBracketVariantsAreRecognized() {
+        assertEquals("S12-7", SourceCitations.parse("【S：12-7】", 5L, "rev")?.sliceId)
+        assertEquals("S12-8", SourceCitations.parse("[S:12-8]", 5L, "rev")?.sliceId)
+        assertEquals(2, SourceCitations.numbering("甲【S：12-7】乙[S:12-8]").size)
+    }
+
+    @Test
     fun fullyQualifiedMarkerCarriesSourceRevisionAndSlice() {
         val ref = SourceCitations.parse("〔REF:42:3f2a91c4:S12-7〕")
 

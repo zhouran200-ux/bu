@@ -24,21 +24,21 @@ class MarkdownCitationRenderingTest {
     fun inlineCodeKeepsMarkersAndDoesNotConsumeNumbers() {
         val text = "`$first` $second $full"
         assertEquals(mapOf(second to 1, full to 2), markdownCitationNumbering(parseBlocks(text)))
-        assertEquals("$first ① ②", render(text).text)
+        assertEquals("$first [1] [2]", render(text).text)
     }
 
     @Test
     fun multipleBackticksProtectInnerBackticksAndCitations() {
         val text = "``code `$first` **literal**`` $second"
         assertEquals(mapOf(second to 1), markdownCitationNumbering(parseBlocks(text)))
-        assertEquals("code `$first` **literal** ①", render(text).text)
+        assertEquals("code `$first` **literal** [1]", render(text).text)
     }
 
     @Test
     fun formattingAcrossACitationIsNotSplit() {
         for (delimiter in listOf("**", "__", "*", "_", "~~")) {
             val text = "${delimiter}before $first after$delimiter"
-            assertEquals("before ① after", render(text).text)
+            assertEquals("before [1] after", render(text).text)
             assertEquals(mapOf(first to 1), markdownCitationNumbering(parseBlocks(text)))
         }
     }
@@ -46,7 +46,7 @@ class MarkdownCitationRenderingTest {
     @Test
     fun inlineCodeWithinBoldKeepsItsMarkerLiteral() {
         val text = "**before `$first` after $second**"
-        assertEquals("before $first after ①", render(text).text)
+        assertEquals("before $first after [1]", render(text).text)
         assertEquals(mapOf(second to 1), markdownCitationNumbering(parseBlocks(text)))
     }
 
@@ -75,7 +75,7 @@ class MarkdownCitationRenderingTest {
     @Test
     fun emphasisKeepsItalicAndBoldsCitationAndCodeSpans() {
         val rendered = render("*italic* `$first` $second", emphasized = true)
-        assertEquals("italic $first ①", rendered.text)
+        assertEquals("italic $first [1]", rendered.text)
         assertTrue(rendered.spanStyles.any { it.item.fontStyle == FontStyle.Italic && it.item.fontWeight == FontWeight.Bold })
         assertTrue(rendered.spanStyles.filter { it.item.fontWeight != null }.all { it.item.fontWeight == FontWeight.Bold })
         assertTrue(rendered.spanStyles.any { it.start == 0 && it.end == rendered.length && it.item.fontWeight == FontWeight.Bold })
@@ -84,7 +84,7 @@ class MarkdownCitationRenderingTest {
     @Test
     fun boldCitationDoesNotOverrideItsWeightWithMedium() {
         val rendered = render("**$first**")
-        assertEquals("①", rendered.text)
+        assertEquals("[1]", rendered.text)
         assertTrue(rendered.spanStyles.filter { it.item.fontWeight != null }.all { it.item.fontWeight == FontWeight.Bold })
     }
 }

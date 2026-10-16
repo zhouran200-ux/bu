@@ -51,7 +51,7 @@ class PickerContractTest(unittest.TestCase):
             self.assertIn("dragHandle = drawer.handle", text)
         chat = (UI / "NotebookChatTab.kt").read_text(encoding="utf-8")
         self.assertIn("(modelPickerButtonWidthPx * 1.25f).toDp()", chat)
-        self.assertIn(".onSizeChanged { onModelPickerWidth(it.width) }", chat)
+        self.assertIn(".onSizeChanged { onModelPickerWidth(it.width) }", (UI / "ChatOverlayComponents.kt").read_text(encoding="utf-8"))
         self.assertEqual(2, chat.count("handleWidth = drawerHandleWidth"))
 
     def test_history_and_settings_callbacks_do_not_dismiss(self):
@@ -68,7 +68,7 @@ class PickerContractTest(unittest.TestCase):
         for name in ("ChatHistorySheet.kt", "SettingsComponents.kt"):
             text = (UI / name).read_text(encoding="utf-8")
             self.assertNotIn("onClick = onDismiss", text)
-        text = (UI / "NotebookChatTab.kt").read_text(encoding="utf-8").split("private fun DialogueSettingsSheet(", 1)[1]
+        text = (UI / "ChatDialogueSettings.kt").read_text(encoding="utf-8").split("internal fun DialogueSettingsSheet(", 1)[1]
         self.assertNotIn("onClick = onDismiss", text)
 
     def test_manage_api_uses_existing_settings_without_overlay_or_dismiss(self):

@@ -35,11 +35,21 @@ class CountSliderReorderContractTest(unittest.TestCase):
         self.assertIn("SliderHitHeight = 36.dp", slider)
         self.assertIn(".size(width = 30.dp, height = 36.dp)", slider)
 
+    def test_profile_save_and_list_share_the_reorder_guard(self):
+        page = (UI / "settings/ApiSettingsPage.kt").read_text(encoding="utf-8")
+        section = (UI / "settings/ApiProfileListSection.kt").read_text(encoding="utf-8")
+        self.assertIn("val dragState = remember { mutableStateOf<ProfileDrag?>(null) }", page)
+        self.assertIn("val settled = dragState.value == null", page)
+        self.assertIn("dragState = dragState", page)
+        self.assertIn("var drag by dragState", section)
+        save = page.split("text = S.saveApi,", 1)[1].split("onClick =", 1)[0]
+        self.assertIn("enabled = settled", save)
+
     def test_edge_loops_use_consumed_scroll_and_stop_with_drag(self):
         text = (UI / "ReorderDrag.kt").read_text(encoding="utf-8")
         self.assertIn("state.compensateScroll(consumed)", text)
         self.assertIn("state.dragToken == token", text)
-        api = (UI / "settings/ApiSettingsPage.kt").read_text(encoding="utf-8")
+        api = (UI / "settings/ApiProfileListSection.kt").read_text(encoding="utf-8")
         self.assertIn("moveDrag(consumed)", api)
         self.assertIn("onDragCancel = { cancelDrag() }", api)
         self.assertIn("edgeScrollVelocity", api)

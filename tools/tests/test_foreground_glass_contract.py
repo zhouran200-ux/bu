@@ -10,6 +10,8 @@ POPUP_FILES = {
     "SettingsComponents.kt": UI / "SettingsComponents.kt",
     "NotebooksScreen.kt": UI / "NotebooksScreen.kt",
     "NotebookChatTab.kt": UI / "NotebookChatTab.kt",
+    "ChatOverlayComponents.kt": UI / "ChatOverlayComponents.kt",
+    "ChatDialogueSettings.kt": UI / "ChatDialogueSettings.kt",
     "FontSettingsPage.kt": UI / "settings/FontSettingsPage.kt",
 }
 
@@ -43,12 +45,12 @@ class ForegroundGlassContractTest(unittest.TestCase):
         dialogs = POPUP_FILES["NotebooksScreen.kt"].read_text(encoding="utf-8") + POPUP_FILES["FontSettingsPage.kt"].read_text(encoding="utf-8")
         self.assertIn("glassPopupPanel(", dialogs)
         self.assertIn("containerColor = glassPanelColor()", dialogs)
-        chat = POPUP_FILES["NotebookChatTab.kt"].read_text(encoding="utf-8")
+        chat = POPUP_FILES["ChatOverlayComponents.kt"].read_text(encoding="utf-8")
         self.assertIn("border = glassPopupBorder()", chat)
         self.assertIn("containerColor = glassPanelColor()", chat)
 
     def test_tall_sheets_stay_within_the_available_height(self):
-        for name in ("ProfileModelPickerSheet.kt", "SettingsComponents.kt", "NotebookChatTab.kt"):
+        for name in ("ProfileModelPickerSheet.kt", "SettingsComponents.kt", "ChatDialogueSettings.kt"):
             text = POPUP_FILES[name].read_text(encoding="utf-8")
             self.assertIn("sheetContentHeightLimit()", text)
         picker = POPUP_FILES["ProfileModelPickerSheet.kt"].read_text(encoding="utf-8")

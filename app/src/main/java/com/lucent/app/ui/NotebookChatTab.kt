@@ -577,7 +577,6 @@ fun NotebookChatTab(
         androidx.compose.runtime.snapshotFlow { streamProgress }
             .collectLatest { progress ->
                 if (progress <= 0 || !followStream || listState.isScrollInProgress) return@collectLatest
-                // Coalesce bursts and use a non-animated request so content growth cannot fight a fling.
                 delay(80)
                 if (followStream && !listState.isScrollInProgress) {
                     listState.requestScrollToItem((listState.layoutInfo.totalItemsCount - 1).coerceAtLeast(0))
@@ -654,7 +653,6 @@ fun NotebookChatTab(
                 itemsIndexed(messages, key = { _, msg -> "message:${msg.id}" }) { _, msg ->
                     val actionsEnabled = session.ready && streamingAnswerId == null
                     val itemModifier = if (msg.id == streamingAnswerId) {
-                        // The streaming item changes height continuously; placement animation makes it visibly jump.
                         Modifier
                     } else {
                         Modifier.animateItem(

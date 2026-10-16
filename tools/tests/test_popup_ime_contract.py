@@ -8,7 +8,7 @@ UI = ROOT / "app/src/main/java/com/lucent/app/ui"
 class PopupImeContractTest(unittest.TestCase):
     def test_reasoning_menu_preserves_editor_focus_and_owner_handles_back(self):
         text = (UI / "NotebookChatTab.kt").read_text(encoding="utf-8")
-        menu = text.split("private fun BottomGlassComposer(", 1)[1].split("private fun DialogueSettingsSheet(", 1)[0]
+        menu = (UI / "ChatOverlayComponents.kt").read_text(encoding="utf-8").split("internal fun BottomGlassComposer(", 1)[1]
         self.assertIn("properties = ReasoningPopupProperties", menu)
         self.assertIn("BackHandler(enabled = showReasoningMenu)", menu)
         self.assertNotIn("clearFocus()", menu)
@@ -18,7 +18,7 @@ class PopupImeContractTest(unittest.TestCase):
 
     def test_reasoning_anchor_toggles_and_outside_press_does_not_reopen(self):
         text = (UI / "NotebookChatTab.kt").read_text(encoding="utf-8")
-        menu = text.split("private fun BottomGlassComposer(", 1)[1].split("private fun DialogueSettingsSheet(", 1)[0]
+        menu = (UI / "ChatOverlayComponents.kt").read_text(encoding="utf-8").split("internal fun BottomGlassComposer(", 1)[1]
         self.assertIn("onReasoningMenuChange(!showReasoningMenu)", menu)
         self.assertIn("onReasoningButtonBounds(it.boundsInWindow())", menu)
         self.assertIn("onDismissRequest = { onReasoningMenuChange(false) }", menu)
@@ -45,7 +45,7 @@ class PopupImeContractTest(unittest.TestCase):
 
     def test_editors_remain_ime_eligible_and_do_not_force_show_keyboard(self):
         text = (UI / "NotebookChatTab.kt").read_text(encoding="utf-8")
-        sheet = text.split("private fun DialogueSettingsSheet(", 1)[1]
+        sheet = (UI / "ChatDialogueSettings.kt").read_text(encoding="utf-8").split("internal fun DialogueSettingsSheet(", 1)[1]
         self.assertIn("PreserveEditingKeyboardOnOpen(keepEditing, inputFocus)", sheet)
         self.assertIn("focusRequester(inputFocus)", sheet)
         self.assertNotIn("KeepKeyboardForNonEditingDialog", sheet)

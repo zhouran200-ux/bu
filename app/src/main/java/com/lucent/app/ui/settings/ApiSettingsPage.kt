@@ -122,42 +122,6 @@ import com.lucent.app.ui.selectedCard
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-private fun modelChoices(fetched: List<String>, saved: List<String>): List<String> {
-    val out = LinkedHashSet<String>()
-    fetched.forEach { if (it.isNotBlank()) out.add(it.trim()) }
-    saved.sorted().forEach { if (it.isNotBlank()) out.add(it.trim()) }
-    return out.toList()
-}
-
-private val PROFILE_SLIDE_SPRING = spring<Float>(dampingRatio = 0.62f, stiffness = Spring.StiffnessMediumLow)
-private val ROW_CARD_RADIUS = 14.dp
-private const val HELD_SCALE = 1.02f
-private const val HELD_ALPHA = 0.94f
-private const val REORDER_COMMIT_TIMEOUT_MS = 1200L
-
-private val CompactFieldHeight = 42.dp
-private val CompactFieldLabelWidth = 56.dp
-
-private data class ProfileDrag(
-    val order: List<ApiProfile>,
-    val keys: List<String>,
-    val selected: Int,
-    val held: Int,
-    val travel: Float
-)
-
-private fun ProfileDrag.stepped(step: Int): ProfileDrag {
-    val to = held + step
-    if (held !in order.indices || to !in order.indices) return this
-    return ProfileDrag(
-        order = ApiProfiles.moved(order, held, to),
-        keys = ApiProfiles.moved(keys, held, to),
-        selected = ApiProfiles.selectionAfterMove(selected, held, to),
-        held = to,
-        travel = travel
-    )
-}
-
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 internal fun ApiConfigSettingsPage(

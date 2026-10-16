@@ -4,6 +4,7 @@ import okio.BufferedSource
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
+import org.json.JSONTokener
 import java.io.IOException
 
 internal object StreamingResponseReader {
@@ -15,33 +16,34 @@ internal object StreamingResponseReader {
         val fullReasoning = StringBuilder()
         var usage = StreamUsage()
         var sawEndOfStream = false
-        var pendingData: String? = null
+        var sawGoogleFinish = false
+        val events = SseEventReader(source)
 
 
         while (true) {
             ensureStreamActive()
-            val line = source.readUtf8Line() ?: break
+            val event = events.next(ensureStreamActive) ?: break
             ensureStreamActive()
-            val trimmedLine = line.trim()
-            if (trimmedLine.isBlank()) {
-                pendingData = null
-                continue
-            }
-            if (trimmedLine.startsWith("data:")) {
-                val lineData = trimmedLine.removePrefix("data:").trim()
-                if (lineData == "[DONE]") {
+            if (event.type == "error") throw IOException("服务端返回 SSE 错误事件")
+            val data = event.data
+            if (data.isNotBlank()) {
+                if (data.trim() == "[DONE]") {
                     sawEndOfStream = true
                     break
                 }
-                if (lineData.isBlank()) continue
-                val data = pendingData?.let { it + lineData } ?: lineData
                 val json = try {
-                    JSONObject(data)
-                } catch (_: JSONException) {
-                    pendingData = data
-                    continue
+                    val tokener = JSONTokener(data)
+                    val value = tokener.nextValue()
+                    if (value !is JSONObject || tokener.nextClean() != 0.toChar()) {
+                        throw IOException("SSE 事件必须包含单个完整 JSON 对象")
+                    }
+                    value
+                } catch (error: JSONException) {
+                    throw IOException("服务端返回无效的 SSE JSON 事件", error)
                 }
-                pendingData = null
+                if (json.has("error") || json.optString("type") == "error") {
+                    throw IOException("服务端返回流式错误响应")
+                }
                 if (spec == ApiSpec.ANTHROPIC && json.optString("type") == "message_stop") {
                     sawEndOfStream = true
                     break
@@ -66,12 +68,14 @@ internal object StreamingResponseReader {
                     ApiSpec.GOOGLE -> {
                         StreamUsageParser.parse(spec, json)?.let { usage = it }
                         val candidates = json.optJSONArray("candidates")
+                        val finishReason = candidates?.optJSONObject(0)?.optString("finishReason").orEmpty()
+                        if (finishReason.isNotBlank() && finishReason != "FINISH_REASON_UNSPECIFIED") sawGoogleFinish = true
                         val contentObj = candidates?.optJSONObject(0)?.optJSONObject("content")
                         val parts = contentObj?.optJSONArray("parts") ?: JSONArray()
                         for (i in 0 until parts.length()) {
                             ensureStreamActive()
                             val part = parts.optJSONObject(i) ?: continue
-                            val isThought = part.optBoolean("thought", false) || part.has("thought")
+                            val isThought = part.optBoolean("thought", false)
                             val text = part.optString("text", "")
                             if (text.isNotEmpty()) {
                                 if (isThought) {
@@ -110,7 +114,7 @@ internal object StreamingResponseReader {
             }
         }
 
-        if (!sawEndOfStream && spec != ApiSpec.GOOGLE) {
+        if (!sawEndOfStream && !(spec == ApiSpec.GOOGLE && sawGoogleFinish)) {
             throw IOException("SSE 流在收到结束信号前断开")
         }
         ensureStreamActive()

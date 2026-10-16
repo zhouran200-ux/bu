@@ -24,7 +24,7 @@ import java.util.concurrent.TimeUnit
 
 class LlmClientStreamTest {
     @Test
-    fun streamingHasNoReadOrCallDeadlineAndDoesNotReplayOnConnectionFailure() {
+    fun streamingHasFortySecondReadTimeoutAndNoOverallDeadline() {
         assertEquals(40000, LlmClient.streamClient.readTimeoutMillis)
         assertEquals(0, LlmClient.streamClient.callTimeoutMillis)
         assertTrue(LlmClient.streamClient.connectTimeoutMillis > 0)
@@ -103,10 +103,10 @@ class LlmClientStreamTest {
     }
 
     @Test(timeout = 10000)
-    fun doneClosesResponseAndMalformedJsonDoesNotHideValidChunks() = runBlocking {
+    fun doneClosesResponseAndValidChunksPreserveUsage() = runBlocking {
         LoopbackServer { socket ->
             socket.startStream()
-            socket.chunk("data: not-json\n\ndata: {\"choices\":[{\"delta\":{\"content\":\"hello\",\"reasoning_content\":\"thought\"}}]}\n\n")
+            socket.chunk("data: {\"choices\":[{\"delta\":{\"content\":\"hello\",\"reasoning_content\":\"thought\"}}]}\n\n")
             socket.chunk("data: {\"choices\":[],\"usage\":{\"prompt_tokens\":9,\"prompt_tokens_details\":{\"cached_tokens\":3}}}\n\ndata: [DONE]\n\n")
             awaitClientClose(socket)
         }.use { server ->
@@ -132,6 +132,21 @@ class LlmClientStreamTest {
         }.use { server ->
             val result = stream(server).getOrThrow()
             assertEquals("split", result.content)
+            server.awaitFinished()
+        }
+    }
+
+    @Test(timeout = 10000)
+    fun malformedEventFailsAndClosesResponseWithoutHidingDeliveredText() = runBlocking {
+        LoopbackServer { socket ->
+            socket.startStream()
+            socket.chunk(contentEvent + "data: not-json" + 10.toChar() + 10.toChar() + "data: [DONE]" + 10.toChar() + 10.toChar())
+            awaitClientClose(socket)
+        }.use { server ->
+            val chunks = mutableListOf<String>()
+            val result = stream(server) { text, _ -> chunks += text }
+            assertTrue(result.isFailure)
+            assertEquals(listOf("hello"), chunks)
             server.awaitFinished()
         }
     }

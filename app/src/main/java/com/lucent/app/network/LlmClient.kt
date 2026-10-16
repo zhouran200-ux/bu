@@ -13,6 +13,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
+import java.io.IOException
 import java.util.concurrent.TimeUnit
 
 data class TestConnectionResult(
@@ -164,7 +165,7 @@ object LlmClient {
     internal val streamClient by lazy {
         OkHttpClient.Builder()
             .connectTimeout(20, TimeUnit.SECONDS)
-            .readTimeout(0, TimeUnit.SECONDS)
+            .readTimeout(40, TimeUnit.SECONDS)
             .callTimeout(0, TimeUnit.SECONDS)
             .retryOnConnectionFailure(false)
             .build()
@@ -590,6 +591,8 @@ object LlmClient {
                     val fullContent = StringBuilder()
                     val fullReasoning = StringBuilder()
                     var usage = StreamUsage()
+                    var sawEndOfStream = false
+                    var pendingData: String? = null
                     val source = response.body?.source() ?: return@withContext Result.failure(Exception("响应数据为空"))
 
                     while (true) {
@@ -597,17 +600,30 @@ object LlmClient {
                         val line = source.readUtf8Line() ?: break
                         ensureStreamActive()
                         val trimmedLine = line.trim()
+                        if (trimmedLine.isBlank()) {
+                            // A malformed event is isolated by its blank-line boundary; later events remain usable.
+                            pendingData = null
+                            continue
+                        }
                         if (trimmedLine.startsWith("data:")) {
-                            val data = trimmedLine.removePrefix("data:").trim()
-                            if (data == "[DONE]") break
-                            if (data.isBlank()) continue
-
+                            val lineData = trimmedLine.removePrefix("data:").trim()
+                            if (lineData == "[DONE]") {
+                                sawEndOfStream = true
+                                break
+                            }
+                            if (lineData.isBlank()) continue
+                            val data = pendingData?.let { it + lineData } ?: lineData
                             val json = try {
                                 JSONObject(data)
                             } catch (_: JSONException) {
+                                pendingData = data
                                 continue
                             }
-                            if (spec == ApiSpec.ANTHROPIC && json.optString("type") == "message_stop") break
+                            pendingData = null
+                            if (spec == ApiSpec.ANTHROPIC && json.optString("type") == "message_stop") {
+                                sawEndOfStream = true
+                                break
+                            }
                             when (spec) {
                                 ApiSpec.OPENAI -> {
                                     StreamUsageParser.parse(spec, json)?.let { usage = it }
@@ -672,6 +688,9 @@ object LlmClient {
                         }
                     }
 
+                    if (!sawEndOfStream && spec != ApiSpec.GOOGLE) {
+                        throw IOException("SSE 流在收到结束信号前断开")
+                    }
                     ensureStreamActive()
                     Result.success(
                         ChatCompletionResult(

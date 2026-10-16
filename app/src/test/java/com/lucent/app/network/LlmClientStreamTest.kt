@@ -25,7 +25,7 @@ import java.util.concurrent.TimeUnit
 class LlmClientStreamTest {
     @Test
     fun streamingHasNoReadOrCallDeadlineAndDoesNotReplayOnConnectionFailure() {
-        assertEquals(0, LlmClient.streamClient.readTimeoutMillis)
+        assertEquals(40000, LlmClient.streamClient.readTimeoutMillis)
         assertEquals(0, LlmClient.streamClient.callTimeoutMillis)
         assertTrue(LlmClient.streamClient.connectTimeoutMillis > 0)
         assertFalse(LlmClient.streamClient.retryOnConnectionFailure)
@@ -117,6 +117,21 @@ class LlmClientStreamTest {
             assertEquals(9, result.promptTokens)
             assertEquals(3, result.cachedTokens)
             assertEquals(listOf("hello" to "thought"), chunks)
+            server.awaitFinished()
+        }
+    }
+
+    @Test(timeout = 10000)
+    fun multilineDataEventIsReassembledBeforeJsonParsing() = runBlocking {
+        LoopbackServer { socket ->
+            socket.startStream()
+            socket.chunk("data: {\"choices\":[{\"delta\":\n")
+            socket.chunk("data: {\"content\":\"split\"}}]}\n\n")
+            socket.chunk("data: [DONE]\n\n")
+            awaitClientClose(socket)
+        }.use { server ->
+            val result = stream(server).getOrThrow()
+            assertEquals("split", result.content)
             server.awaitFinished()
         }
     }

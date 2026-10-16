@@ -129,6 +129,12 @@ private fun modelChoices(fetched: List<String>, saved: List<String>): List<Strin
     return out.toList()
 }
 
+private val PROFILE_SLIDE_SPRING = spring<Float>(dampingRatio = 0.62f, stiffness = Spring.StiffnessMediumLow)
+private val ROW_CARD_RADIUS = 14.dp
+private const val HELD_SCALE = 1.02f
+private const val HELD_ALPHA = 0.94f
+private const val REORDER_COMMIT_TIMEOUT_MS = 1200L
+
 private val CompactFieldHeight = 42.dp
 private val CompactFieldLabelWidth = 56.dp
 

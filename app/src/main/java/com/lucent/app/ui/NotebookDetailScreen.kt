@@ -187,11 +187,12 @@ private fun NotebookDetailHeader(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
             modifier = Modifier
-                .weight(1f)
+                .fillMaxWidth(0.8f)
                 .frostedGlass(cornerRadius = 24.dp)
         ) {
             Row(

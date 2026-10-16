@@ -14,6 +14,17 @@ class ApprovedUxContractTest(unittest.TestCase):
         self.assertIn(".nestedScroll(readingScrollConnection)", text)
         self.assertNotIn("LaunchedEffect(atBottom, listState.isScrollInProgress)", text)
 
+    def test_notebook_tab_container_is_centered_and_twenty_percent_narrower(self):
+        text = (UI / "NotebookDetailScreen.kt").read_text(encoding="utf-8")
+        header = text.split("private fun NotebookDetailHeader(", 1)[1].split("private fun TabPill(", 1)[0]
+        container = header.split("Box(", 1)[0]
+        self.assertIn("horizontalArrangement = Arrangement.Center", container)
+        self.assertIn(".fillMaxWidth(0.8f)", header)
+        self.assertIn(".frostedGlass(cornerRadius = 24.dp)", header)
+        self.assertEqual(2, header.count("modifier = Modifier.weight(1f)"))
+        self.assertIn("onSelectTab(NotebookDetailTab.CHAT)", header)
+        self.assertIn("onSelectTab(NotebookDetailTab.SOURCES)", header)
+
     def test_empty_history_has_no_jump_chips(self):
         text = (UI / "ChatHistorySheet.kt").read_text(encoding="utf-8")
         section = text.split("if (hasRecords) {", 1)[1].split("if (!hasRecords)", 1)[0]

@@ -15,6 +15,7 @@ import androidx.compose.ui.window.DialogWindowProvider
 import androidx.compose.ui.window.PopupProperties
 
 internal val NonEditingPopupProperties = PopupProperties(focusable = false)
+internal val ReasoningPopupProperties = PopupProperties(focusable = false, dismissOnClickOutside = false)
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable

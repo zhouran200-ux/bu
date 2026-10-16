@@ -9,12 +9,28 @@ class PopupImeContractTest(unittest.TestCase):
     def test_reasoning_menu_preserves_editor_focus_and_owner_handles_back(self):
         text = (UI / "NotebookChatTab.kt").read_text(encoding="utf-8")
         menu = text.split("private fun BottomGlassComposer(", 1)[1].split("private fun DialogueSettingsSheet(", 1)[0]
-        self.assertIn("properties = NonEditingPopupProperties", menu)
+        self.assertIn("properties = ReasoningPopupProperties", menu)
         self.assertIn("BackHandler(enabled = showReasoningMenu)", menu)
         self.assertNotIn("clearFocus()", menu)
         self.assertNotIn("keyboardController", menu)
         helper = (UI / "PopupIme.kt").read_text(encoding="utf-8")
-        self.assertIn("PopupProperties(focusable = false)", helper)
+        self.assertIn("PopupProperties(focusable = false, dismissOnClickOutside = false)", helper)
+
+    def test_reasoning_anchor_toggles_and_outside_press_does_not_reopen(self):
+        text = (UI / "NotebookChatTab.kt").read_text(encoding="utf-8")
+        menu = text.split("private fun BottomGlassComposer(", 1)[1].split("private fun DialogueSettingsSheet(", 1)[0]
+        self.assertIn("onReasoningMenuChange(!showReasoningMenu)", menu)
+        self.assertIn("onReasoningButtonBounds(it.boundsInWindow())", menu)
+        self.assertIn("onDismissRequest = { onReasoningMenuChange(false) }", menu)
+        self.assertIn("onSelectReasoning(preset)", menu)
+        self.assertIn("onReasoningMenuChange(false)", menu)
+        self.assertNotIn("showReasoningMenu = true", menu)
+        observer = text.split(".pointerInput(showReasoningMenu)", 1)[1].split("Column(", 1)[0]
+        self.assertIn("PointerEventPass.Initial", observer)
+        self.assertIn("it.pressed && !it.previousPressed", observer)
+        self.assertIn("localToWindow(down.position)", observer)
+        self.assertIn("if (!reasoningButtonBounds.contains(position)) showReasoningMenu = false", observer)
+        self.assertNotIn("consume()", observer)
 
     def test_non_editing_sheets_use_only_their_dialog_window(self):
         for name in ("ChatHistorySheet.kt", "ProfileModelPickerSheet.kt"):

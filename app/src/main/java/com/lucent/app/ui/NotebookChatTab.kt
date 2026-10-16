@@ -107,6 +107,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -546,6 +548,10 @@ fun NotebookChatTab(
     val keyboardController = LocalSoftwareKeyboardController.current
     val isImeVisible = WindowInsets.isImeVisible
     val barMotionOn = LocalBackgroundEnvironment.current.motionEnabled
+    var showReasoningMenu by remember(notebookId) { mutableStateOf(false) }
+    var reasoningButtonBounds by remember { mutableStateOf(androidx.compose.ui.geometry.Rect.Zero) }
+    var chatCoordinates by remember { mutableStateOf<androidx.compose.ui.layout.LayoutCoordinates?>(null) }
+    LaunchedEffect(active) { if (!active) showReasoningMenu = false }
 
     fun stopStreaming() {
         if (streamingAnswerId == null) return
@@ -598,7 +604,19 @@ fun NotebookChatTab(
         }
     }
 
-    Box(modifier = modifier.fillMaxSize()) {
+    Box(modifier = modifier.fillMaxSize()
+        .onGloballyPositioned { chatCoordinates = it }
+        .pointerInput(showReasoningMenu) {
+            if (showReasoningMenu) awaitPointerEventScope {
+                while (true) {
+                    val event = awaitPointerEvent(androidx.compose.ui.input.pointer.PointerEventPass.Initial)
+                    val down = event.changes.firstOrNull { it.pressed && !it.previousPressed } ?: continue
+                    val position = chatCoordinates?.localToWindow(down.position) ?: continue
+                    if (!reasoningButtonBounds.contains(position)) showReasoningMenu = false
+                }
+            }
+        }
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -677,6 +695,9 @@ fun NotebookChatTab(
                     ),
                 inputText = inputText,
                 onInputChange = { inputText = it },
+                showReasoningMenu = showReasoningMenu,
+                onReasoningMenuChange = { showReasoningMenu = it },
+                onReasoningButtonBounds = { reasoningButtonBounds = it },
                 reasoningPreset = reasoningPreset,
                 onSelectReasoning = {
                     reasoningPreset = it
@@ -1364,6 +1385,9 @@ private fun BottomGlassComposer(
     modifier: Modifier = Modifier,
     inputText: String,
     onInputChange: (String) -> Unit,
+    showReasoningMenu: Boolean,
+    onReasoningMenuChange: (Boolean) -> Unit,
+    onReasoningButtonBounds: (androidx.compose.ui.geometry.Rect) -> Unit,
     reasoningPreset: ReasoningPreset,
     onSelectReasoning: (ReasoningPreset) -> Unit,
     onOpenHistory: () -> Unit,
@@ -1379,8 +1403,7 @@ private fun BottomGlassComposer(
     val accent = MaterialTheme.colorScheme.primary
     val onAccent = MaterialTheme.colorScheme.onPrimary
     val context = LocalContext.current
-    var showReasoningMenu by remember { mutableStateOf(false) }
-    androidx.activity.compose.BackHandler(enabled = showReasoningMenu) { showReasoningMenu = false }
+    androidx.activity.compose.BackHandler(enabled = showReasoningMenu) { onReasoningMenuChange(false) }
 
     Surface(
         shape = RoundedCornerShape(24.dp),
@@ -1448,7 +1471,8 @@ private fun BottomGlassComposer(
                             modifier = Modifier
                                 .size(width = 36.dp, height = 24.dp)
                                 .clip(CircleShape)
-                                .clickable { showReasoningMenu = true }
+                                .onGloballyPositioned { onReasoningButtonBounds(it.boundsInWindow()) }
+                                .clickable { onReasoningMenuChange(!showReasoningMenu) }
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
@@ -1462,8 +1486,8 @@ private fun BottomGlassComposer(
 
                         DropdownMenu(
                             expanded = showReasoningMenu,
-                            onDismissRequest = { showReasoningMenu = false },
-                            properties = NonEditingPopupProperties,
+                            onDismissRequest = { onReasoningMenuChange(false) },
+                            properties = ReasoningPopupProperties,
                             modifier = Modifier.widthIn(min = 176.dp),
                             shape = RoundedCornerShape(16.dp),
                             containerColor = glassPanelColor(),
@@ -1513,7 +1537,7 @@ private fun BottomGlassComposer(
                                     },
                                     onClick = {
                                         onSelectReasoning(preset)
-                                        showReasoningMenu = false
+                                        onReasoningMenuChange(false)
                                     }
                                 )
                             }

@@ -332,6 +332,15 @@ internal fun inlineAnnotated(
     }
 }
 
+private fun citationGlyph(number: Int): String {
+    // Circled numerals keep citations compact and visually distinct from body text.
+    val glyphs = listOf(
+        "⓪", "①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧", "⑨",
+        "⑩", "⑪", "⑫", "⑬", "⑭", "⑮", "⑯", "⑰", "⑱", "⑲", "⑳"
+    )
+    return glyphs.getOrNull(number) ?: "($number)"
+}
+
 private fun AnnotatedString.Builder.appendCitation(
     number: Int,
     accent: Color,
@@ -341,16 +350,16 @@ private fun AnnotatedString.Builder.appendCitation(
 ) {
     val style = SpanStyle(
         color = accent,
-        fontSize = 11.sp,
+        fontSize = 13.sp,
         fontWeight = if (emphasized) FontWeight.Bold else FontWeight.Medium,
         baselineShift = BaselineShift.Superscript
     )
     if (onClick == null) {
-        withStyle(style) { append("[$number]") }
+        withStyle(style) { append(citationGlyph(number)) }
     } else {
         withLink(
             LinkAnnotation.Clickable(tag = ref.raw, styles = TextLinkStyles(style = style)) { onClick(ref) }
-        ) { append("[$number]") }
+        ) { append(citationGlyph(number)) }
     }
 }
 

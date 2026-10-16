@@ -1446,7 +1446,7 @@ private fun BottomGlassComposer(
                             shape = CircleShape,
                             color = thinkingBg,
                             modifier = Modifier
-                                .size(36.dp)
+                                .size(width = 36.dp, height = 24.dp)
                                 .clip(CircleShape)
                                 .clickable { showReasoningMenu = true }
                         ) {
@@ -1455,7 +1455,7 @@ private fun BottomGlassComposer(
                                     LucentIcons.presetIcon(reasoningPreset),
                                     contentDescription = "思考程度",
                                     tint = thinkingTint,
-                                    modifier = Modifier.size(20.dp)
+                                    modifier = Modifier.size(18.dp)
                                 )
                             }
                         }
@@ -1524,7 +1524,7 @@ private fun BottomGlassComposer(
                         shape = CircleShape,
                         color = glassControlColor(),
                         modifier = Modifier
-                            .size(36.dp)
+                            .size(width = 36.dp, height = 24.dp)
                             .clip(CircleShape)
                             .clickable {
                                 Haptics.tick(context)
@@ -1545,7 +1545,7 @@ private fun BottomGlassComposer(
                         shape = CircleShape,
                         color = glassControlColor(),
                         modifier = Modifier
-                            .size(36.dp)
+                            .size(width = 36.dp, height = 24.dp)
                             .clip(CircleShape)
                             .clickable { onOpenDialogueSettings() }
                     ) {
@@ -1569,7 +1569,7 @@ private fun BottomGlassComposer(
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp)
                         ) {
                             Surface(
                                 shape = CircleShape,
@@ -1613,7 +1613,7 @@ private fun BottomGlassComposer(
                         else -> onGradient.copy(alpha = 0.15f)
                     },
                     modifier = Modifier
-                        .size(44.dp)
+                        .size(width = 44.dp, height = (44f * 2f / 3f).dp)
                         .clip(CircleShape)
                         .clickable(enabled = streaming || inputText.isNotBlank()) {
                             if (streaming) onStop() else onSend()

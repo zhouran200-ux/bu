@@ -209,7 +209,7 @@ private fun JumpChip(
         horizontalArrangement = Arrangement.Center,
         modifier = modifier
             .clip(RoundedCornerShape(14.dp))
-            .background(glassControlColor().copy(alpha = fade))
+            .background(glassControlColor().let { it.copy(alpha = it.alpha * fade) })
             .border(1.dp, lucentGlassRim(), RoundedCornerShape(14.dp))
             .clickable(enabled = enabled) { onClick() }
             .padding(vertical = 10.dp)

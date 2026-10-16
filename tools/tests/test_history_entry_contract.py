@@ -15,6 +15,23 @@ class HistoryEntryContractTest(unittest.TestCase):
         self.assertIn("onOpenHistory = { openHistorySheet() }", text)
         self.assertIn("modifier = Modifier.weight(1f).padding(end = 12.dp)", composer)
 
+    def test_composer_controls_are_one_third_shorter_without_losing_width(self):
+        text = (UI / "NotebookChatTab.kt").read_text(encoding="utf-8")
+        composer = text.split("private fun BottomGlassComposer(", 1)[1].split("private fun DialogueSettingsSheet(", 1)[0]
+        self.assertEqual(3, composer.count(".size(width = 36.dp, height = 24.dp)"))
+        self.assertIn(".size(width = 44.dp, height = (44f * 2f / 3f).dp)", composer)
+        self.assertIn("Modifier.padding(horizontal = 10.dp, vertical = 2.dp)", composer)
+        self.assertNotIn(".size(36.dp)", composer)
+        self.assertNotIn(".size(44.dp)", composer)
+
+    def test_history_jump_buttons_preserve_glass_alpha(self):
+        text = (UI / "ChatHistorySheet.kt").read_text(encoding="utf-8")
+        jump = text.split("private fun JumpChip(", 1)[1].split("private fun HistoryRow(", 1)[0]
+        self.assertIn('label = "跳到顶部"', text)
+        self.assertIn('label = "跳到底部"', text)
+        self.assertIn("it.copy(alpha = it.alpha * fade)", jump)
+        self.assertNotIn("glassControlColor().copy(alpha = fade)", jump)
+
     def test_regeneration_preflight_precedes_destructive_changes_and_resets_stats(self):
         text = (UI / "NotebookChatTab.kt").read_text(encoding="utf-8")
         regenerate = text.split("fun regenerateAnswer(", 1)[1].split("fun resendEditedQuestion(", 1)[0]

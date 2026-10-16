@@ -1,9 +1,0 @@
-# 思考强度菜单开关与外部关闭
-
-底部思考按钮切换展开状态：关闭时打开，打开时关闭；选项选择、返回键、切换离开当前对话页均关闭。聊天页面在Initial指针阶段观察外部按下，不消费事件，点击输入框、正文或其它按钮可关闭菜单并保持原有操作。按钮窗口坐标与根布局localToWindow坐标统一，排除触发按钮本身，避免外部关闭与按钮切换在同一次点击中重复执行。
-
-菜单专用ReasoningPopupProperties保持focusable=false，不抢输入焦点或主动收起键盘；关闭默认外部关闭回调，由页面统一处理，避免点击触发按钮先关闭又打开的竞态。菜单内容仍由Material DropdownMenu定位和处理选项点击，不添加遮罩或替代弹窗。
-
-残留审计：showReasoningMenu上移至对话页，composer旧本地状态与固定置true入口已替换；onDismissRequest、选项与返回回调统一走onReasoningMenuChange。NonEditingPopupProperties仍被NotebooksScreen使用，不能删除；新增属性仅用于思考菜单，其它弹窗不受影响。检查Kotlin状态/回调、PopupIme共享属性、相关源码契约与文档；未改数据库、持久化键、权限、资源、依赖、后台任务或埋点，无专属遗留资源需删除。
-
-验证：针对性源码契约与Kotlin编译；源码检查不能代替真机触摸、键盘和动画验收，不本地打包APK。

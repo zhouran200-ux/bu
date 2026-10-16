@@ -57,10 +57,10 @@ def check(text):
 
 
 def main():
-    if len(sys.argv) > 1:
-        path = sys.argv[1]
-    else:
-        path = os.path.join(REPO, "docs", "RELEASE-NOTES-FORMAT.md")
+    if len(sys.argv) != 2:
+        print("usage: release_notes_check.py NOTES_FILE")
+        return 2
+    path = sys.argv[1]
     if not os.path.isfile(path):
         print(f"::error::no release notes at {path}")
         return 1

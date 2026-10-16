@@ -1,30 +1,55 @@
-<div align="center">
+# Lucent
 
-# 𝓛𝓾𝓬𝓮𝓷𝓽
+Lucent 是一款中文 Android 笔记本应用：笔记、来源文档和对话记录保存在设备本地，并可按笔记本调用云端大模型进行问答。
 
-### 现代 · 极简 · 内敛至近乎沉默
+> 当前界面与文案以简体中文为主。项目版本号由 `app/build.gradle.kts` 中的 `MARKETING_VERSION` 管理。
 
-**一款纯粹专注的 Android 笔记本应用，内置云端大模型知识库问答。数据全部留在设备上。**
+## 当前功能
 
-</div>
+- **笔记本**：创建、重命名、删除和拖动整理笔记本。
+- **来源文档**：每个笔记本维护一份本地来源文档，支持导入 `.txt`、`.doc` 和 `.docx`，导入后转换为 Markdown；可在来源页阅读和定位内容。
+- **本地知识库问答**：在笔记本的“对话”页向云端模型提问，使用该笔记本来源作为上下文；支持流式回答、思考过程、来源引用、回答统计、复制、编辑、重新生成和删除。
+- **模型与 API 方案**：保存多组 BYOK 配置，支持 OpenAI 兼容接口、Anthropic、Google 和自定义地址；可选择方案和模型，并测试连接、获取模型。
+- **显示设置**：浅色、深色、跟随系统、动态取色和纯白模式；可设置背景、动画、字体、字号、行距、字距。
+- **本地存储**：Room 数据库和 DataStore 保存笔记、对话、配置和显示设置；应用不提供云端同步。API 密钥保存在本地，应用当前不对数据库内容做额外加密。
 
-完整说明（架构、功能、致谢与第三方许可）见 **[`docs/README.zh-CN.md`](docs/README.zh-CN.md)**。
+## 技术栈
 
----
+- Kotlin、Jetpack Compose、Material 3
+- Room、DataStore、OkHttp/SSE
+- Haze 毛玻璃效果
+- Android API 28+，目标 SDK 36
+- 模块：`app` 和用于启动基线画像的 `baselineprofile`
 
-## 验证与交付
+## 本地检查
 
-允许本地运行 Java/OpenJDK、Gradle、编译、单元测试与 Lint，但不打包 APK。修改代码并补充测试后，可按需执行：
+本地允许编译、单元测试、Lint 和源码检查，但不在本地打包 APK：
 
-```bash
-python tools/verify.py quick
-python -m unittest discover -s tools/tests -v
-```
+    python tools/verify.py quick
+    python -m unittest discover -s tools/tests -v
+    ./gradlew.bat :app:compileDebugKotlin
+    ./gradlew.bat :app:testDebugUnitTest
 
-`verify.py` 默认采用 `quick`；可显式选择 `logic` / `full` 执行本地编译、单元测试及 Lint，所有档位均不包含 APK 打包任务。完整验证在 GitHub Actions 的 `check` 工作流执行：Debug/Release 编译与 JVM 单测、两种变体的 Lint、Room schema、Android 插桩测试编译及云端模拟器运行。报告无论成功失败都尽量上传为 artifacts。
+完整的 Debug/Release 编译、JVM 测试、Lint、Room schema、插桩测试和 APK 构建由 GitHub Actions 执行：
 
-推送成功后结束本轮，不等待 CI；下一次开发任务开始时，由独立子代理检查上一轮提交的结果和报告，发现问题在当轮修复。覆盖范围及限制见 [云端验证说明](docs/CLOUD-VALIDATION.md)。
+- [check workflow](.github/workflows/check.yml)
+- [Build APK only workflow](.github/workflows/build-apk.yml)
 
-## 云端构建
+推送到 `main` 会触发这两个工作流。APK 工作流优先使用仓库 Secrets 中的正式签名；未配置时会使用仓库内 `debug.keystore`，产物可安装但不是正式发布签名。
 
-推送到 `main` 即会自动运行 `build-apk.yml`，产出可直接安装的 APK 并附上构建产物。要打签名 Release 包，在仓库 Secrets 里配置 `LUCENT_KEYSTORE_BASE64` 与 `LUCENT_KEYSTORE_PASSWORD`。
+## 项目结构
+
+    app/             Android 应用、Compose 界面、Room 数据层和本地资源
+    baselineprofile/ 启动基线画像模块
+    tools/           文案生成、源码检查和测试脚本
+    .github/         CI 与 APK 构建工作流
+
+## 许可与第三方声明
+
+Lucent 自有代码的许可边界以仓库当前配置为准；项目使用的第三方组件、Androidify 代码改编来源及 Apache 许可全文见 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)。Androidify 改编源码本身也保留了许可证头，APK 内含对应的 license 资源。
+
+## 当前边界
+
+- 应用是本地优先的单设备笔记本，不包含账号、云同步或多人协作。
+- 大模型请求需要用户自行配置 API 地址、密钥和模型，并受服务商协议与网络影响。
+- 真机视觉、厂商 ROM、后台保活和真实模型端点不由本地源码检查完全覆盖。

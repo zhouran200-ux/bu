@@ -11,7 +11,7 @@ internal object ChatStats {
         else "${tenths / 10L}.${tenths % 10L}秒"
     }
 
-    fun secondsLabel(seconds: Int): String? = if (seconds > 0) "总用时 ${seconds}秒" else null
+    fun secondsLabel(seconds: Int): String? = if (seconds > 0) "用时 ${seconds}秒" else null
 
     fun cacheLabel(cachedTokens: Int, promptTokens: Int, known: Boolean = cachedTokens > 0): String? {
         if (promptTokens <= 0) return null
@@ -36,8 +36,8 @@ internal object ChatStats {
         cachedTokensKnown: Boolean = cachedTokens > 0,
         timestamp: Long = 0L
     ): String = listOfNotNull(
-        firstTokenMillis?.let { "首字延迟${duration(it)}" },
-        generationMillis?.let { "总用时 ${duration(it)}" } ?: secondsLabel(seconds),
+        firstTokenMillis?.let { "首字${duration(it)}" },
+        generationMillis?.let { "用时 ${duration(it)}" } ?: secondsLabel(seconds),
         cacheLabel(cachedTokens, promptTokens, cachedTokensKnown || cachedTokens > 0),
         charLabel(chars),
         if (timestamp > 0) SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(timestamp)) else null

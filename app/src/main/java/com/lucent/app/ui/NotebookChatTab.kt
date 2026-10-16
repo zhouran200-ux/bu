@@ -65,6 +65,7 @@ import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.History
+import androidx.compose.material.icons.rounded.ArrowDownward
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material.icons.filled.Tune
@@ -759,7 +760,9 @@ fun NotebookChatTab(
         ) {
             Surface(
                 shape = CircleShape,
-                color = LocalOnGradient.current.copy(alpha = 0.10f),
+                color = glassPanelColor(),
+                tonalElevation = 0.dp,
+                shadowElevation = 4.dp,
                 modifier = Modifier
                     .size(44.dp)
                     .clip(CircleShape)
@@ -774,10 +777,10 @@ fun NotebookChatTab(
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
-                        Icons.Default.KeyboardArrowDown,
+                        Icons.Rounded.ArrowDownward,
                         contentDescription = "回到底部",
-                        tint = LocalOnGradient.current,
-                        modifier = Modifier.size(22.dp)
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
                     )
                 }
             }

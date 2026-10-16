@@ -26,7 +26,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -40,6 +39,7 @@ import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -51,9 +51,11 @@ internal fun ChatHistorySheet(
     onMessageClick: (Long) -> Unit,
     onTop: () -> Unit,
     onBottom: () -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    handleWidth: Dp = 72.dp
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val drawer = rememberModelPickerDrawer(sheetState, handleWidth, onDismiss)
     val ink = LocalOnGradient.current
     val muted = LocalOnGradientMuted.current
     val accent = MaterialTheme.colorScheme.primary
@@ -74,8 +76,10 @@ internal fun ChatHistorySheet(
         containerColor = glassPanelColor(),
         shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
         tonalElevation = 0.dp,
-        sheetGesturesEnabled = true,
-        dragHandle = { BottomSheetDefaults.DragHandle() }
+        modifier = drawer.modifier,
+        properties = HandleOnlyDrawerProperties,
+        sheetGesturesEnabled = false,
+        dragHandle = drawer.handle
     ) {
         KeepKeyboardForNonEditingDialog()
         Column(

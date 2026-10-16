@@ -23,8 +23,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
+import androidx.compose.material3.ModalBottomSheetProperties
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+
+@OptIn(ExperimentalMaterial3Api::class)
+internal val HandleOnlyDrawerProperties = ModalBottomSheetProperties(
+    shouldDismissOnBackPress = true,
+    shouldDismissOnClickOutside = false
+)
 
 internal fun shouldDismissModelDrawer(distance: Float, velocity: Float, threshold: Float): Boolean =
     distance >= threshold || (distance > 0f && velocity >= 1000f)
@@ -38,7 +46,7 @@ internal class ModelPickerDrawer(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun rememberModelPickerDrawer(sheetState: SheetState, onDismiss: () -> Unit): ModelPickerDrawer {
+internal fun rememberModelPickerDrawer(sheetState: SheetState, handleWidth: Dp = 72.dp, onDismiss: () -> Unit): ModelPickerDrawer {
     val scope = rememberCoroutineScope()
     val dismiss by rememberUpdatedState(onDismiss)
     var travel by remember { mutableFloatStateOf(0f) }
@@ -66,7 +74,7 @@ internal fun rememberModelPickerDrawer(sheetState: SheetState, onDismiss: () -> 
         modifier = Modifier.graphicsLayer { translationY = travel },
         handle = {
             Box(
-                modifier = Modifier.width(72.dp).height(40.dp).draggable(
+                modifier = Modifier.width(handleWidth).height(40.dp).draggable(
                     state = drag,
                     orientation = Orientation.Vertical,
                     enabled = !closing,
@@ -80,7 +88,7 @@ internal fun rememberModelPickerDrawer(sheetState: SheetState, onDismiss: () -> 
                     }
                 ),
                 contentAlignment = Alignment.Center
-            ) { BottomSheetDefaults.DragHandle() }
+            ) { BottomSheetDefaults.DragHandle(width = handleWidth) }
         },
         close = close
     )

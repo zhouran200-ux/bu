@@ -31,7 +31,7 @@ class PickerContractTest(unittest.TestCase):
             count = text.count("    ModalBottomSheet(")
             if count:
                 sheets.append(path.name)
-                if path.name in ("SettingsComponents.kt", "ProfileModelPickerSheet.kt"):
+                if path.name in ("SettingsComponents.kt", "ProfileModelPickerSheet.kt", "ChatHistorySheet.kt"):
                     self.assertEqual(count, text.count("sheetGesturesEnabled = false"), path.name)
                     self.assertIn("dragHandle = drawer.handle", text)
                 else:
@@ -39,6 +39,20 @@ class PickerContractTest(unittest.TestCase):
                     self.assertEqual(count, text.count("dragHandle = { BottomSheetDefaults.DragHandle() }"), path.name)
             self.assertNotIn("LucentDragHandle", text, path.name)
         self.assertEqual(4, len(sheets))
+
+    def test_history_and_model_drawers_only_close_via_back_or_handle(self):
+        drawer = (UI / "ModelPickerDrawer.kt").read_text(encoding="utf-8")
+        self.assertIn("shouldDismissOnBackPress = true", drawer)
+        self.assertIn("shouldDismissOnClickOutside = false", drawer)
+        for name in ("ChatHistorySheet.kt", "ProfileModelPickerSheet.kt", "SettingsComponents.kt"):
+            text = (UI / name).read_text(encoding="utf-8")
+            self.assertIn("properties = HandleOnlyDrawerProperties", text)
+            self.assertIn("sheetGesturesEnabled = false", text)
+            self.assertIn("dragHandle = drawer.handle", text)
+        chat = (UI / "NotebookChatTab.kt").read_text(encoding="utf-8")
+        self.assertIn("(modelPickerButtonWidthPx * 1.25f).toDp()", chat)
+        self.assertIn(".onSizeChanged { onModelPickerWidth(it.width) }", chat)
+        self.assertEqual(2, chat.count("handleWidth = drawerHandleWidth"))
 
     def test_history_and_settings_callbacks_do_not_dismiss(self):
         text = (UI / "NotebookChatTab.kt").read_text(encoding="utf-8")
@@ -78,7 +92,9 @@ class PickerContractTest(unittest.TestCase):
         drawer = (UI / "ModelPickerDrawer.kt").read_text(encoding="utf-8")
         self.assertIn("sheetState.hide()", drawer)
         self.assertIn("translationY = travel", drawer)
-        self.assertIn("Modifier.width(72.dp).height(40.dp).draggable", drawer)
+        self.assertIn("Modifier.width(handleWidth).height(40.dp).draggable", drawer)
+        self.assertIn("BottomSheetDefaults.DragHandle(width = handleWidth)", drawer)
+        self.assertNotIn("DragHandle(height =", drawer)
         api = (UI / "SettingsComponents.kt").read_text(encoding="utf-8")
         self.assertIn("drawer.close { onDone(draft) }", api)
         self.assertNotIn("Icons.Default.Check", text)

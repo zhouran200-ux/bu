@@ -43,6 +43,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
 import com.lucent.app.data.ApiProfile
 import com.lucent.app.data.ApiProfiles
@@ -56,6 +57,7 @@ internal fun ProfileModelPickerSheet(
     onSelect: (ApiProfile, String) -> Unit,
     onDismiss: () -> Unit,
     visible: Boolean = true,
+    handleWidth: Dp = 72.dp,
     onManageApi: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -65,7 +67,7 @@ internal fun ProfileModelPickerSheet(
     var expandedProfileId by remember { mutableStateOf(initialPosition.expandedProfileId) }
     val listState = remember { LazyListState(initialPosition.firstVisibleItemIndex, 0) }
     val latestDismiss by rememberUpdatedState(onDismiss)
-    val drawer = rememberModelPickerDrawer(sheetState) { latestDismiss() }
+    val drawer = rememberModelPickerDrawer(sheetState, handleWidth) { latestDismiss() }
     val ink = LocalOnGradient.current
     val accent = MaterialTheme.colorScheme.primary
     if (!visible) return
@@ -76,6 +78,7 @@ internal fun ProfileModelPickerSheet(
         shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
         tonalElevation = 0.dp,
         modifier = drawer.modifier,
+        properties = HandleOnlyDrawerProperties,
         sheetGesturesEnabled = false,
         dragHandle = drawer.handle
     ) {

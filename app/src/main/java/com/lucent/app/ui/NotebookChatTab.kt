@@ -549,6 +549,10 @@ fun NotebookChatTab(
     val isImeVisible = WindowInsets.isImeVisible
     val barMotionOn = LocalBackgroundEnvironment.current.motionEnabled
     var showReasoningMenu by remember(notebookId) { mutableStateOf(false) }
+    var modelPickerButtonWidthPx by remember { mutableIntStateOf(0) }
+    val drawerHandleWidth = with(androidx.compose.ui.platform.LocalDensity.current) {
+        (modelPickerButtonWidthPx * 1.25f).toDp()
+    }
     var reasoningButtonBounds by remember { mutableStateOf(androidx.compose.ui.geometry.Rect.Zero) }
     var chatCoordinates by remember { mutableStateOf<androidx.compose.ui.layout.LayoutCoordinates?>(null) }
     LaunchedEffect(active) { if (!active) showReasoningMenu = false }
@@ -710,6 +714,7 @@ fun NotebookChatTab(
                 onOpenDialogueSettings = { showDialogueSettingsDialog = true },
                 selectedProfileName = resolvedSelection?.first?.name.orEmpty(),
                 onOpenModelPicker = { showProfileModelPickerSheet = true },
+                onModelPickerWidth = { modelPickerButtonWidthPx = it },
                 streaming = streamingAnswerId != null,
                 onSend = onSendMessage,
                 onStop = { stopStreaming() }
@@ -781,6 +786,7 @@ fun NotebookChatTab(
         if (showHistorySheet) {
             ChatHistorySheet(
                 messages = messages.toList(),
+                handleWidth = drawerHandleWidth,
                 currentMessageId = historyAnchorId,
                 streamingAnswerId = streamingAnswerId,
                 onMessageClick = { id ->
@@ -828,6 +834,7 @@ fun NotebookChatTab(
         if (showProfileModelPickerSheet) {
             ProfileModelPickerSheet(
                 profiles = savedProfiles,
+                handleWidth = drawerHandleWidth,
                 currentProfileId = resolvedSelection?.first?.id.orEmpty(),
                 currentModel = resolvedSelection?.second.orEmpty(),
                 onSelect = { profile, modelName ->
@@ -1394,6 +1401,7 @@ private fun BottomGlassComposer(
     onOpenDialogueSettings: () -> Unit,
     selectedProfileName: String,
     onOpenModelPicker: () -> Unit,
+    onModelPickerWidth: (Int) -> Unit,
     streaming: Boolean,
     onSend: () -> Unit,
     onStop: () -> Unit
@@ -1589,6 +1597,7 @@ private fun BottomGlassComposer(
                         modifier = Modifier
                             .weight(1f)
                             .clip(RoundedCornerShape(18.dp))
+                            .onSizeChanged { onModelPickerWidth(it.width) }
                             .clickable { onOpenModelPicker() }
                     ) {
                         Row(

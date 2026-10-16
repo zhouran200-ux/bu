@@ -220,7 +220,7 @@ internal fun ApiModelPickerDialog(
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var draft by remember(names) { mutableStateOf(selected) }
-    val drawer = rememberModelPickerDrawer(sheetState, onDismiss)
+    val drawer = rememberModelPickerDrawer(sheetState, onDismiss = onDismiss)
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -229,6 +229,7 @@ internal fun ApiModelPickerDialog(
         tonalElevation = 0.dp,
         shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
         modifier = drawer.modifier,
+        properties = HandleOnlyDrawerProperties,
         sheetGesturesEnabled = false,
         dragHandle = drawer.handle
     ) {

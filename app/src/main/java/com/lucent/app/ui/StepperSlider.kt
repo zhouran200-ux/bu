@@ -65,6 +65,7 @@ fun StepperSlider(
     valueLabel: String,
     onValueChange: (Float) -> Unit,
     modifier: Modifier = Modifier,
+    compact: Boolean = false,
     onValueChangeFinished: () -> Unit = {}
 ) {
     val ink = LocalOnGradient.current
@@ -110,7 +111,7 @@ fun StepperSlider(
             fontSize = LucentTitles.ItemSize,
             fontWeight = LucentTitles.ItemWeight
         )
-        Spacer(modifier = Modifier.height(2.dp))
+        Spacer(modifier = Modifier.height(if (compact) 0.dp else 2.dp))
         Box(modifier = Modifier.fillMaxWidth()) {
             Text(
                 text = valueLabel,
@@ -120,7 +121,7 @@ fun StepperSlider(
                 modifier = Modifier.align(Alignment.Center)
             )
         }
-        Spacer(modifier = Modifier.height(4.dp))
+        Spacer(modifier = Modifier.height(if (compact) 2.dp else 4.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             SliderEdgeButton(
                 icon = Icons.Rounded.Remove,
@@ -128,7 +129,7 @@ fun StepperSlider(
                 enabled = shown > low + safeStep / 2f,
                 onClick = { nudge(-safeStep) }
             )
-            Spacer(modifier = Modifier.width(6.dp))
+            Spacer(modifier = Modifier.width(if (compact) 4.dp else 6.dp))
             SliderTrack(
                 fraction = fraction,
                 accent = accent,
@@ -193,7 +194,7 @@ fun StepperSlider(
                         }
                     }
             )
-            Spacer(modifier = Modifier.width(6.dp))
+            Spacer(modifier = Modifier.width(if (compact) 4.dp else 6.dp))
             SliderEdgeButton(
                 icon = Icons.Rounded.Add,
                 description = "增大$title",

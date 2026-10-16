@@ -212,9 +212,10 @@ internal fun FontSettingsPage(
         modifier = Modifier
             .fillMaxWidth()
             .frostedGlass()
-            .padding(16.dp)
+            .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
         StepperSlider(
+            compact = true,
             title = S.fontSizeScaleTitle,
             valueLabel = if (kotlin.math.abs(activeFontScale - 1f) < 0.005f) "默认" else "${(activeFontScale * 100).roundToInt()}%",
             value = activeFontScale,
@@ -225,11 +226,12 @@ internal fun FontSettingsPage(
         )
 
         HorizontalDivider(
-            modifier = Modifier.padding(vertical = 10.dp),
+            modifier = Modifier.padding(vertical = 4.dp),
             color = onGradient.copy(alpha = 0.08f)
         )
 
         StepperSlider(
+            compact = true,
             title = S.lineSpacingTitle,
             valueLabel = if (kotlin.math.abs(activeLineSpacing - 1.2f) < 0.005f) "默认" else String.format("%.2fx", activeLineSpacing),
             value = activeLineSpacing,
@@ -240,11 +242,12 @@ internal fun FontSettingsPage(
         )
 
         HorizontalDivider(
-            modifier = Modifier.padding(vertical = 10.dp),
+            modifier = Modifier.padding(vertical = 4.dp),
             color = onGradient.copy(alpha = 0.08f)
         )
 
         StepperSlider(
+            compact = true,
             title = S.letterSpacingTitle,
             valueLabel = if (kotlin.math.abs(activeLetterSpacing) < 0.005f) "默认" else String.format("%+.1fsp", activeLetterSpacing),
             value = activeLetterSpacing,

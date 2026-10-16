@@ -23,7 +23,7 @@
 | N01 | P1 已验证（批次01） | network/StreamingResponseReader：逐 data 行解析、拼接不保留换行、坏事件被跳过后成功 | 独立 SSE event reader 在空行聚合多条 data，以换行连接；覆盖 LF/CRLF/CR、注释/心跳、字段、BOM、跨传输分片、空 data、无末尾空行、EOF、异常事件；坏 JSON 不静默成功；取消/部分正文保留；OpenAI/Anthropic/Google 结束条件分别验证 |
 | N02 | P1 已验证（批次01） | Gemini thought:false 被 has(thought) 判为思考 | true→reasoning；false/缺省→正文；同事件混合 parts 保序；usage 不丢失。依赖 N01 |
 | N03 | P1 待办 | Claude 非自适应预算>=固定 max_tokens | 所有 preset 构成有效预算/输出上限关系；adaptive/auto 和各协议不回归；明确模型上限限制，不凭空设预算 |
-| N04 | P1 待办 | Google URL key 进入连接报告 | 诊断展示/复制/异常 URL 统一脱敏；覆盖编码/多个查询参数/失败路径；不改变真实鉴权 |
+| N04 | P1 已验证（批次02） | Google URL key 进入连接报告 | 诊断展示/复制/异常 URL 统一脱敏；覆盖编码/多个查询参数/失败路径；不改变真实鉴权 |
 | A01 | P1 待办 | API模型/测试请求缺 profile ID 和请求序号，旧结果污染新方案 | 单任务owner，稳定 profile ID+序号；切方案取消/拒绝旧结果；重复点击乱序、路由离开、失败均测试 |
 | A02 | P1 待办 | API子页scope与父loading所有权分离，取消无可靠finally | loading与任务同owner；取消重抛，finally复位；离开/返回无假忙；与 A01 同批 |
 | A03 | P1 待办 | SettingsScreen基于profiles旧快照并发全表保存 | 按ID串行mutation/最新事务值；快速增删选排保存不互相覆盖；选中身份稳定；持久化失败回传 |
@@ -82,4 +82,7 @@ ChatSession的finally/取消/计数、有序写；SourceTagging算法内部状�
 - 结构重构基线为先前75c5792附近的审计状态；文件行号随修复变化，按符号核对。
 - 残留审计：StreamingResponseReader旧pendingData/readUtf8Line逐行JSON路径已移除；40秒readTimeout仍在LlmClient；旧Stream测试中“坏事件仍成功”的断言已替换为失败+保留已交付正文。无DB/资源/导航/Manifest/R8变更。提交可由 git log --grep="Fix SSE event framing" 精确定位。
 - 发布记录：本批两次 git fetch origin main 遇到 Connection was reset，不能据本地 origin/main 缓存声称已同步远端；仅重试网络，不重跑相同验证。后续记录实际 push 成败。
-- 下一批：N03预算关系，然后N04诊断URL脱敏；不得跳过任务账本直接大规模搬目录。
+- 批次02：N04先于N03执行，因为N03涉及模型最大输出能力，需要核对上限，不随意提高max_tokens。新增DiagnosticRedaction，成功/HTTP失败/异常返回统一脱敏，显示/pretty/完整报告再次防御；真实请求鉴权保持不变。覆盖编码参数名、重复敏感参数、URL userinfo、已知密钥及编码值、异常回显和实际请求构造失败。
+- 批次02验证：7项DiagnosticRedactionTest、6项TestConnectionDisplayTest及5项原请求payload测试通过；随后全量Debug JVM通过；quick硬约束通过，保留Q01警告。未修改真实URL构造/认证/超时，未打包APK。残留审计：testConnection成功/HTTP失败/异常三个返回路径均redacted；pretty/display/fullReport均执行防御性query脱敏。
+- N03仍待办：现有ModelDefinition没有输出上限字段，claude-3-5预算支持识别本身也需要复核；不把“budget+固定余量”作为通用模型能力假设。
+- 不得跳过任务账本直接大规模搬目录。

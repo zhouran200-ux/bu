@@ -236,7 +236,7 @@ object LlmClient {
                     errorMessage = "HTTP ${response.code}: ${errMsg.ifBlank { response.message }}",
                     userAgentUsed = usedUa
                 )
-                return@withContext Result.success(failureResult)
+                return@withContext Result.success(failureResult.redacted(apiKey))
             }
             Result.success(
                 TestConnectionResult(
@@ -248,7 +248,7 @@ object LlmClient {
                     rawResponseBody = bodyStr,
                     errorMessage = null,
                     userAgentUsed = usedUa
-                )
+                ).redacted(apiKey)
             )
         } catch (e: Exception) {
             val latency = System.currentTimeMillis() - start
@@ -262,7 +262,7 @@ object LlmClient {
                     rawResponseBody = e.stackTraceToString().take(1500),
                     errorMessage = e.message ?: e.javaClass.simpleName,
                     userAgentUsed = usedUa
-                )
+                ).redacted(apiKey)
             )
         }
     }

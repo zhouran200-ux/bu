@@ -14,7 +14,9 @@ data class TestConnectionResult(
     val errorMessage: String? = null,
     val userAgentUsed: String? = null
 ) {
-    fun prettyResponseBody(): String {
+    fun prettyResponseBody(): String = DiagnosticRedaction.text(prettyResponseBodyRaw())
+
+    private fun prettyResponseBodyRaw(): String {
         val trimmed = rawResponseBody.trim()
         return try {
             when {
@@ -27,7 +29,9 @@ data class TestConnectionResult(
         }
     }
 
-    fun formatDisplayMessage(): String {
+    fun formatDisplayMessage(): String = DiagnosticRedaction.text(formatDisplayMessageRaw())
+
+    private fun formatDisplayMessageRaw(): String {
         if (success) {
             val targetLabel = if (targetModel.isNotBlank()) " [$targetModel]" else ""
             return "✓ 连接成功$targetLabel (${latencyMs}ms)"
@@ -90,7 +94,9 @@ data class TestConnectionResult(
         return fallback ?: bodyStr.take(180)
     }
 
-    fun toFullReport(): String = buildString {
+    fun toFullReport(): String = DiagnosticRedaction.text(fullReportRaw())
+
+    private fun fullReportRaw(): String = buildString {
         appendLine("=== 测试连接报告 ===")
         appendLine("目标模型: ${targetModel.ifBlank { "(未指定)" }}")
         appendLine("请求地址: $requestUrl")

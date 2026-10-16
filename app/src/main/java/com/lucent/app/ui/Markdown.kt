@@ -14,7 +14,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -34,6 +38,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.lucent.app.data.CitationRef
 import com.lucent.app.data.SourceCitations
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 internal sealed interface MdBlock {
     data class Heading(val level: Int, val text: String) : MdBlock
@@ -414,8 +420,16 @@ fun MarkdownText(
     val onGradientMuted = LocalOnGradientMuted.current
     val accent = MaterialTheme.colorScheme.primary
     val incrementalParser = remember { IncrementalMarkdownParser() }
-    val blocks = remember(text) { incrementalParser.parse(text) }
-    val citationNumbering = remember(blocks, citationsEnabled) { markdownCitationNumbering(blocks, citationsEnabled) }
+    var blocks by remember { mutableStateOf(emptyList<MdBlock>()) }
+    var citationNumbering by remember { mutableStateOf(emptyMap<String, Int>()) }
+    LaunchedEffect(text) {
+        blocks = withContext(Dispatchers.Default) { incrementalParser.parse(text) }
+    }
+    LaunchedEffect(blocks, citationsEnabled) {
+        citationNumbering = withContext(Dispatchers.Default) {
+            markdownCitationNumbering(blocks, citationsEnabled)
+        }
+    }
     val citation = remember(citationNumbering, onCitationClick, sourceNoteId, sourceRevision, emphasized, citationsEnabled) {
         CitationDecor(citationNumbering, onCitationClick, sourceNoteId, sourceRevision, citationsEnabled, emphasized)
     }

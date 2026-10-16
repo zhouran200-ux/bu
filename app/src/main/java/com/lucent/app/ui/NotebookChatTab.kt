@@ -135,7 +135,6 @@ import com.lucent.app.network.ChatMessagePayload
 import com.lucent.app.network.LlmClient
 import kotlin.math.abs
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 data class UiChatMessage(
@@ -574,14 +573,17 @@ fun NotebookChatTab(
     }
     LaunchedEffect(streamingAnswerId, active) {
         if (!active || streamingAnswerId == null) return@LaunchedEffect
-        androidx.compose.runtime.snapshotFlow { streamProgress }
-            .collectLatest { progress ->
-                if (progress <= 0 || !followStream || listState.isScrollInProgress) return@collectLatest
+        followStreamUpdates(
+            updates = androidx.compose.runtime.snapshotFlow { streamProgress },
+            canFollow = { followStream && !listState.isScrollInProgress },
+            awaitLayout = {
                 delay(80)
-                if (followStream && !listState.isScrollInProgress) {
-                    listState.requestScrollToItem((listState.layoutInfo.totalItemsCount - 1).coerceAtLeast(0))
-                }
+                androidx.compose.runtime.withFrameNanos { }
+            },
+            onFollow = {
+                listState.requestScrollToItem((listState.layoutInfo.totalItemsCount - 1).coerceAtLeast(0))
             }
+        )
     }
 
     val onSendMessage: () -> Unit = send@{

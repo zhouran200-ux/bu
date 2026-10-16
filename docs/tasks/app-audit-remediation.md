@@ -28,7 +28,7 @@
 | A02 | P1 待办 | API子页scope与父loading所有权分离，取消无可靠finally | loading与任务同owner；取消重抛，finally复位；离开/返回无假忙；与 A01 同批 |
 | A03 | P1 待办 | SettingsScreen基于profiles旧快照并发全表保存 | 按ID串行mutation/最新事务值；快速增删选排保存不互相覆盖；选中身份稳定；持久化失败回传 |
 | F01 | P1 待办 | 字体import快照跨copy再写回，与delete/另一次import交错 | 存储层原子串行索引更新/原子落盘；导入中删字体不会复活，MAX不被绕过；失败清理临时文件；UI锁不是唯一防护 |
-| C01 | P1 待办 | collectLatest+delay(80)是防抖，连续输出使跟随饥饿 | 持续高频增量仍按界限跟随；手动滚动即退出；结束/键盘resize/历史定位/再跟随不竞争 |
+| C01 | P1 进行中（批次03） | collectLatest+delay(80)是防抖，连续输出使跟随饥饿 | 持续高频增量仍按界限跟随；手动滚动即退出；结束/键盘resize/历史定位/再跟随不竞争 |
 | C02 | P1 待办 | Markdown正文和编号分步发布，行内解析仍主线程 | 原子发布文本+blocks+编号/行内结果；旧任务不能覆盖新文本；编辑/重生成/流结束一致；主题与点击绑定正确 |
 | C03 | P2 待办 | 增量解析仍全文找安全边界/重解析闭合前缀 | 真正保留已闭合前缀并只解析必要尾部；fence/空行/格式/脚注回归；长回答benchmark证明收益，不只搬线程 |
 | C04 | P2 待办 | 高频阅读位置apply、滚动轨道重建全消息几何 | 合并位置写入并dispose落盘；大消息数几何更新受限；不丢阅读锚点，设备帧耗时验证 |
@@ -85,4 +85,6 @@ ChatSession的finally/取消/计数、有序写；SourceTagging算法内部状�
 - 批次02：N04先于N03执行，因为N03涉及模型最大输出能力，需要核对上限，不随意提高max_tokens。新增DiagnosticRedaction，成功/HTTP失败/异常返回统一脱敏，显示/pretty/完整报告再次防御；真实请求鉴权保持不变。覆盖编码参数名、重复敏感参数、URL userinfo、已知密钥及编码值、异常回显和实际请求构造失败。
 - 批次02验证：7项DiagnosticRedactionTest、6项TestConnectionDisplayTest及5项原请求payload测试通过；随后全量Debug JVM通过；quick硬约束通过，保留Q01警告。未修改真实URL构造/认证/超时，未打包APK。残留审计：testConnection成功/HTTP失败/异常三个返回路径均redacted；pretty/display/fullReport均执行防御性query脱敏。
 - N03仍待办：现有ModelDefinition没有输出上限字段，claude-3-5预算支持识别本身也需要复核；不把“budget+固定余量”作为通用模型能力假设。
+- 批次03：C01使用conflate+顺序collect合并最新进度，不取消已开始的80ms等待；等待后再次核对用户跟随/滚动，且等待Compose下一帧再请求定位。虚拟门闩测试覆盖连续增量不饥饿、手动滚动取消待定位、inactive不请求。设备上的IME/结束/历史导航联动仍需验证，不提前把C01写成完整完成。
+- Kotlin编译器对默认suspend lambda调用delay触发backend错误，已改为显式注入awaitLayout，不升级依赖/不clean；定向scheduler/scroll/viewport测试、56项Python契约已通过。全量Debug JVM与Release Kotlin编译已通过；随后仅补跑新增停止/离开取消用例。源码未变部分复用结果。
 - 不得跳过任务账本直接大规模搬目录。

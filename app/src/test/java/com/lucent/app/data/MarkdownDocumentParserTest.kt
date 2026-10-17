@@ -11,6 +11,14 @@ import kotlin.test.assertTrue
 class MarkdownDocumentParserTest {
 
     @Test
+    fun docxRejectsInternalAndExternalEntityDeclarations() {
+        for (declaration in listOf("<!DOCTYPE document [<!ENTITY entity 'expanded'>]>", "<!DOCTYPE document SYSTEM 'file:///nonexistent'>")) {
+            val xml = declaration + "<document><body><p><r><t>safe</t></r></p></body></document>"
+            assertTrue(runCatching { MarkdownDocumentParser.parseDocxToMarkdown(docxWith(xml)) }.exceptionOrNull() is IllegalArgumentException)
+        }
+    }
+
+    @Test
     fun testIsSupported() {
         assertTrue(MarkdownDocumentParser.isSupported("document.txt"))
         assertTrue(MarkdownDocumentParser.isSupported("REPORT.DOCX"))

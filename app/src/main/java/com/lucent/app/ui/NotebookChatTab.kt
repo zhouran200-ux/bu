@@ -650,7 +650,16 @@ fun NotebookChatTab(
                     .padding(horizontal = 14.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                item(key = "header") { Spacer(modifier = Modifier.height(8.dp)) }
+                item(key = "header") {
+                    Column {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        if (session.unsavedMessageCount > 0) {
+                            TextButton(onClick = { session.retryUnsavedMessages() }) {
+                                Text("有未保存的回答，点击重试保存")
+                            }
+                        }
+                    }
+                }
 
                 itemsIndexed(messages, key = { _, msg -> "message:${msg.id}" }) { _, msg ->
                     val actionsEnabled = session.ready && streamingAnswerId == null

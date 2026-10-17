@@ -38,12 +38,14 @@ import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -110,7 +112,7 @@ internal fun ApiConfigSettingsPage(
     onErrorTextChange: (String) -> Unit,
     onRequestDeleteProfile: (Int) -> Unit,
     onSelectProfile: (Int) -> Unit,
-    onReorderProfiles: (List<ApiProfile>, Int) -> Unit,
+    onReorderProfiles: (List<ApiProfile>, Int, (Result<Unit>) -> Unit) -> Unit,
     onAddProfile: () -> Unit,
     onSaveProfile: () -> Unit
 ) {
@@ -120,21 +122,34 @@ internal fun ApiConfigSettingsPage(
     val focusManager = LocalFocusManager.current
     val clipboard = LocalClipboard.current
     val scope = rememberCoroutineScope()
-    var fetchedModels by remember { mutableStateOf<List<String>>(emptyList()) }
-    var pickerOpen by remember { mutableStateOf(false) }
-    var testingConn by remember { mutableStateOf(false) }
-    var testStatusText by remember { mutableStateOf("") }
-    var testSuccess by remember { mutableStateOf(false) }
-    var lastTestResult by remember { mutableStateOf<TestConnectionResult?>(null) }
-    var fetchModelsError by remember { mutableStateOf("") }
-    var copiedRawHint by remember { mutableStateOf(false) }
-    var customModelInput by remember { mutableStateOf("") }
+    val requestTarget = ApiRequestTarget(profiles.getOrNull(selectedProfileIdx)?.id, url.trim(), spec, key.trim())
+    val latestRequestTarget = rememberUpdatedState(requestTarget)
+    val modelRequests = remember { ApiRequestOwner() }
+    val testRequests = remember { ApiRequestOwner() }
+    DisposableEffect(requestTarget, active) {
+        modelRequests.cancel()
+        testRequests.cancel()
+        onDispose {
+            modelRequests.cancel()
+            testRequests.cancel()
+        }
+    }
+    var fetchedModels by remember(requestTarget.profileId) { mutableStateOf<List<String>>(emptyList()) }
+    var pickerOpen by remember(requestTarget.profileId) { mutableStateOf(false) }
+    var testingConn by remember(requestTarget.profileId) { mutableStateOf(false) }
+    var testStatusText by remember(requestTarget.profileId) { mutableStateOf("") }
+    var testSuccess by remember(requestTarget.profileId) { mutableStateOf(false) }
+    var lastTestResult by remember(requestTarget.profileId) { mutableStateOf<TestConnectionResult?>(null) }
+    var fetchModelsError by remember(requestTarget.profileId) { mutableStateOf("") }
+    var copiedRawHint by remember(requestTarget.profileId) { mutableStateOf(false) }
+    var customModelInput by remember(requestTarget.profileId) { mutableStateOf("") }
     val choices = remember(fetchedModels, models) { modelChoices(fetchedModels, models) }
     val dragState = remember { mutableStateOf<ProfileDrag?>(null) }
     val settled = dragState.value == null
 
 
-    LaunchedEffect(selectedProfileIdx, selectedModel) {
+    LaunchedEffect(requestTarget, selectedModel, customModelInput) {
+        testRequests.cancel()
         lastTestResult = null
         testStatusText = ""
         testSuccess = false
@@ -207,28 +222,35 @@ internal fun ApiConfigSettingsPage(
         ) {
             GlassButton(
                 text = S.fetchModels,
+                enabled = !loading && active,
                 onClick = {
                     if (url.trim().isEmpty()) {
                         onErrorTextChange(S.apiUrlRequired)
                     } else {
-                        onLoadingChange(true)
                         onErrorTextChange("")
                         testStatusText = ""
                         lastTestResult = null
                         fetchModelsError = ""
-                        scope.launch {
+                        val target = requestTarget
+                        modelRequests.start(
+                            scope = scope,
+                            isTargetCurrent = { latestRequestTarget.value == target },
+                            setBusy = onLoadingChange,
+                            onFailure = { fetchModelsError = "读取模型失败，请重试" },
+                            request = {
                             val apiSpecEnum = when (spec) {
                                 "anthropic" -> ApiSpec.ANTHROPIC
                                 "google" -> ApiSpec.GOOGLE
                                 else -> ApiSpec.OPENAI
                             }
-                            val result = LlmClient.fetchModels(
+                            LlmClient.fetchModels(
                                 baseUrl = url.trim(),
                                 spec = apiSpecEnum,
                                 apiKey = key.trim(),
                                 rawEndpoint = spec == "custom"
                             )
-                            onLoadingChange(false)
+                            }
+                        ) { result ->
                             result.onSuccess { list ->
                                 if (list.isEmpty()) {
                                     onErrorTextChange(S.apiModelsEmpty)
@@ -423,6 +445,7 @@ internal fun ApiConfigSettingsPage(
         } else {
             customModelInput.trim()
         }
+        val latestTestModel = rememberUpdatedState(currentTestTarget)
         val testBtnText = if (testingConn) {
             "测试中..."
         } else if (currentTestTarget.isNotBlank()) {
@@ -449,27 +472,34 @@ internal fun ApiConfigSettingsPage(
                     onErrorTextChange(S.apiUrlRequired)
                     return@Button
                 }
-                testingConn = true
                 testStatusText = ""
                 testSuccess = false
                 lastTestResult = null
                 fetchModelsError = ""
                 onErrorTextChange("")
-                scope.launch {
+                val target = requestTarget
+                val targetModel = currentTestTarget
+                testRequests.start(
+                    scope = scope,
+                    isTargetCurrent = { latestRequestTarget.value == target && latestTestModel.value == targetModel },
+                    setBusy = { testingConn = it },
+                    onFailure = { testSuccess = false; testStatusText = "连接测试失败，请重试" },
+                    request = {
                     val apiSpecEnum = when (spec) {
                         "anthropic" -> ApiSpec.ANTHROPIC
                         "google" -> ApiSpec.GOOGLE
                         else -> ApiSpec.OPENAI
                     }
-                    val targetToTest = currentTestTarget
-                    val result = LlmClient.testConnection(
+                    val targetToTest = targetModel
+                    LlmClient.testConnection(
                         baseUrl = url.trim(),
                         spec = apiSpecEnum,
                         apiKey = key.trim(),
                         model = targetToTest,
                         rawEndpoint = spec == "custom"
                     )
-                    testingConn = false
+                    }
+                ) { result ->
                     result.onSuccess { res ->
                         lastTestResult = res
                         testSuccess = res.success
@@ -481,7 +511,7 @@ internal fun ApiConfigSettingsPage(
                     }
                 }
             },
-            enabled = !testingConn,
+            enabled = !testingConn && active,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(38.dp),

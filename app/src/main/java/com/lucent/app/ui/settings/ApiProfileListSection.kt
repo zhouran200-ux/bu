@@ -63,7 +63,6 @@ import com.lucent.app.ui.LucentTitles
 import com.lucent.app.ui.edgeScrollVelocity
 import com.lucent.app.ui.frostedGlass
 import com.lucent.app.ui.selectedCard
-import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -77,7 +76,7 @@ internal fun ApiProfileListSection(
     viewportBounds: Rect?,
     onRequestDeleteProfile: (Int) -> Unit,
     onSelectProfile: (Int) -> Unit,
-    onReorderProfiles: (List<ApiProfile>, Int) -> Unit,
+    onReorderProfiles: (List<ApiProfile>, Int, (Result<Unit>) -> Unit) -> Unit,
     onAddProfile: () -> Unit
 ) {
     val context = LocalContext.current
@@ -126,7 +125,11 @@ internal fun ApiProfileListSection(
             drag = null
         } else {
             drag = current.copy(held = -1)
-            liveReorder.value(current.order, current.selected)
+            val pending = drag
+            liveReorder.value(current.order, current.selected) { outcome ->
+                if (drag === pending) drag = null
+                if (outcome.isFailure) com.lucent.app.ui.LucentToast.show(context, "排序保存失败，请重试")
+            }
         }
     }
 
@@ -193,16 +196,7 @@ internal fun ApiProfileListSection(
         }
     }
 
-    LaunchedEffect(drag?.order, drag?.held, profiles) {
-        val pending = drag ?: return@LaunchedEffect
-        if (pending.held >= 0) return@LaunchedEffect
-        if (pending.order == profiles) {
-            drag = null
-        } else {
-            delay(REORDER_COMMIT_TIMEOUT_MS)
-            if (drag === pending) drag = null
-        }
-    }
+
 
     Column(modifier = Modifier.fillMaxWidth().frostedGlass().padding(12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {

@@ -62,6 +62,27 @@ object LlmClient {
         return effectiveUa
     }
 
+    private data class BufferedReply(val code: Int, val message: String, val isSuccessful: Boolean, val body: String)
+
+    private suspend fun executeBuffered(request: Request): BufferedReply = withContext(Dispatchers.IO) {
+        coroutineContext.ensureActive()
+        val call = client.newCall(request)
+        val cancellationSignal = Job(coroutineContext[Job])
+        cancellationSignal.invokeOnCompletion { cause -> if (cause != null) call.cancel() }
+        try {
+            call.execute().use { response ->
+                val body = response.body?.string().orEmpty()
+                coroutineContext.ensureActive()
+                BufferedReply(response.code, response.message, response.isSuccessful, body)
+            }
+        } catch (failure: Exception) {
+            coroutineContext.ensureActive()
+            throw failure
+        } finally {
+            cancellationSignal.complete()
+        }
+    }
+
     suspend fun fetchModels(
         baseUrl: String,
         spec: ApiSpec,
@@ -85,8 +106,8 @@ object LlmClient {
             val requestBuilder = Request.Builder().url(url).get()
             applyHeaders(requestBuilder, spec, apiKey)
 
-            val response = client.newCall(requestBuilder.build()).execute()
-            val bodyStr = response.body?.string() ?: ""
+            val response = executeBuffered(requestBuilder.build())
+            val bodyStr = response.body
             if (!response.isSuccessful) return@withContext Result.failure(Exception("HTTP ${response.code}: $bodyStr"))
             val json = JSONObject(bodyStr)
             val dataArray = json.optJSONArray("data") ?: json.optJSONArray("models") ?: JSONArray()
@@ -128,7 +149,10 @@ object LlmClient {
                 }
             }
             Result.success(ids.distinct())
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (e: Exception) {
+            coroutineContext.ensureActive()
             Result.failure(e)
         }
     }
@@ -215,9 +239,9 @@ object LlmClient {
             resolvedUrl = url
             usedUa = applyHeaders(requestBuilder, spec, apiKey).ifBlank { null }
 
-            val response = client.newCall(requestBuilder.build()).execute()
+            val response = executeBuffered(requestBuilder.build())
             val latency = System.currentTimeMillis() - start
-            val bodyStr = response.body?.string().orEmpty()
+            val bodyStr = response.body
             if (!response.isSuccessful) {
                 val errMsg = try {
                     val json = JSONObject(bodyStr)
@@ -250,7 +274,10 @@ object LlmClient {
                     userAgentUsed = usedUa
                 ).redacted(apiKey)
             )
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (e: Exception) {
+            coroutineContext.ensureActive()
             val latency = System.currentTimeMillis() - start
             Result.success(
                 TestConnectionResult(

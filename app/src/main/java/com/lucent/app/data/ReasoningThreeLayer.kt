@@ -228,19 +228,23 @@ object ModelCapabilityRegistry {
         registerQwenModels()
     }
 
+    @Synchronized
     fun register(definition: ModelDefinition) {
         registry[definition.id.lowercase()] = definition
     }
 
+    @Synchronized
     fun getAll(): List<ModelDefinition> {
         return registry.values.toList()
     }
 
+    @Synchronized
     fun find(modelId: String): ModelDefinition? {
         val clean = modelId.trim().lowercase().removePrefix("models/").substringAfterLast('/')
         return registry[clean]
     }
 
+    @Synchronized
     fun findOrRegister(modelId: String, provider: String): ModelDefinition {
         val clean = modelId.trim().lowercase().removePrefix("models/").substringAfterLast('/')
         val prov = provider.trim().lowercase()

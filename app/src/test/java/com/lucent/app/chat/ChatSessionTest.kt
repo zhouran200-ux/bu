@@ -14,6 +14,34 @@ import org.junit.Test
 import kotlin.coroutines.CoroutineContext
 
 class ChatSessionTest {
+    @Test fun initialSaveFailureDoesNotStartStreamAndRetryRetainsFinalMessage() {
+        val dispatcher = QueueDispatcher()
+        var failSaving = true
+        var started = false
+        val saved = mutableListOf<UiChatMessage>()
+        val session = ChatSession(dispatcher, { emptyList() }, {
+            if (failSaving) error("disk unavailable")
+            saved += it
+        })
+        dispatcher.drain()
+        session.messages.add(UiChatMessage(1, "assistant", ""))
+        session.start(1, null) { _, _ ->
+            started = true
+            Result.success(ChatCompletionResult("unexpected"))
+        }
+        dispatcher.drain()
+        assertFalse(started)
+        assertEquals(1, session.unsavedMessageCount)
+        assertNotNull(session.storageError)
+        assertNull(session.streamingAnswerId)
+        failSaving = false
+        val retried = session.retryUnsavedMessages()
+        dispatcher.drain()
+        assertTrue(retried.getCompleted().isSuccess)
+        assertEquals(session.messages.single(), saved.last())
+        assertEquals(0, session.unsavedMessageCount)
+    }
+
     private class QueueDispatcher : CoroutineDispatcher() {
         private val work = ArrayDeque<Runnable>()
         override fun dispatch(context: CoroutineContext, block: Runnable) { work.addLast(block) }

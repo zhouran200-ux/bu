@@ -193,8 +193,8 @@ class SettingsRepository(context: Context) {
 
     suspend fun setCustomUserAgent(value: String) {
         val trimmed = value.trim()
-        SettingsCache.customUserAgent = trimmed
         context.settingsDataStore.edit { it[SettingsKeys.CUSTOM_USER_AGENT] = trimmed }
+        SettingsCache.customUserAgent = trimmed
     }
 
     suspend fun setThemeMode(value: String) {
@@ -236,16 +236,27 @@ class SettingsRepository(context: Context) {
         SettingsCache.dynamicColor = value
     }
 
+    internal suspend fun mutateApiProfiles(command: ApiProfileMutation) {
+        val committed = context.settingsDataStore.edit { prefs ->
+            val profiles = ApiProfiles.parseStored(prefs[SettingsKeys.API_PROFILES].orEmpty()) ?: ApiProfiles.DEFAULT_PROFILES
+            val selected = prefs[SettingsKeys.API_PROFILE_SELECTED] ?: 0
+            val next = ApiProfileSnapshot(profiles, profiles.getOrNull(selected)?.id).mutate(command)
+            prefs[SettingsKeys.API_PROFILES] = ApiProfiles.serialize(next.profiles)
+            prefs[SettingsKeys.API_PROFILE_SELECTED] = next.selectedIndex
+        }
+        SettingsCache.apiProfilesJson = committed[SettingsKeys.API_PROFILES].orEmpty()
+        SettingsCache.apiProfileSelected = committed[SettingsKeys.API_PROFILE_SELECTED] ?: 0
+    }
+
     suspend fun saveApiProfiles(profiles: List<ApiProfile>, selected: Int) {
         val safe = profiles.take(ApiProfiles.MAX)
         val idx = if (safe.isEmpty()) 0 else selected.coerceIn(0, safe.size - 1)
         val profilesJson = ApiProfiles.serialize(safe)
-        SettingsCache.apiProfilesJson = profilesJson
-        SettingsCache.apiProfileSelected = idx
-
         context.settingsDataStore.edit { prefs ->
             prefs[SettingsKeys.API_PROFILES] = profilesJson
             prefs[SettingsKeys.API_PROFILE_SELECTED] = idx
         }
+        SettingsCache.apiProfilesJson = profilesJson
+        SettingsCache.apiProfileSelected = idx
     }
 }

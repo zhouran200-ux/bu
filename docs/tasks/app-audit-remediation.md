@@ -3,7 +3,7 @@
 ## 范围与交付原则
 
 仅应用源码、应用资源与关联测试；不整理环境、构建产物或无关文档。来源为当前 app 静态审计（94 个主 Kotlin 文件），发现不等于设备复现。
-状态：待办 → 进行中 → 已验证 → 已提交；环境不能运行测试时记“待验证”，不得写已完成。每批先补回归测试，再修改，检查残留及依赖，按范围编译/测试；不在本地打包 APK/AAB。推送后不等待本轮 Actions。
+状态：待办 → 进行中/已实现待总验 → 已验证 → 已提交；环境不能运行测试时记“待验证”，不得写已完成。按用户最新要求，持续完成全部任务后统一总检测、测试、提交、推送，不逐任务全量跑或推送；仅遇关键不确定逻辑/编译问题做必要定向检查。已有本地提交保留不改写；不在本地打包 APK/AAB。推送后不等待本轮 Actions。
 职责而非行数验收；共享状态、取消及资源释放不能拆散。允许移动/重命名/新建目录，但每批更新 package、imports、Manifest/R8/资源引用及契约测试；不把结构迁移与行为修复混为一个任务。
 
 ## 执行顺序
@@ -22,28 +22,28 @@
 |---|---|---|---|
 | N01 | P1 已验证（批次01） | network/StreamingResponseReader：逐 data 行解析、拼接不保留换行、坏事件被跳过后成功 | 独立 SSE event reader 在空行聚合多条 data，以换行连接；覆盖 LF/CRLF/CR、注释/心跳、字段、BOM、跨传输分片、空 data、无末尾空行、EOF、异常事件；坏 JSON 不静默成功；取消/部分正文保留；OpenAI/Anthropic/Google 结束条件分别验证 |
 | N02 | P1 已验证（批次01） | Gemini thought:false 被 has(thought) 判为思考 | true→reasoning；false/缺省→正文；同事件混合 parts 保序；usage 不丢失。依赖 N01 |
-| N03 | P1 待办 | Claude 非自适应预算>=固定 max_tokens | 所有 preset 构成有效预算/输出上限关系；adaptive/auto 和各协议不回归；明确模型上限限制，不凭空设预算 |
+| N03 | P1 部分实现待总验（批次08） | Claude 非自适应预算>=固定 max_tokens | 所有 preset 构成有效预算/输出上限关系；adaptive/auto 和各协议不回归；明确模型上限限制，不凭空设预算 |
 | N04 | P1 已验证（批次02） | Google URL key 进入连接报告 | 诊断展示/复制/异常 URL 统一脱敏；覆盖编码/多个查询参数/失败路径；不改变真实鉴权 |
-| A01 | P1 待办 | API模型/测试请求缺 profile ID 和请求序号，旧结果污染新方案 | 单任务owner，稳定 profile ID+序号；切方案取消/拒绝旧结果；重复点击乱序、路由离开、失败均测试 |
-| A02 | P1 待办 | API子页scope与父loading所有权分离，取消无可靠finally | loading与任务同owner；取消重抛，finally复位；离开/返回无假忙；与 A01 同批 |
-| A03 | P1 待办 | SettingsScreen基于profiles旧快照并发全表保存 | 按ID串行mutation/最新事务值；快速增删选排保存不互相覆盖；选中身份稳定；持久化失败回传 |
-| F01 | P1 待办 | 字体import快照跨copy再写回，与delete/另一次import交错 | 存储层原子串行索引更新/原子落盘；导入中删字体不会复活，MAX不被绕过；失败清理临时文件；UI锁不是唯一防护 |
+| A01 | P1 部分实现待总验（批次07） | API模型/测试请求缺 profile ID 和请求序号，旧结果污染新方案 | 单任务owner，稳定 profile ID+序号；切方案取消/拒绝旧结果；重复点击乱序、路由离开、失败均测试 |
+| A02 | P1 部分实现待总验（批次07） | API子页scope与父loading所有权分离，取消无可靠finally | loading与任务同owner；取消重抛，finally复位；离开/返回无假忙；与 A01 同批 |
+| A03 | P1 部分实现待总验（批次12） | SettingsScreen基于profiles旧快照并发全表保存 | 按ID串行mutation/最新事务值；快速增删选排保存不互相覆盖；选中身份稳定；持久化失败回传 |
+| F01 | P1 已实现待总验（批次04） | 字体import快照跨copy再写回，与delete/另一次import交错 | 存储层原子串行索引更新/原子落盘；导入中删字体不会复活，MAX不被绕过；失败清理临时文件；UI锁不是唯一防护 |
 | C01 | P1 进行中（批次03） | collectLatest+delay(80)是防抖，连续输出使跟随饥饿 | 持续高频增量仍按界限跟随；手动滚动即退出；结束/键盘resize/历史定位/再跟随不竞争 |
-| C02 | P1 待办 | Markdown正文和编号分步发布，行内解析仍主线程 | 原子发布文本+blocks+编号/行内结果；旧任务不能覆盖新文本；编辑/重生成/流结束一致；主题与点击绑定正确 |
-| C03 | P2 待办 | 增量解析仍全文找安全边界/重解析闭合前缀 | 真正保留已闭合前缀并只解析必要尾部；fence/空行/格式/脚注回归；长回答benchmark证明收益，不只搬线程 |
+| C02 | P1 部分实现待总验 | Markdown正文和编号分步发布，行内解析仍主线程 | 原子发布文本+blocks+编号/行内结果；旧任务不能覆盖新文本；编辑/重生成/流结束一致；主题与点击绑定正确 |
+| C03 | P2 部分实现待总验 | 增量解析仍全文找安全边界/重解析闭合前缀 | 真正保留已闭合前缀并只解析必要尾部；fence/空行/格式/脚注回归；长回答benchmark证明收益，不只搬线程 |
 | C04 | P2 待办 | 高频阅读位置apply、滚动轨道重建全消息几何 | 合并位置写入并dispose落盘；大消息数几何更新受限；不丢阅读锚点，设备帧耗时验证 |
 | P01 | P1 待办 | MainActivity onCreate runBlocking等DataStore；字体组合/query/delete同步IO | 先首帧安全主题/缓存，异步启动读取；provider/字体索引/删除/冷字体预热放IO；失败取消回退；启动闪屏/IME验证 |
 | P02 | P2 待办 | ChatSessions永久保留完整闲置会话，scope无释放 | 活跃生成不可随页面退出取消；闲置缓存上限/淘汰/close；删除tombstone生命周期；进出大量笔记本内存验证 |
-| P03 | P1 待办 | ChatSession写失败被吞，join不代表成功 | 显式写结果/dirty重试；初始/最终保存失败可见且内容保留；有序写/取消/后台service计数不破坏 |
-| I01 | P2 待办 | 文档整文件/ZIP/XML/DOM加载无资源上限 | 输入/条目解压/总解压/文本大小上限；超限友好失败，无部分数据库污染；长文峰值内存测量 |
-| I02 | P2 待办 | DOCX XML未显式禁DTD/外实体 | 显式安全配置并验证Android兼容；恶意/合法XML样本；不称默认解析器必可利用 |
-| I03 | P2 待办 | CFB链/文件长度/Int偏移计算信任不充分 | overflow-safe bounds、visited、按entry大小停止及分配上限；畸形DOC/环链样本，合法DOC保持 |
+| P03 | P1 部分实现待总验（批次09） | ChatSession写失败被吞，join不代表成功 | 显式写结果/dirty重试；初始/最终保存失败可见且内容保留；有序写/取消/后台service计数不破坏 |
+| I01 | P2 部分实现待总验（批次05） | 文档整文件/ZIP/XML/DOM加载无资源上限 | 输入/条目解压/总解压/文本大小上限；超限友好失败，无部分数据库污染；长文峰值内存测量 |
+| I02 | P2 部分实现待总验（批次05） | DOCX XML未显式禁DTD/外实体 | 显式安全配置并验证Android兼容；恶意/合法XML样本；不称默认解析器必可利用 |
+| I03 | P2 部分实现待总验（批次05） | CFB链/文件长度/Int偏移计算信任不充分 | overflow-safe bounds、visited、按entry大小停止及分配上限；畸形DOC/环链样本，合法DOC保持 |
 | I04 | P2 待办 | 字体复制无大小上限、原地索引writeText | 限流量/大小、原子索引替换及恢复；错误/中断无孤儿；与F01协调 |
-| D01 | P2 待办 | SettingsCache部分setter先缓存后edit，组合快照非原子 | durable后更新/明确回退；原子组合snapshot；持久化失败和并发read一致；UserAgent保存成功提示只在成功后 |
-| D02 | P2 待办 | NovelSourceIndex在全局锁内全文hash/tag，缓存预算仅body且保留超大单文档 | 锁外计算+身份复核/去重；预算计实际持有副本，单超大文档政策；并发get/evict、改文版本正确 |
+| D01 | P2 进行中（部分已实现待总验） | SettingsCache部分setter先缓存后edit，组合快照非原子 | durable后更新/明确回退；原子组合snapshot；持久化失败和并发read一致；UserAgent保存成功提示只在成功后 |
+| D02 | P2 部分实现待总验 | NovelSourceIndex在全局锁内全文hash/tag，缓存预算仅body且保留超大单文档 | 锁外计算+身份复核/去重；预算计实际持有副本，单超大文档政策；并发get/evict、改文版本正确 |
 | D03 | P2 待办 | 能力registry共享mutableMap无同步；清理查询全读正文/关系；chat查询缺索引 | 明确线程owner/不可变snapshot；按需查询ID/关系；评估conversationId,timestamp索引并保留迁移链；Room迁移/查询计划验证 |
-| N05 | P2 待办 | fetchModels/testConnection阻塞Call取消不联动、宽catch | 统一取消->Call.cancel及取消重抛；response.use；超时/取消/错误详情和40秒流读取策略回归 |
-| A04 | P2 待办 | 重排1200ms回退不是持久化ack | 以操作版本/保存结果确认；慢写/失败不提前开放破坏性操作；保留同一dragState禁保存/增删选 |
+| N05 | P2 已实现待总验（批次10） | fetchModels/testConnection阻塞Call取消不联动、宽catch | 统一取消->Call.cancel及取消重抛；response.use；超时/取消/错误详情和40秒流读取策略回归 |
+| A04 | P2 部分实现待总验（批次13） | 重排1200ms回退不是持久化ack | 以操作版本/保存结果确认；慢写/失败不提前开放破坏性操作；保留同一dragState禁保存/增删选 |
 
 ## 职责与目录整理任务
 
@@ -87,4 +87,20 @@ ChatSession的finally/取消/计数、有序写；SourceTagging算法内部状�
 - N03仍待办：现有ModelDefinition没有输出上限字段，claude-3-5预算支持识别本身也需要复核；不把“budget+固定余量”作为通用模型能力假设。
 - 批次03：C01使用conflate+顺序collect合并最新进度，不取消已开始的80ms等待；等待后再次核对用户跟随/滚动，且等待Compose下一帧再请求定位。虚拟门闩测试覆盖连续增量不饥饿、手动滚动取消待定位、inactive不请求。设备上的IME/结束/历史导航联动仍需验证，不提前把C01写成完整完成。
 - Kotlin编译器对默认suspend lambda调用delay触发backend错误，已改为显式注入awaitLayout，不升级依赖/不clean；定向scheduler/scroll/viewport测试、56项Python契约已通过。全量Debug JVM与Release Kotlin编译已通过；随后仅补跑新增停止/离开取消用例。源码未变部分复用结果。
+- 批次04 F01/I04部分：字体复制保持锁外，最终读取最新索引+MAX复查+文件落位+AtomicFile索引提交在同一锁内，与delete串行；索引写失败清理新字体，临时文件finally清理。AtomicFile读取支持.bak恢复，复制32MiB上限。FontSettings删除改IO。新增FontStoreTransactionTest（并发容量/导入删除/备份恢复）留待总验编译及云端设备执行；本轮未运行测试、不提交、不推送，不能称已验证。I04失败恢复/超限完整测试仍需补；P01组合读/query尚未处理。
+- 批次04追加：字体索引列表LaunchedEffect+IO加载，provider名称query改IO，字体导入显式重抛取消；删除改IO并反馈失败。P01冷字体resolve/启动runBlocking仍待办。能力目录register/getAll/find/findOrRegister统一同步（D03仅registry部分，待总验）；SettingsRepository UA/API setters改durable-first，UA成功提示移到写完成后（D01组合缓存snapshot仍待办）。
+- 全部任务完成前不再逐项总测/提交/推送；本轮新增Android设备测试未运行，不称通过。
+- 批次05：DocumentInputLimits限制输入32MiB、目标XML16MiB、扫描解压64MiB和4096条目；DOCX拒绝DTD/ENTITY并禁外部实体。CFB加入shift/Long偏移/visited/分配上限；DOC片段表及正文偏移加边界。新增limit/XML回归测试，未运行编译/测试、不提交/推送。合法CFB fixture、Android XML兼容、ZIP跳过条目峰值内存、输出/深度上限仍需审查，不称全部资源风险已解决。
+- 批次06：Markdown blocks+编号改为单个MarkdownParseSnapshot发布，parserMutex串行增量parser访问；取消的withContext结果不回写UI。C02行内token/AnnotatedString仍在重组，C03真正增量仍待办，不称C02完整完成。
+- 批次06追加：ZIP无关条目改限量discard，XML在DOM前SAX检查深度128/元素20万并拒绝实体；输出追加后检查32Mi字符。新增XML深度/实体与discard测试，均未运行。NovelSourceIndex将hash/tag移锁外，锁内复核失效epoch与当前条目身份；budget计body/tagged/slices/chapters，超大单文档不留缓存；并发构建去重/更完整竞态测试仍待完善。新增复用/evict/改正文/超大缓存回归，待总验。
+- 当前仍有N03、API任务与保存owner、会话失败/淘汰、冷字体/启动IO、真正增量和目录迁移等未完成；不因自动轮次结束标complete。无本轮测试/commit/push。
+- 批次07：ApiRequestOwner分开拥有模型抓取/连接测试Job、版本及busy清理；配置(profileId/url/spec/key)更新或页面dispose取消，accept前核对最新target和版本；瞬态结果/自定义模型按profileId记忆，禁止忙碌时重复抓取。新增切目标/替换任务防串线测试；后续补入rememberUpdatedState并完成Debug Kotlin编译。A01模型选择变化的probe结果归属、意外异常显示、R02完整draft owner与A03/A04持久化顺序仍待办。未运行统一总测试、不提交推送，不称整体完成。
+- 批次09 P03：write改Deferred<Result<Unit>>；初始save await/getOrThrow阻止保存失败后启动网络；失败message保留pending计数/重试按钮。重试按当前messages而非旧快照保存，已删除message不重插；最终save失败仍释放generation/service但保留待保存状态。新增初始磁盘失败/不启动网络/恢复重试用例，尚未运行；用户question/删除/编辑通用write的失败重试队列和删除撤销交互仍待更完整覆盖。
+- 同轮补齐ApiRequestOwner失败反馈/模型身份校验，冷字体resolve改keyed IO；N03 request层仅对实际budget模式提高max_tokens并留1024余量，防Int溢出，真实builder payload测试覆盖所有预算/auto/adaptive（不是拼假JSON）。模型能力支持/真实厂商上限仍未解决，所以N03不得称全部完成。
+- 当前未运行这批测试、未提交/推送；最终矩阵仍待全部任务结束。
+- 批次10 N05：非流式executeBuffered集中拥有Call与Response；协程取消关联Call.cancel，use关闭Response/正文，取消异常重抛；fetchModels/testConnection接入，流式取消原闭环保留。新增loopback等待响应时取消/关闭socket回归，未执行。当前实现仅定义传输边界，model discovery/probe职责文件迁移仍待R09。
+- 未运行本批测试或完整矩阵，未提交/推送。
+- 批次11 C03：append路径只在未闭合tail寻找新边界并追加新closed blocks，复用旧block对象，不重解析闭合前缀；startsWith全文前缀校验/长未闭合段落/空行语义仍需回归与benchmark。新增block身份复用/替换重置/fence尾部测试，未运行，不称性能已实测。
+- 批次12 A03：新增ApiProfileMutation reducer及DataStore事务mutation入口；选择/增删/编辑/重排按稳定ID作用到事务最新列表，重排只传ID、保留最新字段及晚到新增项，已删除项不被旧编辑复活。SettingsScreen事件接入，新测试覆盖旧排序/晚到新增/删除后编辑/缺失选择。尚未实现UI命令串行channel/即时draft owner、持久化ack和默认初始化并发保护，故A03仍部分实现，不称用户事件已严格保序。所有测试未运行，未提交/推送。
+- 批次13 A03/A04：API事件接入顺序Job链队列，失败不阻塞后续命令；重排回调带Result，持久化结束回主线程释放同一dragState，移除1200ms超时与常量。新增队列顺序/失败继续回归，未运行。UI Flow提交回传与ack帧先后、草稿owner/页面重建多队列仍待完整覆盖，不能称A03/A04全部完成。未总测、未提交/推送。
 - 不得跳过任务账本直接大规模搬目录。

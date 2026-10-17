@@ -1,6 +1,7 @@
 package com.lucent.app.data
 
 import android.content.Context
+import android.util.AtomicFile
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -10,6 +11,7 @@ import java.io.InputStream
 object FontStore {
 
     const val MAX_FONTS = 12
+    const val MAX_FONT_BYTES = 32L * 1024 * 1024
 
     private const val DIR = "fonts"
 
@@ -34,10 +36,10 @@ object FontStore {
     fun index(context: Context): FontIndex {
         val dir = dir(context)
         val indexFile = File(dir, INDEX_FILE)
-        if (!indexFile.exists()) return FontIndex(emptyList())
+        if (!indexFile.exists() && !File(dir, INDEX_FILE + ".bak").exists()) return FontIndex(emptyList())
 
         return try {
-            val root = JSONObject(indexFile.readText())
+            val root = JSONObject(AtomicFile(indexFile).openRead().bufferedReader(Charsets.UTF_8).use { it.readText() })
             val arr = root.optJSONArray("fonts") ?: JSONArray()
             val slots = (0 until arr.length()).mapNotNull { i ->
                 val o = arr.optJSONObject(i) ?: return@mapNotNull null
@@ -82,7 +84,15 @@ object FontStore {
             arr.put(JSONObject().put("id", s.id).put("name", s.name).put("file", s.fileName))
         }
         val root = JSONObject().put("fonts", arr)
-        File(dir, INDEX_FILE).writeText(root.toString())
+        val atomic = AtomicFile(File(dir, INDEX_FILE))
+        val output = atomic.startWrite()
+        try {
+            output.write(root.toString().toByteArray(Charsets.UTF_8))
+            atomic.finishWrite(output)
+        } catch (failure: Throwable) {
+            atomic.failWrite(output)
+            throw failure
+        }
     }
 
 
@@ -115,18 +125,25 @@ object FontStore {
             val tmp = File(dir, "$fileName.tmp")
             try {
                 copyPrefixed(head, headRead, raw, tmp)
-                val target = File(dir, fileName)
-                if (target.exists()) target.delete()
-                if (!tmp.renameTo(target)) throw IOException("Could not finalize the font file")
+                val name = customName?.trim()?.take(60)?.takeIf { it.isNotBlank() }
+                    ?: pickedName.substringBeforeLast('.')
+                val slot = FontSlot(id = id, name = name, fileName = fileName)
+                synchronized(this) {
+                    val latest = index(context)
+                    if (latest.slots.size >= MAX_FONTS) throw TooManyFontsException()
+                    val target = File(dir, fileName)
+                    if (!tmp.renameTo(target)) throw IOException("Could not finalize the font file")
+                    try {
+                        writeIndex(context, FontIndex(latest.slots + slot))
+                    } catch (failure: Throwable) {
+                        target.delete()
+                        throw failure
+                    }
+                }
+                return slot
             } finally {
                 if (tmp.exists()) tmp.delete()
             }
-            val name = (customName?.trim()?.take(60)).let {
-                if (it.isNullOrBlank()) pickedName.substringBeforeLast('.') else it
-            }
-            val slot = FontSlot(id = id, name = name, fileName = fileName)
-            writeIndex(context, FontIndex(existing.slots + slot))
-            return slot
         } ?: throw IOException("Could not open the selected file")
     }
 
@@ -165,10 +182,13 @@ object FontStore {
     private fun copyPrefixed(prefix: ByteArray, prefixLen: Int, input: InputStream, out: File) {
         out.outputStream().use { os ->
             os.write(prefix, 0, prefixLen)
+            var total = prefixLen.toLong()
             val buf = ByteArray(1 shl 16)
             while (true) {
                 val n = input.read(buf)
                 if (n < 0) break
+                total += n
+                if (total > MAX_FONT_BYTES) throw IOException("Font file exceeds 32 MiB limit")
                 os.write(buf, 0, n)
             }
             os.flush()

@@ -22,6 +22,9 @@ import com.lucent.app.data.UserAgentPresets
 import com.lucent.app.i18n.S
 import com.lucent.app.ui.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
 
 @Composable
 internal fun GlobalUserAgentSection(repo: SettingsRepository) {
@@ -57,8 +60,16 @@ internal fun GlobalUserAgentSection(repo: SettingsRepository) {
                     Haptics.tick(context)
                     focusManager.clearFocus()
                     val target = if (isTavernSelected) UserAgentPresets.SILLY_TAVERN_NODE_FETCH else customInput.trim()
-                    AppScope.io.launch { repo.setCustomUserAgent(target) }
-                    LucentToast.show(context, S.userAgentSavedToast)
+                    AppScope.io.launch {
+                        try {
+                            repo.setCustomUserAgent(target)
+                            withContext(Dispatchers.Main) { LucentToast.show(context, S.userAgentSavedToast) }
+                        } catch (cancelled: CancellationException) {
+                            throw cancelled
+                        } catch (_: Exception) {
+                            withContext(Dispatchers.Main) { LucentToast.show(context, "保存标识失败，请重试") }
+                        }
+                    }
                 }
             )
         }

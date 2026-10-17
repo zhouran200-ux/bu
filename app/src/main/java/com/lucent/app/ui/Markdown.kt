@@ -40,6 +40,8 @@ import com.lucent.app.data.CitationRef
 import com.lucent.app.data.SourceCitations
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 internal sealed interface MdBlock {
     data class Heading(val level: Int, val text: String) : MdBlock
@@ -174,10 +176,12 @@ internal class IncrementalMarkdownParser {
         }
 
         lastFullText = text
-        val newSplit = findSafeClosedSplit(text)
-        if (newSplit > cachedClosedPrefixLength) {
-            cachedClosedPrefixLength = newSplit
-            cachedClosedBlocks = parseBlocks(text.substring(0, newSplit))
+        val previousSplit = cachedClosedPrefixLength
+        val openTail = text.substring(previousSplit)
+        val newlyClosedLength = findSafeClosedSplit(openTail)
+        if (newlyClosedLength > 0) {
+            cachedClosedBlocks = cachedClosedBlocks + parseBlocks(openTail.substring(0, newlyClosedLength))
+            cachedClosedPrefixLength = previousSplit + newlyClosedLength
         }
 
         val tail = if (cachedClosedPrefixLength < text.length) {
@@ -318,6 +322,11 @@ internal fun markdownCitationNumbering(blocks: List<MdBlock>, citationsEnabled: 
     return SourceCitations.numbering(markers.joinToString("\n"))
 }
 
+internal data class MarkdownParseSnapshot(
+    val blocks: List<MdBlock>,
+    val numbering: Map<String, Int>
+)
+
 internal class CitationDecor(
     val numbering: Map<String, Int>,
     val onClick: ((CitationRef) -> Unit)?,
@@ -420,16 +429,18 @@ fun MarkdownText(
     val onGradientMuted = LocalOnGradientMuted.current
     val accent = MaterialTheme.colorScheme.primary
     val incrementalParser = remember { IncrementalMarkdownParser() }
-    var blocks by remember { mutableStateOf(emptyList<MdBlock>()) }
-    var citationNumbering by remember { mutableStateOf(emptyMap<String, Int>()) }
-    LaunchedEffect(text) {
-        blocks = withContext(Dispatchers.Default) { incrementalParser.parse(text) }
-    }
-    LaunchedEffect(blocks, citationsEnabled) {
-        citationNumbering = withContext(Dispatchers.Default) {
-            markdownCitationNumbering(blocks, citationsEnabled)
+    val parserMutex = remember { Mutex() }
+    var parsed by remember { mutableStateOf(MarkdownParseSnapshot(emptyList(), emptyMap())) }
+    LaunchedEffect(text, citationsEnabled) {
+        parsed = withContext(Dispatchers.Default) {
+            parserMutex.withLock {
+                val blocks = incrementalParser.parse(text)
+                MarkdownParseSnapshot(blocks, markdownCitationNumbering(blocks, citationsEnabled))
+            }
         }
     }
+    val blocks = parsed.blocks
+    val citationNumbering = parsed.numbering
     val citation = remember(citationNumbering, onCitationClick, sourceNoteId, sourceRevision, emphasized, citationsEnabled) {
         CitationDecor(citationNumbering, onCitationClick, sourceNoteId, sourceRevision, citationsEnabled, emphasized)
     }

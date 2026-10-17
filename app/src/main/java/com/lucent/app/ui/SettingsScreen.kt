@@ -52,6 +52,7 @@ import kotlinx.coroutines.withContext
 fun SettingsScreen(active: Boolean = true) {
     val context = LocalContext.current
     val repo = remember { SettingsRepository(context) }
+    val profileCommands = remember { com.lucent.app.ui.settings.ApiProfileCommandQueue(AppScope.io) }
 
     val appContext = context.applicationContext
     val savedProfilesJson by repo.apiProfilesJson.collectAsState(initial = SettingsCache.apiProfilesJson)
@@ -82,7 +83,7 @@ fun SettingsScreen(active: Boolean = true) {
         val p = profiles.getOrNull(idx) ?: return
         url = p.baseUrl; spec = p.spec; key = p.apiKey; selectedModel = p.model
         editingProfileName = p.name; models = p.selectedModels
-        AppScope.io.launch { repo.saveApiProfiles(profiles, idx) }
+        profileCommands.submit({ repo.mutateApiProfiles(com.lucent.app.data.ApiProfileMutation.Select(p.id)) }, { result -> result.exceptionOrNull()?.let { failure -> AppScope.io.launch { withContext(Dispatchers.Main) { LucentToast.show(appContext, "保存方案失败，请重试") } } } })
     }
 
     fun addProfile() {
@@ -93,23 +94,32 @@ fun SettingsScreen(active: Boolean = true) {
         val newIdx = newList.size - 1
         url = ""; spec = "openai"; key = ""; selectedModel = ""; editingProfileName = defaultName
         models = emptyList()
-        AppScope.io.launch { repo.saveApiProfiles(newList, newIdx) }
+        profileCommands.submit({ repo.mutateApiProfiles(com.lucent.app.data.ApiProfileMutation.Add(newProfile)) }, { result -> result.exceptionOrNull()?.let { failure -> AppScope.io.launch { withContext(Dispatchers.Main) { LucentToast.show(appContext, "保存方案失败，请重试") } } } })
     }
 
     fun deleteProfile(idx: Int) {
         if (idx !in profiles.indices) return
+        val deletingId = profiles[idx].id
         val newList = profiles.toMutableList().also { it.removeAt(idx) }
         val newSelected = if (newList.isEmpty()) 0 else selectedProfileIdx.coerceIn(0, newList.size - 1)
         val nextActive = newList.getOrNull(newSelected)
         url = nextActive?.baseUrl.orEmpty(); spec = nextActive?.spec ?: "openai"; key = nextActive?.apiKey.orEmpty()
         selectedModel = nextActive?.model.orEmpty(); editingProfileName = nextActive?.name.orEmpty()
         models = nextActive?.selectedModels ?: emptyList()
-        AppScope.io.launch { repo.saveApiProfiles(newList, newSelected) }
+        profileCommands.submit({ repo.mutateApiProfiles(com.lucent.app.data.ApiProfileMutation.Delete(deletingId)) }, { result -> result.exceptionOrNull()?.let { failure -> AppScope.io.launch { withContext(Dispatchers.Main) { LucentToast.show(appContext, "保存方案失败，请重试") } } } })
     }
 
-    fun reorderProfiles(order: List<com.lucent.app.data.ApiProfile>, selected: Int) {
-        if (order.size != profiles.size) return
-        AppScope.io.launch { repo.saveApiProfiles(order, selected) }
+    fun reorderProfiles(order: List<com.lucent.app.data.ApiProfile>, selected: Int, complete: (Result<Unit>) -> Unit) {
+        if (order.size != profiles.size) {
+            complete(Result.failure(IllegalStateException("方案列表已变化")))
+            return
+        }
+        profileCommands.submit({
+            repo.mutateApiProfiles(com.lucent.app.data.ApiProfileMutation.Reorder(order.map { it.id }, order.getOrNull(selected)?.id))
+            withContext(Dispatchers.Main) { complete(Result.success(Unit)) }
+        }, { outcome ->
+            if (outcome.isFailure) AppScope.io.launch { withContext(Dispatchers.Main) { complete(outcome) } }
+        })
     }
 
     fun saveActiveProfile(idx: Int, selectedModels: List<String>) {
@@ -132,10 +142,15 @@ fun SettingsScreen(active: Boolean = true) {
         )
         if (idx in updated.indices) updated[idx] = edited else updated.add(edited)
         val newSelected = idx.coerceIn(0, updated.size - 1)
-        AppScope.io.launch {
-            repo.saveApiProfiles(updated, newSelected)
-            withContext(Dispatchers.Main) { LucentToast.show(appContext, S.apiSavedToast) }
-        }
+        profileCommands.submit({
+            repo.mutateApiProfiles(com.lucent.app.data.ApiProfileMutation.Update(edited))
+        }, { result ->
+            AppScope.io.launch {
+                withContext(Dispatchers.Main) {
+                    LucentToast.show(appContext, if (result.isSuccess) S.apiSavedToast else "保存方案失败，请重试")
+                }
+            }
+        })
     }
 
     val route = AppNavigation.settingsRoute
@@ -244,7 +259,7 @@ fun SettingsScreen(active: Boolean = true) {
                     onErrorTextChange = { errorText = it },
                     onRequestDeleteProfile = { deleteProfile(it) },
                     onSelectProfile = { selectProfile(it) },
-                    onReorderProfiles = { order, selected -> reorderProfiles(order, selected) },
+                    onReorderProfiles = { order, selected, complete -> reorderProfiles(order, selected, complete) },
                     onAddProfile = { addProfile() },
                     onSaveProfile = { saveActiveProfile(selectedProfileIdx, models) }
                 )

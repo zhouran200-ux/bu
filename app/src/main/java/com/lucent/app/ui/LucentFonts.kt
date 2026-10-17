@@ -4,6 +4,12 @@ import android.content.Context
 import androidx.compose.material3.Typography
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
@@ -32,9 +38,21 @@ object LucentFontResolver {
         }.family
     }
 
+    internal fun cached(fontKey: String?): FontFamily? = fontKey?.let { cache[it]?.family }
+
     fun evict(fontKey: String) {
         cache.remove(fontKey)
     }
+}
+
+@Composable
+internal fun rememberLucentFont(fontKey: String?): FontFamily? {
+    val context = LocalContext.current.applicationContext
+    var family by remember(fontKey) { mutableStateOf(LucentFontResolver.cached(fontKey)) }
+    LaunchedEffect(context, fontKey) {
+        family = withContext(Dispatchers.IO) { LucentFontResolver.resolve(context, fontKey) }
+    }
+    return family
 }
 
 @Composable
@@ -46,7 +64,7 @@ fun lucentTypography(
 ): Typography {
     val context = LocalContext.current
     val base = Typography()
-    val family = remember(fontKey) { LucentFontResolver.resolve(context, fontKey) }
+    val family = rememberLucentFont(fontKey)
 
     fun TextStyle.applyCustom(): TextStyle {
         val customLineHeight = if (lineHeight.value > 0f) {

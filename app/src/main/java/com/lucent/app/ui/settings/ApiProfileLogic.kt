@@ -17,7 +17,6 @@ internal val PROFILE_SLIDE_SPRING = spring<Float>(dampingRatio = 0.62f, stiffnes
 internal val ROW_CARD_RADIUS = 14.dp
 internal const val HELD_SCALE = 1.02f
 internal const val HELD_ALPHA = 0.94f
-internal const val REORDER_COMMIT_TIMEOUT_MS = 1200L
 
 private val CompactFieldHeight = 42.dp
 private val CompactFieldLabelWidth = 56.dp

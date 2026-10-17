@@ -16,6 +16,9 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.async
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.withContext
 
 class ChatSession(
@@ -38,6 +41,9 @@ class ChatSession(
     private var handle: StreamCallHandle? = null
     private var writeTail: Job? = null
     private var unavailable = false
+    private val pendingMessages = linkedMapOf<Long, UiChatMessage>()
+    var unsavedMessageCount by mutableStateOf(0)
+        private set
 
     init {
         scope.launch {
@@ -50,20 +56,47 @@ class ChatSession(
         }
     }
 
-    fun write(block: suspend () -> Unit): Job {
-        if (unavailable) return Job().apply { complete() }
+    fun write(block: suspend () -> Unit): Deferred<Result<Unit>> {
+        if (unavailable) return CompletableDeferred(Result.failure(IllegalStateException("笔记本不可写")))
         val previous = writeTail
-        return scope.launch(start = CoroutineStart.LAZY) {
+        return scope.async(start = CoroutineStart.LAZY) {
             previous?.join()
             try {
                 block()
-            } catch (e: Exception) {
-                storageError = "保存对话失败：${e.message}"
+                Result.success(Unit)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (failure: Exception) {
+                storageError = "保存对话失败：" + failure.message
+                Result.failure(failure)
             }
         }.also { writeTail = it; it.start() }
     }
 
-    fun saveMessage(message: UiChatMessage) = write { save(message) }
+    fun saveMessage(message: UiChatMessage): Deferred<Result<Unit>> {
+        pendingMessages[message.id] = message
+        unsavedMessageCount = pendingMessages.size
+        return write {
+            save(message)
+            if (pendingMessages[message.id] === message) pendingMessages.remove(message.id)
+            unsavedMessageCount = pendingMessages.size
+            if (pendingMessages.isEmpty()) storageError = null
+        }
+    }
+
+    fun retryUnsavedMessages(): Deferred<Result<Unit>> = write {
+        for (pending in pendingMessages.values.toList()) {
+            val current = messages.firstOrNull { it.id == pending.id }
+            if (current == null) {
+                pendingMessages.remove(pending.id)
+            } else {
+                save(current)
+                if (pendingMessages[pending.id] === pending) pendingMessages.remove(pending.id)
+            }
+            unsavedMessageCount = pendingMessages.size
+        }
+        if (pendingMessages.isEmpty()) storageError = null
+    }
 
     fun start(
         answerId: Long,
@@ -100,7 +133,7 @@ class ChatSession(
                 val binding = sourceBinding()
                 initial = initial.copy(sourceNoteId = binding.first, sourceRevision = binding.second)
                 update(initial)
-                saveMessage(initial).join()
+                saveMessage(initial).await().getOrThrow()
                 startedAt = monotonicNanos()
                 val response = stream(callHandle) { text, reasoning ->
                     val arrivedAt = monotonicNanos()
@@ -140,7 +173,7 @@ class ChatSession(
                     )
                     update(final)
                     try {
-                        saveMessage(final).join()
+                        saveMessage(final).await()
                     } finally {
                         handle = null
                         generation = null

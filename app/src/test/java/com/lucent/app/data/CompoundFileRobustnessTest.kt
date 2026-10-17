@@ -31,7 +31,10 @@ class CompoundFileRobustnessTest {
 
     @Test
     fun parseableCompoundFileWithoutTheStreamReportsNoStream() {
-        val store = CompoundFile(compoundHeader())
+        val header = compoundHeader()
+        header[0x1E] = 9
+        header[0x20] = 6
+        val store = CompoundFile(header)
         assertNull(store.stream("WordDocument"))
         assertNull(store.stream("1Table"))
     }

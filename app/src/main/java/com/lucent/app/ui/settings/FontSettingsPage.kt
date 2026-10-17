@@ -40,6 +40,7 @@ import com.lucent.app.i18n.S
 import com.lucent.app.ui.LocalOnGradient
 import com.lucent.app.ui.LocalOnGradientMuted
 import com.lucent.app.ui.LucentFontResolver
+import com.lucent.app.ui.rememberLucentFont
 import com.lucent.app.ui.LucentTitles
 import com.lucent.app.ui.SYSTEM_FONT_KEY
 import com.lucent.app.ui.StepperSlider
@@ -71,7 +72,10 @@ internal fun FontSettingsPage(
     var activeLetterSpacing by remember(savedLetterSpacing) { mutableFloatStateOf(savedLetterSpacing) }
 
     var fontRefreshIndex by remember { mutableStateOf(0) }
-    val importedFonts = remember(fontRefreshIndex) { FontStore.index(context).slots }
+    var importedFonts by remember { mutableStateOf<List<FontStore.FontSlot>>(emptyList()) }
+    LaunchedEffect(fontRefreshIndex) {
+        importedFonts = withContext(Dispatchers.IO) { FontStore.index(context).slots }
+    }
     val canImportMore = importedFonts.size < FontStore.MAX_FONTS
 
     var fontImporting by remember { mutableStateOf(false) }
@@ -85,14 +89,25 @@ internal fun FontSettingsPage(
     ) { uri: Uri? ->
         if (uri != null && !fontImporting) {
             fontError = ""
-            val displayName = try {
-                context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
-                    if (c.moveToFirst()) c.getString(0) else null
+            fontImporting = true
+            scope.launch {
+                try {
+                    val displayName = withContext(Dispatchers.IO) {
+                        context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
+                            if (c.moveToFirst()) c.getString(0) else null
+                        }
+                    }
+                    importFontNameDraft = displayName.orEmpty().substringBeforeLast('.').take(60)
+                    pendingImportUri = uri
+                } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                    throw cancelled
+                } catch (_: Exception) {
+                    importFontNameDraft = ""
+                    pendingImportUri = uri
+                } finally {
+                    fontImporting = false
                 }
-            } catch (_: Throwable) { null }
-
-            importFontNameDraft = (displayName ?: "").substringBeforeLast('.').take(60)
-            pendingImportUri = uri
+            }
         }
     }
 
@@ -112,7 +127,9 @@ internal fun FontSettingsPage(
                 fontError = S.fontImportFailedNotFont
             } catch (e: FontStore.TooManyFontsException) {
                 fontError = S.fontImportFailedTooMany(FontStore.MAX_FONTS)
-            } catch (t: Throwable) {
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
+            } catch (t: Exception) {
                 fontError = S.fontImportFailedGeneric(t.localizedMessage ?: "Error")
             } finally {
                 fontImporting = false
@@ -187,7 +204,7 @@ internal fun FontSettingsPage(
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        val previewFamily = remember(fontKey) { LucentFontResolver.resolve(context, fontKey) }
+        val previewFamily = rememberLucentFont(fontKey)
         val previewFontSize = (14.sp.value * activeFontScale).sp
         val previewLineHeight = (previewFontSize.value * 1.35f * activeLineSpacing).sp
         val previewLetterSpacing = activeLetterSpacing.sp
@@ -380,7 +397,7 @@ internal fun FontSettingsPage(
                     .padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                val fontSlotFamily = remember(slot.id) { LucentFontResolver.resolve(context, slot.id) }
+                val fontSlotFamily = rememberLucentFont(slot.id)
                 Box(
                     modifier = Modifier
                         .size(32.dp)
@@ -549,11 +566,17 @@ internal fun FontSettingsPage(
                     onClick = {
                         val idToDelete = slot.id
                         fontPendingDelete = null
-                        FontStore.delete(context, idToDelete)
-                        LucentFontResolver.evict(idToDelete)
-                        fontRefreshIndex++
-                        if (fontKey == idToDelete) {
-                            scope.launch { repo.setFont(SYSTEM_FONT_KEY) }
+                        scope.launch {
+                            try {
+                                withContext(Dispatchers.IO) { FontStore.delete(context, idToDelete) }
+                                LucentFontResolver.evict(idToDelete)
+                                fontRefreshIndex++
+                                if (fontKey == idToDelete) repo.setFont(SYSTEM_FONT_KEY)
+                            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                                throw cancelled
+                            } catch (failure: Exception) {
+                                fontError = S.fontImportFailedGeneric(failure.localizedMessage ?: "Error")
+                            }
                         }
                     }
                 ) {

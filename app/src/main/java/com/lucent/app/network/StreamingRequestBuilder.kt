@@ -76,7 +76,9 @@ internal object StreamingRequestBuilder {
                 val payload = JSONObject().apply {
                     put("model", cleanModel)
                     put("stream", true)
-                    put("max_tokens", 8192)
+                    val thinkingBudget = reasoningConfig?.takeIf { !it.isAuto && it.claudeEffort == null }?.claudeBudgetTokens ?: 0
+                    require(thinkingBudget >= 0 && thinkingBudget <= Int.MAX_VALUE - 1024) { "Invalid thinking budget" }
+                    put("max_tokens", maxOf(8192, thinkingBudget + if (thinkingBudget > 0) 1024 else 0))
                     if (systemInstruction.isNotBlank()) {
                         put("system", systemInstruction)
                     }

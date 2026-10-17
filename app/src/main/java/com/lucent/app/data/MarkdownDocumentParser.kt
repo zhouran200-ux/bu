@@ -33,7 +33,7 @@ object MarkdownDocumentParser {
             error("仅支持导入 TXT 与 Word (DOC、DOCX) 格式文档")
         }
 
-        val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+        val bytes = context.contentResolver.openInputStream(uri)?.use { DocumentInputLimits.read(it, DocumentInputLimits.MAX_INPUT_BYTES) }
             ?: error("无法读取该文件数据")
 
         val title = fileName.substringBeforeLast(".").ifBlank { "导入文档" }
@@ -51,14 +51,18 @@ object MarkdownDocumentParser {
     }
 
     fun parseTxtToMarkdown(bytes: ByteArray): String {
+        DocumentInputLimits.checkInput(bytes)
         if (bytes.isEmpty()) return ""
         return PlainTextMarkdown.normalize(decodeText(bytes))
     }
 
-    fun parseDocToMarkdown(bytes: ByteArray): String =
-        PlainTextMarkdown.normalize(DocTextExtractor.extract(bytes))
+    fun parseDocToMarkdown(bytes: ByteArray): String {
+        DocumentInputLimits.checkInput(bytes)
+        return PlainTextMarkdown.normalize(DocTextExtractor.extract(bytes))
+    }
 
     fun parseDocxToMarkdown(bytes: ByteArray): String {
+        DocumentInputLimits.checkInput(bytes)
         val documentXml = extractZipEntry(bytes, "word/document.xml")
             ?: error("无效的 DOCX 文件结构 (缺少 word/document.xml)")
 
@@ -66,27 +70,37 @@ object MarkdownDocumentParser {
     }
 
     private fun extractZipEntry(bytes: ByteArray, targetName: String): String? {
-        try {
-            ZipInputStream(ByteArrayInputStream(bytes)).use { zip ->
-                while (true) {
-                    val entry = zip.nextEntry ?: break
-                    if (!entry.isDirectory && entry.name == targetName) {
-                        val data = zip.readBytes()
-                        return String(data, Charsets.UTF_8)
-                    }
-                    zip.closeEntry()
+        var expanded = 0L
+        var entries = 0
+        ZipInputStream(ByteArrayInputStream(bytes)).use { zip ->
+            while (true) {
+                val entry = zip.nextEntry ?: break
+                entries++
+                require(entries <= DocumentInputLimits.MAX_ZIP_ENTRIES) { "DOCX条目数超过限制" }
+                val remaining = (DocumentInputLimits.MAX_EXPANDED_BYTES - expanded).coerceAtLeast(0).toInt()
+                if (!entry.isDirectory && entry.name == targetName) {
+                    val data = DocumentInputLimits.read(zip, minOf(remaining, DocumentInputLimits.MAX_XML_BYTES))
+                    return String(data, Charsets.UTF_8)
                 }
+                expanded += DocumentInputLimits.discard(zip, remaining)
+                zip.closeEntry()
             }
-        } catch (_: Throwable) {
         }
         return null
     }
 
     private fun parseDocxXml(xml: String): String {
+        DocumentXmlLimits.check(xml)
         val factory = DocumentBuilderFactory.newInstance().apply {
             isNamespaceAware = true
+            isExpandEntityReferences = false
+            runCatching { setFeature("http://apache.org/xml/features/disallow-doctype-decl", true) }
+            runCatching { setFeature("http://xml.org/sax/features/external-general-entities", false) }
+            runCatching { setFeature("http://xml.org/sax/features/external-parameter-entities", false) }
+            runCatching { setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false) }
         }
         val builder = factory.newDocumentBuilder()
+        builder.setEntityResolver { _, _ -> throw org.xml.sax.SAXException("不允许外部XML实体") }
         val doc = builder.parse(InputSource(StringReader(xml)))
         doc.documentElement.normalize()
 
@@ -119,6 +133,7 @@ object MarkdownDocumentParser {
                     }
                 }
             }
+            require(out.length <= DocumentInputLimits.MAX_INPUT_BYTES) { "转换后的正文超过大小限制" }
         }
 
         return out.toString().trim()

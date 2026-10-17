@@ -31,8 +31,13 @@ internal class CompoundFile(private val source: ByteArray) {
     init {
         require(source.size >= 512 && matchesCompoundSignature(source)) { "这不是 Word 97-2003 文档" }
 
-        sectorSize = 1 shl readLe16(source, 0x1E)
-        miniSectorSize = 1 shl readLe16(source, 0x20)
+        DocumentInputLimits.checkInput(source)
+        val sectorShift = readLe16(source, 0x1E)
+        val miniShift = readLe16(source, 0x20)
+        require(sectorShift == 9 || sectorShift == 12) { "无效DOC扇区大小" }
+        require(miniShift == 6) { "无效DOC微扇区大小" }
+        sectorSize = 1 shl sectorShift
+        miniSectorSize = 1 shl miniShift
         miniCutoff = readLe32(source, 0x38)
 
         val fatIds = allocationTableSectorIds(readLe32(source, 0x2C))
@@ -62,16 +67,18 @@ internal class CompoundFile(private val source: ByteArray) {
 
         if (sectorSize > 0 && entry.size >= miniCutoff) return followChain(entry.startSector, entry.size)
 
-        val out = ByteArrayOutputStream(entry.size)
+        require(entry.size <= DocumentInputLimits.MAX_INPUT_BYTES) { "DOC流超过大小限制" }
+        val out = ByteArrayOutputStream(minOf(entry.size, 8192))
         var sector = entry.startSector
-        var guard = 0
-        while (sector >= 0 && sector < miniFat.size && guard < 200000) {
-            val at = sector * miniSectorSize
-            if (at + miniSectorSize > miniStream.size) break
-            out.write(miniStream, at, miniSectorSize)
+        val visited = HashSet<Int>()
+        while (sector >= 0 && sector < miniFat.size && out.size() < entry.size) {
+            require(visited.add(sector)) { "DOC微扇区链循环" }
+            val offset = sector.toLong() * miniSectorSize
+            require(offset + miniSectorSize <= miniStream.size.toLong()) { "DOC微扇区越界" }
+            out.write(miniStream, offset.toInt(), minOf(miniSectorSize, entry.size - out.size()))
             sector = miniFat[sector]
-            guard++
         }
+        require(out.size() == entry.size) { "DOC微流被截断" }
 
         val raw = out.toByteArray()
         return if (raw.size > entry.size) raw.copyOf(entry.size) else raw
@@ -90,9 +97,12 @@ internal class CompoundFile(private val source: ByteArray) {
 
         var sector = readLe32(0x44)
         var remaining = readLe32(0x48)
+        val visited = HashSet<Int>()
+        require(fatCount >= 0 && fatCount <= source.size / sectorSize) { "DOC分配表数量越界" }
+        require(remaining >= 0 && remaining <= source.size / sectorSize) { "DOC扩展表数量越界" }
         while (sector >= 0 && remaining > 0 && (fatCount <= 0 || ids.size < fatCount)) {
+            require(visited.add(sector)) { "DOC扇区链循环" }
             val at = sectorOffset(sector)
-            if (at + sectorSize > byteCount()) break
 
             val perSector = sectorSize / 4 - 1
             for (index in 0 until perSector) {
@@ -135,22 +145,28 @@ internal class CompoundFile(private val source: ByteArray) {
         var sector = start
         val maxSteps = byteCount() / sectorSize + 2
         var guard = 0
+        val visited = HashSet<Int>()
+        require(byteLimit in 0..DocumentInputLimits.MAX_INPUT_BYTES) { "DOC流长度越界" }
 
         while (sector >= 0 && sector < fat.size && guard < maxSteps) {
+            require(visited.add(sector)) { "DOC扇区链循环" }
             val at = sectorOffset(sector)
-            if (at + sectorSize > byteCount()) break
-            out.write(source, at, sectorSize)
+            val count = if (byteLimit > 0) minOf(sectorSize, byteLimit - out.size()) else sectorSize
+            require(out.size().toLong() + count <= DocumentInputLimits.MAX_INPUT_BYTES) { "DOC流超过大小限制" }
+            out.write(source, at, count)
             sector = fat[sector]
             guard++
             if (byteLimit > 0 && out.size() >= byteLimit) break
         }
 
+        if (byteLimit > 0) require(out.size() == byteLimit) { "DOC流被截断" }
         val raw = out.toByteArray()
         return if (byteLimit > 0 && raw.size > byteLimit) raw.copyOf(byteLimit) else raw
     }
 
     private fun sectorsOf(ids: List<Int>): ByteArray {
-        val out = ByteArrayOutputStream(ids.size * sectorSize)
+        require(ids.size.toLong() * sectorSize <= DocumentInputLimits.MAX_INPUT_BYTES) { "DOC分配表超过大小限制" }
+        val out = ByteArrayOutputStream()
         for (id in ids) {
             val at = sectorOffset(id)
             if (at + sectorSize <= byteCount()) out.write(source, at, sectorSize)
@@ -158,7 +174,11 @@ internal class CompoundFile(private val source: ByteArray) {
         return out.toByteArray()
     }
 
-    private fun sectorOffset(sector: Int): Int = (sector + 1) * sectorSize
+    private fun sectorOffset(sector: Int): Int {
+        val offset = (sector.toLong() + 1L) * sectorSize
+        require(sector >= 0 && offset + sectorSize <= source.size.toLong()) { "DOC扇区偏移越界" }
+        return offset.toInt()
+    }
 
     private fun byteCount(): Int = source.size
 

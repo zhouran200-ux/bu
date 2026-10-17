@@ -1,5 +1,7 @@
 package com.lucent.app.ui
 
+import com.lucent.app.chat.UiChatMessage
+
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
@@ -228,7 +230,7 @@ internal fun BubbleAction(
 
     Box(
         modifier = Modifier
-            .size(40.dp)
+            .size(48.dp)
             .clip(RoundedCornerShape(12.dp))
             .clickable(
                 interactionSource = interaction,

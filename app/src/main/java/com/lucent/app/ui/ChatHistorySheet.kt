@@ -1,5 +1,7 @@
 package com.lucent.app.ui
 
+import com.lucent.app.chat.UiChatMessage
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable

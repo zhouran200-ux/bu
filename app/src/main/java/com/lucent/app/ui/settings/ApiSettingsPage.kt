@@ -122,7 +122,7 @@ internal fun ApiConfigSettingsPage(
     val focusManager = LocalFocusManager.current
     val clipboard = LocalClipboard.current
     val scope = rememberCoroutineScope()
-    val requestTarget = ApiRequestTarget(profiles.getOrNull(selectedProfileIdx)?.id, url.trim(), spec, key.trim())
+    val requestTarget = ApiRequestTarget(profiles.getOrNull(selectedProfileIdx)?.id, url.trim(), spec, key.trim(), active)
     val latestRequestTarget = rememberUpdatedState(requestTarget)
     val modelRequests = remember { ApiRequestOwner() }
     val testRequests = remember { ApiRequestOwner() }

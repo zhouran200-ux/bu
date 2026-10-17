@@ -14,10 +14,17 @@ class DeletableItemsContractTest(unittest.TestCase):
         self.assertIn("S.notebooksEmptyHint", text)
 
     def test_sensenova_preset_is_not_forced_back_after_deletion(self):
-        text = (MAIN / "ui/SettingsScreen.kt").read_text(encoding="utf-8")
-        self.assertNotIn("sensenova", text)
-        self.assertNotIn('name == "商汤"', text)
-        self.assertIn("ApiProfiles.parseStored", text)
+        settings_files = [
+            MAIN / "ui/SettingsScreen.kt",
+            MAIN / "ui/settings/ApiSettingsOwner.kt",
+            MAIN / "ui/settings/ApiSettingsState.kt",
+        ]
+        combined = "".join(path.read_text(encoding="utf-8") for path in settings_files)
+        self.assertNotIn("sensenova", combined)
+        self.assertNotIn('name == "商汤"', combined)
+        owner = (MAIN / "ui/settings/ApiSettingsOwner.kt").read_text(encoding="utf-8")
+        self.assertIn("ApiProfiles.parseStored", owner)
+        self.assertIn("apiProfilePreferences", owner)
 
     def test_chat_picker_respects_an_empty_profile_list(self):
         text = (MAIN / "ui/NotebookChatTab.kt").read_text(encoding="utf-8")

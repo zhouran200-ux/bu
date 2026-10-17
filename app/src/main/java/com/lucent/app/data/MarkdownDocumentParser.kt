@@ -2,13 +2,11 @@ package com.lucent.app.data
 
 import android.content.Context
 import android.net.Uri
-import android.provider.OpenableColumns
 import org.w3c.dom.Element
 import org.w3c.dom.Node
 import org.xml.sax.InputSource
 import java.io.ByteArrayInputStream
 import java.io.StringReader
-import java.nio.charset.Charset
 import java.util.zip.ZipInputStream
 import javax.xml.parsers.DocumentBuilderFactory
 
@@ -26,34 +24,12 @@ object MarkdownDocumentParser {
         return ext in SUPPORTED_EXTENSIONS
     }
 
-    fun parseUri(context: Context, uri: Uri): Result<ParsedDocument> = runCatching {
-        val fileName = queryDisplayName(context, uri) ?: "未命名文档"
-        val ext = extensionOf(fileName)
-        if (ext !in SUPPORTED_EXTENSIONS) {
-            error("仅支持导入 TXT 与 Word (DOC、DOCX) 格式文档")
-        }
-
-        val bytes = context.contentResolver.openInputStream(uri)?.use { DocumentInputLimits.read(it, DocumentInputLimits.MAX_INPUT_BYTES) }
-            ?: error("无法读取该文件数据")
-
-        val title = fileName.substringBeforeLast(".").ifBlank { "导入文档" }
-        val markdown = when (ext) {
-            "docx" -> parseDocxToMarkdown(bytes)
-            "doc" -> parseDocToMarkdown(bytes)
-            "txt" -> parseTxtToMarkdown(bytes)
-            else -> error("暂不支持该格式")
-        }
-
-        ParsedDocument(
-            title = title,
-            markdown = markdown
-        )
-    }
+    fun parseUri(context: Context, uri: Uri): Result<ParsedDocument> = AndroidDocumentImporter.parse(context, uri)
 
     fun parseTxtToMarkdown(bytes: ByteArray): String {
         DocumentInputLimits.checkInput(bytes)
         if (bytes.isEmpty()) return ""
-        return PlainTextMarkdown.normalize(decodeText(bytes))
+        return PlainTextMarkdown.normalize(DocumentTextDecoder.decode(bytes))
     }
 
     fun parseDocToMarkdown(bytes: ByteArray): String {
@@ -289,46 +265,6 @@ object MarkdownDocumentParser {
             }
         }
         return null
-    }
-
-    private fun decodeText(bytes: ByteArray): String {
-        if (bytes.size >= 3 &&
-            bytes[0] == 0xEF.toByte() && bytes[1] == 0xBB.toByte() && bytes[2] == 0xBF.toByte()
-        ) {
-            return String(bytes, 3, bytes.size - 3, Charsets.UTF_8)
-        }
-        if (bytes.size >= 2 && bytes[0] == 0xFF.toByte() && bytes[1] == 0xFE.toByte()) {
-            return String(bytes, 2, bytes.size - 2, Charsets.UTF_16LE)
-        }
-        if (bytes.size >= 2 && bytes[0] == 0xFE.toByte() && bytes[1] == 0xFF.toByte()) {
-            return String(bytes, 2, bytes.size - 2, Charsets.UTF_16BE)
-        }
-
-        return try {
-            val decoder = Charsets.UTF_8.newDecoder()
-            decoder.decode(java.nio.ByteBuffer.wrap(bytes)).toString()
-        } catch (_: Throwable) {
-            try {
-                String(bytes, Charset.forName("GB18030"))
-            } catch (_: Throwable) {
-                String(bytes, Charsets.ISO_8859_1)
-            }
-        }
-    }
-
-    private fun queryDisplayName(context: Context, uri: Uri): String? {
-        if (uri.scheme == "content") {
-            try {
-                context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
-                    if (cursor.moveToFirst()) {
-                        val idx = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-                        if (idx >= 0) return cursor.getString(idx)
-                    }
-                }
-            } catch (_: Throwable) {
-            }
-        }
-        return uri.lastPathSegment?.substringAfterLast('/')
     }
 
     private fun extensionOf(name: String): String =

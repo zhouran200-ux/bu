@@ -7,6 +7,8 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.flow.conflate
+import kotlinx.coroutines.delay
 import androidx.compose.ui.platform.LocalContext
 
 internal data class ReadingPosition(val itemKey: String, val index: Int, val offset: Int) {
@@ -67,8 +69,9 @@ internal fun rememberReadingListState(key: String, itemKeys: List<String>): Lazy
         return ReadingPosition(itemKey, index, state.firstVisibleItemScrollOffset)
     }
     LaunchedEffect(state, key) {
-        snapshotFlow { capture() }.collect { position ->
-            if (position != null) ReadingPositionMemory.write(context, key, position)
+        snapshotFlow { capture() }.conflate().collect {
+            delay(250)
+            capture()?.let { position -> ReadingPositionMemory.write(context, key, position) }
         }
     }
     DisposableEffect(state, key) {

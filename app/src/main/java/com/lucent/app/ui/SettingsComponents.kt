@@ -54,9 +54,10 @@ import com.lucent.app.i18n.S
 
 @Composable
 internal fun PaletteSwatch(colors: List<Color>) {
+    val fallback = MaterialTheme.colorScheme.surfaceVariant
     val preview = if (colors.size >= 2) colors else listOf(
-        colors.firstOrNull() ?: Color.Gray,
-        colors.firstOrNull() ?: Color.Gray
+        colors.firstOrNull() ?: fallback,
+        colors.firstOrNull() ?: fallback
     )
     Box(
         modifier = Modifier

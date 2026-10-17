@@ -67,7 +67,7 @@ data class NotebookItem(
     }
 }
 
-@Entity(tableName = "chat_messages")
+@Entity(tableName = "chat_messages", indices = [Index(value = ["conversationId", "timestamp"])])
 data class ChatMessage(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val role: String,

@@ -7,20 +7,25 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 internal class ApiProfileCommandQueue(private val scope: CoroutineScope) {
+    companion object {
+        val application by lazy { ApiProfileCommandQueue(com.lucent.app.AppScope.io) }
+    }
     private var tail: Job? = null
 
+    @Synchronized
     fun submit(operation: suspend () -> Unit, complete: (Result<Unit>) -> Unit = {}): Job {
         val previous = tail
         val job = scope.launch(start = CoroutineStart.LAZY) {
             previous?.join()
-            try {
+            val outcome = try {
                 operation()
-                complete(Result.success(Unit))
+                Result.success(Unit)
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (failure: Exception) {
-                complete(Result.failure(failure))
+                Result.failure(failure)
             }
+            complete(outcome)
         }
         tail = job
         job.start()

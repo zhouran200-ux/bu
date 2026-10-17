@@ -81,7 +81,6 @@ import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 
 enum class Screen {
     Notebooks, Settings
@@ -93,14 +92,19 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         val settingsRepo = SettingsRepository(applicationContext)
-        val startup = try {
-            runBlocking { settingsRepo.startupPrefsOnce() }
-                .also { com.lucent.app.data.SettingsCache.seed(it) }
-        } catch (t: Throwable) {
-            SettingsRepository.StartupPrefs(
-                display = SettingsRepository.DisplayPrefs("system", "SUNSET", "system")
-            )
-        }
+        val cachedSettings = com.lucent.app.data.SettingsCache.snapshot()
+        val startup = SettingsRepository.StartupPrefs(
+            display = SettingsRepository.DisplayPrefs(
+                cachedSettings.themeMode,
+                cachedSettings.palette,
+                cachedSettings.font,
+                cachedSettings.fontScale,
+                cachedSettings.lineSpacing,
+                cachedSettings.letterSpacing
+            ),
+            dynamicColor = cachedSettings.dynamicColor,
+            backgroundAnimationEnabled = cachedSettings.backgroundAnimationEnabled
+        )
         val display = startup.display
         val initialThemeMode = display.themeMode
         val systemDark = (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
@@ -124,6 +128,16 @@ class MainActivity : ComponentActivity() {
         val initialFont = display.font
 
         setContent {
+            LaunchedEffect(settingsRepo) {
+                try {
+                    val loaded = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { settingsRepo.startupPrefsOnce() }
+                    com.lucent.app.data.SettingsCache.seed(loaded)
+                } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                    throw cancelled
+                } catch (_: Exception) {
+                    LucentToast.show(applicationContext, "读取设置失败，暂时使用默认设置")
+                }
+            }
             var databaseReady by remember { mutableStateOf(false) }
             var databaseError by remember { mutableStateOf<String?>(null) }
             LaunchedEffect(Unit) {
@@ -165,48 +179,14 @@ class MainActivity : ComponentActivity() {
             val isDarkTheme = !pureWhite && themeChoice.isDark(systemDark)
             LaunchedEffect(isDarkTheme) { applySystemBarStyle(isDarkTheme) }
 
-            val dynamicActive = !pureWhite && dynamicColorOn && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
-            val colors: ColorScheme
-            val onGradient: Color
-            val backdropColor: Color
-            val paletteColors: List<Color>
-            if (pureWhite) {
-                val baseScheme = lightColorScheme()
-                colors = pureWhiteScheme(baseScheme)
-                onGradient = LucentGlass.PureWhiteInk
-                backdropColor = LucentGlass.PureWhitePage
-                paletteColors = listOf(LucentGlass.PureWhitePage, LucentGlass.PureWhiteSurface)
-            } else if (dynamicActive) {
-                val scheme = if (isDarkTheme) {
-                    dynamicDarkColorScheme(this@MainActivity)
-                } else {
-                    dynamicLightColorScheme(this@MainActivity)
-                }
-                colors = scheme
-                onGradient = scheme.onBackground
-                backdropColor = scheme.background
-                paletteColors = com.lucent.app.ui.dynamicBlobPalette(scheme)
-            } else {
-                onGradient = if (isDarkTheme) Color.White else Color(0xFF20202B)
-                backdropColor = themeChoice.backdrop(systemDark)
-                paletteColors = if (paletteName == com.lucent.app.ui.PALETTE_RANDOM) {
-                    com.lucent.app.ui.rememberRandomPaletteColors(
-                        animated = backgroundAnimated,
-                        environment = backgroundEnvironment
-                    )
-                } else if (paletteName == PALETTE_CYCLE) {
-                    rememberCyclingPaletteColors(
-                        LucentPalette.pickerEntries.map { it.colors },
-                        animated = backgroundAnimated,
-                        environment = backgroundEnvironment
-                    )
-                } else {
-                    LucentPalette.entries.firstOrNull { it.name == paletteName }?.colors
-                        ?: LucentPalette.SUNSET.colors
-                }
-                val baseScheme = if (isDarkTheme) darkColorScheme() else lightColorScheme()
-                colors = lucentScheme(baseScheme, paletteColors, onGradient, backdropColor)
-            }
+            val themeColors = com.lucent.app.ui.resolveAppThemeColors(
+                themeChoice, systemDark, pureWhite, isDarkTheme, dynamicColorOn,
+                paletteName, backgroundAnimated, backgroundEnvironment
+            )
+            val colors = themeColors.scheme
+            val onGradient = themeColors.ink
+            val backdropColor = themeColors.backdrop
+            val paletteColors = themeColors.palette
             val onGradientMuted = onGradient.copy(alpha = 0.65f)
             LaunchedEffect(backdropColor) {
                 window.setBackgroundDrawable(backdropColor.toArgb().toDrawable())
@@ -268,178 +248,5 @@ class MainActivity : ComponentActivity() {
             SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT)
         }
         enableEdgeToEdge(statusBarStyle = style, navigationBarStyle = style)
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun LucentApp(paletteColors: List<Color>, backdropColor: Color, backgroundAnimated: Boolean = true, pureWhite: Boolean = false) {
-    var currentScreen by rememberSaveable { mutableStateOf(LastScreen.current) }
-    val tabs = HomeTab.entries
-    val pagerState = rememberPagerState(
-        initialPage = tabs.indexOf(HomeTab.of(currentScreen)),
-        pageCount = { tabs.size }
-    )
-    val currentTab by remember(pagerState, tabs) {
-        derivedStateOf { tabs[pagerState.currentPage.coerceIn(tabs.indices)] }
-    }
-    LaunchedEffect(currentScreen) {
-        LastScreen.remember(currentScreen)
-    }
-    val glassBackdrop = rememberHazeState()
-    val onGradient = LocalOnGradient.current
-    val context = LocalContext.current
-
-    var backArmed by remember { mutableStateOf(false) }
-    LaunchedEffect(backArmed) {
-        if (backArmed) {
-            delay(2000)
-            backArmed = false
-        }
-    }
-
-    fun finishActivity() {
-        var c: android.content.Context = context
-        while (c is android.content.ContextWrapper && c !is Activity) c = c.baseContext
-        (c as? Activity)?.finish()
-    }
-
-    LaunchedEffect(AppNavigation.requestedScreen) {
-        AppNavigation.consumeScreen()?.let { target ->
-            if (target != currentScreen) currentScreen = target
-        }
-    }
-
-    BackHandler(enabled = !AppNavigation.innerBackActive) {
-        when {
-            currentScreen == Screen.Settings && AppNavigation.settingsRoute == SettingsRoute.Root -> {
-                AppNavigation.resetSettingsRoute()
-                currentScreen = Screen.Notebooks
-            }
-            !backArmed -> {
-                backArmed = true
-                LucentToast.show(context, com.lucent.app.i18n.S.pressBackAgainToExit)
-            }
-            else -> finishActivity()
-        }
-    }
-
-    CompositionLocalProvider(
-        com.lucent.app.ui.LocalGlassBackdrop provides glassBackdrop
-    ) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            FluidGlassBackground(
-                palette = paletteColors,
-                backdropColor = backdropColor,
-                animated = backgroundAnimated,
-                pureWhite = pureWhite,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .hazeSource(state = glassBackdrop)
-                    .clearAndSetSemantics { }
-            )
-            Scaffold(
-                containerColor = Color.Transparent,
-                topBar = {
-                    if (AppNavigation.activeNotebookId == null || currentScreen == Screen.Settings) {
-                        TopAppBar(
-                            title = {
-                                if (currentTab == HomeTab.Settings) {
-                                    com.lucent.app.ui.SettingsBreadcrumb(
-                                        route = AppNavigation.settingsRoute,
-                                        onNavigate = { SettingsNav.go(it) },
-                                        modifier = Modifier.padding(end = 16.dp)
-                                    )
-                                } else {
-                                    Text(
-                                        currentTab.label,
-                                        color = com.lucent.app.ui.LucentTitles.titleInk(onGradient),
-                                        fontSize = com.lucent.app.ui.LucentTitles.ScreenSize,
-                                        fontWeight = com.lucent.app.ui.LucentTitles.ScreenWeight
-                                    )
-                                }
-                            },
-                            actions = {
-                                if (currentTab == HomeTab.Notebooks) {
-                                    IconButton(
-                                        onClick = { AppNavigation.requestCreateNotebook() },
-                                        modifier = Modifier
-                                            .padding(end = 10.dp)
-                                            .size(44.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = com.lucent.app.ui.LucentIcons.Create,
-                                            contentDescription = com.lucent.app.i18n.S.notebookNew,
-                                            tint = onGradient,
-                                            modifier = Modifier.size(30.dp)
-                                        )
-                                    }
-                                }
-                            },
-                            colors = TopAppBarDefaults.topAppBarColors(
-                                containerColor = Color.Transparent,
-                                scrolledContainerColor = Color.Transparent
-                            )
-                        )
-                    }
-                },
-                bottomBar = {
-                    if (AppNavigation.activeNotebookId == null &&
-                        AppNavigation.settingsRoute == SettingsRoute.Root
-                    ) {
-                        val glassDark = onGradient.luminance() > 0.5f
-                        val capsuleDivider = if (pureWhite) LucentGlass.PureWhiteDivider
-                            else if (glassDark) Color.White.copy(alpha = 0.08f) else onGradient.copy(alpha = 0.10f)
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .navigationBarsPadding()
-                                .padding(top = 12.dp, bottom = 26.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth(0.875f)
-                                    .height(76.dp)
-                                    .foregroundGlass(cornerRadius = 38.dp)
-                            ) {
-                                Row(
-                                    modifier = Modifier
-                                        .matchParentSize()
-                                        .padding(horizontal = 6.dp, vertical = 6.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    tabs.forEachIndexed { index, tab ->
-                                        if (index > 0) {
-                                            Box(
-                                                modifier = Modifier
-                                                    .width(1.dp)
-                                                    .height(24.dp)
-                                                    .background(capsuleDivider)
-                                            )
-                                        }
-                                        CapsuleNavItem(
-                                            tab = tab,
-                                            selected = currentTab == tab,
-                                            onClick = {
-                                                currentScreen = tab.screen()
-                                            },
-                                            modifier = Modifier.weight(1f)
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            ) { padding ->
-                val topPad = if (AppNavigation.activeNotebookId == null || currentScreen == Screen.Settings) padding.calculateTopPadding() else 0.dp
-                val bottomInset = if (AppNavigation.activeNotebookId == null) padding.calculateBottomPadding() else 0.dp
-                val contentModifier = Modifier.padding(top = topPad).fillMaxSize()
-                CompositionLocalProvider(LocalBottomBarInset provides bottomInset) {
-                    KeepAliveTabs(active = currentScreen, pagerState = pagerState, modifier = contentModifier)
-                }
-            }
-        }
     }
 }

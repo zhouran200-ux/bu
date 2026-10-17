@@ -1,52 +1,83 @@
 package com.lucent.app.data
 
+internal data class SettingsSnapshot(
+    val themeMode: String = "system",
+    val palette: String = "CYCLE",
+    val font: String = "system",
+    val fontScale: Float = 1.0f,
+    val lineSpacing: Float = 1.2f,
+    val letterSpacing: Float = 0.0f,
+    val dynamicColor: Boolean = false,
+    val backgroundAnimationEnabled: Boolean = true,
+    val customUserAgent: String = "",
+    val apiProfilesJson: String = "",
+    val apiProfileSelected: Int = 0
+)
+
 object SettingsCache {
+    private val state = java.util.concurrent.atomic.AtomicReference(SettingsSnapshot())
 
+    var themeMode: String
+        get() = state.get().themeMode
+        set(value) { state.updateAndGet { it.copy(themeMode = value) } }
 
-    @Volatile
-    var themeMode: String = "system"
+    var palette: String
+        get() = state.get().palette
+        set(value) { state.updateAndGet { it.copy(palette = value) } }
 
-    @Volatile
-    var palette: String = "CYCLE"
+    var font: String
+        get() = state.get().font
+        set(value) { state.updateAndGet { it.copy(font = value) } }
 
-    @Volatile
-    var font: String = "system"
+    var fontScale: Float
+        get() = state.get().fontScale
+        set(value) { state.updateAndGet { it.copy(fontScale = value) } }
 
-    @Volatile
-    var fontScale: Float = 1.0f
+    var lineSpacing: Float
+        get() = state.get().lineSpacing
+        set(value) { state.updateAndGet { it.copy(lineSpacing = value) } }
 
-    @Volatile
-    var lineSpacing: Float = 1.2f
+    var letterSpacing: Float
+        get() = state.get().letterSpacing
+        set(value) { state.updateAndGet { it.copy(letterSpacing = value) } }
 
-    @Volatile
-    var letterSpacing: Float = 0.0f
+    var dynamicColor: Boolean
+        get() = state.get().dynamicColor
+        set(value) { state.updateAndGet { it.copy(dynamicColor = value) } }
 
-    @Volatile
-    var dynamicColor: Boolean = false
+    var backgroundAnimationEnabled: Boolean
+        get() = state.get().backgroundAnimationEnabled
+        set(value) { state.updateAndGet { it.copy(backgroundAnimationEnabled = value) } }
 
-    @Volatile
-    var backgroundAnimationEnabled: Boolean = true
+    var customUserAgent: String
+        get() = state.get().customUserAgent
+        set(value) { state.updateAndGet { it.copy(customUserAgent = value) } }
 
-    @Volatile
-    var customUserAgent: String = ""
+    var apiProfilesJson: String
+        get() = state.get().apiProfilesJson
+        set(value) { state.updateAndGet { it.copy(apiProfilesJson = value) } }
 
-    @Volatile
-    var apiProfilesJson: String = ""
+    var apiProfileSelected: Int
+        get() = state.get().apiProfileSelected
+        set(value) { state.updateAndGet { it.copy(apiProfileSelected = value) } }
 
-    @Volatile
-    var apiProfileSelected: Int = 0
+    internal fun snapshot(): SettingsSnapshot = state.get()
+
+    internal fun updateApiProfiles(json: String, selected: Int) {
+        state.updateAndGet { it.copy(apiProfilesJson = json, apiProfileSelected = selected) }
+    }
+
+    internal fun resetTypography() {
+        state.updateAndGet { it.copy(fontScale = 1.0f, lineSpacing = 1.2f, letterSpacing = 0.0f) }
+    }
 
     fun seed(prefs: SettingsRepository.StartupPrefs) {
-        themeMode = prefs.display.themeMode
-        palette = prefs.display.palette
-        font = prefs.display.font
-        fontScale = prefs.display.fontScale
-        lineSpacing = prefs.display.lineSpacing
-        letterSpacing = prefs.display.letterSpacing
-        dynamicColor = prefs.dynamicColor
-        backgroundAnimationEnabled = prefs.backgroundAnimationEnabled
-        customUserAgent = prefs.customUserAgent
-        apiProfilesJson = prefs.apiProfilesJson
-        apiProfileSelected = prefs.apiProfileSelected
+        state.set(SettingsSnapshot(
+            themeMode = prefs.display.themeMode, palette = prefs.display.palette, font = prefs.display.font,
+            fontScale = prefs.display.fontScale, lineSpacing = prefs.display.lineSpacing,
+            letterSpacing = prefs.display.letterSpacing, dynamicColor = prefs.dynamicColor,
+            backgroundAnimationEnabled = prefs.backgroundAnimationEnabled, customUserAgent = prefs.customUserAgent,
+            apiProfilesJson = prefs.apiProfilesJson, apiProfileSelected = prefs.apiProfileSelected
+        ))
     }
 }

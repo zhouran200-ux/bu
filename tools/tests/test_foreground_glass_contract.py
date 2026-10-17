@@ -28,7 +28,7 @@ class ForegroundGlassContractTest(unittest.TestCase):
     def test_source_is_not_registered_on_foreground_pages(self):
         for name in ("NotebooksScreen.kt", "SettingsScreen.kt"):
             self.assertNotIn("hazeSource", (UI / name).read_text(encoding="utf-8"))
-        main = (ROOT / "app/src/main/java/com/lucent/app/MainActivity.kt").read_text(encoding="utf-8")
+        main = (ROOT / "app/src/main/java/com/lucent/app/AppShell.kt").read_text(encoding="utf-8")
         self.assertIn(".hazeSource(state = glassBackdrop)", main)
         self.assertNotIn("HazeMaterials.ultraThin", main)
 

@@ -4,19 +4,53 @@ import android.content.Context
 import com.lucent.app.data.AppDatabase
 import com.lucent.app.data.ChatMessage
 import com.lucent.app.data.ChatScope
-import com.lucent.app.ui.UiChatMessage
+import com.lucent.app.chat.UiChatMessage
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 object ChatSessions {
-    private val sessions = mutableMapOf<Long, ChatSession>()
+    private val sessions = linkedMapOf<Long, ChatSession>()
+    private val pageOwners = mutableMapOf<Long, Int>()
+    private const val MAX_IDLE_SESSIONS = 4
+    private val maintenanceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+
+    private fun scheduleIdleTrim() {
+        maintenanceScope.launch {
+            delay(250)
+            trimIdle()
+        }
+    }
+
+    fun retain(notebookId: Long) {
+        pageOwners[notebookId] = (pageOwners[notebookId] ?: 0) + 1
+    }
+
+    fun release(notebookId: Long) {
+        val count = (pageOwners[notebookId] ?: 1) - 1
+        if (count <= 0) pageOwners.remove(notebookId) else pageOwners[notebookId] = count
+        trimIdle()
+        scheduleIdleTrim()
+    }
+
+    private fun trimIdle(excluded: Long? = null) {
+        val idle = sessions.filter { (id, session) -> id != excluded && id !in pageOwners && session.canRelease() }
+        for ((id, session) in idle.entries.take((idle.size - MAX_IDLE_SESSIONS).coerceAtLeast(0))) {
+            if (session.releaseIfIdle()) sessions.remove(id)
+        }
+    }
     private val deletedNotebooks = mutableSetOf<Long>()
     private val running = MutableStateFlow(0)
     val activeCount: StateFlow<Int> = running.asStateFlow()
 
-    fun forNotebook(context: Context, notebookId: Long): ChatSession = sessions.getOrPut(notebookId) {
+    fun forNotebook(context: Context, notebookId: Long): ChatSession {
+        trimIdle(notebookId)
+        return sessions.getOrPut(notebookId) {
         val app = context.applicationContext
         val dao = AppDatabase.getInstance(app).chatDao()
         val conversationId = ChatScope.forNotebook(notebookId)
@@ -56,9 +90,12 @@ object ChatSessions {
                     }
                 } else {
                     running.value -= 1
+                    scheduleIdleTrim()
                 }
             }
         )
+    }
+
     }
 
     fun isRunning(notebookId: Long): Boolean = sessions[notebookId]?.streamingAnswerId != null

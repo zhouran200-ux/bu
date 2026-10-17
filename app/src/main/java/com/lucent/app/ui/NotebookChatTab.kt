@@ -1,5 +1,7 @@
 package com.lucent.app.ui
 
+import com.lucent.app.chat.UiChatMessage
+
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -137,22 +139,7 @@ import kotlin.math.abs
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-data class UiChatMessage(
-    val id: Long,
-    val role: String,
-    val content: String,
-    val reasoningText: String? = null,
-    val answerSeconds: Int = 0,
-    val reasoningTag: String? = null,
-    val promptTokens: Int = 0,
-    val cachedTokens: Int = 0,
-    val timestamp: Long = System.currentTimeMillis(),
-    val firstTokenMillis: Long? = null,
-    val generationMillis: Long? = null,
-    val cachedTokensKnown: Boolean = false,
-    val sourceNoteId: Long? = null,
-    val sourceRevision: String? = null
-)
+
 
 @OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
@@ -180,6 +167,10 @@ fun NotebookChatTab(
         }
     }
     val session = remember(notebookId) { ChatSessions.forNotebook(context, notebookId) }
+    DisposableEffect(session, notebookId) {
+        ChatSessions.retain(notebookId)
+        onDispose { ChatSessions.release(notebookId) }
+    }
     if (!session.ready) {
         Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text(session.storageError ?: "正在读取对话…", color = LocalOnGradient.current)

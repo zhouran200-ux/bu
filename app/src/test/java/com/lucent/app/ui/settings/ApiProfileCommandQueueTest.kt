@@ -7,6 +7,18 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class ApiProfileCommandQueueTest {
+    @Test fun completionIsExactlyOnceOnBothSuccessAndFailure() = runBlocking {
+        val queue = ApiProfileCommandQueue(this)
+        var successes = 0
+        var failures = 0
+        val first = queue.submit({ Unit }, { if (it.isSuccess) successes++ else failures++ })
+        first.join()
+        val second = queue.submit({ error("disk") }, { if (it.isSuccess) successes++ else failures++ })
+        second.join()
+        assertEquals(1, successes)
+        assertEquals(1, failures)
+    }
+
     @Test fun commandsAreOrderedAndFailureDoesNotLoseFollowingCommand() = runBlocking {
         val queue = ApiProfileCommandQueue(this)
         val gate = CompletableDeferred<Unit>()

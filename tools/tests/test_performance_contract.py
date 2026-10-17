@@ -14,13 +14,22 @@ class PerformanceContractTest(unittest.TestCase):
         self.assertNotIn("shadow(", light)
 
     def test_single_pager_animation_owner_and_layer_only_route_effect(self):
-        main = (ROOT / "app/src/main/java/com/lucent/app/MainActivity.kt").read_text(encoding="utf-8")
+        main = (ROOT / "app/src/main/java/com/lucent/app/AppShell.kt").read_text(encoding="utf-8")
         home = (ROOT / "app/src/main/java/com/lucent/app/HomeTabs.kt").read_text(encoding="utf-8")
         self.assertNotIn("pagerState.animateScrollToPage", main)
         self.assertEqual(1, home.count("pagerState.animateScrollToPage"))
         settings = (UI / "SettingsScreen.kt").read_text(encoding="utf-8")
         self.assertIn(".graphicsLayer { alpha = 0.85f + enterProgress.value * 0.15f }", settings)
         self.assertNotIn("AnimatedContent", settings)
+
+    def test_startup_does_not_block_main_thread_for_datastore(self):
+        activity = (ROOT / "app/src/main/java/com/lucent/app/MainActivity.kt").read_text(encoding="utf-8")
+        self.assertNotIn("runBlocking", activity)
+        self.assertIn("settingsRepo.startupPrefsOnce()", activity)
+        self.assertIn("Dispatchers.IO", activity)
+        self.assertNotIn("settingsReady", activity)
+        self.assertIn("SettingsCache.snapshot()", activity)
+        self.assertIn("if (databaseReady) {", activity)
 
     def test_expensive_api_derived_values_are_cached(self):
         api = (UI / "settings/ApiSettingsPage.kt").read_text(encoding="utf-8")

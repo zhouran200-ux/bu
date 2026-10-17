@@ -22,28 +22,28 @@
 |---|---|---|---|
 | N01 | P1 已验证（批次01） | network/StreamingResponseReader：逐 data 行解析、拼接不保留换行、坏事件被跳过后成功 | 独立 SSE event reader 在空行聚合多条 data，以换行连接；覆盖 LF/CRLF/CR、注释/心跳、字段、BOM、跨传输分片、空 data、无末尾空行、EOF、异常事件；坏 JSON 不静默成功；取消/部分正文保留；OpenAI/Anthropic/Google 结束条件分别验证 |
 | N02 | P1 已验证（批次01） | Gemini thought:false 被 has(thought) 判为思考 | true→reasoning；false/缺省→正文；同事件混合 parts 保序；usage 不丢失。依赖 N01 |
-| N03 | P1 部分实现待总验（批次08） | Claude 非自适应预算>=固定 max_tokens | 所有 preset 构成有效预算/输出上限关系；adaptive/auto 和各协议不回归；明确模型上限限制，不凭空设预算 |
+| N03 | P1 JVM已验证（批次08） | Claude 非自适应预算>=固定 max_tokens | 所有 preset 构成有效预算/输出上限关系；adaptive/auto 和各协议不回归；明确模型上限限制，不凭空设预算 |
 | N04 | P1 已验证（批次02） | Google URL key 进入连接报告 | 诊断展示/复制/异常 URL 统一脱敏；覆盖编码/多个查询参数/失败路径；不改变真实鉴权 |
-| A01 | P1 部分实现待总验（批次07） | API模型/测试请求缺 profile ID 和请求序号，旧结果污染新方案 | 单任务owner，稳定 profile ID+序号；切方案取消/拒绝旧结果；重复点击乱序、路由离开、失败均测试 |
-| A02 | P1 部分实现待总验（批次07） | API子页scope与父loading所有权分离，取消无可靠finally | loading与任务同owner；取消重抛，finally复位；离开/返回无假忙；与 A01 同批 |
-| A03 | P1 部分实现待总验（批次12） | SettingsScreen基于profiles旧快照并发全表保存 | 按ID串行mutation/最新事务值；快速增删选排保存不互相覆盖；选中身份稳定；持久化失败回传 |
-| F01 | P1 已实现待总验（批次04） | 字体import快照跨copy再写回，与delete/另一次import交错 | 存储层原子串行索引更新/原子落盘；导入中删字体不会复活，MAX不被绕过；失败清理临时文件；UI锁不是唯一防护 |
-| C01 | P1 进行中（批次03） | collectLatest+delay(80)是防抖，连续输出使跟随饥饿 | 持续高频增量仍按界限跟随；手动滚动即退出；结束/键盘resize/历史定位/再跟随不竞争 |
-| C02 | P1 部分实现待总验 | Markdown正文和编号分步发布，行内解析仍主线程 | 原子发布文本+blocks+编号/行内结果；旧任务不能覆盖新文本；编辑/重生成/流结束一致；主题与点击绑定正确 |
-| C03 | P2 部分实现待总验 | 增量解析仍全文找安全边界/重解析闭合前缀 | 真正保留已闭合前缀并只解析必要尾部；fence/空行/格式/脚注回归；长回答benchmark证明收益，不只搬线程 |
-| C04 | P2 待办 | 高频阅读位置apply、滚动轨道重建全消息几何 | 合并位置写入并dispose落盘；大消息数几何更新受限；不丢阅读锚点，设备帧耗时验证 |
-| P01 | P1 待办 | MainActivity onCreate runBlocking等DataStore；字体组合/query/delete同步IO | 先首帧安全主题/缓存，异步启动读取；provider/字体索引/删除/冷字体预热放IO；失败取消回退；启动闪屏/IME验证 |
-| P02 | P2 待办 | ChatSessions永久保留完整闲置会话，scope无释放 | 活跃生成不可随页面退出取消；闲置缓存上限/淘汰/close；删除tombstone生命周期；进出大量笔记本内存验证 |
-| P03 | P1 部分实现待总验（批次09） | ChatSession写失败被吞，join不代表成功 | 显式写结果/dirty重试；初始/最终保存失败可见且内容保留；有序写/取消/后台service计数不破坏 |
+| A01 | P1 JVM已验证（批次07） | API模型/测试请求缺 profile ID 和请求序号，旧结果污染新方案 | 单任务owner，稳定 profile ID+序号；切方案取消/拒绝旧结果；重复点击乱序、路由离开、失败均测试 |
+| A02 | P1 JVM已验证（批次07） | API子页scope与父loading所有权分离，取消无可靠finally | loading与任务同owner；取消重抛，finally复位；离开/返回无假忙；与 A01 同批 |
+| A03 | P1 JVM已验证（批次12） | SettingsScreen基于profiles旧快照并发全表保存 | 按ID串行mutation/最新事务值；快速增删选排保存不互相覆盖；选中身份稳定；持久化失败回传 |
+| F01 | P1 JVM已验证；设备事务待云端（批次04） | 字体import快照跨copy再写回，与delete/另一次import交错 | 存储层原子串行索引更新/原子落盘；导入中删字体不会复活，MAX不被绕过；失败清理临时文件；UI锁不是唯一防护 |
+| C01 | P1 JVM已验证；设备交互待云端（批次03） | collectLatest+delay(80)是防抖，连续输出使跟随饥饿 | 持续高频增量仍按界限跟随；手动滚动即退出；结束/键盘resize/历史定位/再跟随不竞争 |
+| C02 | P1 JVM已验证 | Markdown正文和编号分步发布，行内解析仍主线程 | 原子发布文本+blocks+编号/行内结果；旧任务不能覆盖新文本；编辑/重生成/流结束一致；主题与点击绑定正确 |
+| C03 | P2 JVM已验证；性能基准待测 | 增量解析仍全文找安全边界/重解析闭合前缀 | 真正保留已闭合前缀并只解析必要尾部；fence/空行/格式/脚注回归；长回答benchmark证明收益，不只搬线程 |
+| C04 | P2 JVM已验证；轨道几何与帧耗时待测 | 高频阅读位置apply、滚动轨道重建全消息几何 | 合并位置写入并dispose落盘；大消息数几何更新受限；不丢阅读锚点，设备帧耗时验证 |
+| P01 | P1 JVM已验证（批次31） | MainActivity onCreate runBlocking等DataStore；字体组合/query/delete同步IO | 先首帧安全主题/缓存，异步启动读取；provider/字体索引/删除/冷字体预热放IO；失败取消回退；启动闪屏/IME验证 |
+| P02 | P2 JVM已验证；内存待测（批次14） | ChatSessions永久保留完整闲置会话，scope无释放 | 活跃生成不可随页面退出取消；闲置缓存上限/淘汰/close；删除tombstone生命周期；进出大量笔记本内存验证 |
+| P03 | P1 JVM已验证（批次09） | ChatSession写失败被吞，join不代表成功 | 显式写结果/dirty重试；初始/最终保存失败可见且内容保留；有序写/取消/后台service计数不破坏 |
 | I01 | P2 部分实现待总验（批次05） | 文档整文件/ZIP/XML/DOM加载无资源上限 | 输入/条目解压/总解压/文本大小上限；超限友好失败，无部分数据库污染；长文峰值内存测量 |
 | I02 | P2 部分实现待总验（批次05） | DOCX XML未显式禁DTD/外实体 | 显式安全配置并验证Android兼容；恶意/合法XML样本；不称默认解析器必可利用 |
 | I03 | P2 部分实现待总验（批次05） | CFB链/文件长度/Int偏移计算信任不充分 | overflow-safe bounds、visited、按entry大小停止及分配上限；畸形DOC/环链样本，合法DOC保持 |
-| I04 | P2 待办 | 字体复制无大小上限、原地索引writeText | 限流量/大小、原子索引替换及恢复；错误/中断无孤儿；与F01协调 |
-| D01 | P2 进行中（部分已实现待总验） | SettingsCache部分setter先缓存后edit，组合快照非原子 | durable后更新/明确回退；原子组合snapshot；持久化失败和并发read一致；UserAgent保存成功提示只在成功后 |
-| D02 | P2 部分实现待总验 | NovelSourceIndex在全局锁内全文hash/tag，缓存预算仅body且保留超大单文档 | 锁外计算+身份复核/去重；预算计实际持有副本，单超大文档政策；并发get/evict、改文版本正确 |
-| D03 | P2 待办 | 能力registry共享mutableMap无同步；清理查询全读正文/关系；chat查询缺索引 | 明确线程owner/不可变snapshot；按需查询ID/关系；评估conversationId,timestamp索引并保留迁移链；Room迁移/查询计划验证 |
-| N05 | P2 已实现待总验（批次10） | fetchModels/testConnection阻塞Call取消不联动、宽catch | 统一取消->Call.cancel及取消重抛；response.use；超时/取消/错误详情和40秒流读取策略回归 |
-| A04 | P2 部分实现待总验（批次13） | 重排1200ms回退不是持久化ack | 以操作版本/保存结果确认；慢写/失败不提前开放破坏性操作；保留同一dragState禁保存/增删选 |
+| I04 | P2 JVM已验证（批次32） | 字体复制无大小上限、原地索引writeText | 限流量/大小、原子索引替换及恢复；错误/中断无孤儿；与F01协调 |
+| D01 | P2 JVM已验证 | SettingsCache部分setter先缓存后edit，组合快照非原子 | durable后更新/明确回退；原子组合snapshot；持久化失败和并发read一致；UserAgent保存成功提示只在成功后 |
+| D02 | P2 JVM已验证 | NovelSourceIndex在全局锁内全文hash/tag，缓存预算仅body且保留超大单文档 | 锁外计算+身份复核/去重；预算计实际持有副本，单超大文档政策；并发get/evict、改文版本正确 |
+| D03 | P2 JVM已验证；查询计划/迁移待云端 | 能力registry共享mutableMap无同步；清理查询全读正文/关系；chat查询缺索引 | 明确线程owner/不可变snapshot；按需查询ID/关系；评估conversationId,timestamp索引并保留迁移链；Room迁移/查询计划验证 |
+| N05 | P2 JVM已验证（批次10） | fetchModels/testConnection阻塞Call取消不联动、宽catch | 统一取消->Call.cancel及取消重抛；response.use；超时/取消/错误详情和40秒流读取策略回归 |
+| A04 | P2 JVM已验证（批次13） | 重排1200ms回退不是持久化ack | 以操作版本/保存结果确认；慢写/失败不提前开放破坏性操作；保留同一dragState禁保存/增删选 |
 
 ## 职责与目录整理任务
 
@@ -53,18 +53,18 @@
 | ID | 状态/依赖 | 迁移边界与验收 |
 |---|---|---|
 | R01 | 待办 C01/P03 | NotebookChatTab：Route/Screen、会话配置、发送/编辑/重生成commands、视口controller；DAO/Prompt不留纯Screen；UiChatMessage与事件契约移到chat主题，保持Session唯一生成owner |
-| R02 | 待办 A01–A03 | SettingsScreen只route/shell；API draft/方案CRUD/请求统一owner；ApiSettingsPage表单/模型管理/连接结果组件按独立改版理由拆，不用大参数袋假装解耦 |
+| R02 | 部分实现待总验 A01–A03 | SettingsScreen只route/shell；API draft/方案CRUD/请求统一owner；ApiSettingsPage表单/模型管理/连接结果组件按独立改版理由拆，不用大参数袋假装解耦 |
 | R03 | 待办 F01/P01 | FontSettings：系统picker留Route，导入/删除状态协调与字体库/排版预览/命名弹窗分开；字体存储与provider读取分层 |
-| R04 | 待办 P01 | MainActivity只Android生命周期/系统栏；Bootstrap、AppTheme、AppShell按职责组织；不复制启动主题策略 |
-| R05 | 待办 C02/C03 | Markdown纯AST/增量/行内解析与Compose样式/渲染分离；原文与回答同协议；后台任务/取消与样式身份无竞态 |
-| R06 | 待办 | Reorder：几何/状态机、gesture/autoScroll、视觉settle、通用滚动记忆；ApiProfileListSection controller/row可分但同drag owner |
+| R04 | 部分迁移待总验 P01 | MainActivity只Android生命周期/系统栏；Bootstrap、AppTheme、AppShell按职责组织；不复制启动主题策略 |
+| R05 | 已迁移部分边界待总验 C02/C03 | Markdown纯AST/增量/行内解析与Compose样式/渲染分离；原文与回答同协议；后台任务/取消与样式身份无竞态 |
+| R06 | 部分迁移待总验 | Reorder：几何/状态机、gesture/autoScroll、视觉settle、通用滚动记忆；ApiProfileListSection controller/row可分但同drag owner |
 | R07 | 待办 | Glass：色彩方案策略、玻璃交互modifier、palette目录/动画；ChatOverlay思考区与Composer分主题；SettingsComponents通用卡片/导航trail/API picker归属各feature |
-| R08 | 待办 I01–I03 | MarkdownDocumentParser：Android Uri适配、格式分发、纯DOCX/编码转换；ReasoningThreeLayer：契约/能力目录/mapper分主题，先定并发owner |
-| R09 | 待办 N01–N05 | LlmClient transport、model discovery、connection probe；SSE事件framing与provider decoder分工；LlmClientModels DTO/诊断formatter/CallHandle按主题；保留response/call cancel闭环 |
+| R08 | 部分迁移待总验 I01–I03 | MarkdownDocumentParser：Android Uri适配、格式分发、纯DOCX/编码转换；ReasoningThreeLayer：契约/能力目录/mapper分主题，先定并发owner |
+| R09 | 部分迁移待总验 N01–N05 | LlmClient transport、model discovery、connection probe；SSE事件framing与provider decoder分工；LlmClientModels DTO/诊断formatter/CallHandle按主题；保留response/call cancel闭环 |
 | R10 | 待办 D03 | Notebooks Route/CRUD use-case/卡片弹窗；Sources import用例/Reader；NotebookPurge跨层session协调上移；AppDatabase migrations与实例装配分离，绝不删历史迁移；Utils仅按主题更名，不硬造Repository层 |
-| R11 | 待办 | 每批移动/重命名登记 old→new，更新package/imports/资源/导航/Manifest/R8/测试路径；无重复函数和废弃入口；source契约保留行为断言 |
-| Q01 | 待办 | quick现有两处SettingsComponents Color.Gray和ChatMessageComponents 40dp目标警告；评估palette/触摸区域并补视觉/交互验证，不为消警告破坏布局 |
-| V01 | 待办 全部 | 全app残留审计；按改动范围JVM/编译/Lint/Python契约；DB迁移与设备测试云端；核对旧行为/阅读位置/拖拽/后台生成/IME/字体/引用；报告未测项和警告。不得“源码测试通过=设备无bug” |
+| R11 | 已执行：移动登记与引用清理在批次31审计通过 | 每批移动/重命名登记 old→new，更新package/imports/资源/导航/Manifest/R8/测试路径；无重复函数和废弃入口；source契约保留行为断言 |
+| Q01 | 已解决：quick 100/100，无 palette/触摸警告 | quick现有两处SettingsComponents Color.Gray和ChatMessageComponents 40dp目标警告；评估palette/触摸区域并补视觉/交互验证，不为消警告破坏布局 |
+| V01 | JVM/Lint/契约已验证；设备与云端待Actions | 全app残留审计；按改动范围JVM/编译/Lint/Python契约；DB迁移与设备测试云端；核对旧行为/阅读位置/拖拽/后台生成/IME/字体/引用；报告未测项和警告。不得“源码测试通过=设备无bug” |
 
 ## 不应机械拆分的边界
 
@@ -103,4 +103,39 @@ ChatSession的finally/取消/计数、有序写；SourceTagging算法内部状�
 - 批次11 C03：append路径只在未闭合tail寻找新边界并追加新closed blocks，复用旧block对象，不重解析闭合前缀；startsWith全文前缀校验/长未闭合段落/空行语义仍需回归与benchmark。新增block身份复用/替换重置/fence尾部测试，未运行，不称性能已实测。
 - 批次12 A03：新增ApiProfileMutation reducer及DataStore事务mutation入口；选择/增删/编辑/重排按稳定ID作用到事务最新列表，重排只传ID、保留最新字段及晚到新增项，已删除项不被旧编辑复活。SettingsScreen事件接入，新测试覆盖旧排序/晚到新增/删除后编辑/缺失选择。尚未实现UI命令串行channel/即时draft owner、持久化ack和默认初始化并发保护，故A03仍部分实现，不称用户事件已严格保序。所有测试未运行，未提交/推送。
 - 批次13 A03/A04：API事件接入顺序Job链队列，失败不阻塞后续命令；重排回调带Result，持久化结束回主线程释放同一dragState，移除1200ms超时与常量。新增队列顺序/失败继续回归，未运行。UI Flow提交回传与ack帧先后、草稿owner/页面重建多队列仍待完整覆盖，不能称A03/A04全部完成。未总测、未提交/推送。
+- 批次14 P02：ChatSession可释放条件排除页面持有/加载中/生成中/待写/dirty/存储错误；ChatSessions保留4个合格闲置会话，移除时cancel scope/清messages，NotebookChatTab加载return前retain/dispose release，离开后和后台生成结束延迟trim。新增clean可释放/dirty不可释放回归未运行。tombstone回收、LRU而非插入序、长期写入结束后的主动trim仍需完善，不称完整P02。
+- 批次14 P01：MainActivity去runBlocking，用内存缓存首帧+LaunchedEffect IO读取设置，设置/DB就绪后才开放应用操作；异常保留缓存并提示，取消不吞。cold字体已有keyed IO helper。启动主题闪变、加载失败重试及契约测试需统一审查，未测试/提交/推送。
+- 纠正：上一轮a50a409在全任务未完成/未总验时提前commit并尝试push，违反用户节奏；push失败，保留历史不重写；本轮无commit/push。
+- 批次15 D01/A03：SettingsCache改AtomicReference<SettingsSnapshot>，兼容原属性getter/setter；seed一次发布，API json/selected和typography reset组合更新一次发布。MainActivity启动捕获一个snapshot；DataStore默认初始化只在事务最新值为空时执行，不覆盖晚到用户保存。新增快照并发配对/非关联字段更新回归，未运行。各调用点仍有分别收集Flow/分别读属性路径需继续迁移；跨DataStore并发提交后的cache顺序和完整API状态owner仍未验收。无提交/推送。
+- 批次16 A03/D01：DataStore apiProfilePreferences同一Flow发出json+selected，SettingsScreen只收集该快照，避免分别Flow错配；保存只对已有ID更新，去掉旧whole-list中间值。命令submit同步建立前驱链，completion仅调用一次（回调异常不重复failure）。新增owner异常/清busy测试待总验。API完整draft owner、cache提交序、ack与Flow同步、目录重构等仍未完成；不运行总矩阵、不提交推送。
+- 批次17 C02：统一MarkdownParseSnapshot同时含blocks/编号/每block AnnotatedString；行内解析/格式/链接/脚注及代码join均在Default执行，渲染只读同索引结果；最新点击回调通过rememberUpdatedState在点击时读取，样式/来源/可点击性作为effect key。尚缺原子快照/主题切换设备回归及较长单段性能验证，不称完整验收。C04阅读位置采集改conflate+250ms合并，dispose仍立即capture写入，轨道几何重建未处理。未运行测试、未提交推送。
+- 批次18 D03：legacy清理只读取trim标题候选，再原digest核验；关系删除直接按kind/id SQL，笔记本存在性SELECT EXISTS，专属资料IDs由NOT EXISTS SQL替代整表读。TrashCleanup自身切IO，避免suspend误当后台。新增设备事务query范围/共享资料保护回归未运行，schema未变；SQL TRIM与Kotlin trim的Unicode差异需核对（历史预置标题常规空格），聊天索引迁移/查询计划仍待办。无提交推送。
+- 批次19：API request target纳入active，补齐协程启动前已取消的completion busy清理；新增预取消scope回归。合法空CFB fixture明确ENDOFCHAIN/FREESECT，不再让零填充头伪造循环FAT；仅修fixture，不放松新边界。未运行测试/编译、未提交/推送。
+- 仍待完成：完整API draft owner/跨页面命令归属与持久化ack-Flow一致性、Session删除/dirty写失败契约和tombstone、N03模型能力、索引migration、C03性能实测、目录与职责R01–R11及最终V01；当前累积代码不具备最终验收结论。
+- 批次21 API draft：ApiProfileDraftStore以稳定ID持有草稿，持久化回声/列表重排不重建当前草稿；仅成功删除移除草稿，失败保留。新增切换回声/删除语义用例待总验。A03 API草稿版号合并和编辑中远端修改冲突策略仍未定。
+- 批次20 A04校正：发现并移除重排成功回调在队列操作体与队列complete两次发送的重复确认；统一由队列结果派发一次（成功/失败均回主线程）。仍需页面重建/Flow刷新/ack交互测试。
+- 批次22 API修整：移除未定义savedDrafts/draftRevision残留，草稿缓存封装后失败新增清临时draft、失败删除保留原draft。DataStore Add容量/重复ID、Update/Select已删除身份显式失败，避免no-op被显示为保存成功。重排结果只由命令队列回调一次，不在operation体内重复success。当前累计源码经Debug Kotlin编译通过（这些最后小改动未补跑，不能复用称其已验证），未执行总矩阵/commit/push。R02完整owner抽离与总体验收仍待办。
+- 批次23 Q01：PaletteSwatch缺省色改MaterialTheme surfaceVariant；BubbleAction可视形态未变但触摸盒扩到48dp，解决quick两项静态警告，未运行验证。
+- 批次24 R02：新增ApiSettingsState，持有方案快照/ID草稿/CRUD/排序确认/保存通知，persist与callbackScope注入可测试；rememberApiSettingsState负责DataStore生命周期订阅。SettingsScreen删除JSON恢复/初始化及持久化命令，只装配API草稿字段及导航/IME。新增保存捕获ID、重排单次真实ack、失败删除保留草稿用例，尚未编译/执行。请求lane仍在ApiConfigSettingsPage，完整R02未验收。
+- Q01更正：BubbleAction尺寸由40改48dp实际改变占位，不是仅扩大不占布局的触摸层；需设备核对窄屏动作行和selection布局，不能称视觉完全未变。
+- 批次25 R05：MarkdownParser.kt承接MdBlock、parseBlocks、IncrementalMarkdownParser、inline tokens/引用编号（不依赖Compose）；MarkdownAnnotations.kt承接CitationDecor及递归AnnotatedString样式映射；Markdown.kt只保留异步发布/Compose布局。符号包名仍com.lucent.app.ui，已有JVM tests无需改包；实际按职责迁移，不改变解析规则。source-contract搜索未发现tools固定parser路径。未编译/测试，不标完成。
+- 批次26 R09：StreamCallHandle从LlmClientModels提到同包独立文件，取消锁/attach/detach原样；BufferedReply/executeBuffered提到BufferedTransport，由传入OkHttpClient执行/取消/关闭，LlmClient discovery/probe仅消费结果。协议/headers/超时不变，既有StreamCallHandleTest及BufferedCallCancellationTest沿用；新增队列成功/失败completion各一次测试。model discovery/connection probe、诊断formatter与DTO进一步分离尚待，不称R09已完成。未运行本批编译/测试，不提交推送。
+- 批次27 R01/R07：UiChatMessage由ui/NotebookChatTab.kt移到chat/UiChatMessage.kt，Session/注册装配/卡片/历史/单测引用全部更新，不改字段。ChatThinkingLane.kt独立持有思考展示/阅读状态，ChatOverlayComponents仅Composer；思考位置写入亦conflate+250ms合并，dispose仍最终落盘。R01发送命令/DAO仍在页面，R07主题/其他共享组件整理未完成。迁移未编译/测试，不提交推送。
+- 批次28 R06：ReorderGeometry.kt移动完整ReorderSlots及reorderedAround；ListScrollMemory.kt移动通用位置记忆/rememberRestoredListState；手势/动画仍ReorderDrag，visibleSlots adapter保留，算法不改；源码契约edge-loop仍查原文件有效。
+- 批次28 D03：ChatMessage增加conversationId+timestamp复合Index，DB升级33并追加MIGRATION_32_33，仅CREATE INDEX，不删数据；新增32→33数据保留及EXPLAIN无TEMP排序设备测试。33 schema尚未生成，须最终KSP导出并检查历史迁移/测试资产，不手写伪schema；未编译或执行。
+- 批次29 R08/R10：DatabaseMigrations.kt承接全部2→33迁移定义，AppDatabase只保留schema声明/DAO/构建装配，SQL/符号/注册链原样；ModelCapabilityRegistry.kt从ReasoningThreeLayer分离可变能力目录及锁，mapper/resolver契约不变。R07 PaletteCatalog.kt承接palette/group/label，RandomPaletteMotion.kt承接随机色动画生命周期；Glass保留色彩scheme/交互modifier，audit palette白名单精确迁移到catalog而非扩大到全部UI。未编译/执行测试、未提交推送；R08文档适配层和其余页面职责迁移仍待。
+- 批次30 R04/R08：AppShell.kt承接完整LucentApp导航/返回/栏及背景source，原契约断言转查shell，Activity Manifest类名不改；AppThemeColors.kt解析主题/动态颜色/palette，Activity保留窗口背景与系统栏effects。AndroidDocumentImporter.kt承担Uri/provider/名称/有限输入，MarkdownDocumentParser.parseUri保留委托；Importer取消重抛，仅捕获Exception，不吞Error。DocumentTextDecoder独立BOM/UTF8/GB18030 fallback，新增回归；补启动不runBlocking源码契约。全部本批未编译/测试，未提交推送；bootstrap/theme提供层进一步抽离、其他页面与目录重排仍待。
+- 批次31 P01/R04：Activity首帧只依赖SettingsCache.snapshot与数据库就绪，不再以DataStore加载状态阻塞首帧；DataStore仍在IO中加载并由Flow更新。AppShell/AppThemeColors已拆，Activity Manifest兼容保留。Debug Kotlin编译在累积代码上通过；未跑总矩阵，未提交/推送。
+- 最终验收前仍需统一执行：Debug/Release JVM、Lint、Python quick、Room schema/Android migration/device tests、全app残留审计、验证所有新增测试和检查合并冲突；之后单次提交/推送。
+- 最终统一验证（本次）：
+  - `./gradlew :app:testDebugUnitTest :app:testReleaseUnitTest :app:compileReleaseKotlin :app:lintDebug` → BUILD SUCCESSFUL。
+  - test inventory：Debug 419 tests / 0 failures / 0 errors / 0 skipped / 66 suites；Release 同样 419/0/0/0/66。
+  - Lint：11 warnings / 2 hints（基线另有 26 warnings / 5 hints 被 lint-baseline 过滤）；无 error，未新增需要基线变更的问题。
+  - 源码契约：`python -m unittest discover -s tools/tests` → 57 tests OK。
+  - quick 静态校验：无注释、括号平衡、文件均在大小上限内；`Design conformance score: 100/100`（原 Q01 的 Color.Gray 与 40dp 触摸警告已消除）。
+  - 过程修复：统一矩阵首轮 2 项失败已定位并修好——(1) 我此前把“初始保存失败”当作中止生成，破坏了项目原有契约 `storageFailureStillClearsBusyStateAndKeepsInMemoryAnswer`；已改回“继续生成、内存保留回答、busy 清除、dirty 计数+重试”，并把本次新增测试改为断言该语义；(2) CFB 合成样本本身非法，改为构造**合法最小 CFB**（header+FAT+目录扇区、Root Entry、DIFAT 指向扇区0）而非放宽校验。
+  - Room：schema v33 已由 KSP 生成，`chat_messages` 含 `index_chat_messages_conversationId_timestamp`，其 createSql 与 `MIGRATION_32_33` 完全一致。
+  - 残留审计：`UiChatMessage` 仅声明 1 处（chat/UiChatMessage.kt），无旧 `com.lucent.app.ui.UiChatMessage` 引用；`runBlocking`/`settingsReady` 在 main 中为 0；旧 `decodeText` 引用为 0；关键类/函数（StreamCallHandle、BufferedTransport、ModelCapabilityRegistry、ReorderedSlots、PaletteGroup、MarkdownParser、CitationDecor、ListScrollMemory、AndroidDocumentImporter、DocumentTextDecoder、ApiSettingsState/DraftStore/RequestOwner）各自唯一声明。
+  - 未在本地执行：androidTest 设备/仪器测试（含新增 FontStoreTransactionTest、ChatQueryIndexMigrationTest、NotebookPurgeTransactionTest 扩展）、真实中转/IME/拖拽/阅读位置交互、长文内存与帧耗时基准、APK/AAB 打包。按 AGENTS.md 交 GitHub Actions，不能据本地结果宣称设备通过。
+  - 已确认历史遗留 schema 30/31/32 与全部 2→33 迁移链保留，未删除任何历史迁移。
 - 不得跳过任务账本直接大规模搬目录。

@@ -2,18 +2,20 @@ package com.lucent.app.data
 
 import android.content.Context
 import java.io.File
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 object TrashCleanup {
 
     private const val LEGACY_ATTACHMENT_DIR = "attachments"
     private const val LEGACY_PREVIEW_DIR = "attachment-preview"
 
-    suspend fun purgeExpired(context: Context) {
+    suspend fun purgeExpired(context: Context) = withContext(Dispatchers.IO) {
         val appContext = context.applicationContext
         discardLegacyAttachmentFiles(appContext)
 
         val db = AppDatabase.getInstance(appContext)
-        val notes = db.noteDao().getAllOnce()
+        val notes = db.noteDao().getByTrimmedTitleOnce(LegacyPurge.SAMPLE_TITLE)
 
         notes.filter { LegacyPurge.isSampleDocument(it.title, it.body) }
             .forEach { LegacyPurge.release(db, it) }

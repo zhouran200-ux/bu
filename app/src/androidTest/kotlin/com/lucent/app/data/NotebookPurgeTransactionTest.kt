@@ -16,6 +16,22 @@ class NotebookPurgeTransactionTest {
 
     @After fun closeDatabase() { db.close() }
 
+    @Test fun exclusiveItemQueryPreservesSharedAndForeignDocuments() = runBlocking {
+        val first = db.notebookDao().insert(Notebook(title = "first"))
+        val second = db.notebookDao().insert(Notebook(title = "second"))
+        val own = db.noteDao().insert(Note(title = "own", body = "body"))
+        val shared = db.noteDao().insert(Note(title = "shared", body = "body"))
+        db.notebookDao().insertItem(NotebookItem(notebookId = first, itemKind = NotebookItem.KIND_NOTE, itemId = own))
+        db.notebookDao().insertItem(NotebookItem(notebookId = first, itemKind = NotebookItem.KIND_NOTE, itemId = shared))
+        db.notebookDao().insertItem(NotebookItem(notebookId = second, itemKind = NotebookItem.KIND_NOTE, itemId = shared))
+        assertTrue(db.notebookDao().exists(first))
+        assertFalse(db.notebookDao().exists(Long.MAX_VALUE))
+        assertEquals(listOf(own), db.notebookDao().exclusiveItemIds(first, NotebookItem.KIND_NOTE))
+        db.notebookDao().unlinkEverywhere(NotebookItem.KIND_NOTE, shared)
+        assertEquals(listOf(own), db.notebookDao().getItemsOnce(first).map { it.itemId })
+        assertTrue(db.notebookDao().getItemsOnce(second).isEmpty())
+    }
+
     @Test fun lateDeleteFailureRollsBackDocumentsChatAndLinksAndAllowsRetry() = runBlocking {
         val notebookId = db.notebookDao().insert(Notebook(id = 900001, title = "retained"))
         val noteId = db.noteDao().insert(Note(title = "source", body = "original"))

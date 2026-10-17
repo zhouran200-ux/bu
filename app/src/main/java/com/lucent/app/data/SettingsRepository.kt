@@ -91,6 +91,12 @@ class SettingsRepository(context: Context) {
         )
     }
 
+    internal data class ApiProfilePreferences(val json: String, val selectedIndex: Int)
+
+    internal val apiProfilePreferences: Flow<ApiProfilePreferences> = context.settingsDataStore.data.map { prefs ->
+        ApiProfilePreferences(prefs[SettingsKeys.API_PROFILES].orEmpty(), prefs[SettingsKeys.API_PROFILE_SELECTED] ?: 0)
+    }
+
     val apiProfilesJson: Flow<String> = context.settingsDataStore.data.map { prefs ->
         prefs[SettingsKeys.API_PROFILES] ?: ""
     }
@@ -227,25 +233,41 @@ class SettingsRepository(context: Context) {
             it[SettingsKeys.LINE_SPACING] = 1.2f
             it[SettingsKeys.LETTER_SPACING] = 0.0f
         }
-        SettingsCache.fontScale = 1.0f
-        SettingsCache.lineSpacing = 1.2f
-        SettingsCache.letterSpacing = 0.0f
+        SettingsCache.resetTypography()
     }
     suspend fun setDynamicColorEnabled(value: Boolean) {
         context.settingsDataStore.edit { it[SettingsKeys.DYNAMIC_COLOR_ENABLED] = value }
         SettingsCache.dynamicColor = value
     }
 
+    internal suspend fun ensureApiProfilesInitialized() {
+        val committed = context.settingsDataStore.edit { prefs ->
+            if (prefs[SettingsKeys.API_PROFILES].isNullOrBlank()) {
+                prefs[SettingsKeys.API_PROFILES] = ApiProfiles.serialize(ApiProfiles.DEFAULT_PROFILES)
+                prefs[SettingsKeys.API_PROFILE_SELECTED] = 0
+            }
+        }
+        SettingsCache.updateApiProfiles(committed[SettingsKeys.API_PROFILES].orEmpty(), committed[SettingsKeys.API_PROFILE_SELECTED] ?: 0)
+    }
+
     internal suspend fun mutateApiProfiles(command: ApiProfileMutation) {
         val committed = context.settingsDataStore.edit { prefs ->
             val profiles = ApiProfiles.parseStored(prefs[SettingsKeys.API_PROFILES].orEmpty()) ?: ApiProfiles.DEFAULT_PROFILES
+            when (command) {
+                is ApiProfileMutation.Add -> {
+                    check(profiles.size < ApiProfiles.MAX) { "方案数量已达上限" }
+                    check(profiles.none { it.id == command.profile.id }) { "方案ID已存在" }
+                }
+                is ApiProfileMutation.Update -> check(profiles.any { it.id == command.profile.id }) { "方案已删除，无法保存" }
+                is ApiProfileMutation.Select -> check(profiles.any { it.id == command.id }) { "方案已删除，无法切换" }
+                else -> Unit
+            }
             val selected = prefs[SettingsKeys.API_PROFILE_SELECTED] ?: 0
             val next = ApiProfileSnapshot(profiles, profiles.getOrNull(selected)?.id).mutate(command)
             prefs[SettingsKeys.API_PROFILES] = ApiProfiles.serialize(next.profiles)
             prefs[SettingsKeys.API_PROFILE_SELECTED] = next.selectedIndex
         }
-        SettingsCache.apiProfilesJson = committed[SettingsKeys.API_PROFILES].orEmpty()
-        SettingsCache.apiProfileSelected = committed[SettingsKeys.API_PROFILE_SELECTED] ?: 0
+        SettingsCache.updateApiProfiles(committed[SettingsKeys.API_PROFILES].orEmpty(), committed[SettingsKeys.API_PROFILE_SELECTED] ?: 0)
     }
 
     suspend fun saveApiProfiles(profiles: List<ApiProfile>, selected: Int) {
@@ -256,7 +278,6 @@ class SettingsRepository(context: Context) {
             prefs[SettingsKeys.API_PROFILES] = profilesJson
             prefs[SettingsKeys.API_PROFILE_SELECTED] = idx
         }
-        SettingsCache.apiProfilesJson = profilesJson
-        SettingsCache.apiProfileSelected = idx
+        SettingsCache.updateApiProfiles(profilesJson, idx)
     }
 }

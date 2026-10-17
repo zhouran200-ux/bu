@@ -29,12 +29,48 @@ class CompoundFileRobustnessTest {
         assertEquals(0x00015678, readLe32(data, 2))
     }
 
+    private fun putLe16(bytes: ByteArray, at: Int, value: Int) {
+        bytes[at] = (value and 0xFF).toByte()
+        bytes[at + 1] = ((value ushr 8) and 0xFF).toByte()
+    }
+
+    private fun putLe32(bytes: ByteArray, at: Int, value: Int) {
+        for (index in 0..3) bytes[at + index] = ((value ushr (8 * index)) and 0xFF).toByte()
+    }
+
+    private fun minimalCompoundFile(): ByteArray {
+        val bytes = ByteArray(512 * 3)
+        byteArrayOf(
+            0xD0.toByte(), 0xCF.toByte(), 0x11.toByte(), 0xE0.toByte(),
+            0xA1.toByte(), 0xB1.toByte(), 0x1A.toByte(), 0xE1.toByte()
+        ).copyInto(bytes)
+        putLe16(bytes, 0x1E, 9)
+        putLe16(bytes, 0x20, 6)
+        putLe32(bytes, 0x2C, 1)
+        putLe32(bytes, 0x30, 1)
+        putLe32(bytes, 0x38, 4096)
+        putLe32(bytes, 0x3C, -2)
+        putLe32(bytes, 0x40, 0)
+        putLe32(bytes, 0x44, -2)
+        putLe32(bytes, 0x48, 0)
+        putLe32(bytes, 0x4C, 0)
+        for (index in 1 until 109) putLe32(bytes, 0x4C + index * 4, -1)
+        val fat = 512
+        putLe32(bytes, fat, -3)
+        putLe32(bytes, fat + 4, -2)
+        for (index in 2 until 128) putLe32(bytes, fat + index * 4, -1)
+        val directory = 1024
+        "Root Entry".toByteArray(Charsets.UTF_16LE).copyInto(bytes, directory)
+        putLe16(bytes, directory + 0x40, 22)
+        bytes[directory + 0x42] = 5
+        putLe32(bytes, directory + 0x74, -2)
+        putLe32(bytes, directory + 0x78, 0)
+        return bytes
+    }
+
     @Test
     fun parseableCompoundFileWithoutTheStreamReportsNoStream() {
-        val header = compoundHeader()
-        header[0x1E] = 9
-        header[0x20] = 6
-        val store = CompoundFile(header)
+        val store = CompoundFile(minimalCompoundFile())
         assertNull(store.stream("WordDocument"))
         assertNull(store.stream("1Table"))
     }

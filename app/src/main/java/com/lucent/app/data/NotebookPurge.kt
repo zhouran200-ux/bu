@@ -24,7 +24,7 @@ object NotebookPurge {
     }
 
     suspend fun importDocument(db: AppDatabase, notebookId: Long, note: Note): Long = db.withTransaction {
-        check(db.notebookDao().getAllOnce().any { it.id == notebookId }) { "笔记本已删除，无法导入" }
+        check(db.notebookDao().exists(notebookId)) { "笔记本已删除，无法导入" }
         check(db.notebookDao().getItemsOnce(notebookId).none { it.itemKind == NotebookItem.KIND_NOTE }) {
             "每个笔记本只能导入一份文档"
         }
@@ -34,7 +34,7 @@ object NotebookPurge {
     }
 
     suspend fun releaseNote(db: AppDatabase, notebookId: Long, noteId: Long) {
-        val exclusive = noteIdsExclusiveTo(db.notebookDao().getAllItemsOnce(), notebookId).contains(noteId)
+        val exclusive = db.notebookDao().exclusiveItemIds(notebookId, NotebookItem.KIND_NOTE).contains(noteId)
         db.notebookDao().removeItem(notebookId, NotebookItem.KIND_NOTE, noteId)
         if (!exclusive) return
         db.noteDao().getByIdOnce(noteId)?.let { TrashCleanup.purgeNote(db, it) }
@@ -46,7 +46,7 @@ object NotebookPurge {
             prepare = { com.lucent.app.chat.ChatSessions.prepareDelete(notebookId) },
             delete = {
                 db.withTransaction {
-                    val doomed = noteIdsExclusiveTo(db.notebookDao().getAllItemsOnce(), notebookId)
+                    val doomed = db.notebookDao().exclusiveItemIds(notebookId, NotebookItem.KIND_NOTE)
                     doomed.forEach { noteId ->
                         db.noteDao().getByIdOnce(noteId)?.let { TrashCleanup.purgeNote(db, it) }
                     }

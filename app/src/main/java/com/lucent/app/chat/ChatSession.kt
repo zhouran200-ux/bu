@@ -7,7 +7,7 @@ import androidx.compose.runtime.setValue
 import com.lucent.app.network.ChatCompletionResult
 import com.lucent.app.network.StreamCallHandle
 import com.lucent.app.ui.StreamUiScheduler
-import com.lucent.app.ui.UiChatMessage
+import com.lucent.app.chat.UiChatMessage
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -16,6 +16,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.async
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.CompletableDeferred
@@ -133,7 +134,7 @@ class ChatSession(
                 val binding = sourceBinding()
                 initial = initial.copy(sourceNoteId = binding.first, sourceRevision = binding.second)
                 update(initial)
-                saveMessage(initial).await().getOrThrow()
+                saveMessage(initial).await()
                 startedAt = monotonicNanos()
                 val response = stream(callHandle) { text, reasoning ->
                     val arrivedAt = monotonicNanos()
@@ -209,6 +210,20 @@ class ChatSession(
         unavailable = false
         ready = true
         storageError = "删除失败，请重试"
+    }
+
+    internal fun canRelease(): Boolean = ready && !unavailable && storageError == null &&
+        streamingAnswerId == null && unsavedMessageCount == 0 &&
+        writeTail?.isCompleted != false && generation?.isCompleted != false
+
+    internal fun releaseIfIdle(): Boolean {
+        if (!canRelease()) return false
+        unavailable = true
+        ready = false
+        scope.cancel()
+        messages.clear()
+        thought.value = ""
+        return true
     }
 
     fun stop() {

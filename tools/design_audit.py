@@ -9,6 +9,8 @@ UI_ROOT = "app/src/main/java/com/lucent/app/ui"
 
 PALETTE_FILES = {
     "app/src/main/java/com/lucent/app/ui/Glass.kt",
+    "app/src/main/java/com/lucent/app/ui/PaletteCatalog.kt",
+    "app/src/main/java/com/lucent/app/ui/AppThemeColors.kt",
     "app/src/main/java/com/lucent/app/ui/ThemeModes.kt",
     "app/src/main/java/com/lucent/app/ui/BackgroundPaletteMotion.kt",
     "app/src/main/java/com/lucent/app/ui/FluidGlassBackground.kt",

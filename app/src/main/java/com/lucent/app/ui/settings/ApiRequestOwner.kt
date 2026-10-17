@@ -25,7 +25,7 @@ internal class ApiRequestOwner {
         val token = generation
         clearBusy = { setBusy(false) }
         setBusy(true)
-        job = scope.launch(start = CoroutineStart.LAZY) {
+        val launched = scope.launch(start = CoroutineStart.LAZY) {
             try {
                 val value = request()
                 if (token == generation && isTargetCurrent()) accept(value)
@@ -40,8 +40,17 @@ internal class ApiRequestOwner {
                     job = null
                 }
             }
-        }.also { it.start() }
+        }
+        job = launched
+        launched.invokeOnCompletion {
+            if (token == generation && job === launched) {
+                clearBusy?.invoke()
+                clearBusy = null
+                job = null
+            }
+        }
+        launched.start()
     }
 }
 
-internal data class ApiRequestTarget(val profileId: String?, val url: String, val spec: String, val key: String)
+internal data class ApiRequestTarget(val profileId: String?, val url: String, val spec: String, val key: String, val active: Boolean)

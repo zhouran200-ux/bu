@@ -12,6 +12,9 @@ interface NoteDao {
     @Query("SELECT * FROM notes ORDER BY updatedAt DESC")
     suspend fun getAllOnce(): List<Note>
 
+    @Query("SELECT * FROM notes WHERE TRIM(title) = :title")
+    suspend fun getByTrimmedTitleOnce(title: String): List<Note>
+
     @Query("SELECT * FROM notes WHERE id = :id")
     suspend fun getByIdOnce(id: Long): Note?
 
@@ -56,6 +59,9 @@ interface NotebookDao {
     @Query("SELECT * FROM notebooks ORDER BY manualOrder ASC, updatedAt DESC")
     suspend fun getAllOnce(): List<Notebook>
 
+    @Query("SELECT EXISTS(SELECT 1 FROM notebooks WHERE id = :id)")
+    suspend fun exists(id: Long): Boolean
+
     @Query("SELECT notebookId AS notebookId, COUNT(*) AS count FROM notebook_items GROUP BY notebookId")
     fun itemCounts(): Flow<List<NotebookCount>>
 
@@ -64,6 +70,12 @@ interface NotebookDao {
 
     @Query("SELECT * FROM notebook_items")
     suspend fun getAllItemsOnce(): List<NotebookItem>
+
+    @Query("DELETE FROM notebook_items WHERE itemKind = :kind AND itemId = :itemId")
+    suspend fun unlinkEverywhere(kind: String, itemId: Long)
+
+    @Query("SELECT DISTINCT a.itemId FROM notebook_items a WHERE a.notebookId = :notebookId AND a.itemKind = :kind AND NOT EXISTS (SELECT 1 FROM notebook_items b WHERE b.itemId = a.itemId AND b.itemKind = :kind AND b.notebookId != :notebookId)")
+    suspend fun exclusiveItemIds(notebookId: Long, kind: String): List<Long>
 
     @Insert
     suspend fun insert(notebook: Notebook): Long

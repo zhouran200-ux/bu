@@ -41,11 +41,13 @@ object FontStore {
         return try {
             val root = JSONObject(AtomicFile(indexFile).openRead().bufferedReader(Charsets.UTF_8).use { it.readText() })
             val arr = root.optJSONArray("fonts") ?: JSONArray()
+            recoverDeletions(dir, (0 until arr.length()).mapNotNull { arr.optJSONObject(it)?.optString("file") }.toSet())
             val slots = (0 until arr.length()).mapNotNull { i ->
                 val o = arr.optJSONObject(i) ?: return@mapNotNull null
                 val id = o.optString("id", "").ifBlank { return@mapNotNull null }
                 val fileName = o.optString("file", "").ifBlank { return@mapNotNull null }
-                if (!File(dir, fileName).exists()) return@mapNotNull null
+                val file = safeFontFile(dir, fileName) ?: return@mapNotNull null
+                if (!file.isFile || file.length() <= 0L) return@mapNotNull null
                 FontSlot(id = id, name = o.optString("name", fileName), fileName = fileName)
             }
             FontIndex(slots)
@@ -58,7 +60,7 @@ object FontStore {
     private fun rebuildFromFiles(context: Context): FontIndex {
         val dir = dir(context)
         val files = dir.listFiles()?.filter { f ->
-            f.isFile && f.length() > 0L && listOf(".ttf", ".otf", ".ttc").any {
+            safeFontFile(dir, f.name) != null && f.isFile && f.length() > 0L && listOf(".ttf", ".otf", ".ttc").any {
                 f.name.lowercase().endsWith(it)
             }
         }.orEmpty().sortedBy { it.name }
@@ -100,7 +102,7 @@ object FontStore {
 
     fun fontFile(context: Context, id: String): File? =
         index(context).slots.firstOrNull { it.id == id }
-            ?.let { File(dir(context), it.fileName) }
+            ?.let { safeFontFile(dir(context), it.fileName) }
             ?.takeIf { it.exists() && it.length() > 0L }
 
     fun canImportMore(context: Context): Boolean = fonts(context).size < MAX_FONTS
@@ -151,11 +153,39 @@ object FontStore {
     fun delete(context: Context, id: String) {
         val idx = index(context)
         val slot = idx.slots.firstOrNull { it.id == id } ?: return
-        File(dir(context), slot.fileName).delete()
-        File(dir(context), "${slot.fileName}.tmp").delete()
-        writeIndex(context, FontIndex(idx.slots.filter { it.id != id }))
+        val directory = dir(context)
+        val target = safeFontFile(directory, slot.fileName) ?: throw IOException("Invalid font path")
+        val staging = File(directory, slot.fileName + ".deleting")
+        if (staging.exists()) throw IOException("Font deletion recovery required")
+        if (!target.renameTo(staging)) throw IOException("Could not stage font deletion")
+        try {
+            writeIndex(context, FontIndex(idx.slots.filter { it.id != id }))
+        } catch (failure: Throwable) {
+            if (!staging.renameTo(target)) failure.addSuppressed(IOException("Could not restore font after failed deletion"))
+            throw failure
+        }
+        staging.delete()
+        File(directory, slot.fileName + ".tmp").delete()
     }
 
+
+    private fun recoverDeletions(directory: File, referenced: Set<String>) {
+        for (staging in directory.listFiles().orEmpty()) {
+            if (!staging.name.endsWith(".deleting") || !staging.isFile) continue
+            val originalName = staging.name.removeSuffix(".deleting")
+            val original = safeFontFile(directory, originalName) ?: continue
+            if (originalName in referenced) {
+                if (!original.exists() && !staging.renameTo(original)) throw IOException("Could not recover staged font")
+                if (original.exists() && staging.exists()) staging.delete()
+            } else staging.delete()
+        }
+    }
+
+    private fun safeFontFile(directory: File, name: String): File? {
+        if (name.isBlank() || File(name).name != name || name.contains(47.toChar()) || name.contains(92.toChar())) return null
+        val candidate = File(directory, name)
+        return candidate.takeIf { it.canonicalFile.parentFile == directory.canonicalFile }
+    }
 
     private fun newId(): String = java.util.UUID.randomUUID().toString().replace("-", "").take(12)
 

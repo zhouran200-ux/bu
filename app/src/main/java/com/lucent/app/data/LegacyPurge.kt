@@ -4,7 +4,7 @@ import java.security.MessageDigest
 
 object LegacyPurge {
 
-    private const val SAMPLE_TITLE = "用户预置文档"
+    internal const val SAMPLE_TITLE = "用户预置文档"
     private const val SAMPLE_BODY_DIGEST =
         "1934f4d617f6f75ab2a1aa897c35bf2ae4647f74a643862a1ecceaa5cfe498ef"
 
@@ -12,9 +12,7 @@ object LegacyPurge {
         title.trim() == SAMPLE_TITLE && digestOf(body) == SAMPLE_BODY_DIGEST
 
     suspend fun release(db: AppDatabase, note: Note) {
-        db.notebookDao().getAllItemsOnce()
-            .filter { it.itemKind == NotebookItem.KIND_NOTE && it.itemId == note.id }
-            .forEach { db.notebookDao().deleteItemById(it.id) }
+        db.notebookDao().unlinkEverywhere(NotebookItem.KIND_NOTE, note.id)
         TrashCleanup.purgeNote(db, note)
     }
 

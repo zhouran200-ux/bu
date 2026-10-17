@@ -1,7 +1,7 @@
 package com.lucent.app.chat
 
 import com.lucent.app.network.ChatCompletionResult
-import com.lucent.app.ui.UiChatMessage
+import com.lucent.app.chat.UiChatMessage
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineDispatcher
@@ -14,7 +14,8 @@ import org.junit.Test
 import kotlin.coroutines.CoroutineContext
 
 class ChatSessionTest {
-    @Test fun initialSaveFailureDoesNotStartStreamAndRetryRetainsFinalMessage() {
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    @Test fun storageFailureKeepsAnswerDirtyAndRetryPersistsWhatIsShown() {
         val dispatcher = QueueDispatcher()
         var failSaving = true
         var started = false
@@ -27,10 +28,11 @@ class ChatSessionTest {
         session.messages.add(UiChatMessage(1, "assistant", ""))
         session.start(1, null) { _, _ ->
             started = true
-            Result.success(ChatCompletionResult("unexpected"))
+            Result.success(ChatCompletionResult("kept in memory"))
         }
         dispatcher.drain()
-        assertFalse(started)
+        assertTrue(started)
+        assertEquals("kept in memory", session.messages.single().content)
         assertEquals(1, session.unsavedMessageCount)
         assertNotNull(session.storageError)
         assertNull(session.streamingAnswerId)
@@ -38,8 +40,34 @@ class ChatSessionTest {
         val retried = session.retryUnsavedMessages()
         dispatcher.drain()
         assertTrue(retried.getCompleted().isSuccess)
-        assertEquals(session.messages.single(), saved.last())
+        assertEquals(session.messages.single().content, saved.last().content)
         assertEquals(0, session.unsavedMessageCount)
+        assertNull(session.storageError)
+    }
+
+    @Test fun onlyReadyCleanSessionsCanReleaseTheirScopeAndMessages() {
+        val dispatcher = QueueDispatcher()
+        val session = ChatSession(dispatcher, { listOf(UiChatMessage(1, "assistant", "stored")) }, {})
+        assertFalse(session.releaseIfIdle())
+        dispatcher.drain()
+        assertTrue(session.canRelease())
+        assertTrue(session.releaseIfIdle())
+        assertFalse(session.ready)
+        assertTrue(session.messages.isEmpty())
+        assertFalse(session.releaseIfIdle())
+    }
+
+    @Test fun failedPersistencePreventsIdleEviction() {
+        val dispatcher = QueueDispatcher()
+        val session = ChatSession(dispatcher, { emptyList() }, { error("disk unavailable") })
+        dispatcher.drain()
+        val message = UiChatMessage(1, "assistant", "unsaved")
+        session.messages.add(message)
+        session.saveMessage(message)
+        dispatcher.drain()
+        assertFalse(session.canRelease())
+        assertFalse(session.releaseIfIdle())
+        assertEquals(listOf(message), session.messages.toList())
     }
 
     private class QueueDispatcher : CoroutineDispatcher() {

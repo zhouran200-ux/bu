@@ -26,8 +26,8 @@ class ApprovedUxContractTest(unittest.TestCase):
         self.assertIn("onSelectTab(NotebookDetailTab.SOURCES)", header)
 
     def test_return_to_bottom_is_borderless_circle_with_clear_arrow(self):
-        text = (UI / "NotebookChatTab.kt").read_text(encoding="utf-8")
-        button = text.split("visible = !atBottom && !isImeVisible && messages.isNotEmpty()", 1)[1].split("if (showHistorySheet)", 1)[0]
+        overlay = (UI / "ChatScrollOverlays.kt").read_text(encoding="utf-8")
+        button = overlay.split("internal fun BoxScope.ChatScrollToBottomButton(", 1)[1]
         self.assertIn("shape = CircleShape", button)
         self.assertIn(".size(44.dp)", button)
         self.assertIn("color = glassPanelColor()", button)
@@ -35,8 +35,10 @@ class ApprovedUxContractTest(unittest.TestCase):
         self.assertIn("Icons.Rounded.ArrowDownward", button)
         self.assertNotIn("border", button)
         self.assertNotIn("foregroundGlass", button)
-        self.assertIn("followStream = true", button)
-        self.assertIn("listState.animateScrollToItem", button)
+        page = (UI / "NotebookChatTab.kt").read_text(encoding="utf-8")
+        call = page.split("ChatScrollToBottomButton(", 1)[1].split("\n        )", 1)[0]
+        self.assertIn("followStream = true", call)
+        self.assertIn("listState.animateScrollToItem", call)
 
     def test_empty_history_has_no_jump_chips(self):
         text = (UI / "ChatHistorySheet.kt").read_text(encoding="utf-8")

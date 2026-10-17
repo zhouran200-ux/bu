@@ -1,9 +1,36 @@
+import json
 import os
 import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
+BASELINE_FILE = REPO / "tools/test-baseline.json"
+
+
+def load_baseline():
+    try:
+        return json.loads(BASELINE_FILE.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
+def check_baseline(relative, totals, baseline):
+    expected = baseline.get(relative)
+    if not expected:
+        return []
+    problems = []
+    minimum_tests = int(expected.get("tests", 0))
+    if totals["tests"] < minimum_tests:
+        problems.append(
+            f"Test count fell below baseline ({totals['tests']} < {minimum_tests}); a test class or suite disappeared"
+        )
+    minimum_suites = int(expected.get("suites", 0))
+    if minimum_suites and totals["suites"] < minimum_suites:
+        problems.append(
+            f"Suite count fell below baseline ({totals['suites']} < {minimum_suites}); a report file disappeared"
+        )
+    return problems
 
 
 def inspect_results(root):
@@ -36,12 +63,14 @@ def inspect_results(root):
 
 def main():
     roots = sys.argv[1:] or ["app/build/test-results/testDebugUnitTest"]
+    baseline = load_baseline()
     failed = False
     for relative in roots:
         root = Path(relative)
         if not root.is_absolute():
             root = REPO / root
         totals, problems = inspect_results(root)
+        problems.extend(check_baseline(relative, totals, baseline))
         text = f"{relative}: {totals}"
         print(text)
         summary = os.environ.get("GITHUB_STEP_SUMMARY")

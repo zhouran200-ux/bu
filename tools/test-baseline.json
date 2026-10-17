@@ -1,0 +1,10 @@
+{
+  "app/build/test-results/testDebugUnitTest": {
+    "tests": 419,
+    "suites": 66
+  },
+  "app/build/test-results/testReleaseUnitTest": {
+    "tests": 419,
+    "suites": 66
+  }
+}

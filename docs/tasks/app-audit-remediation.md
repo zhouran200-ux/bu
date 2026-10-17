@@ -52,9 +52,9 @@
 
 | ID | 状态/依赖 | 迁移边界与验收 |
 |---|---|---|
-| R01 | 部分迁移待总验：UiChatMessage已移chat包；Route/commands待拆 | NotebookChatTab：Route/Screen、会话配置、发送/编辑/重生成commands、视口controller；DAO/Prompt不留纯Screen；UiChatMessage与事件契约移到chat主题，保持Session唯一生成owner |
-| R02 | 部分迁移待总验：ApiSettingsState已建；表单/模型/连接组件待拆 | SettingsScreen只route/shell；API draft/方案CRUD/请求统一owner；ApiSettingsPage表单/模型管理/连接结果组件按独立改版理由拆，不用大参数袋假装解耦 |
-| R03 | 部分迁移待总验：字体IO已异步；页面分区待拆 | FontSettings：系统picker留Route，导入/删除状态协调与字体库/排版预览/命名弹窗分开；字体存储与provider读取分层 |
+| R01 | 1053→718 行；已拆 ChatDialogs/ChatRequestRunner/ChatScrollOverlays/ChatComposerPrefs/ChatCitations；Route+viewport controller 待拆 | NotebookChatTab：Route/Screen、会话配置、发送/编辑/重生成commands、视口controller；DAO/Prompt不留纯Screen；UiChatMessage与事件契约移到chat主题，保持Session唯一生成owner |
+| R02 | 1328→611 行；ApiSettingsState/Components/ListSection 已拆；剩余为单表单 Composable，需表单状态所有者才能再分 | SettingsScreen只route/shell；API draft/方案CRUD/请求统一owner；ApiSettingsPage表单/模型管理/连接结果组件按独立改版理由拆，不用大参数袋假装解耦 |
+| R03 | 593 行；字体 IO 已异步；两个弹窗与 scope/repo/fontKey 强耦合，需状态所有者才能再分 | FontSettings：系统picker留Route，导入/删除状态协调与字体库/排版预览/命名弹窗分开；字体存储与provider读取分层 |
 | R04 | 部分迁移待总验：AppShell/AppThemeColors已拆；bootstrap待拆 | MainActivity只Android生命周期/系统栏；Bootstrap、AppTheme、AppShell按职责组织；不复制启动主题策略 |
 | R05 | 已迁移待总验：Parser/Annotations/Render三分 | Markdown纯AST/增量/行内解析与Compose样式/渲染分离；原文与回答同协议；后台任务/取消与样式身份无竞态 |
 | R06 | 部分迁移待总验：几何/记忆已拆；gesture/settle待拆 | Reorder：几何/状态机、gesture/autoScroll、视觉settle、通用滚动记忆；ApiProfileListSection controller/row可分但同drag owner |
@@ -143,7 +143,13 @@ ChatSession的finally/取消/计数、有序写；SourceTagging算法内部状�
   - source-hygiene：Python tool tests、lightweight validation、i18n 生成一致性 全部 success。
   - android-jvm-check：两变体编译+全部 JVM 测试+lint+schema 生成、"Verify actual test execution"、结果汇总 全部 success。
   - android-device-check：`Run Android instrumentation tests on cloud emulator` 与 `Verify instrumentation tests actually ran` 均 success —— 即本批新增/扩展的 **FontStoreTransactionTest、ChatQueryIndexMigrationTest、NotebookPurgeTransactionTest 扩展、ReplySourceMigrationTest** 真实在云端模拟器执行并通过。
-  - [Build APK only 39016751490](https://github.com/zhouran200-ux/bu/actions/runs/39016751490) `completed/success`（build-apk、publish-preview）。
+  - [Build APK only 39016751490](https://github.com/zhouran200-ux/bu/actions/runs/39016751287) `completed/success`（build-apk、publish-preview）。
   - 本地以 `python tools/verify.py full` 复跑（静态检查+单测+release 编译+lint+插桩测试编译）→ exit 0；未在本地打包 APK、未启动模拟器（AGENTS.md 限制）。
 - 仍未完成/无法本地关闭：C03 增量解析性能基准、C04 滚动轨道几何与帧耗时、P02 大量会话内存、I01 长文峰值内存、I02 真实 Android 解析器 DTD 兼容、真实第三方中转/模型端点的协议兼容；以及 R01/R02/R03/R04/R06/R07/R08/R09/R10 中列出的进一步职责拆分。这些是测量性或增强性工作，不是已验证失败。
+- 批次32 R01 大文件拆分 + 云端复核整改：
+  - NotebookChatTab.kt 1053→718 行。按职责迁出而非均分：ChatDialogs.kt（删除撤销条/编辑弹窗/剪贴板）、ChatRequestRunner.kt（端点解析/history payload/session.start+LlmClient 调用，页面不再持有网络协议与 Prompt 构造）、ChatScrollOverlays.kt（撤销层/回到底部按钮，BoxScope 扩展）、ChatComposerPrefs.kt（reasoning/对话设置/方案选择持久化）、ChatCitations.kt（引用定位）。
+  - 迁移后清理 84 条失效 import；踩坑记录：getValue/setValue 只用于属性委托、不会以符号名出现在正文，按符号名扫描会被误删，已补回并用编译确认。
+  - 契约测试同步迁移归属（test_approved_ux_contract 的“回到底部”断言改查 ChatScrollOverlays.kt，followStream/animateScrollToItem 仍查页面调用点），行为断言未删。
+  - 子代理复核 3105fca 的 Actions 后落实三项：①test_inventory.py 增加 tools/test-baseline.json 最低测试数/suite 基线，测试类被静默丢弃会失败；②device job 三次 dependencyInsight 去掉 --no-daemon（--configuration/--dependency 是逐任务选项，无法合并为一次调用，先复用 daemon 降低冷启动）；③三个 workflow 的 ubuntu-latest 固定为 ubuntu-24.04，规避 2026-10-19 起的 Ubuntu 26 迁移对 cmdline-tools/KVM 路径的风险。另修正文档中写错的 Build APK run id。
+  - 定向验证：compileDebugKotlin + compileReleaseKotlin + testDebugUnitTest 通过；Python 契约 57 项通过；verify.py quick 100/100。全量矩阵仍交云端。
 - 不得跳过任务账本直接大规模搬目录。

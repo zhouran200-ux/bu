@@ -2,126 +2,47 @@ package com.lucent.app.ui
 
 import com.lucent.app.chat.UiChatMessage
 
-import android.content.ClipData
-import android.content.ClipboardManager
 import android.content.Context
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.shrinkVertically
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.draggable
-import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.wrapContentWidth
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.rounded.ContentCopy
-import androidx.compose.material.icons.rounded.Delete
-import androidx.compose.material.icons.rounded.Edit
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.rounded.History
-import androidx.compose.material.icons.rounded.ArrowDownward
-import androidx.compose.material.icons.rounded.Refresh
-import androidx.compose.material.icons.rounded.Stop
-import androidx.compose.material.icons.filled.Tune
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.BottomSheetDefaults
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.State
 import com.lucent.app.chat.ChatSessions
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.semantics.LiveRegionMode
-import androidx.compose.ui.semantics.liveRegion
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.lucent.app.data.ApiProfiles
 import com.lucent.app.data.AppDatabase
 import com.lucent.app.data.ChatMessage
@@ -129,15 +50,12 @@ import com.lucent.app.data.ChatScope
 import com.lucent.app.data.CitationRef
 import com.lucent.app.data.Note
 import com.lucent.app.data.ReasoningPreset
-import com.lucent.app.data.ReasoningResolver
 import com.lucent.app.data.SettingsCache
 import com.lucent.app.data.SettingsRepository
-import com.lucent.app.network.ApiSpec
-import com.lucent.app.network.ChatMessagePayload
-import com.lucent.app.network.LlmClient
-import kotlin.math.abs
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 
 
@@ -153,18 +71,7 @@ fun NotebookChatTab(
     val context = LocalContext.current
     val citationScope = rememberCoroutineScope()
     val openCitation: (CitationRef) -> Unit = { ref ->
-        val target = sourceNotes.firstOrNull { it.id == ref.sourceId }
-        citationScope.launch {
-            val index = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
-                target?.let { com.lucent.app.data.NovelSourceIndex.get(it) }
-            }
-            val reason = com.lucent.app.data.SourceCitations.rejectionReason(ref, index?.noteId, index?.revision)
-            when {
-                reason != null -> LucentToast.show(context, reason)
-                index?.tagged?.sliceOf(ref.sliceId) == null -> LucentToast.show(context, "引用切片不存在，无法定位原文")
-                else -> onOpenSource(index.noteId, ref.sliceId, index.revision)
-            }
-        }
+        openCitationTarget(citationScope, context, sourceNotes, ref, onOpenSource)
     }
     val session = remember(notebookId) { ChatSessions.forNotebook(context, notebookId) }
     DisposableEffect(session, notebookId) {
@@ -328,22 +235,8 @@ fun NotebookChatTab(
             return
         }
 
-        val specStr = matchedProfile?.spec?.lowercase().orEmpty()
-        val spec = when {
-            specStr.contains("google") || specStr.contains("gemini") -> ApiSpec.GOOGLE
-            specStr.contains("anthropic") || specStr.contains("claude") -> ApiSpec.ANTHROPIC
-            else -> ApiSpec.OPENAI
-        }
-
-        val baseUrl = matchedProfile?.baseUrl.orEmpty()
-        val apiKey = matchedProfile?.apiKey.orEmpty()
-        val rawEndpoint = specStr == "custom"
-
-        val resolvedReasoning = ReasoningResolver.resolve(
-            preset = reasoningPreset,
-            provider = specStr,
-            model = targetModel
-        )
+        val endpoint = resolveChatEndpoint(matchedProfile)
+        val resolvedReasoning = resolveChatReasoning(reasoningPreset, matchedProfile, targetModel)
         val effortLabel = resolvedReasoning.displayTag
 
         if (sourceNotes.size > 1) {
@@ -353,14 +246,9 @@ fun NotebookChatTab(
         val sourceNote = sourceNotes.singleOrNull()
         val customPrompt = systemPrompt
 
-        val historyPayload = messages.takeWhile { it.id != aiMsgId }.takeLast(historyRounds * 2).map {
-            ChatMessagePayload(
-                role = if (it.role == "assistant") "assistant" else "user",
-                content = it.content
-            )
-        }
+        val historyPayload = buildChatHistory(messages, aiMsgId, historyRounds)
 
-        if (apiKey.isBlank()) {
+        if (endpoint.apiKey.isBlank()) {
             val pendingAi = UiChatMessage(
                 id = aiMsgId,
                 role = "assistant",
@@ -378,33 +266,17 @@ fun NotebookChatTab(
                 notificationPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
             }
             try {
-                var knowledgeBasePrompt = ""
-                session.start(aiMsgId, effortLabel, sourceBinding = {
-                    val index = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
-                        sourceNote?.let { com.lucent.app.data.NovelSourceIndex.get(it) }
-                    }
-                    knowledgeBasePrompt = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
-                        com.lucent.app.data.NovelPromptBuilder.system(index, customPrompt)
-                    }
-                    index?.noteId to index?.revision
-                }) { handle, onChunk ->
-                    LlmClient.chatStream(
-                        baseUrl = baseUrl,
-                        spec = spec,
-                        apiKey = apiKey,
-                        model = targetModel,
-                        messages = historyPayload.mapIndexed { index, message ->
-                            if (index == historyPayload.lastIndex && message.role == "user")
-                                message.copy(content = com.lucent.app.data.NovelPromptBuilder.user(message.content, sourceNote != null))
-                            else message
-                        },
-                        systemInstruction = knowledgeBasePrompt,
-                        reasoningConfig = resolvedReasoning,
-                        handle = handle,
-                        rawEndpoint = rawEndpoint,
-                        onChunk = onChunk
-                    )
-                }
+                startChatStream(
+                    session = session,
+                    answerId = aiMsgId,
+                    effortLabel = effortLabel,
+                    sourceNote = sourceNote,
+                    customPrompt = customPrompt,
+                    endpoint = endpoint,
+                    model = targetModel,
+                    historyPayload = historyPayload,
+                    resolvedReasoning = resolvedReasoning
+                )
             } catch (e: Exception) {
                 val failed = UiChatMessage(aiMsgId, "assistant",
                     "【无法启动后台生成】${e.message ?: "请重试"}", timestamp = answerStamp)
@@ -717,10 +589,7 @@ fun NotebookChatTab(
                 reasoningPreset = reasoningPreset,
                 onSelectReasoning = {
                     reasoningPreset = it
-                    prefs.edit()
-                        .putString("reasoning_preset_$notebookId", it.key)
-                        .putString("reasoning_$notebookId", it.key)
-                        .apply()
+                    saveReasoningSelection(prefs, notebookId, it)
                 },
                 onOpenHistory = { openHistorySheet() },
                 onOpenDialogueSettings = { showDialogueSettingsDialog = true },
@@ -733,69 +602,26 @@ fun NotebookChatTab(
             )
         }
 
-        AnimatedVisibility(
-            visible = pendingDelete != null,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .imePadding()
-                .then(
-                    if (!isImeVisible) Modifier.navigationBarsPadding()
-                    else Modifier
-                )
-                .padding(bottom = 112.dp),
-            enter = if (barMotionOn) slideInVertically(
-                animationSpec = LucentMotion.toIntOffset(LucentMotion.Sheet)
-            ) { it } + fadeIn(tween(180)) else fadeIn(tween(0)),
-            exit = if (barMotionOn) slideOutVertically(
-                animationSpec = LucentMotion.toIntOffset(LucentMotion.Firm)
-            ) { it } + fadeOut(tween(150)) else fadeOut(tween(0))
-        ) {
-            lastDelete.value?.let { pending ->
-                DeleteUndoBar(
-                    messageId = pending.message.id,
-                    label = if (pending.message.role == "user") "已删除提问" else "已删除回答",
-                    onUndo = { undoDelete() },
-                    onDismiss = { settlePendingDelete() }
-                )
-            }
-        }
+        ChatDeleteUndoLayer(
+            pending = pendingDelete,
+            motionOn = barMotionOn,
+            imeVisible = isImeVisible,
+            onUndo = { undoDelete() },
+            onDismiss = { settlePendingDelete() }
+        )
 
-        AnimatedVisibility(
+        ChatScrollToBottomButton(
             visible = !atBottom && !isImeVisible && messages.isNotEmpty(),
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .navigationBarsPadding()
-                .padding(end = 16.dp, bottom = 118.dp),
-            enter = if (barMotionOn) fadeIn(tween(160)) + slideInVertically(tween(160)) { it } else fadeIn(tween(0)),
-            exit = if (barMotionOn) fadeOut(tween(120)) + slideOutVertically(tween(120)) { it } else fadeOut(tween(0))
-        ) {
-            Surface(
-                shape = CircleShape,
-                color = glassPanelColor(),
-                tonalElevation = 0.dp,
-                shadowElevation = 4.dp,
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(CircleShape)
-                    .clickable {
-                        followStream = true
-                        scope.launch {
-                            listState.animateScrollToItem(
-                                (listState.layoutInfo.totalItemsCount - 1).coerceAtLeast(0)
-                            )
-                        }
-                    }
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        Icons.Rounded.ArrowDownward,
-                        contentDescription = "回到底部",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(20.dp)
+            motionOn = barMotionOn,
+            onClick = {
+                followStream = true
+                scope.launch {
+                    listState.animateScrollToItem(
+                        (listState.layoutInfo.totalItemsCount - 1).coerceAtLeast(0)
                     )
                 }
             }
-        }
+        )
 
         if (showHistorySheet) {
             ChatHistorySheet(
@@ -834,11 +660,7 @@ fun NotebookChatTab(
                 onSave = { p, r ->
                     systemPrompt = p
                     historyRounds = r
-                    prefs.edit()
-                        .putString("prompt_$notebookId", p)
-                        .putInt("history_rounds_$notebookId", r)
-                        .remove("temperature_$notebookId")
-                        .apply()
+                    saveDialogueSettings(prefs, notebookId, p, r)
                     LucentToast.show(context, "对话设置已保存")
                 },
                 onDismiss = { showDialogueSettingsDialog = false }
@@ -855,11 +677,7 @@ fun NotebookChatTab(
                     selectedProfileId = profile.id
                     selectedProfileName = profile.name
                     selectedModel = modelName
-                    prefs.edit()
-                        .putString("profile_id_$notebookId", profile.id)
-                        .putString("profile_name_$notebookId", profile.name)
-                        .putString("model_$notebookId", modelName)
-                        .apply()
+                    saveProfileSelection(prefs, notebookId, profile, modelName)
                 },
                 onDismiss = { showProfileModelPickerSheet = false },
                 visible = active && com.lucent.app.AppNavigation.apiReturnNotebookId != notebookId,
@@ -895,159 +713,4 @@ fun NotebookChatTab(
             )
         }
     }
-}
-
-
-private data class PendingChatDelete(
-    val message: UiChatMessage,
-    val index: Int,
-    val viewport: ReadingPosition
-)
-
-private const val SWIPE_FRACTION = 0.34f
-private const val FLING_VELOCITY = 1200f
-
-@Composable
-private fun DeleteUndoBar(
-    messageId: Long,
-    label: String,
-    onUndo: () -> Unit,
-    onDismiss: () -> Unit
-) {
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    val slide = remember { Animatable(0f) }
-    var barWidth by remember { mutableStateOf(0f) }
-    val motionOn = LocalBackgroundEnvironment.current.motionEnabled
-
-    LaunchedEffect(messageId) {
-        slide.snapTo(0f)
-        delay(10_000)
-        onDismiss()
-    }
-
-    Row(
-        modifier = Modifier
-            .wrapContentWidth()
-            .semantics { liveRegion = LiveRegionMode.Polite }
-            .onSizeChanged { barWidth = it.width.toFloat() }
-            .graphicsLayer {
-                translationX = slide.value
-                alpha = (1f - abs(slide.value) / barWidth.coerceAtLeast(1f)).coerceIn(0f, 1f)
-            }
-            .draggable(
-                state = rememberDraggableState { delta ->
-                    scope.launch { slide.snapTo(slide.value + delta) }
-                },
-                orientation = Orientation.Horizontal,
-                onDragStopped = { velocity ->
-                    val travel = barWidth.coerceAtLeast(1f)
-                    val distance = abs(slide.value)
-                    val kept = distance < travel * SWIPE_FRACTION && abs(velocity) < FLING_VELOCITY
-                    val direction = if (distance > 1f) slide.value else velocity
-                    scope.launch {
-                        if (kept) {
-                            if (motionOn) slide.animateTo(0f, LucentMotion.toSpring(LucentMotion.Settle)) else slide.snapTo(0f)
-                        } else {
-                            val target = if (direction >= 0f) travel else -travel
-                            if (motionOn) {
-                                slide.animateTo(target, LucentMotion.toSpring(LucentMotion.Firm))
-                            } else {
-                                slide.snapTo(target)
-                            }
-                            onDismiss()
-                        }
-                    }
-                }
-            )
-            .frostedGlass(cornerRadius = 22.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = label,
-            color = LocalOnGradient.current,
-            fontSize = 12.sp,
-            modifier = Modifier.padding(start = 14.dp)
-        )
-        TextButton(
-            onClick = {
-                Haptics.tick(context)
-                onUndo()
-            },
-            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
-            modifier = Modifier.padding(start = 4.dp)
-        ) {
-            Text(text = "撤销", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-        }
-    }
-}
-
-@Composable
-private fun EditMessageDialog(
-    title: String,
-    subtitle: String,
-    initial: String,
-    confirmLabel: String,
-    onConfirm: (String) -> Unit,
-    onDismiss: () -> Unit
-) {
-    val onGradient = LocalOnGradient.current
-    val onGradientMuted = LocalOnGradientMuted.current
-    var text by remember { mutableStateOf(initial) }
-    val keepEditing = rememberImeVisibleOnOpen()
-    val inputFocus = remember { androidx.compose.ui.focus.FocusRequester() }
-
-    AlertDialog(
-        shape = RoundedCornerShape(24.dp),
-        containerColor = glassPanelColor(),
-        tonalElevation = 0.dp,
-        onDismissRequest = onDismiss,
-        title = { Text(title, fontSize = LucentTitles.SectionSize, fontWeight = LucentTitles.SectionWeight) },
-        text = {
-            PreserveEditingKeyboardOnOpen(keepEditing, inputFocus)
-            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                Text(subtitle, color = onGradientMuted, fontSize = 12.sp, lineHeight = 17.sp)
-                Spacer(modifier = Modifier.height(10.dp))
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(onGradient.copy(alpha = 0.06f))
-                        .padding(horizontal = 12.dp, vertical = 10.dp)
-                ) {
-                    BasicTextField(
-                        value = text,
-                        onValueChange = { text = it },
-                        textStyle = TextStyle(fontSize = 14.sp, color = onGradient, lineHeight = 21.sp),
-                        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = 96.dp, max = 220.dp)
-                            .focusRequester(inputFocus),
-                        decorationBox = { inner ->
-                            if (text.isEmpty()) {
-                                Text("在这里输入…", color = onGradientMuted.copy(alpha = 0.6f), fontSize = 14.sp)
-                            }
-                            inner()
-                        }
-                    )
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = { if (text.isNotBlank()) onConfirm(text.trim()) }) {
-                Text(confirmLabel, color = MaterialTheme.colorScheme.primary)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("取消") }
-        }
-    )
-}
-
-internal fun copyTextToClipboard(context: Context, text: String) {
-    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-    val clip = ClipData.newPlainText("Copied Text", text)
-    clipboard.setPrimaryClip(clip)
-    com.lucent.app.ui.LucentToast.show(context, "已复制到剪贴板")
 }

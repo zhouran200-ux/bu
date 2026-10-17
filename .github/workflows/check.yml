@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   source-hygiene:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v6
@@ -45,7 +45,7 @@ jobs:
           if-no-files-found: warn
 
   android-jvm-check:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
@@ -90,7 +90,7 @@ jobs:
           if-no-files-found: warn
 
   android-device-check:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@v6
@@ -112,12 +112,15 @@ jobs:
           yes | "$SDKMANAGER" --licenses > /dev/null 2>&1 || true
           "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0"
       - name: Record application and test serialization dependencies
+        # dependencyInsight takes --configuration/--dependency per task, so the three
+        # reports cannot share one invocation. Reuse the Gradle daemon instead of
+        # paying a cold configuration three times (--no-daemon forced three cold starts).
         run: |
           set -o pipefail
           mkdir -p ci-reports
-          ./gradlew :app:dependencyInsight --configuration debugRuntimeClasspath --dependency kotlinx-serialization --no-daemon --console=plain 2>&1 | tee ci-reports/app-serialization.log
-          ./gradlew :app:dependencyInsight --configuration debugAndroidTestRuntimeClasspath --dependency kotlinx-serialization --no-daemon --console=plain 2>&1 | tee ci-reports/test-serialization.log
-          ./gradlew :app:dependencyInsight --configuration debugAndroidTestRuntimeClasspath --dependency room-migration --no-daemon --console=plain 2>&1 | tee ci-reports/room-migration.log
+          ./gradlew :app:dependencyInsight --configuration debugRuntimeClasspath --dependency kotlinx-serialization --console=plain 2>&1 | tee ci-reports/app-serialization.log
+          ./gradlew :app:dependencyInsight --configuration debugAndroidTestRuntimeClasspath --dependency kotlinx-serialization --console=plain 2>&1 | tee ci-reports/test-serialization.log
+          ./gradlew :app:dependencyInsight --configuration debugAndroidTestRuntimeClasspath --dependency room-migration --console=plain 2>&1 | tee ci-reports/room-migration.log
       - name: Run Android instrumentation tests on cloud emulator
         if: ${{ !cancelled() }}
         uses: reactivecircus/android-emulator-runner@v2

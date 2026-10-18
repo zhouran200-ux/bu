@@ -252,7 +252,13 @@ class SettingsRepository(context: Context) {
 
     internal suspend fun mutateApiProfiles(command: ApiProfileMutation) {
         val committed = context.settingsDataStore.edit { prefs ->
-            val profiles = ApiProfiles.parseStored(prefs[SettingsKeys.API_PROFILES].orEmpty()) ?: ApiProfiles.DEFAULT_PROFILES
+            val stored = prefs[SettingsKeys.API_PROFILES].orEmpty()
+            val profiles = ApiProfiles.parseStored(stored)
+                ?: if (stored.isBlank()) {
+                    ApiProfiles.DEFAULT_PROFILES
+                } else {
+                    error("API 配置无法解析，已阻止覆盖写入")
+                }
             when (command) {
                 is ApiProfileMutation.Add -> {
                     check(profiles.size < ApiProfiles.MAX) { "方案数量已达上限" }

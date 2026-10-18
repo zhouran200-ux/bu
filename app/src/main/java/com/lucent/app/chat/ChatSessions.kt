@@ -66,18 +66,10 @@ object ChatSessions {
                         firstTokenMillis = message.firstTokenMillis, generationMillis = message.generationMillis,
                         cachedTokensKnown = message.cachedTokensKnown,
                         sourceNoteId = message.sourceNoteId, sourceRevision = message.sourceRevision)
-                }
+                }.filter { it.role != "assistant" || it.content.isNotBlank() || !it.reasoningText.isNullOrBlank() }
             },
             save = { message ->
-                dao.upsert(ChatMessage(
-                    id = message.id, role = message.role, content = message.content,
-                    timestamp = message.timestamp, conversationId = conversationId,
-                    reasoningText = message.reasoningText, answerSeconds = message.answerSeconds,
-                    tokens = message.promptTokens, cachedTokens = message.cachedTokens,
-                    firstTokenMillis = message.firstTokenMillis, generationMillis = message.generationMillis,
-                    cachedTokensKnown = message.cachedTokensKnown,
-                    sourceNoteId = message.sourceNoteId, sourceRevision = message.sourceRevision
-                ))
+                dao.upsert(mergeChatMessage(dao.getById(message.id), message, conversationId))
             },
             updateContent = { id, content -> dao.updateContent(id, content) },
             deleteMessagesByIds = { ids -> dao.deleteByIds(ids) },
@@ -132,4 +124,33 @@ object ChatSessions {
     fun stopAll() {
         sessions.values.forEach { it.stop() }
     }
+}
+
+internal fun mergeChatMessage(
+    existing: ChatMessage?,
+    message: UiChatMessage,
+    conversationId: Long
+): ChatMessage {
+    val base = existing ?: ChatMessage(
+        id = message.id,
+        role = message.role,
+        content = message.content,
+        timestamp = message.timestamp,
+        conversationId = conversationId
+    )
+    return base.copy(
+        role = message.role,
+        content = message.content,
+        timestamp = message.timestamp,
+        conversationId = conversationId,
+        reasoningText = message.reasoningText,
+        answerSeconds = message.answerSeconds,
+        tokens = message.promptTokens,
+        cachedTokens = message.cachedTokens,
+        firstTokenMillis = message.firstTokenMillis,
+        generationMillis = message.generationMillis,
+        cachedTokensKnown = message.cachedTokensKnown,
+        sourceNoteId = message.sourceNoteId,
+        sourceRevision = message.sourceRevision
+    )
 }

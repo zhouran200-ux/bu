@@ -184,7 +184,7 @@
 ## 结论与优先缺口
 
 1. **picker/history/settings：本轮有真实Compose行为定义，不应再笼统写“只有源码契约”**。P/A/H/S四类共19个当前UI方法（其中两项由旧用例加强）覆盖选择/草稿/确认/取消/空态/历史回调等；H3的初始定位只证明历史sheet，不证明profile picker首帧。D另增10个共享抽屉交互定义；均不能从存在测试推断本轮设备通过。
-2. **IME需区分已补与仍缺**：C已真实测编辑焦点保持/继续编辑、anchor toggle及preset选择；W已测实际Dialog flag生命周期和Activity不受污染。厂商IME可见性、Dialogue已显/未显分支与Back优先级、NotebookChatTab外点透传/不重开仍缺；S3主动清焦点不能补这些缺口。
+2. **IME需区分已补与仍缺**：C已真实测编辑焦点保持/继续编辑、anchor toggle及preset选择；W已测实际Dialog flag生命周期和Activity不受污染。厂商IME可见性、Dialogue已显/未显分支与Back优先级、NotebookChatTab外点透传/不重开仍缺。S3原本在编辑后按系统返回，因该编辑型弹窗保留键盘、真实输入法先消费返回键而在API33/35超时；现改为与本批共享抽屉测试相同的遮罩取消路径并断言遮罩可触，草稿不保存与重开还原原值断言不变。该用例因此不覆盖Back优先级，缺口如实保留。
 3. **reorder已补生产组件真实交互，仍不夸大为全链路**：R的7例覆盖真实API长按、边缘实滚动、保存禁用到completion成功/失败、无变更/取消/失活恢复，以及生产Lazy edge-effect结束/取消后停止。消费量几何仍由纯状态单测补足；真实DAO落盘、整个SettingsScreen/Notebooks页面父接线及旧token竞争仍部分/缺口。不可把D的drawer拖拽当reorder覆盖。
 4. **selection需分开**：picker/history selected语义已有；F新增selectedCard双向/禁动画像素断言与Theme行/radio单回调/locked行为。没有真实Repository写入次数证据；聊天文本选择已有矩阵两行所列4例真实长按/句柄出现、Key.Copy系统剪贴板与按钮副作用隔离定义；句柄拖动跨段、系统toolbar点击及操作后选区保持仍缺，不用selectedCard动画替代文本选择测试。
 5. 颜色/材质/布局/唯一owner/许可证/退役符号/分层/CI配置本来就适合保留结构护栏。行为补测与护栏互补，不以行数或“有同名Kotlin类”替代证明。

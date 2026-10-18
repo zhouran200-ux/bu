@@ -29,20 +29,20 @@ object FontStore {
 
     data class FontIndex(val slots: List<FontSlot>)
 
-    @Volatile
-    private var cachedIndex: FontIndex? = null
+    private val cachedIndexes = java.util.concurrent.ConcurrentHashMap<String, FontIndex>()
 
     private fun dir(context: Context): File = File(context.filesDir, DIR)
 
 
     @Synchronized
     fun index(context: Context): FontIndex {
-        cachedIndex?.let { return it }
         val dir = dir(context)
         val indexFile = File(dir, INDEX_FILE)
+        val cached = cachedIndexes[dir.absolutePath]
+        if (cached != null && indexFile.exists()) return cached
         if (!indexFile.exists() && !File(dir, INDEX_FILE + ".bak").exists()) {
             val empty = FontIndex(emptyList())
-            cachedIndex = empty
+            cachedIndexes[dir.absolutePath] = empty
             return empty
         }
 
@@ -62,14 +62,14 @@ object FontStore {
         } catch (_: Throwable) {
             rebuildFromFiles(context)
         }
-        cachedIndex = loaded
+        cachedIndexes[dir.absolutePath] = loaded
         return loaded
     }
 
     @Synchronized
     private fun rebuildFromFiles(context: Context): FontIndex {
-        cachedIndex = null
         val dir = dir(context)
+        cachedIndexes.remove(dir.absolutePath)
         val files = dir.listFiles()?.filter { f ->
             safeFontFile(dir, f.name) != null && f.isFile && f.length() > 0L && listOf(".ttf", ".otf", ".ttc").any {
                 f.name.lowercase().endsWith(it)
@@ -77,7 +77,7 @@ object FontStore {
         }.orEmpty().sortedBy { it.name }
         if (files.isEmpty()) {
             val empty = FontIndex(emptyList())
-            cachedIndex = empty
+            cachedIndexes[dir.absolutePath] = empty
             return empty
         }
         val slots = files.take(MAX_FONTS).map { f ->
@@ -89,6 +89,7 @@ object FontStore {
             writeIndex(context, rebuilt)
         } catch (_: Throwable) {
         }
+        cachedIndexes[dir.absolutePath] = rebuilt
         return rebuilt
     }
 
@@ -106,7 +107,7 @@ object FontStore {
         try {
             output.write(root.toString().toByteArray(Charsets.UTF_8))
             atomic.finishWrite(output)
-            cachedIndex = idx
+            cachedIndexes[dir.absolutePath] = idx
         } catch (failure: Throwable) {
             atomic.failWrite(output)
             throw failure

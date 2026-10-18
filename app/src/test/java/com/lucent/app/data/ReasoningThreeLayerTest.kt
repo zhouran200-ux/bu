@@ -296,6 +296,16 @@ class ReasoningThreeLayerTest {
     }
 
     @Test
+    fun unrecognisedModelsSendNoReasoningParameters() {
+        val llama = ReasoningResolver.resolve(ReasoningPreset.MAXIMUM, "openai", "llama-3.3-70b")
+        assertTrue(llama.isAuto)
+        assertEquals("模型默认", llama.displayTag)
+
+        val senseNova = ReasoningResolver.resolve(ReasoningPreset.DEEP, "openai", "SenseChat-5")
+        assertTrue(senseNova.isAuto)
+    }
+
+    @Test
     fun everyPresetStaysInsideTheDeclaredLevels() {
         ModelCapabilityRegistry.getAll().forEach { model ->
             val levels = model.reasoning.levels

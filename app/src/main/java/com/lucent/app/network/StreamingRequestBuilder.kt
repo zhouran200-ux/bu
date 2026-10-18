@@ -8,8 +8,10 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 internal fun anthropicOutputCap(model: String): Int = when {
-    model.contains("claude-3-haiku") || model.contains("claude-3-sonnet") -> 4096
+    model.contains("claude-3-opus") || model.contains("claude-3-sonnet") || model.contains("claude-3-haiku") -> 4096
     model.contains("claude-2") -> 4096
+    model.contains("claude-3-5") || model.contains("claude-3.5") || model.contains("claude35") -> 8192
+    model.contains("claude-3-7") || model.contains("claude-3.7") || model.contains("claude37") -> 8192
     else -> Int.MAX_VALUE
 }
 
@@ -61,7 +63,8 @@ internal object StreamingRequestBuilder {
                         }
                         val budget = reasoningConfig.claudeBudgetTokens
                         if (budget != null && budget > 0) {
-                            put("max_completion_tokens", budget)
+                            val cap = anthropicOutputCap(cleanModel)
+                            put("max_completion_tokens", minOf(budget, cap - 1024).coerceAtLeast(1024))
                         }
                     }
                 }

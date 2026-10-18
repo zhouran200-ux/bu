@@ -115,7 +115,13 @@ object ModelCapabilityRegistry {
     }
 
     private fun openAiControl(key: String): ReasoningControl {
-        return if (key.contains("gpt4") || key.contains("gpt3")) ReasoningControl.NONE else ReasoningControl.OPENAI_EFFORT
+        return when {
+            key.contains("gpt4") || key.contains("gpt3") || key.contains("gptoss") -> ReasoningControl.NONE
+            key.startsWith("o1") || key.startsWith("o3") || key.startsWith("o4") -> ReasoningControl.OPENAI_EFFORT
+            key.contains("gpt5") || key.contains("gpt6") -> ReasoningControl.OPENAI_EFFORT
+            key.contains("think") || key.contains("reason") -> ReasoningControl.OPENAI_EFFORT
+            else -> ReasoningControl.NONE
+        }
     }
 
     private fun openAiLevelsFor(key: String): List<String> {

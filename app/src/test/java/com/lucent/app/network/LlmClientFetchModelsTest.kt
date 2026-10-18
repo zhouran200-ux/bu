@@ -150,7 +150,7 @@ class LlmClientFetchModelsTest {
         fetch(ApiSpec.OPENAI, """{"data":[{"id":"deepseek-r1"},{"id":"plain-model"}]}""").getOrThrow()
         assertEquals(ReasoningControl.DEEPSEEK_EFFORT, ModelCapabilityRegistry.find("deepseek-r1")?.reasoning?.control)
         assertEquals(
-            ReasoningControl.OPENAI_EFFORT,
+            ReasoningControl.NONE,
             ModelCapabilityRegistry.find("plain-model")?.reasoning?.control
         )
         assertEquals(

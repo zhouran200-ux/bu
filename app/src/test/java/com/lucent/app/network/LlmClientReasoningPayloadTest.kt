@@ -91,7 +91,7 @@ class LlmClientReasoningPayloadTest {
     @Test(timeout = 15000)
     fun claudeBudgetModelSendsATokenBudgetNotAnEffort() = runBlocking {
         val json = org.json.JSONObject(send(ReasoningPreset.DEEP, "claude-3-5-sonnet"))
-        assertEquals(16384, json.optInt("max_completion_tokens"))
+        assertEquals(7168, json.optInt("max_completion_tokens"))
         assertNull(json.opt("reasoning_effort"))
         assertNull(json.opt("reasoning"))
     }
@@ -112,6 +112,35 @@ class LlmClientReasoningPayloadTest {
         assertTrue(json.optBoolean("stream"))
         assertEquals("claude-3-7-sonnet", json.optString("model"))
         assertFalse(json.optJSONArray("messages")!!.length() == 0)
+    }
+
+    @Test
+    fun anthropicOutputCapsKeepEveryRequestLegal() {
+        assertEquals(4096, anthropicOutputCap("claude-3-opus"))
+        assertEquals(8192, anthropicOutputCap("claude-3-5-sonnet"))
+        assertEquals(8192, anthropicOutputCap("claude-3-7-sonnet"))
+        assertEquals(Int.MAX_VALUE, anthropicOutputCap("claude-opus-5-5"))
+    }
+
+    @Test
+    fun anthropicBudgetRequestNeverExceedsTheModelCap() {
+        val config = ReasoningResolver.resolve(ReasoningPreset.MAXIMUM, "anthropic", "claude-3-5-sonnet")
+        val request = StreamingRequestBuilder.build(
+            baseUrl = "https://api.anthropic.com",
+            spec = ApiSpec.ANTHROPIC,
+            apiKey = "test-key",
+            model = "claude-3-5-sonnet",
+            messages = listOf(ChatMessagePayload("user", "ping")),
+            systemInstruction = "",
+            reasoningConfig = config,
+            rawEndpoint = false
+        ).build()
+        val body = okio.Buffer().also { request.body!!.writeTo(it) }.readUtf8()
+        val json = org.json.JSONObject(body)
+        val maxTokens = json.optInt("max_tokens")
+        val budget = json.optJSONObject("thinking")!!.optInt("budget_tokens")
+        assertEquals(8192, maxTokens)
+        assertTrue(budget in 1024..maxTokens)
     }
 
     @Test(timeout = 15000)

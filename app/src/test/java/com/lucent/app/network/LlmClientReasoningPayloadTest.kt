@@ -101,7 +101,7 @@ class LlmClientReasoningPayloadTest {
         val json = org.json.JSONObject(send(ReasoningPreset.MAXIMUM, "gpt-6.1-sol"))
         val reasoning = json.optJSONObject("reasoning")
         assertEquals("pro", reasoning?.optString("mode"))
-        assertEquals("xhigh", reasoning?.optString("effort"))
+        assertEquals("max", reasoning?.optString("effort"))
         assertNull(json.opt("reasoning_effort"))
     }
 

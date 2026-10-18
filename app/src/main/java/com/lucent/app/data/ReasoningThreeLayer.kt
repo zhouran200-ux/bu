@@ -127,7 +127,7 @@ class OpenAiReasoningMapper : ReasoningMapper {
             ReasoningPreset.FAST -> "low"
             ReasoningPreset.BALANCED -> "medium"
             ReasoningPreset.DEEP -> "high"
-            ReasoningPreset.MAXIMUM -> if (isGpt6) "xhigh" else "high"
+            ReasoningPreset.MAXIMUM -> "max"
         }
         val effort = ReasoningLevels.supported(desired, model.reasoning.levels)
         val modeStr = if (isGpt6 && (preset == ReasoningPreset.DEEP || preset == ReasoningPreset.MAXIMUM)) "pro" else null

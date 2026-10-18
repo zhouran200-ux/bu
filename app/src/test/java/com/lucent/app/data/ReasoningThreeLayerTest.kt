@@ -47,24 +47,27 @@ class ReasoningThreeLayerTest {
         assertEquals("pro", deepConfig.openAiMode)
 
         val maxConfig = ReasoningResolver.resolve(ReasoningPreset.MAXIMUM, "openai", "gpt-6.1-sol")
-        assertEquals("xhigh", maxConfig.openAiEffort)
+        assertEquals("max", maxConfig.openAiEffort)
         assertEquals("pro", maxConfig.openAiMode)
     }
 
     @Test
     fun testClaudeReasoningResolution() {
-        val autoConfig = ReasoningResolver.resolve(ReasoningPreset.AUTO, "anthropic", "claude-3-7-sonnet")
+        val autoConfig = ReasoningResolver.resolve(ReasoningPreset.AUTO, "anthropic", "claude-opus-5-5")
         assertTrue(autoConfig.isAuto)
         assertNull(autoConfig.claudeEffort)
 
-        val fastConfig = ReasoningResolver.resolve(ReasoningPreset.FAST, "anthropic", "claude-3-7-sonnet")
+        val fastConfig = ReasoningResolver.resolve(ReasoningPreset.FAST, "anthropic", "claude-opus-5-5")
         assertEquals("low", fastConfig.claudeEffort)
 
-        val deepConfig = ReasoningResolver.resolve(ReasoningPreset.DEEP, "anthropic", "claude-3-7-sonnet")
+        val balancedConfig = ReasoningResolver.resolve(ReasoningPreset.BALANCED, "anthropic", "claude-opus-5-5")
+        assertEquals("medium", balancedConfig.claudeEffort)
+
+        val deepConfig = ReasoningResolver.resolve(ReasoningPreset.DEEP, "anthropic", "claude-opus-5-5")
         assertEquals("high", deepConfig.claudeEffort)
 
-        val maxConfig = ReasoningResolver.resolve(ReasoningPreset.MAXIMUM, "anthropic", "claude-3-7-sonnet")
-        assertEquals("high", maxConfig.claudeEffort)
+        val maxConfig = ReasoningResolver.resolve(ReasoningPreset.MAXIMUM, "anthropic", "claude-opus-5-5")
+        assertEquals("max", maxConfig.claudeEffort)
     }
 
     @Test
@@ -140,7 +143,7 @@ class ReasoningThreeLayerTest {
         assertEquals("high", o3.openAiEffort)
 
         val gpt6 = ReasoningResolver.resolve(ReasoningPreset.MAXIMUM, "openai", "gpt-6.1-sol")
-        assertEquals("xhigh", gpt6.openAiEffort)
+        assertEquals("max", gpt6.openAiEffort)
         assertEquals("pro", gpt6.openAiMode)
 
         val customReasoner = ReasoningResolver.resolve(ReasoningPreset.DEEP, "openai", "custom-reasoner-v1")
@@ -152,24 +155,35 @@ class ReasoningThreeLayerTest {
         val gpt6 = ModelCapabilityRegistry.find("gpt-6.1-sol")
         assertTrue(gpt6 != null && gpt6.reasoning.supported)
         assertEquals(ReasoningControl.OPENAI_EFFORT, gpt6?.reasoning?.control)
+        assertEquals(listOf("low", "medium", "high", "xhigh", "max"), gpt6?.reasoning?.levels)
 
-        val gemini35 = ModelCapabilityRegistry.find("gemini-3.5-flash")
-        assertTrue(gemini35 != null && gemini35.reasoning.supported)
-        assertEquals(ReasoningControl.GEMINI_THINKING_LEVEL, gemini35?.reasoning?.control)
+        val gemini = ModelCapabilityRegistry.find("gemini-3.8-flash")
+        assertTrue(gemini != null && gemini.reasoning.supported)
+        assertEquals(ReasoningControl.GEMINI_THINKING_LEVEL, gemini?.reasoning?.control)
 
-        val r1 = ModelCapabilityRegistry.find("deepseek-r1")
-        assertTrue(r1 != null && r1.reasoning.supported)
-        assertEquals(ReasoningControl.DEEPSEEK_EFFORT, r1?.reasoning?.control)
+        val deepseek = ModelCapabilityRegistry.find("deepseek-v4-pro")
+        assertTrue(deepseek != null && deepseek.reasoning.supported)
+        assertEquals(ReasoningControl.DEEPSEEK_EFFORT, deepseek?.reasoning?.control)
 
-        val gpt4o = ModelCapabilityRegistry.find("gpt-4o")
-        assertTrue(gpt4o != null && !gpt4o.reasoning.supported)
-        assertEquals(ReasoningControl.NONE, gpt4o?.reasoning?.control)
+        val claude = ModelCapabilityRegistry.find("claude-opus-5-5")
+        assertEquals(ReasoningControl.ANTHROPIC_EFFORT, claude?.reasoning?.control)
 
-        val gemini15 = ModelCapabilityRegistry.find("gemini-1.5-flash")
-        assertTrue(gemini15 != null && !gemini15.reasoning.supported)
+        val glm = ModelCapabilityRegistry.find("glm-5.3")
+        assertEquals(ReasoningControl.ZHIPU_EFFORT, glm?.reasoning?.control)
+        assertEquals(listOf("low", "high", "max"), glm?.reasoning?.levels)
 
-        val deepseekV3 = ModelCapabilityRegistry.find("deepseek-v3")
-        assertTrue(deepseekV3 != null && !deepseekV3.reasoning.supported)
+        val qwen = ModelCapabilityRegistry.find("qwen3.8-max")
+        assertEquals(ReasoningControl.QWEN_EFFORT, qwen?.reasoning?.control)
+
+        val gpt4o = ModelCapabilityRegistry.findOrRegister("gpt-4o", "openai")
+        assertTrue(!gpt4o.reasoning.supported)
+        assertEquals(ReasoningControl.NONE, gpt4o.reasoning.control)
+
+        val gemini15 = ModelCapabilityRegistry.findOrRegister("gemini-1.5-flash", "google")
+        assertTrue(!gemini15.reasoning.supported)
+
+        val deepseekV3 = ModelCapabilityRegistry.findOrRegister("deepseek-v3", "deepseek")
+        assertTrue(!deepseekV3.reasoning.supported)
 
         val dynamicModel = ModelCapabilityRegistry.findOrRegister("custom-reasoner-v1", "openai")
         assertTrue(dynamicModel.reasoning.supported)

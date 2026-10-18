@@ -39,11 +39,11 @@ class CountSliderReorderContractTest(unittest.TestCase):
         page = (UI / "settings/ApiSettingsPage.kt").read_text(encoding="utf-8")
         section = (UI / "settings/ApiProfileListSection.kt").read_text(encoding="utf-8")
         self.assertIn("val dragState = remember { mutableStateOf<ProfileDrag?>(null) }", page)
-        self.assertIn("val settled = dragState.value == null", page)
+        save = (UI / "settings/ApiProfileSaveButton.kt").read_text(encoding="utf-8")
+        self.assertIn("ApiProfileSaveButton(", page)
         self.assertIn("dragState = dragState", page)
         self.assertIn("var drag by dragState", section)
-        save = page.split("text = S.saveApi,", 1)[1].split("onClick =", 1)[0]
-        self.assertIn("enabled = settled", save)
+        self.assertIn("enabled = dragState.value == null", save)
 
     def test_edge_loops_use_consumed_scroll_and_stop_with_drag(self):
         text = (UI / "ReorderDrag.kt").read_text(encoding="utf-8")

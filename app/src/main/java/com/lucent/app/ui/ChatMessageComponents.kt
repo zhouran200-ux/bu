@@ -145,16 +145,25 @@ internal fun AiMessageCard(
             }
 
             if (!streaming) {
-                val stats = ChatStats.summary(
-                    seconds = message.answerSeconds,
-                    cachedTokens = message.cachedTokens,
-                    promptTokens = message.promptTokens,
-                    chars = ChatStats.bodyCharCount(message.content),
-                    firstTokenMillis = message.firstTokenMillis,
-                    generationMillis = message.generationMillis,
-                    cachedTokensKnown = message.cachedTokensKnown,
-                    timestamp = message.timestamp
-                )
+                val chars by rememberChatBodyCharCount(message.content)
+                val stats = remember(
+                    chars, message.answerSeconds, message.cachedTokens, message.promptTokens,
+                    message.firstTokenMillis, message.generationMillis,
+                    message.cachedTokensKnown, message.timestamp
+                ) {
+                    chars?.let { count ->
+                        ChatStats.summary(
+                            seconds = message.answerSeconds,
+                            cachedTokens = message.cachedTokens,
+                            promptTokens = message.promptTokens,
+                            chars = count,
+                            firstTokenMillis = message.firstTokenMillis,
+                            generationMillis = message.generationMillis,
+                            cachedTokensKnown = message.cachedTokensKnown,
+                            timestamp = message.timestamp
+                        )
+                    }.orEmpty()
+                }
                 Column(modifier = Modifier.padding(top = 2.dp, start = 2.dp)) {
                     if (stats.isNotEmpty()) {
                         Text(

@@ -49,8 +49,6 @@ class ChatGenerationService : Service() {
 
         if (intent?.action == ACTION_STOP) {
             ChatSessions.stopAll()
-            stopProtection()
-            return START_NOT_STICKY
         }
 
         observation?.cancel()
@@ -69,7 +67,6 @@ class ChatGenerationService : Service() {
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         ChatSessions.stopAll()
-        stopProtection()
         super.onTaskRemoved(rootIntent)
     }
 

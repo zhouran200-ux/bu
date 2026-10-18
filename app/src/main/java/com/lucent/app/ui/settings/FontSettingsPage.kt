@@ -33,6 +33,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.unit.sp
+import com.lucent.app.AppScope
 import com.lucent.app.data.FontLibrary
 import com.lucent.app.data.FontStore
 import com.lucent.app.data.SettingsCache
@@ -120,7 +121,7 @@ internal fun FontSettingsPage(
             try {
                 val slot = FontLibrary.import(context, uri, name)
                 fontRefreshIndex++
-                repo.setFont(slot.id)
+                AppScope.setFont(context, repo, slot.id)
                 Toast.makeText(context, S.fontImportedToast, Toast.LENGTH_SHORT).show()
             } catch (e: FontStore.NotFontException) {
                 fontError = S.fontImportFailedNotFont
@@ -171,13 +172,7 @@ internal fun FontSettingsPage(
                 modifier = Modifier
                     .clip(RoundedCornerShape(12.dp))
                     .clickable {
-                        scope.launch {
-                            repo.resetTypographyDefaults()
-                            activeFontScale = 1.0f
-                            activeLineSpacing = 1.2f
-                            activeLetterSpacing = 0.0f
-                            Toast.makeText(context, S.resetTypographyDefaults, Toast.LENGTH_SHORT).show()
-                        }
+                        AppScope.resetTypographyDefaults(context, repo)
                     }
             ) {
                 Row(
@@ -238,7 +233,10 @@ internal fun FontSettingsPage(
             valueRange = 0.85f..1.30f,
             step = 0.05f,
             onValueChange = { activeFontScale = it },
-            onValueChangeFinished = { scope.launch { repo.setFontScale(activeFontScale) } }
+            onValueChangeFinished = {
+                AppScope.setFontScale(context, repo, activeFontScale)
+                activeFontScale = savedFontScale
+            }
         )
 
         HorizontalDivider(
@@ -254,7 +252,10 @@ internal fun FontSettingsPage(
             valueRange = 1.0f..1.8f,
             step = 0.05f,
             onValueChange = { activeLineSpacing = it },
-            onValueChangeFinished = { scope.launch { repo.setLineSpacing(activeLineSpacing) } }
+            onValueChangeFinished = {
+                AppScope.setLineSpacing(context, repo, activeLineSpacing)
+                activeLineSpacing = savedLineSpacing
+            }
         )
 
         HorizontalDivider(
@@ -270,7 +271,10 @@ internal fun FontSettingsPage(
             valueRange = -0.5f..2.0f,
             step = 0.1f,
             onValueChange = { activeLetterSpacing = it },
-            onValueChangeFinished = { scope.launch { repo.setLetterSpacing(activeLetterSpacing) } }
+            onValueChangeFinished = {
+                AppScope.setLetterSpacing(context, repo, activeLetterSpacing)
+                activeLetterSpacing = savedLetterSpacing
+            }
         )
     }
 
@@ -334,7 +338,7 @@ internal fun FontSettingsPage(
                     else onGradient.copy(alpha = 0.12f),
                     RoundedCornerShape(12.dp)
                 )
-                .clickable { scope.launch { repo.setFont(SYSTEM_FONT_KEY) } }
+                .clickable { AppScope.setFont(context, repo, SYSTEM_FONT_KEY) }
                 .padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -392,7 +396,7 @@ internal fun FontSettingsPage(
                         else onGradient.copy(alpha = 0.12f),
                         RoundedCornerShape(12.dp)
                     )
-                    .clickable { scope.launch { repo.setFont(slot.id) } }
+                    .clickable { AppScope.setFont(context, repo, slot.id) }
                     .padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -570,7 +574,7 @@ internal fun FontSettingsPage(
                                 FontLibrary.delete(context, idToDelete)
                                 LucentFontResolver.evict(idToDelete)
                                 fontRefreshIndex++
-                                if (fontKey == idToDelete) repo.setFont(SYSTEM_FONT_KEY)
+                                if (fontKey == idToDelete) AppScope.setFont(context, repo, SYSTEM_FONT_KEY)
                             } catch (cancelled: kotlinx.coroutines.CancellationException) {
                                 throw cancelled
                             } catch (failure: Exception) {

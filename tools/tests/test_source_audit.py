@@ -61,6 +61,11 @@ val template = "$out"'''
         self.assertEqual([], hard)
         self.assertEqual([(1, "private-declaration-candidate", "stale")], candidates)
 
+    def test_private_extension_receiver_is_not_misreported_as_unused_declaration(self):
+        for receiver in ("Context", "android.content.Context", "List<String>", "View?"):
+            hard, candidates = audit.kotlin_findings(f"private fun {receiver}.live() = 1\nfun call(value: {receiver}) = value.live()")
+            self.assertEqual(([], []), (hard, candidates))
+
     def test_project_walk_covers_new_modules_and_excludes_generated_build(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)

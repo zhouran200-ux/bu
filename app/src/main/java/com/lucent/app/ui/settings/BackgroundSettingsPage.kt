@@ -16,7 +16,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -40,14 +39,12 @@ import com.lucent.app.ui.frostedGlass
 import com.lucent.app.ui.rememberDynamicColorActive
 import com.lucent.app.ui.rememberPureWhiteActive
 import com.lucent.app.ui.title
-import kotlinx.coroutines.launch
 
 @Composable
 internal fun BackgroundSettingsPage(repo: SettingsRepository) {
     val context = LocalContext.current
     val onGradient = LocalOnGradient.current
     val onGradientMuted = LocalOnGradientMuted.current
-    val scope = rememberCoroutineScope()
     val backgroundAnimationEnabled by repo.backgroundAnimationEnabled.collectAsState(
         initial = SettingsCache.backgroundAnimationEnabled
     )
@@ -66,8 +63,7 @@ internal fun BackgroundSettingsPage(repo: SettingsRepository) {
             LucentToast.show(context, S.backgroundPaletteDisabledHint)
             return
         }
-        SettingsCache.palette = name
-        AppScope.io.launch { repo.setPalette(name) }
+        AppScope.setPalette(context, repo, name)
     }
 
     LockNote(if (pureWhiteLocked) S.pureWhiteLockedHint else if (dynamicLocked) S.dynamicThemeLockedHint else "")
@@ -81,8 +77,7 @@ internal fun BackgroundSettingsPage(repo: SettingsRepository) {
             Switch(
                 checked = backgroundAnimationEnabled,
                 onCheckedChange = { checked ->
-                    SettingsCache.backgroundAnimationEnabled = checked
-                    scope.launch { repo.setBackgroundAnimationEnabled(checked) }
+                    AppScope.setBackgroundAnimationEnabled(context, repo, checked)
                 }
             )
         }

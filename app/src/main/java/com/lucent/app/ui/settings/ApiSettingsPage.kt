@@ -142,7 +142,6 @@ internal fun ApiConfigSettingsPage(
     var customModelInput by remember(requestTarget.profileId) { mutableStateOf("") }
     val choices = remember(fetchedModels, models) { modelChoices(fetchedModels, models) }
     val dragState = remember { mutableStateOf<ProfileDrag?>(null) }
-    val settled = dragState.value == null
 
 
     LaunchedEffect(requestTarget, selectedModel, customModelInput) {
@@ -262,9 +261,8 @@ internal fun ApiConfigSettingsPage(
 
             Spacer(modifier = Modifier.weight(1f))
 
-            GlassButton(
-                text = S.saveApi,
-                enabled = settled,
+            ApiProfileSaveButton(
+                dragState = dragState,
                 onClick = {
                     val input = customModelInput.trim()
                     val finalModels = if (input.isNotBlank() && input !in models) {

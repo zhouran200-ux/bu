@@ -33,6 +33,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.ModalBottomSheetProperties
 import kotlinx.coroutines.Job
@@ -117,6 +118,7 @@ internal fun rememberModelPickerDrawer(
             Box(
                 modifier = Modifier.fillMaxWidth()
                     .height(32.dp)
+                    .testTag("model_picker_drawer_handle")
                     .then(dragModifier)
                     .then(Modifier.pointerInput(Unit) {
                         detectTapGestures(onPress = {

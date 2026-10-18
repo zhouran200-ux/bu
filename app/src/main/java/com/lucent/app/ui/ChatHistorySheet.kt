@@ -33,6 +33,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -158,15 +161,19 @@ internal fun ChatHistorySheet(
                     Text(text = S.historyEmpty, fontSize = 13.sp, color = muted)
                 }
             } else {
-                var userSeq = 0
-                var aiSeq = 0
-                val numbered = messages.map { m ->
-                    if (m.role == "user") {
-                        userSeq += 1
-                        Triple(m, S.historyUserTag(userSeq), true)
-                    } else {
-                        aiSeq += 1
-                        Triple(m, S.historyAiTag(aiSeq), false)
+                val numbered by remember(messages) {
+                    derivedStateOf {
+                        var userSeq = 0
+                        var aiSeq = 0
+                        messages.map { m ->
+                            if (m.role == "user") {
+                                userSeq += 1
+                                Triple(m, S.historyUserTag(userSeq), true)
+                            } else {
+                                aiSeq += 1
+                                Triple(m, S.historyAiTag(aiSeq), false)
+                            }
+                        }
                     }
                 }
                 LazyColumn(
@@ -178,11 +185,14 @@ internal fun ChatHistorySheet(
                 ) {
                     items(numbered, key = { it.first.id }) { (m, tag, isUser) ->
                         val isCurrent = m.id == currentMessageId
-                        val summary = when {
-                            m.id == streamingAnswerId && m.content.isBlank() -> S.historyStreaming
-                            m.content.isNotBlank() -> previewExcerpt(m.content.take(1024), limit = 70)
-                            !m.reasoningText.isNullOrBlank() -> previewExcerpt(m.reasoningText.take(1024), limit = 70)
-                            else -> S.historyNoBody
+                        val preview by rememberChatHistoryPreview(
+                            ChatHistoryPreviewInput(m.content, m.reasoningText, m.id == streamingAnswerId)
+                        )
+                        val summary = when (val result = preview) {
+                            is ChatHistoryPreview.Excerpt -> result.text
+                            ChatHistoryPreview.Streaming -> S.historyStreaming
+                            ChatHistoryPreview.NoBody -> S.historyNoBody
+                            null -> ""
                         }
                         HistoryRow(
                             tag = tag,

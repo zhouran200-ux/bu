@@ -174,6 +174,9 @@ def kotlin_findings(text):
     declarations = re.finditer(r"\bprivate\s+(?:(?:const|suspend|tailrec|inline)\s+)*(?:fun|val|var|class|object)\s+([A-Za-z_]\w*)", "".join(declaration_body))
     for match in declarations:
         name = match.group(1)
+        suffix = "".join(declaration_body)[match.end():]
+        if suffix.lstrip().startswith((".", "<", "?")):
+            continue
         if counts.get(name, 0) == 1:
             candidates.append((text.count("\n", 0, match.start()) + 1, "private-declaration-candidate", name))
     return hard, candidates

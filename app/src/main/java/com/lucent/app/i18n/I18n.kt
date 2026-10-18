@@ -132,6 +132,7 @@ open class Tr {
     open val apiDeleteNotSaved: String = "删除方案未保存，请重试"
     open val apiListChanged: String = "方案列表已变化"
     open fun apiDefaultName(index: Int): String = "方案 ${index}"
+    open val settingsSaveFailed: String = "设置未能保存，请重试"
     open val apiSaveFailed: String = "保存方案失败，请重试"
     open val pickerTitle: String = "模型选择"
     open val pickerEmpty: String = "暂无 API 方案，请先添加"

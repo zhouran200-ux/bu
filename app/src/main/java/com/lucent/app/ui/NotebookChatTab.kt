@@ -28,6 +28,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.structuralEqualityPolicy
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableIntStateOf
@@ -91,7 +92,11 @@ fun NotebookChatTab(
     }
     val scope = rememberCoroutineScope()
     val messages = session.messages
-    val readingKeys = listOf("header") + messages.map { "message:${it.id}" } + "footer"
+    val readingKeys by remember(messages) {
+        derivedStateOf(structuralEqualityPolicy()) {
+            listOf("header") + messages.map { "message:${it.id}" } + "footer"
+        }
+    }
     val listState = rememberReadingListState("chat:$notebookId", readingKeys)
     val atBottom by remember {
         derivedStateOf {

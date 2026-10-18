@@ -131,6 +131,7 @@ ENTRIES = [
     ("apiDeleteNotSaved", "删除方案未保存，请重试"),
     ("apiListChanged", "方案列表已变化"),
     ("apiDefaultName(index: Int)", "方案 {index}"),
+    ("settingsSaveFailed", "设置未能保存，请重试"),
     ("apiSaveFailed", "保存方案失败，请重试"),
     ("pickerTitle", "模型选择"),
     ("pickerEmpty", "暂无 API 方案，请先添加"),

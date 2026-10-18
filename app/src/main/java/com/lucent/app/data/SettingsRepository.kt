@@ -106,7 +106,6 @@ class SettingsRepository(context: Context) {
     val backgroundAnimationEnabled: Flow<Boolean> = context.settingsDataStore.data.map { it[SettingsKeys.BACKGROUND_ANIMATION_ENABLED] ?: true }
     suspend fun setBackgroundAnimationEnabled(value: Boolean) {
         context.settingsDataStore.edit { it[SettingsKeys.BACKGROUND_ANIMATION_ENABLED] = value }
-        SettingsCache.backgroundAnimationEnabled = value
     }
 
     private val removedPreferenceNames: Set<String> = setOf(
@@ -205,27 +204,21 @@ class SettingsRepository(context: Context) {
 
     suspend fun setThemeMode(value: String) {
         context.settingsDataStore.edit { it[SettingsKeys.THEME_MODE] = value }
-        SettingsCache.themeMode = value
     }
     suspend fun setPalette(value: String) {
         context.settingsDataStore.edit { it[SettingsKeys.PALETTE] = value }
-        SettingsCache.palette = value
     }
     suspend fun setFont(value: String) {
         context.settingsDataStore.edit { it[SettingsKeys.FONT] = value }
-        SettingsCache.font = value
     }
     suspend fun setFontScale(value: Float) {
         context.settingsDataStore.edit { it[SettingsKeys.FONT_SCALE] = value }
-        SettingsCache.fontScale = value
     }
     suspend fun setLineSpacing(value: Float) {
         context.settingsDataStore.edit { it[SettingsKeys.LINE_SPACING] = value }
-        SettingsCache.lineSpacing = value
     }
     suspend fun setLetterSpacing(value: Float) {
         context.settingsDataStore.edit { it[SettingsKeys.LETTER_SPACING] = value }
-        SettingsCache.letterSpacing = value
     }
     suspend fun resetTypographyDefaults() {
         context.settingsDataStore.edit {
@@ -233,11 +226,9 @@ class SettingsRepository(context: Context) {
             it[SettingsKeys.LINE_SPACING] = 1.2f
             it[SettingsKeys.LETTER_SPACING] = 0.0f
         }
-        SettingsCache.resetTypography()
     }
     suspend fun setDynamicColorEnabled(value: Boolean) {
         context.settingsDataStore.edit { it[SettingsKeys.DYNAMIC_COLOR_ENABLED] = value }
-        SettingsCache.dynamicColor = value
     }
 
     internal suspend fun ensureApiProfilesInitialized() {

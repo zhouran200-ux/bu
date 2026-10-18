@@ -6,6 +6,7 @@ import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -20,6 +21,10 @@ import org.junit.runner.RunWith
 class ChatHistorySheetTest {
     @get:Rule
     val rule = createComposeRule()
+
+    private fun waitForPreview(text: String) {
+        rule.waitUntil(5_000) { rule.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty() }
+    }
 
     @Test
     fun emptyHistoryShowsExplanationWithoutJumpActionsOrCallbacks() {
@@ -66,6 +71,8 @@ class ChatHistorySheetTest {
         rule.onNodeWithText(S.historyJumpBottomHint).assertIsDisplayed()
         rule.onNodeWithText(S.historyJumpTop).performClick()
         rule.onNodeWithText(S.historyJumpBottom).performClick()
+        waitForPreview("历史问题")
+        waitForPreview("历史回答")
         rule.onNodeWithText("历史问题").assertIsSelected()
         rule.onNodeWithText("历史回答").performScrollTo().assertIsNotSelected().performClick()
         rule.onNodeWithText("历史回答").assertIsSelected().performClick()
@@ -96,11 +103,15 @@ class ChatHistorySheetTest {
             )
         }
 
+        waitForPreview("正文优先")
         rule.onNodeWithText("正文优先").performScrollTo().performClick()
         rule.onNodeWithText("不应显示的推理").assertDoesNotExist()
+        waitForPreview("仅有推理")
         rule.onNodeWithText("仅有推理").performScrollTo().performClick()
+        waitForPreview(S.historyStreaming)
         rule.onNodeWithText(S.historyStreaming).performScrollTo().performClick()
         rule.onNodeWithText("流式时隐藏推理").assertDoesNotExist()
+        waitForPreview(S.historyNoBody)
         rule.onNodeWithText(S.historyNoBody).performScrollTo().performClick()
         rule.runOnIdle { assertEquals(listOf(1L, 2L, 3L, 4L), clicked) }
     }
@@ -119,6 +130,7 @@ class ChatHistorySheetTest {
             )
         }
 
+        waitForPreview("问题 20")
         rule.onNodeWithText("问题 20").assertIsDisplayed().assertIsSelected()
         rule.onNodeWithText("问题 1").assertDoesNotExist()
     }

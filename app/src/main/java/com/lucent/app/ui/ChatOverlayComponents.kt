@@ -42,6 +42,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -90,6 +91,7 @@ internal fun BottomGlassComposer(
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Default),
                 maxLines = 6,
                 modifier = Modifier
+                    .testTag("bottom_glass_composer_input")
                     .fillMaxWidth()
                     .heightIn(min = 24.dp, max = 130.dp)
                     .padding(horizontal = 4.dp, vertical = 4.dp),

@@ -23,12 +23,13 @@ import com.lucent.app.AppScope
 import com.lucent.app.data.SettingsCache
 import com.lucent.app.data.SettingsRepository
 import com.lucent.app.i18n.S
-import kotlinx.coroutines.launch
+import androidx.compose.ui.platform.LocalContext
 
 private val dynamicColorSupported: Boolean = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
 
 @Composable
 fun DynamicColorRow(repo: SettingsRepository) {
+    val context = LocalContext.current
     val onGradient = LocalOnGradient.current
     val onGradientMuted = LocalOnGradientMuted.current
     val dynamicColorOn by repo.dynamicColorEnabled.collectAsState(
@@ -51,8 +52,7 @@ fun DynamicColorRow(repo: SettingsRepository) {
                 checked = dynamicColorOn && !pureWhiteOn,
                 enabled = dynamicColorSupported && !pureWhiteOn,
                 onCheckedChange = { on ->
-                    SettingsCache.dynamicColor = on
-                    AppScope.io.launch { repo.setDynamicColorEnabled(on) }
+                    AppScope.setDynamicColorEnabled(context, repo, on)
                 }
             )
         }
@@ -76,8 +76,7 @@ fun DynamicColorRow(repo: SettingsRepository) {
                 enabled = !(dynamicColorOn && dynamicColorSupported),
                 onCheckedChange = { on ->
                     val next = if (on) LucentThemeMode.PURE_WHITE.key else LucentThemeMode.SYSTEM.key
-                    SettingsCache.themeMode = next
-                    AppScope.io.launch { repo.setThemeMode(next) }
+                    AppScope.setThemeMode(context, repo, next)
                 }
             )
         }

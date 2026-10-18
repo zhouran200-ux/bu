@@ -72,12 +72,17 @@ object SettingsCache {
     }
 
     fun seed(prefs: SettingsRepository.StartupPrefs) {
-        state.set(SettingsSnapshot(
+        val seeded = SettingsSnapshot(
             themeMode = prefs.display.themeMode, palette = prefs.display.palette, font = prefs.display.font,
             fontScale = prefs.display.fontScale, lineSpacing = prefs.display.lineSpacing,
             letterSpacing = prefs.display.letterSpacing, dynamicColor = prefs.dynamicColor,
             backgroundAnimationEnabled = prefs.backgroundAnimationEnabled, customUserAgent = prefs.customUserAgent,
             apiProfilesJson = prefs.apiProfilesJson, apiProfileSelected = prefs.apiProfileSelected
-        ))
+        )
+        while (true) {
+            val current = state.get()
+            if (current != SettingsSnapshot()) return
+            if (state.compareAndSet(current, seeded)) return
+        }
     }
 }

@@ -44,7 +44,7 @@ class ApprovedUxContractTest(unittest.TestCase):
     # ChatHistorySheetTest.emptyHistoryShowsExplanationWithoutJumpActionsOrCallbacks.
 
     def test_error_details_remain_below_summary(self):
-        text = (UI / "settings/ApiSettingsPage.kt").read_text(encoding="utf-8")
+        text = (UI / "settings/ApiConnectionDiagnosticsSection.kt").read_text(encoding="utf-8")
         self.assertLess(text.index("text = testStatusText"), text.index("lastTestResult?.let { res ->"))
         self.assertIn("appendLine(S.apiDetails)", text)
         self.assertIn("res.prettyResponseBody()", text)

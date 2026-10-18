@@ -34,7 +34,8 @@ class PerformanceContractTest(unittest.TestCase):
     def test_expensive_api_derived_values_are_cached(self):
         api = (UI / "settings/ApiSettingsPage.kt").read_text(encoding="utf-8")
         self.assertIn("remember(fetchedModels, models) { modelChoices", api)
-        self.assertIn("val prettyBody = remember(res)", api)
+        diagnostics = (UI / "settings/ApiConnectionDiagnosticsSection.kt").read_text(encoding="utf-8")
+        self.assertIn("val prettyBody = remember(res)", diagnostics)
 
 if __name__ == "__main__":
     unittest.main()

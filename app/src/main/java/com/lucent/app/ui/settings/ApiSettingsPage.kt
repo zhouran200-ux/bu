@@ -2,15 +2,7 @@ package com.lucent.app.ui.settings
 
 import android.content.ClipData
 import androidx.compose.foundation.ScrollState
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,27 +10,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material.icons.filled.Wifi
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -48,39 +23,23 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.lucent.app.collapseExcessBlankLines
 import com.lucent.app.data.ApiProfile
 import com.lucent.app.data.SettingsRepository
 import com.lucent.app.i18n.S
 import com.lucent.app.network.ApiProbe
 import com.lucent.app.network.TestConnectionResult
-import com.lucent.app.ui.ApiModelPickerDialog
 import com.lucent.app.ui.GlassButton
-import com.lucent.app.ui.LucentIcons
 import com.lucent.app.ui.Haptics
-import com.lucent.app.ui.LocalOnGradient
-import com.lucent.app.ui.LocalOnGradientMuted
 import com.lucent.app.ui.LucentToast
-import com.lucent.app.ui.LucentTitles
 import com.lucent.app.ui.frostedGlass
-import com.lucent.app.ui.selectedCard
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 internal fun ApiConfigSettingsPage(
     repo: SettingsRepository,
@@ -113,10 +72,7 @@ internal fun ApiConfigSettingsPage(
     onAddProfile: () -> Unit,
     onSaveProfile: () -> Unit
 ) {
-    val onGradient = LocalOnGradient.current
-    val onGradientMuted = LocalOnGradientMuted.current
     val context = LocalContext.current
-    val focusManager = LocalFocusManager.current
     val clipboard = LocalClipboard.current
     val scope = rememberCoroutineScope()
     val requestTarget = ApiRequestTarget(profiles.getOrNull(selectedProfileIdx)?.id, url.trim(), spec, key.trim(), active)
@@ -143,7 +99,6 @@ internal fun ApiConfigSettingsPage(
     val choices = remember(fetchedModels, models) { modelChoices(fetchedModels, models) }
     val dragState = remember { mutableStateOf<ProfileDrag?>(null) }
 
-
     LaunchedEffect(requestTarget, selectedModel, customModelInput) {
         testRequests.cancel()
         lastTestResult = null
@@ -163,52 +118,17 @@ internal fun ApiConfigSettingsPage(
     Spacer(modifier = Modifier.height(8.dp))
 
     Column(modifier = Modifier.fillMaxWidth().frostedGlass().padding(12.dp)) {
-        CompactField(
-            value = editingProfileName,
-            onValueChange = { onEditingProfileNameChange(collapseExcessBlankLines(it)) },
-            label = S.fieldName,
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-        CompactField(
-            value = key,
-            onValueChange = { onKeyChange(collapseExcessBlankLines(it)) },
-            label = S.fieldApiKey,
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-            visualTransformation = if (keyVisible) VisualTransformation.None else PasswordVisualTransformation(),
-            trailing = {
-                IconButton(onClick = onRevealKey, modifier = Modifier.size(28.dp)) {
-                    Icon(
-                        if (keyVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                        contentDescription = S.a11yToggleKeyVisibility,
-                        tint = onGradientMuted,
-                        modifier = Modifier.size(17.dp)
-                    )
-                }
-            }
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-        ChipRow(
-            options = listOf(
-                "openai" to "OpenAI",
-                "anthropic" to "Anthropic",
-                "google" to "Google",
-                "custom" to S.apiSpecCustom
-            ),
-            selectedKey = spec,
-            onSelect = { onSpecChange(it) }
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-        CompactField(
-            value = url,
-            onValueChange = { onUrlChange(collapseExcessBlankLines(it)) },
-            label = S.fieldBaseUrl,
-            placeholder = if (spec == "custom") S.apiCustomPlaceholder else "",
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-            keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() })
+        ApiProfileFieldsSection(
+            editingProfileName = editingProfileName,
+            onEditingProfileNameChange = onEditingProfileNameChange,
+            key = key,
+            onKeyChange = onKeyChange,
+            keyVisible = keyVisible,
+            onRevealKey = onRevealKey,
+            spec = spec,
+            onSpecChange = onSpecChange,
+            url = url,
+            onUrlChange = onUrlChange
         )
 
         Spacer(modifier = Modifier.height(10.dp))
@@ -282,143 +202,16 @@ internal fun ApiConfigSettingsPage(
             )
         }
 
-        Spacer(modifier = Modifier.height(10.dp))
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(
-                text = S.apiChatModel,
-                color = onGradient,
-                fontSize = LucentTitles.SectionSize,
-                fontWeight = LucentTitles.SectionWeight
-            )
-            Spacer(modifier = Modifier.width(6.dp))
-            Box(
-                modifier = Modifier
-                    .size(18.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "${models.size}",
-                    color = MaterialTheme.colorScheme.primary,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    lineHeight = 11.sp
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(6.dp))
-        if (models.isNotEmpty()) {
-            CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 0.dp) {
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    models.forEach { m ->
-                        val isSelected = m == selectedModel
-                        val cardShape = RoundedCornerShape(10.dp)
-                        val cardBg = onGradient.copy(alpha = 0.04f)
-                        val cardBorder = onGradientMuted.copy(alpha = 0.2f)
-                        val contentColor = if (isSelected) MaterialTheme.colorScheme.primary else onGradient
-
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(cardShape)
-                                .background(cardBg)
-                                .border(1.dp, cardBorder, cardShape)
-                                .selectedCard(isSelected, 10.dp)
-                                .combinedClickable(
-                                    onClick = { onSelectedModelChange(if (isSelected) "" else m) },
-                                    onLongClick = {
-                                        scope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("model", m))) }
-                                        Haptics.tick(context)
-                                    }
-                                )
-                                .padding(horizontal = 10.dp, vertical = 5.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(26.dp)
-                                    .clip(RoundedCornerShape(6.dp))
-                                    .background(
-                                        if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.22f)
-                                        else onGradient.copy(alpha = 0.08f)
-                                    ),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = LucentIcons.Model,
-                                    contentDescription = null,
-                                    tint = if (isSelected) MaterialTheme.colorScheme.primary else onGradientMuted,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = m,
-                                color = contentColor,
-                                fontSize = LucentTitles.ItemSize,
-                                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.weight(1f)
-                            )
-                            DeleteWithConfirmButton(
-                                onDelete = {
-                                    val newModels = models - m
-                                    onModelsChange(newModels)
-                                    if (selectedModel == m) {
-                                        onSelectedModelChange(newModels.firstOrNull().orEmpty())
-                                    }
-                                },
-                                tint = onGradientMuted.copy(alpha = 0.7f),
-                                buttonSize = 26.dp,
-                                iconSize = 16.dp,
-                                confirmTextPadding = PaddingValues(horizontal = 7.dp, vertical = 3.dp),
-                                confirmTextSize = 11.sp,
-                                contentDescription = S.apiRemoveModel
-                            )
-                        }
-                    }
-                }
-            }
-            Spacer(modifier = Modifier.height(6.dp))
-        }
-
-        fun addCustomModel() {
-            val trimmed = customModelInput.trim()
-            if (trimmed.isNotBlank()) {
-                if (trimmed !in models) {
-                    onModelsChange(models + trimmed)
-                }
-                onSelectedModelChange(trimmed)
-                customModelInput = ""
-            }
-        }
-
-        CompactField(
-            value = customModelInput,
-            onValueChange = { customModelInput = collapseExcessBlankLines(it) },
-            placeholder = S.apiModelNamePlaceholder,
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-            keyboardActions = KeyboardActions(onDone = { addCustomModel() }),
-            trailing = {
-                if (customModelInput.isNotBlank()) {
-                    IconButton(onClick = { addCustomModel() }, modifier = Modifier.size(28.dp)) {
-                        Icon(
-                            Icons.Default.Add,
-                            contentDescription = S.apiAddModel,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(17.dp)
-                        )
-                    }
-                }
+        ApiModelSelectionSection(
+            models = models,
+            selectedModel = selectedModel,
+            customModelInput = customModelInput,
+            onModelsChange = onModelsChange,
+            onSelectedModelChange = onSelectedModelChange,
+            onCustomModelInputChange = { customModelInput = it },
+            onCopyModel = { model ->
+                scope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("model", model))) }
+                Haptics.tick(context)
             }
         )
 
@@ -429,13 +222,6 @@ internal fun ApiConfigSettingsPage(
             customModelInput.trim()
         }
         val latestTestModel = rememberUpdatedState(currentTestTarget)
-        val testBtnText = if (testingConn) {
-            S.apiTesting
-        } else if (currentTestTarget.isNotBlank()) {
-            S.apiTestConnectionTarget(currentTestTarget)
-        } else {
-            S.apiTestConnection
-        }
 
         fun copyRawResponse(text: String) {
             if (text.isNotBlank()) {
@@ -449,11 +235,20 @@ internal fun ApiConfigSettingsPage(
             }
         }
 
-        Button(
-            onClick = {
+        ApiConnectionDiagnosticsSection(
+            active = active,
+            testingConn = testingConn,
+            currentTestTarget = currentTestTarget,
+            testStatusText = testStatusText,
+            testSuccess = testSuccess,
+            lastTestResult = lastTestResult,
+            fetchModelsError = fetchModelsError,
+            errorText = errorText,
+            copiedRawHint = copiedRawHint,
+            onTest = test@{
                 if (url.trim().isEmpty()) {
                     onErrorTextChange(S.apiUrlRequired)
-                    return@Button
+                    return@test
                 }
                 testStatusText = ""
                 testSuccess = false
@@ -480,101 +275,22 @@ internal fun ApiConfigSettingsPage(
                     }
                 }
             },
-            enabled = !testingConn && active,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(38.dp),
-            shape = RoundedCornerShape(10.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
-                contentColor = MaterialTheme.colorScheme.primary
-            ),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f))
-        ) {
-            Icon(
-                imageVector = Icons.Default.Wifi,
-                contentDescription = null,
-                modifier = Modifier.size(16.dp)
-            )
-            Spacer(modifier = Modifier.width(6.dp))
-            Text(
-                text = testBtnText,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Medium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-
-        if (testingConn) {
-            Spacer(modifier = Modifier.height(6.dp))
-            CircularProgressIndicator(modifier = Modifier.size(24.dp))
-        }
-        if (testStatusText.isNotBlank()) {
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                text = testStatusText,
-                color = if (testSuccess) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium,
-                lineHeight = 16.sp
-            )
-        }
-
-        lastTestResult?.let { res ->
-            val prettyBody = remember(res) {
-                if (res.success) res.prettyResponseBody() else buildString {
-                appendLine(S.apiDetails)
-                if (res.httpCode > 0) appendLine(S.apiHttpStatus(res.httpCode))
-                appendLine(S.apiLatency(res.latencyMs))
-                res.errorMessage?.takeIf { it.isNotBlank() }?.let { appendLine(it) }
-                appendLine(S.apiRawResponse)
-                append(res.prettyResponseBody().ifBlank { S.apiEmptyResponse })
-                }
-            }
-            val textToCopy = prettyBody
-            Spacer(modifier = Modifier.height(8.dp))
-            ResponseCard(
-                body = prettyBody,
-                charCount = prettyBody.length,
-                copied = copiedRawHint,
-                onCopy = { copyRawResponse(textToCopy) }
-            )
-        }
-
-        if (fetchModelsError.isNotBlank()) {
-            Spacer(modifier = Modifier.height(8.dp))
-            ResponseCard(
-                body = fetchModelsError,
-                charCount = fetchModelsError.length,
-                copied = copiedRawHint,
-                onCopy = { copyRawResponse(fetchModelsError) }
-            )
-        }
-
-        if (errorText.isNotBlank()) {
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(errorText, color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
-        }
+            copyRawResponse = ::copyRawResponse
+        )
     }
 
     Spacer(modifier = Modifier.height(8.dp))
 
     GlobalUserAgentSection(repo = repo)
 
-    if (pickerOpen) {
-        ApiModelPickerDialog(
-            names = choices,
-            selected = models.toSet(),
-            onDone = { picked ->
-                val list = choices.filter { it in picked }
-                onModelsChange(list)
-                if (selectedModel !in list) {
-                    onSelectedModelChange(list.firstOrNull().orEmpty())
-                }
-                LucentToast.show(context, S.apiModelsApplied)
-            },
-            onDismiss = { pickerOpen = false }
-        )
-    }
+    ApiModelSelectionDialog(
+        pickerOpen = pickerOpen,
+        choices = choices,
+        models = models,
+        selectedModel = selectedModel,
+        onModelsChange = onModelsChange,
+        onSelectedModelChange = onSelectedModelChange,
+        onApplied = { LucentToast.show(context, S.apiModelsApplied) },
+        onDismiss = { pickerOpen = false }
+    )
 }

@@ -65,9 +65,12 @@ class PickerContractTest(unittest.TestCase):
         settings = text.split("        if (showDialogueSettingsDialog) {", 1)[1].split("onDismiss =", 1)[0]
         self.assertNotIn("showHistorySheet = false", history)
         self.assertNotIn("showDialogueSettingsDialog = false", settings)
-        api = (UI / "settings/ApiSettingsPage.kt").read_text(encoding="utf-8")
+
+    def test_api_settings_callback_does_not_dismiss(self):
+        api = (UI / "settings/ApiModelSelectionSection.kt").read_text(encoding="utf-8")
         callback = api.split("        ApiModelPickerDialog(", 1)[1].split("onDismiss =", 1)[0]
         self.assertNotIn("pickerOpen = false", callback)
+        self.assertNotIn("onDismiss()", callback)
 
     def test_extra_sheet_close_buttons_are_removed(self):
         for name in ("ChatHistorySheet.kt", "SettingsComponents.kt"):

@@ -2,6 +2,7 @@ package com.lucent.app.data
 
 object ModelCapabilityRegistry {
     private val registry = mutableMapOf<String, ModelDefinition>()
+    private val packedRegistry = mutableMapOf<String, ModelDefinition>()
 
     private val openAiLevels = listOf("low", "medium", "high", "xhigh", "max")
     private val openAiLegacyLevels = listOf("low", "medium", "high")
@@ -27,7 +28,9 @@ object ModelCapabilityRegistry {
 
     @Synchronized
     fun register(definition: ModelDefinition) {
-        registry[definition.id.lowercase()] = definition
+        val key = definition.id.lowercase()
+        registry[key] = definition
+        packedRegistry[packed(key)] = definition
     }
 
     @Synchronized
@@ -37,40 +40,42 @@ object ModelCapabilityRegistry {
 
     @Synchronized
     fun find(modelId: String): ModelDefinition? {
-        return registry[normalize(modelId)]
+        val clean = normalize(modelId)
+        return registry[clean] ?: packedRegistry[packed(clean)]
     }
 
     @Synchronized
     fun findOrRegister(modelId: String, provider: String): ModelDefinition {
         val clean = normalize(modelId)
         val prov = provider.trim().lowercase()
-        val existing = registry[clean]
+        val existing = registry[clean] ?: packedRegistry[packed(clean)]
         if (existing != null) return existing
 
+        val key = packed(clean)
         val inferredControl = when {
-            clean.contains("claude") -> claudeControl(clean)
-            clean.contains("gemini") -> geminiControl(clean)
-            clean.contains("glm") -> zhipuControl(clean)
-            clean.contains("deepseek") || clean.contains("r1") -> deepSeekControl(clean)
-            clean.contains("qwen") || clean.contains("qvq") -> ReasoningControl.QWEN_EFFORT
-            prov.contains("openai") || prov.contains("chatgpt") || clean.startsWith("o1") || clean.startsWith("o3") ||
-                clean.startsWith("o4") || clean.contains("gpt-6") || clean.contains("gpt-5") -> openAiControl(clean)
+            key.contains("claude") -> claudeControl(clean)
+            key.contains("gemini") -> geminiControl(clean)
+            key.contains("glm") -> zhipuControl(clean)
+            key.contains("deepseek") || key.contains("r1") -> deepSeekControl(key)
+            key.contains("qwen") || key.contains("qvq") -> ReasoningControl.QWEN_EFFORT
+            prov.contains("openai") || prov.contains("chatgpt") || key.startsWith("o1") || key.startsWith("o3") ||
+                key.startsWith("o4") || key.contains("gpt6") || key.contains("gpt5") -> openAiControl(key)
             prov.contains("claude") || prov.contains("anthropic") -> claudeControl(clean)
             prov.contains("google") || prov.contains("gemini") -> geminiControl(clean)
             prov.contains("zhipu") || prov.contains("bigmodel") -> zhipuControl(clean)
-            prov.contains("deepseek") -> deepSeekControl(clean)
+            prov.contains("deepseek") -> deepSeekControl(key)
             prov.contains("qwen") -> ReasoningControl.QWEN_EFFORT
-            clean.contains("think") || clean.contains("reason") -> ReasoningControl.OPENAI_EFFORT
+            key.contains("think") || key.contains("reason") -> ReasoningControl.OPENAI_EFFORT
             else -> ReasoningControl.NONE
         }
 
         val levels = when (inferredControl) {
-            ReasoningControl.OPENAI_EFFORT -> openAiLevelsFor(clean)
+            ReasoningControl.OPENAI_EFFORT -> openAiLevelsFor(key)
             ReasoningControl.ANTHROPIC_EFFORT -> claudeLevelsFor(clean)
             ReasoningControl.DEEPSEEK_EFFORT -> deepSeekLevels
             ReasoningControl.QWEN_EFFORT -> qwenLevels
             ReasoningControl.ZHIPU_EFFORT -> zhipuLevelsFor(clean)
-            ReasoningControl.GEMINI_THINKING_LEVEL -> geminiLevelsFor(clean)
+            ReasoningControl.GEMINI_THINKING_LEVEL -> geminiLevelsFor(key)
             else -> emptyList()
         }
 
@@ -82,6 +87,7 @@ object ModelCapabilityRegistry {
         )
         val created = ModelDefinition(id = clean, reasoning = capability)
         registry[clean] = created
+        packedRegistry[packed(clean)] = created
         return created
     }
 
@@ -89,38 +95,46 @@ object ModelCapabilityRegistry {
         return modelId.trim().lowercase().removePrefix("models/").substringAfterLast('/')
     }
 
-    private fun version(clean: String, prefix: String): Double {
-        val tail = clean.removePrefix(prefix)
-        val rest = listOf("opus-", "sonnet-", "haiku-", "fable-", "mythos-")
-            .fold(tail) { acc, family -> acc.removePrefix(family) }
-        val match = Regex("^(\\d+)(?:[.-](\\d+))?").find(rest) ?: return 0.0
-        val major = match.groupValues[1].toDoubleOrNull() ?: return 0.0
-        val minor = match.groupValues[2].toDoubleOrNull() ?: 0.0
-        return major + minor / 10
+    private fun packed(value: String): String {
+        return value.filter { it.isLetterOrDigit() }
     }
 
-    private fun openAiControl(clean: String): ReasoningControl {
-        return when {
-            clean.contains("gpt-4") || clean.contains("gpt-3") -> ReasoningControl.NONE
-            else -> ReasoningControl.OPENAI_EFFORT
+    private fun version(clean: String, marker: String): Double {
+        val raw = clean.substringAfter(marker, "")
+        if (raw.isEmpty()) return 0.0
+        val digits = raw.dropWhile { !it.isDigit() }
+        val match = Regex("^(\\d+)(?:[.-](\\d+))?").find(digits) ?: return 0.0
+        val major = match.groupValues[1]
+        val minor = match.groupValues[2]
+        if (minor.isNotEmpty()) return major.toDouble() + minor.toDouble() / 10
+        return when (major.length) {
+            1 -> major.toDouble()
+            2 -> major[0].digitToInt().toDouble() + major[1].digitToInt().toDouble() / 10
+            else -> 0.0
         }
     }
 
-    private fun openAiLevelsFor(clean: String): List<String> {
+    private fun openAiControl(key: String): ReasoningControl {
+        return if (key.contains("gpt4") || key.contains("gpt3")) ReasoningControl.NONE else ReasoningControl.OPENAI_EFFORT
+    }
+
+    private fun openAiLevelsFor(key: String): List<String> {
         return when {
-            clean.startsWith("o1") || clean.startsWith("o3") || clean.startsWith("o4") -> openAiLegacyLevels
-            clean.contains("gpt-6") || clean.contains("gpt-5") -> openAiLevels
+            key.startsWith("o1") || key.startsWith("o3") || key.startsWith("o4") -> openAiLegacyLevels
+            key.contains("gpt6") || key.contains("gpt5") -> openAiLevels
             else -> openAiLegacyLevels
         }
     }
 
     private fun claudeControl(clean: String): ReasoningControl {
-        return if (version(clean, "claude-") >= 3.7) ReasoningControl.ANTHROPIC_EFFORT else ReasoningControl.ANTHROPIC_BUDGET
+        val current = version(clean, "claude")
+        return if (current == 0.0 || current >= 3.7) ReasoningControl.ANTHROPIC_EFFORT else ReasoningControl.ANTHROPIC_BUDGET
     }
 
     private fun claudeLevelsFor(clean: String): List<String> {
-        val current = version(clean, "claude-")
+        val current = version(clean, "claude")
         return when {
+            current == 0.0 -> claudeLevels
             current < 3.7 -> emptyList()
             current < 5.0 -> claudeLegacyLevels
             else -> claudeLevels
@@ -128,35 +142,36 @@ object ModelCapabilityRegistry {
     }
 
     private fun geminiControl(clean: String): ReasoningControl {
-        val current = version(clean, "gemini-")
+        val current = version(clean, "gemini")
         return when {
+            current == 0.0 -> ReasoningControl.NONE
             current < 2.0 -> ReasoningControl.NONE
             current < 3.0 -> ReasoningControl.GEMINI_THINKING_BUDGET
             else -> ReasoningControl.GEMINI_THINKING_LEVEL
         }
     }
 
-    private fun geminiLevelsFor(clean: String): List<String> {
+    private fun geminiLevelsFor(key: String): List<String> {
         return when {
-            clean.contains("lite-image") -> geminiMinimalHigh
-            clean.contains("3-pro") && !clean.contains("3.1-pro") -> geminiHighLow
-            clean.contains("3.6-flash") || clean.contains("3-flash-preview") -> geminiWithMinimal
+            key.contains("liteimage") -> geminiMinimalHigh
+            key.contains("3pro") && !key.contains("31pro") -> geminiHighLow
+            key.contains("36flash") || key.contains("3flashpreview") -> geminiWithMinimal
             else -> geminiStandard
         }
     }
 
-    private fun deepSeekControl(clean: String): ReasoningControl {
-        return if (clean.contains("v3") || clean.contains("chat")) ReasoningControl.NONE else ReasoningControl.DEEPSEEK_EFFORT
+    private fun deepSeekControl(key: String): ReasoningControl {
+        return if (key.contains("v3") || key.contains("chat")) ReasoningControl.NONE else ReasoningControl.DEEPSEEK_EFFORT
     }
 
     private fun zhipuControl(clean: String): ReasoningControl {
-        return if (version(clean, "glm-") >= 5.2) ReasoningControl.ZHIPU_EFFORT else ReasoningControl.NONE
+        return if (version(clean, "glm") >= 5.2) ReasoningControl.ZHIPU_EFFORT else ReasoningControl.NONE
     }
 
     private fun zhipuLevelsFor(clean: String): List<String> {
         return when {
-            version(clean, "glm-") >= 5.3 -> zhipuLevels
-            version(clean, "glm-") >= 5.2 -> zhipuWideLevels
+            version(clean, "glm") >= 5.3 -> zhipuLevels
+            version(clean, "glm") >= 5.2 -> zhipuWideLevels
             else -> emptyList()
         }
     }

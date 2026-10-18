@@ -215,6 +215,8 @@ internal fun ApiConfigSettingsPage(
             }
         )
 
+        ApiReasoningSummarySection(provider = spec, model = selectedModel.ifBlank { customModelInput.trim() })
+
         Spacer(modifier = Modifier.height(10.dp))
         val currentTestTarget = if (selectedModel.isNotBlank()) {
             selectedModel

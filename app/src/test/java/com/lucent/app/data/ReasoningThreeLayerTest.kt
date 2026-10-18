@@ -261,6 +261,41 @@ class ReasoningThreeLayerTest {
     }
 
     @Test
+    fun relayAliasesResolveToTheSameCapability() {
+        val dashed = ModelCapabilityRegistry.findOrRegister("gpt-6-astra", "custom")
+        val compactName = ModelCapabilityRegistry.findOrRegister("gpt6astra", "custom")
+        assertEquals(dashed.reasoning.control, compactName.reasoning.control)
+        assertEquals(dashed.reasoning.levels, compactName.reasoning.levels)
+
+        val prefixed = ModelCapabilityRegistry.findOrRegister("openai/gpt-6-astra", "custom")
+        assertEquals(ReasoningControl.OPENAI_EFFORT, prefixed.reasoning.control)
+
+        val compactClaude = ModelCapabilityRegistry.findOrRegister("claudeopus55", "custom")
+        assertEquals(ReasoningControl.ANTHROPIC_EFFORT, compactClaude.reasoning.control)
+        assertEquals(listOf("low", "medium", "high", "xhigh", "max"), compactClaude.reasoning.levels)
+
+        val compactGlm = ModelCapabilityRegistry.findOrRegister("glm53", "custom")
+        assertEquals(ReasoningControl.ZHIPU_EFFORT, compactGlm.reasoning.control)
+        assertEquals(listOf("low", "high", "max"), compactGlm.reasoning.levels)
+    }
+
+    @Test
+    fun reasoningPlanShowsWhatWillBeSent() {
+        val plan = ReasoningPlanBuilder.build("openai", "gpt-6.1-sol")
+        assertTrue(plan.supported)
+        assertEquals("OpenAI effort", plan.controlLabel)
+        assertEquals(listOf("low", "medium", "high", "xhigh", "max"), plan.levels)
+        assertEquals(listOf("low", "medium", "high", "max"), plan.entries.map { it.second })
+
+        val relayed = ReasoningPlanBuilder.build("custom", "gpt6astra")
+        assertTrue(relayed.supported)
+        assertEquals(plan.levels, relayed.levels)
+
+        val unknown = ReasoningPlanBuilder.build("custom", "mystery-model")
+        assertTrue(!unknown.supported)
+    }
+
+    @Test
     fun everyPresetStaysInsideTheDeclaredLevels() {
         ModelCapabilityRegistry.getAll().forEach { model ->
             val levels = model.reasoning.levels

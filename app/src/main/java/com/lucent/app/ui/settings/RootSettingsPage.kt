@@ -15,7 +15,7 @@ import com.lucent.app.ui.SettingsRoute
 internal fun RootSettingsPage(repo: SettingsRepository, onRoute: (SettingsRoute) -> Unit) {
     DynamicColorRow(repo)
 
-    NavCard(S.settingsApiConfigTitle, "选择与连接") { onRoute(SettingsRoute.Api) }
+    NavCard(S.settingsApiConfigTitle, S.settingsApiConfigDescribe) { onRoute(SettingsRoute.Api) }
     Spacer(modifier = Modifier.height(12.dp))
 
     NavCard(S.fontTypographyTitle, S.fontTypographySub) { onRoute(SettingsRoute.Font) }

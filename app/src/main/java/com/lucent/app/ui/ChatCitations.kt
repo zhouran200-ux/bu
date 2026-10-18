@@ -1,5 +1,7 @@
 package com.lucent.app.ui
 
+import com.lucent.app.i18n.S
+
 import android.content.Context
 import com.lucent.app.data.CitationRef
 import com.lucent.app.data.Note
@@ -24,7 +26,7 @@ internal fun openCitationTarget(
         when {
             reason != null -> LucentToast.show(context, reason)
             index?.tagged?.sliceOf(ref.sliceId) == null ->
-                LucentToast.show(context, "引用切片不存在，无法定位原文")
+                LucentToast.show(context, S.citationSliceMissing)
             else -> onOpenSource(index.noteId, ref.sliceId, index.revision)
         }
     }

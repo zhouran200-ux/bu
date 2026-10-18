@@ -67,7 +67,7 @@ internal fun GlobalUserAgentSection(repo: SettingsRepository) {
                         } catch (cancelled: CancellationException) {
                             throw cancelled
                         } catch (_: Exception) {
-                            withContext(Dispatchers.Main) { LucentToast.show(context, "保存标识失败，请重试") }
+                            withContext(Dispatchers.Main) { LucentToast.show(context, S.userAgentSaveFailed) }
                         }
                     }
                 }
@@ -98,7 +98,7 @@ internal fun GlobalUserAgentSection(repo: SettingsRepository) {
                     customInput = collapseExcessBlankLines(it)
                 }
             },
-            label = "标识",
+            label = S.userAgentLabel,
             placeholder = S.fieldUserAgent,
             readOnly = isTavernSelected,
             trailing = {

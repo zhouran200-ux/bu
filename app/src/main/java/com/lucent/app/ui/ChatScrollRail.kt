@@ -1,5 +1,7 @@
 package com.lucent.app.ui
 
+import com.lucent.app.i18n.S
+
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.border
@@ -47,7 +49,7 @@ fun FloatingScrollCapsule(
     itemKeys: List<String>,
     enabled: Boolean,
     onDragStart: () -> Unit = {},
-    label: String = "快速滚动",
+    label: String = S.fastScroll,
     modifier: Modifier = Modifier
 ) {
     val ink = LocalOnGradient.current

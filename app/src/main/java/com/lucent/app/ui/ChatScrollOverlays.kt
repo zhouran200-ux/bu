@@ -1,5 +1,7 @@
 package com.lucent.app.ui
 
+import com.lucent.app.i18n.S
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -50,7 +52,7 @@ internal fun BoxScope.ChatDeleteUndoLayer(
         pending?.let { target ->
             DeleteUndoBar(
                 messageId = target.message.id,
-                label = if (target.message.role == "user") "已删除提问" else "已删除回答",
+                label = if (target.message.role == "user") S.deletedQuestion else S.deletedAnswer,
                 onUndo = onUndo,
                 onDismiss = onDismiss
             )
@@ -86,7 +88,7 @@ internal fun BoxScope.ChatScrollToBottomButton(
             Box(contentAlignment = Alignment.Center) {
                 Icon(
                     Icons.Rounded.ArrowDownward,
-                    contentDescription = "回到底部",
+                    contentDescription = S.backToBottom,
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(20.dp)
                 )

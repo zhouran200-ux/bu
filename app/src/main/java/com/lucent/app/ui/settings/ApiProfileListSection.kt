@@ -128,7 +128,7 @@ internal fun ApiProfileListSection(
             val pending = drag
             liveReorder.value(current.order, current.selected) { outcome ->
                 if (drag === pending) drag = null
-                if (outcome.isFailure) com.lucent.app.ui.LucentToast.show(context, "排序保存失败，请重试")
+                if (outcome.isFailure) com.lucent.app.ui.LucentToast.show(context, S.orderSaveFailed)
             }
         }
     }
@@ -316,7 +316,7 @@ internal fun ApiProfileListSection(
                                 )
                         ) {
                             Text(
-                                text = p.name.ifBlank { "方案 ${idx + 1}" },
+                                text = p.name.ifBlank { S.apiProfileDefaultName(idx + 1) },
                                 color = onGradient,
                                 fontSize = LucentTitles.ItemSize,
                                 fontWeight = LucentTitles.ItemWeight,
@@ -326,7 +326,7 @@ internal fun ApiProfileListSection(
                             Spacer(modifier = Modifier.width(6.dp))
                             val modelCount = if (idx == activeProfileIdx) models.size else p.selectedModels.size
                             Text(
-                                text = "· $modelCount 个模型",
+                                text = S.modelCountLabel(modelCount),
                                 color = onGradientMuted,
                                 fontSize = 12.sp
                             )

@@ -1,5 +1,7 @@
 package com.lucent.app.ui
 
+import com.lucent.app.i18n.S
+
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.foundation.Canvas
@@ -125,7 +127,7 @@ fun StepperSlider(
         Row(verticalAlignment = Alignment.CenterVertically) {
             SliderEdgeButton(
                 icon = Icons.Rounded.Remove,
-                description = "减小$title",
+                description = S.sliderDecrease(title),
                 enabled = shown > low + safeStep / 2f,
                 onClick = { nudge(-safeStep) }
             )
@@ -197,7 +199,7 @@ fun StepperSlider(
             Spacer(modifier = Modifier.width(if (compact) 4.dp else 6.dp))
             SliderEdgeButton(
                 icon = Icons.Rounded.Add,
-                description = "增大$title",
+                description = S.sliderIncrease(title),
                 enabled = shown < high - safeStep / 2f,
                 onClick = { nudge(safeStep) }
             )

@@ -44,7 +44,7 @@ internal fun rememberApiSettingsState(repo: SettingsRepository): ApiSettingsStat
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (_: Exception) {
-            owner.errorText = "读取方案失败，请重新打开设置"
+            owner.errorText = S.profilesLoadFailed
         }
     }
     return owner

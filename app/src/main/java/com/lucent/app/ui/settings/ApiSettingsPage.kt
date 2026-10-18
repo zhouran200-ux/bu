@@ -24,7 +24,6 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.Wifi
@@ -51,7 +50,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
@@ -67,7 +65,6 @@ import com.lucent.app.collapseExcessBlankLines
 import com.lucent.app.data.ApiProfile
 import com.lucent.app.data.SettingsRepository
 import com.lucent.app.i18n.S
-import com.lucent.app.network.ApiSpec
 import com.lucent.app.network.ApiProbe
 import com.lucent.app.network.TestConnectionResult
 import com.lucent.app.ui.ApiModelPickerDialog

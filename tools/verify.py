@@ -10,6 +10,8 @@ LEVELS = ("quick", "logic", "full")
 PY = sys.executable
 
 HYGIENE = [PY, "tools/code_hygiene_check.py"]
+SOURCE_AUDIT = [PY, "tools/source_audit.py", "--fail-on-candidates"]
+I18N_SOURCE = [PY, "tools/i18n_source_check.py"]
 VERSION = [PY, "tools/version_check.py"]
 SETTINGS = [PY, "tools/settings_cache_check.py"]
 SCROLL_SELFTEST = [PY, "tools/compose_scroll_check.py", "--self-test"]
@@ -26,6 +28,8 @@ COMPILE_ANDROIDTEST = [GRADLE, ":app:compileDebugAndroidTestKotlin", "--console=
 def plan(level):
     static = [
         ("代码卫生 (无注释/括号/体积)", HYGIENE),
+        ("残留符号/重复 import 门禁与静态候选", SOURCE_AUDIT),
+        ("UI/chat 用户文案回归门禁", I18N_SOURCE),
         ("版本号一致", VERSION),
         ("设置缓存回写一致", SETTINGS),
         ("嵌套滚动自检", SCROLL_SELFTEST),

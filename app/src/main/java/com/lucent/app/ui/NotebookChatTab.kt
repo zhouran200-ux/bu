@@ -209,7 +209,7 @@ fun NotebookChatTab(
     }
 
     fun askModel(answerId: Long) {
-        if (!session.ready) return
+        if (!session.ready || session.pendingWriteCount > 0) return
         val selection = ApiProfiles.resolveSelection(savedProfiles, selectedProfileId, selectedProfileName, selectedModel)
         val matchedProfile = selection?.first
         val targetModel = selection?.second.orEmpty()
@@ -298,18 +298,14 @@ fun NotebookChatTab(
                 listState.animateScrollToItem((messages.size - 1).coerceAtLeast(0))
             }
         }
-        scope.launch {
-            if (saved.await().isFailure) {
-                messages.removeAll { it.id == answerId }
-                LucentToast.show(context, S.chatQuestionNotSaved)
-            } else {
-                askModel(answerId)
-            }
-        }
+        session.afterWrite(saved, onFailure = {
+            messages.removeAll { it.id == answerId }
+            LucentToast.show(context, S.chatQuestionNotSaved)
+        }) { askModel(answerId) }
     }
 
     fun regenerateAnswer(answerId: Long) {
-        if (!session.ready) return
+        if (!session.ready || session.pendingWriteCount > 0 || session.hasPendingAction) return
         if (streamingAnswerId != null) {
             LucentToast.show(context, S.chatStillAnswering)
             return
@@ -326,39 +322,28 @@ fun NotebookChatTab(
             LucentToast.show(context, S.chatNoModelOrKey)
             return
         }
-        messages[idx] = messages[idx].copy(
-            content = "",
-            reasoningText = null,
-            answerSeconds = 0,
-            promptTokens = 0,
-            cachedTokens = 0,
-            firstTokenMillis = null,
-            generationMillis = null,
-            cachedTokensKnown = false,
-            sourceNoteId = null,
-            sourceRevision = null
-        )
         settlePendingDelete()
-        session.deleteMessages(listOf(answerId))
-        askModel(answerId)
+        session.afterWrite(session.retryPendingWrites()) { askModel(answerId) }
     }
 
     fun resendEditedQuestion(questionId: Long, newText: String) {
-        if (!session.ready || session.streamingAnswerId != null) return
+        if (!session.ready || session.streamingAnswerId != null || session.pendingWriteCount > 0 || session.hasPendingAction) return
         val idx = messages.indexOfFirst { it.id == questionId }
         if (idx < 0) return
         settlePendingDelete()
         val followingIds = messages.drop(idx + 1).map { it.id }
         while (messages.size > idx + 1) messages.removeAt(messages.size - 1)
         messages[idx] = messages[idx].copy(content = newText)
-        session.replaceQuestionAndDropFollowing(questionId, newText, followingIds)
-        val answerId = System.currentTimeMillis() + 1
-        messages.add(UiChatMessage(id = answerId, role = "assistant", content = "", timestamp = answerId))
-        askModel(answerId)
+        val saved = session.replaceQuestionAndDropFollowing(questionId, newText, followingIds)
+        session.afterWrite(saved) {
+            val answerId = System.currentTimeMillis() + 1
+            messages.add(UiChatMessage(id = answerId, role = "assistant", content = "", timestamp = answerId))
+            askModel(answerId)
+        }
     }
 
     fun saveAnswerEdit(answerId: Long, newText: String) {
-        if (!session.ready || session.streamingAnswerId != null) return
+        if (!session.ready || session.streamingAnswerId != null || session.pendingWriteCount > 0 || session.hasPendingAction) return
         val idx = messages.indexOfFirst { it.id == answerId }
         if (idx < 0) return
         messages[idx] = messages[idx].copy(content = newText)
@@ -366,7 +351,7 @@ fun NotebookChatTab(
     }
 
     fun deleteMessage(target: UiChatMessage) {
-        if (!session.ready || session.streamingAnswerId != null) return
+        if (!session.ready || session.streamingAnswerId != null || session.pendingWriteCount > 0 || session.hasPendingAction) return
         val idx = messages.indexOfFirst { it.id == target.id }
         if (idx < 0) return
         if (pendingDelete != null) LucentToast.show(context, S.chatPreviousDeleteApplied)
@@ -435,7 +420,7 @@ fun NotebookChatTab(
     val onSendMessage: () -> Unit = send@{
         val text = inputText.trim()
         if (text.isEmpty()) return@send
-        if (!session.ready) {
+        if (!session.ready || session.pendingWriteCount > 0 || session.hasPendingAction) {
             LucentToast.show(context, session.storageError ?: S.chatLoadingRetry)
             return@send
         }
@@ -500,16 +485,16 @@ fun NotebookChatTab(
                 item(key = "header") {
                     Column {
                         Spacer(modifier = Modifier.height(8.dp))
-                        if (session.unsavedMessageCount > 0) {
-                            TextButton(onClick = { session.retryUnsavedMessages() }) {
-                                Text(S.chatUnsavedAnswersRetry)
+                        if (session.pendingWriteCount > 0) {
+                            TextButton(onClick = { session.retryPendingWrites() }) {
+                                Text(S.chatPendingWritesRetry)
                             }
                         }
                     }
                 }
 
                 itemsIndexed(messages, key = { _, msg -> "message:${msg.id}" }) { _, msg ->
-                    val actionsEnabled = session.ready && streamingAnswerId == null
+                    val actionsEnabled = session.ready && streamingAnswerId == null && session.pendingWriteCount == 0 && !session.hasPendingAction
                     val itemModifier = if (msg.id == streamingAnswerId) {
                         Modifier
                     } else {

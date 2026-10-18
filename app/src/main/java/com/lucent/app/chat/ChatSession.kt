@@ -19,7 +19,6 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.async
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.withContext
@@ -45,11 +44,15 @@ class ChatSession(
         private set
     private var generation: Job? = null
     private var handle: StreamCallHandle? = null
-    private var writeTail: Job? = null
     private var unavailable = false
-    private val pendingMessages = linkedMapOf<Long, UiChatMessage>()
-    var unsavedMessageCount by mutableStateOf(0)
+    private var pendingActions by mutableStateOf(0)
+    val hasPendingAction: Boolean get() = pendingActions > 0
+    var pendingWriteCount by mutableStateOf(0)
         private set
+    private val writes = ChatWriteQueue(scope) { count, failure ->
+        pendingWriteCount = count
+        storageError = failure?.let { S.chatSaveFailed(it.message ?: "") }
+    }
 
     init {
         scope.launch {
@@ -62,47 +65,32 @@ class ChatSession(
         }
     }
 
-    fun write(block: suspend () -> Unit): Deferred<Result<Unit>> {
-        if (unavailable) return CompletableDeferred(Result.failure(IllegalStateException(S.chatNotebookNotWritable)))
-        val previous = writeTail
-        return scope.async(start = CoroutineStart.LAZY) {
-            previous?.join()
-            try {
-                block()
-                Result.success(Unit)
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } catch (failure: Exception) {
-                storageError = S.chatSaveFailed(failure.message ?: "")
-                Result.failure(failure)
-            }
-        }.also { writeTail = it; it.start() }
-    }
+    fun write(block: suspend () -> Unit): Deferred<Result<Unit>> =
+        if (unavailable) notWritable() else writes.submit(block = block)
 
-    fun saveMessage(message: UiChatMessage): Deferred<Result<Unit>> {
-        pendingMessages[message.id] = message
-        unsavedMessageCount = pendingMessages.size
-        return write {
-            save(message)
-            if (pendingMessages[message.id] === message) pendingMessages.remove(message.id)
-            unsavedMessageCount = pendingMessages.size
-            if (pendingMessages.isEmpty()) storageError = null
-        }
-    }
+    fun saveMessage(message: UiChatMessage): Deferred<Result<Unit>> =
+        if (unavailable) notWritable() else writes.submit(message.id) { save(message) }
 
-    fun retryUnsavedMessages(): Deferred<Result<Unit>> = write {
-        for (pending in pendingMessages.values.toList()) {
-            val current = messages.firstOrNull { it.id == pending.id }
-            if (current == null) {
-                pendingMessages.remove(pending.id)
+    fun retryPendingWrites(): Deferred<Result<Unit>> =
+        if (unavailable) notWritable() else writes.retry()
+
+    fun afterWrite(
+        result: Deferred<Result<Unit>>,
+        onFailure: () -> Unit = {},
+        onSuccess: () -> Unit
+    ): Job {
+        pendingActions++
+        return scope.launch {
+            if (result.await().isSuccess) {
+                if (ready && !unavailable) onSuccess()
             } else {
-                save(current)
-                if (pendingMessages[pending.id] === pending) pendingMessages.remove(pending.id)
+                onFailure()
             }
-            unsavedMessageCount = pendingMessages.size
-        }
-        if (pendingMessages.isEmpty()) storageError = null
+        }.also { action -> action.invokeOnCompletion { pendingActions-- } }
     }
+
+    private fun notWritable(): Deferred<Result<Unit>> =
+        CompletableDeferred(Result.failure(IllegalStateException(S.chatNotebookNotWritable)))
 
     fun updateMessageContent(id: Long, content: String): Deferred<Result<Unit>> =
         write { updateContent(id, content) }
@@ -126,7 +114,8 @@ class ChatSession(
         val slot = messages.indexOfFirst { it.id == answerId }
         if (slot < 0) return false
         onRunningChanged(true)
-        var initial = messages[slot].copy(content = "", reasoningText = null, reasoningTag = reasoningTag,
+        val previousMessage = messages[slot]
+        var initial = previousMessage.copy(content = "", reasoningText = null, reasoningTag = reasoningTag,
             answerSeconds = 0, promptTokens = 0, cachedTokens = 0,
             firstTokenMillis = null, generationMillis = null, cachedTokensKnown = false,
             sourceNoteId = null, sourceRevision = null)
@@ -147,11 +136,14 @@ class ChatSession(
             )
             var result: ChatCompletionResult? = null
             var failure: Throwable? = null
+            var initialPersistenceFailed = false
             try {
                 val binding = sourceBinding()
                 initial = initial.copy(sourceNoteId = binding.first, sourceRevision = binding.second)
                 update(initial)
-                saveMessage(initial).await()
+                initialPersistenceFailed = true
+                if (saveMessage(initial).await().isFailure) return@launch
+                initialPersistenceFailed = false
                 startedAt = monotonicNanos()
                 val response = stream(callHandle) { text, reasoning ->
                     val arrivedAt = monotonicNanos()
@@ -171,6 +163,19 @@ class ChatSession(
             } finally {
                 val elapsedMillis = startedAt?.let { ((monotonicNanos() - it) / 1_000_000L).coerceAtLeast(0L) }
                 withContext(NonCancellable) {
+                    if (initialPersistenceFailed && !callHandle.isCancelled) {
+                        try {
+                            update(previousMessage)
+                            saveMessage(previousMessage).await()
+                        } finally {
+                            handle = null
+                            generation = null
+                            streamingAnswerId = null
+                            thought.value = ""
+                            onRunningChanged(false)
+                        }
+                        return@withContext
+                    }
                     scheduler.forceFlush()
                     val partial = scheduler.getFinalContent()
                     val content = when {
@@ -214,7 +219,7 @@ class ChatSession(
         ready = false
         storageError = S.notebookDeleting
         try {
-            writeTail?.join()
+            writes.awaitIdle()
         } catch (e: Exception) {
             unavailable = false
             ready = previousReady
@@ -230,8 +235,7 @@ class ChatSession(
     }
 
     internal fun canRelease(): Boolean = ready && !unavailable && storageError == null &&
-        streamingAnswerId == null && unsavedMessageCount == 0 &&
-        writeTail?.isCompleted != false && generation?.isCompleted != false
+        streamingAnswerId == null && pendingActions == 0 && writes.isIdle && generation?.isCompleted != false
 
     internal fun releaseIfIdle(): Boolean {
         if (!canRelease()) return false

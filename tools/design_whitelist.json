@@ -1,11 +1,207 @@
 {
-  "files": [
-    "app/src/main/java/com/lucent/app/ui/AppThemeColors.kt",
-    "app/src/main/java/com/lucent/app/ui/BackgroundPaletteMotion.kt",
-    "app/src/main/java/com/lucent/app/ui/FluidGlassBackground.kt",
-    "app/src/main/java/com/lucent/app/ui/Glass.kt",
-    "app/src/main/java/com/lucent/app/ui/PaletteCatalog.kt",
-    "app/src/main/java/com/lucent/app/ui/PlatformDiffuseBackground.kt",
-    "app/src/main/java/com/lucent/app/ui/ThemeModes.kt"
+  "schema_version": 2,
+  "policy": "Only these exact color declarations in their named owner blocks are reviewed. Each declaration must occur once. New or changed definitions require an explicit purpose and baseline review; no file or icon-line exemption. Neutral/sentinel Color.White, Black, Transparent and Unspecified remain individually allowed. This is a textual UI audit, not a visual or accessibility certification.",
+  "definitions": [
+    {
+      "file": "app/src/main/java/com/lucent/app/ui/AppThemeColors.kt",
+      "scope": "internal object LucentStatusColors {",
+      "purpose": "Selection status token; retain the existing green selection meaning.",
+      "declarations": [
+        "val Selected = Color(0xFF22C55E)"
+      ]
+    },
+    {
+      "file": "app/src/main/java/com/lucent/app/ui/AppThemeColors.kt",
+      "scope": "): AppThemeColors {",
+      "purpose": "Fallback foreground ink for non-dynamic theme gradients.",
+      "declarations": [
+        "onGradient = if (isDarkTheme) Color.White else Color(0xFF20202B)"
+      ]
+    },
+    {
+      "file": "app/src/main/java/com/lucent/app/ui/Glass.kt",
+      "scope": "val LocalBackdropColor = compositionLocalOf { Color(0xFF0E0E14) }",
+      "purpose": "Default backdrop CompositionLocal before a theme provider supplies a value.",
+      "declarations": [
+        "val LocalBackdropColor = compositionLocalOf { Color(0xFF0E0E14) }"
+      ]
+    },
+    {
+      "file": "app/src/main/java/com/lucent/app/ui/Glass.kt",
+      "scope": "object LucentGlass {",
+      "purpose": "Pure-white theme page, surface, ink, dividers, shadows and control state tokens.",
+      "declarations": [
+        "val PureWhitePage = Color(0xFFF7F7F8)",
+        "val PureWhiteSurface = Color(0xFFFFFFFF)",
+        "val PureWhiteInk = Color(0xFF1A1D21)",
+        "val PureWhiteDivider = Color(0xFFD9D9D9)",
+        "val PureWhiteShadowAmbient = Color(0xFF1A1D21).copy(alpha = 0.08f)",
+        "val PureWhiteShadowSpot = Color(0xFF1A1D21).copy(alpha = 0.12f)",
+        "val PureWhiteControlFill = Color(0xFFF4F4F5)",
+        "val PureWhiteControlFillPressed = Color(0xFFE3E3E5)"
+      ]
+    },
+    {
+      "file": "app/src/main/java/com/lucent/app/ui/Glass.kt",
+      "scope": "fun lucentScheme(base: ColorScheme, palette: List<Color>, ink: Color, backdrop: Color): ColorScheme {",
+      "purpose": "Readable dark content ink for bright generated accent colors.",
+      "declarations": [
+        "val content = if (accent.luminance() > 0.20f) Color(0xFF14141C) else Color.White"
+      ]
+    },
+    {
+      "file": "app/src/main/java/com/lucent/app/ui/Glass.kt",
+      "scope": "fun pureWhiteScheme(base: ColorScheme): ColorScheme {",
+      "purpose": "Material surface/container roles for the existing pure-white theme.",
+      "declarations": [
+        "primaryContainer = Color(0xFFECECED),",
+        "secondaryContainer = Color(0xFFECECED),",
+        "tertiaryContainer = Color(0xFFECECED),",
+        "surfaceVariant = Color(0xFFF0F0F1),",
+        "surfaceDim = Color(0xFFEDEDEE),",
+        "surfaceContainerLow = Color(0xFFFAFAFB),",
+        "surfaceContainer = Color(0xFFF4F4F5),",
+        "surfaceContainerHigh = Color(0xFFEFEFF0),",
+        "surfaceContainerHighest = Color(0xFFEAEAEB),"
+      ]
+    },
+    {
+      "file": "app/src/main/java/com/lucent/app/ui/PaletteCatalog.kt",
+      "scope": "enum class LucentPalette(val colors: List<Color>, val group: PaletteGroup, val featured: Boolean = true) {",
+      "purpose": "User-selectable gradient palette catalog; preserve each named palette triplet.",
+      "declarations": [
+        "SUNSET(listOf(Color(0xFF3A1C71), Color(0xFFD76D77), Color(0xFFFFAF7B)), PaletteGroup.DAWN),",
+        "OCEAN(listOf(Color(0xFF00507A), Color(0xFF3A6EA5), Color(0xFF4FD9C4)), PaletteGroup.AQUA),",
+        "FOREST(listOf(Color(0xFF0F4C3A), Color(0xFF1F9E6B), Color(0xFFB6E388)), PaletteGroup.EVERGREEN),",
+        "BERRY(listOf(Color(0xFF5B2C82), Color(0xFFB43D8F), Color(0xFFFF7CA3)), PaletteGroup.BLOSSOM),",
+        "MIDNIGHT(listOf(Color(0xFF16213E), Color(0xFF0F3460), Color(0xFF533483)), PaletteGroup.VELVET),",
+        "BLUSH(listOf(Color(0xFF7A2E43), Color(0xFFC96A80), Color(0xFFF3B8C6)), PaletteGroup.BLOSSOM, featured = false),",
+        "LAVENDER(listOf(Color(0xFF4B3A6B), Color(0xFF8A6FB0), Color(0xFFCBB6E8)), PaletteGroup.VIVID),",
+        "SAGE(listOf(Color(0xFF2F4A3C), Color(0xFF5E8B6F), Color(0xFFAFCBB4)), PaletteGroup.EVERGREEN),",
+        "SAND(listOf(Color(0xFF7A5C36), Color(0xFFC1996A), Color(0xFFEAD6B8)), PaletteGroup.DAWN),",
+        "SLATE(listOf(Color(0xFF2A3A4A), Color(0xFF4F6B84), Color(0xFF9DB4C8)), PaletteGroup.AQUA),",
+        "TERRACOTTA(listOf(Color(0xFF7A3B2E), Color(0xFFC26A50), Color(0xFFEAB59B)), PaletteGroup.SUNFIRE),",
+        "TEAL(listOf(Color(0xFF10403B), Color(0xFF2E7E76), Color(0xFF8FC9C0)), PaletteGroup.EVERGREEN),",
+        "AURORA(listOf(Color(0xFF0FA3A3), Color(0xFF6A5AE0), Color(0xFFE85D9E)), PaletteGroup.VIVID),",
+        "PEACH_DUSK(listOf(Color(0xFFFF8A5B), Color(0xFFEE4D8F), Color(0xFF8A4FD8)), PaletteGroup.DAWN),",
+        "COSMIC(listOf(Color(0xFF1E5AE8), Color(0xFF9B2FE8), Color(0xFF2ED0C0)), PaletteGroup.VIVID),",
+        "AMBER(listOf(Color(0xFF7A6108), Color(0xFFD4A81A), Color(0xFFF5E39B)), PaletteGroup.DAWN),",
+        "CRIMSON(listOf(Color(0xFF6E1410), Color(0xFFC0392B), Color(0xFFF0A79C)), PaletteGroup.SUNFIRE),",
+        "INDIGO(listOf(Color(0xFF232A63), Color(0xFF4A55A8), Color(0xFFA3AAE0)), PaletteGroup.VIVID),",
+        "OLIVE(listOf(Color(0xFF4A4A22), Color(0xFF86864A), Color(0xFFCBCB93)), PaletteGroup.EVERGREEN),",
+        "PLUM(listOf(Color(0xFF4A1F3A), Color(0xFF8A4270), Color(0xFFD69EC0)), PaletteGroup.VELVET),",
+        "GRAPHITE(listOf(Color(0xFF2B2B30), Color(0xFF5A5A63), Color(0xFFA8A8B2)), PaletteGroup.EARTH),",
+        "CITRUS(listOf(Color(0xFF7ED321), Color(0xFFF5A623), Color(0xFFFF6B6B)), PaletteGroup.SUNFIRE),",
+        "GLACIER(listOf(Color(0xFFA8D8F0), Color(0xFF5E9CC7), Color(0xFF1E3A5F)), PaletteGroup.AQUA),",
+        "NEBULA(listOf(Color(0xFFE0218A), Color(0xFF7B2FBE), Color(0xFF2A2A8C)), PaletteGroup.VIVID),",
+        "EMBERGLOW(listOf(Color(0xFF8C1C13), Color(0xFFE2571E), Color(0xFFF2B705)), PaletteGroup.SUNFIRE),",
+        "MERIDIAN(listOf(Color(0xFF0E6E6E), Color(0xFF7A9A3C), Color(0xFFE3C88F)), PaletteGroup.EVERGREEN),",
+        "ORCHID(listOf(Color(0xFFF28FC2), Color(0xFFB57BE0), Color(0xFF7C9BE8)), PaletteGroup.BLOSSOM),",
+        "TOBACCO(listOf(Color(0xFF3A2113), Color(0xFF8A5A33), Color(0xFFDCC09A)), PaletteGroup.EARTH),",
+        "STONE(listOf(Color(0xFF403E3A), Color(0xFF807A70), Color(0xFFD2CBC0)), PaletteGroup.EARTH),",
+        "NOCTURNE(listOf(Color(0xFF101728), Color(0xFF35425F), Color(0xFF8796B8)), PaletteGroup.AQUA, featured = false),",
+        "CHERRY(listOf(Color(0xFF450F1E), Color(0xFF94263F), Color(0xFFE2A0B4)), PaletteGroup.BLOSSOM),",
+        "TANGERINE(listOf(Color(0xFF5C2A07), Color(0xFFAC5F14), Color(0xFFF0C780)), PaletteGroup.SUNFIRE, featured = false),",
+        "ROYAL(listOf(Color(0xFF17275C), Color(0xFF3E63B0), Color(0xFF9DB8EE)), PaletteGroup.AQUA),",
+        "AMETHYST(listOf(Color(0xFF34164A), Color(0xFF6E3D9E), Color(0xFFC3A2E0)), PaletteGroup.VELVET),",
+        "ALPINE(listOf(Color(0xFF1C2E28), Color(0xFF4F7360), Color(0xFFA8C8B8)), PaletteGroup.EARTH, featured = false),",
+        "PEARL(listOf(Color(0xFF4E4A52), Color(0xFF9C95A6), Color(0xFFE4DEE8)), PaletteGroup.EARTH, featured = false),",
+        "EGGSHELL(listOf(Color(0xFF6E6657), Color(0xFFB0A693), Color(0xFFF0E9DA)), PaletteGroup.DAWN),",
+        "CONFETTI(listOf(Color(0xFFFF5E5B), Color(0xFFFFC24B), Color(0xFF6DD5ED)), PaletteGroup.SUNFIRE),",
+        "GRAPEVINE(listOf(Color(0xFF3C2A5C), Color(0xFF7A4FA0), Color(0xFFE08FC2)), PaletteGroup.BLOSSOM, featured = false),",
+        "SEABREEZE(listOf(Color(0xFF123A54), Color(0xFF2F8FB3), Color(0xFFA8E2E0)), PaletteGroup.EVERGREEN),",
+        "TWILIGHT(listOf(Color(0xFF0F1B4C), Color(0xFF5C2E91), Color(0xFFE55D87)), PaletteGroup.VELVET),",
+        "MISTY(listOf(Color(0xFF2F3542), Color(0xFF57606F), Color(0xFFA4B0BE)), PaletteGroup.VELVET);"
+      ]
+    },
+    {
+      "file": "app/src/main/java/com/lucent/app/ui/ThemeModes.kt",
+      "scope": "fun backdrop(systemDark: Boolean): Color = when (this) {",
+      "purpose": "Named Monet theme backdrop definitions.",
+      "declarations": [
+        "MONET_WHEAT -> Color(0xFFF7F1DC)",
+        "MONET_GARDEN -> Color(0xFFE9F2E5)",
+        "MONET_MORNING -> Color(0xFFE5EDF7)",
+        "MONET_WISTERIA -> Color(0xFFEEE9F7)",
+        "MONET_NIGHT -> Color(0xFF1A2136)",
+        "MONET_PINE -> Color(0xFF16241C)",
+        "MONET_PLUM -> Color(0xFF241A2E)",
+        "MONET_EMBER -> Color(0xFF2A1E19)",
+        "MONET_ROSE -> Color(0xFFF9EEF0)",
+        "MONET_LAGOON -> Color(0xFFE4F1EF)",
+        "MONET_INK -> Color(0xFF0F262A)",
+        "MONET_GARNET -> Color(0xFF2E161C)",
+        "MONET_PEACH -> Color(0xFFF9EFE1)",
+        "MONET_CLAY -> Color(0xFF371B0C)",
+        "MONET_ORCHID -> Color(0xFFF8EBF4)",
+        "MONET_ORCHID_NIGHT -> Color(0xFF2C1024)",
+        "MONET_HONEY -> Color(0xFFFCF6DC)",
+        "MONET_MINT -> Color(0xFFE4F6ED)",
+        "MONET_PERIWINKLE -> Color(0xFFE7EBF9)",
+        "MONET_CORAL -> Color(0xFFFBEAE6)",
+        "MONET_SNOWDROP -> Color(0xFFF7F7FF)",
+        "MONET_HONEYDEW -> Color(0xFFEFF7E4)",
+        "MONET_LINEN -> Color(0xFFFBF3E8)",
+        "MONET_FROST -> Color(0xFFEAF6F5)",
+        "MONET_UMBER -> Color(0xFF2C1806)",
+        "MONET_DEEP_MOSS -> Color(0xFF0E2B1C)",
+        "MONET_BLUEBERRY -> Color(0xFF101B44)",
+        "MONET_BRICK -> Color(0xFF3B130B)",
+        "MONET_OBSIDIAN -> Color(0xFF101622)",
+        "MONET_FIR -> Color(0xFF0D2A1E)",
+        "MONET_WALNUT -> Color(0xFF3A2412)",
+        "MONET_ABYSS -> Color(0xFF032A26)"
+      ]
+    },
+    {
+      "file": "app/src/main/java/com/lucent/app/ui/ThemeModes.kt",
+      "scope": "fun swatch(): List<Color> = when (this) {",
+      "purpose": "Theme picker preview swatches, not general-purpose component colors.",
+      "declarations": [
+        "LIGHT -> listOf(LIGHT_BACKDROP, Color(0xFFDCDBE4))",
+        "DARK -> listOf(Color(0xFF23232E), DARK_BACKDROP)",
+        "MONET_WHEAT -> listOf(Color(0xFFFBF7EA), Color(0xFFE8DDB6))",
+        "MONET_GARDEN -> listOf(Color(0xFFF1F7EF), Color(0xFFC9DEC2))",
+        "MONET_MORNING -> listOf(Color(0xFFEEF4FB), Color(0xFFC2D5EA))",
+        "MONET_WISTERIA -> listOf(Color(0xFFF5F1FB), Color(0xFFD3C6EA))",
+        "MONET_NIGHT -> listOf(Color(0xFF2B3552), Color(0xFF141A2C))",
+        "MONET_PINE -> listOf(Color(0xFF25392E), Color(0xFF101B15))",
+        "MONET_PLUM -> listOf(Color(0xFF3A2B48), Color(0xFF1A121F))",
+        "MONET_EMBER -> listOf(Color(0xFF43302A), Color(0xFF1E1512))",
+        "MONET_ROSE -> listOf(Color(0xFFFDF5F6), Color(0xFFEECDD4))",
+        "MONET_LAGOON -> listOf(Color(0xFFEFF7F6), Color(0xFFBFDEDA))",
+        "MONET_INK -> listOf(Color(0xFF1B3A40), Color(0xFF0A1B1E))",
+        "MONET_GARNET -> listOf(Color(0xFF46242C), Color(0xFF1F0F13))",
+        "MONET_PEACH -> listOf(Color(0xFFFDF6EA), Color(0xFFEBD9B8))",
+        "MONET_CLAY -> listOf(Color(0xFF59301A), Color(0xFF2A1307))",
+        "MONET_ORCHID -> listOf(Color(0xFFFDF3F9), Color(0xFFE5CBDD))",
+        "MONET_ORCHID_NIGHT -> listOf(Color(0xFF4A1E3E), Color(0xFF1F0B1A))",
+        "MONET_HONEY -> listOf(Color(0xFFFEF7E0), Color(0xFFE3D191))",
+        "MONET_MINT -> listOf(Color(0xFFF0FAF4), Color(0xFFC6E4D2))",
+        "MONET_PERIWINKLE -> listOf(Color(0xFFF3F5FD), Color(0xFFC9D2F0))",
+        "MONET_CORAL -> listOf(Color(0xFFFDF3EF), Color(0xFFEFC9BD))",
+        "MONET_SNOWDROP -> listOf(Color(0xFFFDFDFF), Color(0xFFD6D6EC))",
+        "MONET_HONEYDEW -> listOf(Color(0xFFF7FBF0), Color(0xFFD4E6BB))",
+        "MONET_LINEN -> listOf(Color(0xFFFDF6EC), Color(0xFFE4D3B4))",
+        "MONET_FROST -> listOf(Color(0xFFF4FBFB), Color(0xFFC3E4E2))",
+        "MONET_UMBER -> listOf(Color(0xFF4A2C16), Color(0xFF1C1003))",
+        "MONET_DEEP_MOSS -> listOf(Color(0xFF1D4632), Color(0xFF081D12))",
+        "MONET_BLUEBERRY -> listOf(Color(0xFF26315E), Color(0xFF0A1130))",
+        "MONET_BRICK -> listOf(Color(0xFF5A2118), Color(0xFF280D08))",
+        "MONET_OBSIDIAN -> listOf(Color(0xFF232C3E), Color(0xFF080C16))",
+        "MONET_FIR -> listOf(Color(0xFF1B3A29), Color(0xFF081D12))",
+        "MONET_WALNUT -> listOf(Color(0xFF5A3D20), Color(0xFF241505))",
+        "MONET_ABYSS -> listOf(Color(0xFF0D403A), Color(0xFF021B18))"
+      ]
+    },
+    {
+      "file": "app/src/main/java/com/lucent/app/ui/ThemeModes.kt",
+      "scope": "companion object {",
+      "purpose": "Shared light and dark theme backdrop defaults.",
+      "declarations": [
+        "val LIGHT_BACKDROP = Color(0xFFF4F3F8)",
+        "val DARK_BACKDROP = Color(0xFF0E0E14)"
+      ]
+    }
   ]
 }

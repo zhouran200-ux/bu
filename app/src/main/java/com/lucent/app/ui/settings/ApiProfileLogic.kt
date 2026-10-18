@@ -18,9 +18,6 @@ internal val ROW_CARD_RADIUS = 14.dp
 internal const val HELD_SCALE = 1.02f
 internal const val HELD_ALPHA = 0.94f
 
-private val CompactFieldHeight = 42.dp
-private val CompactFieldLabelWidth = 56.dp
-
 internal data class ProfileDrag(
     val order: List<ApiProfile>,
     val keys: List<String>,

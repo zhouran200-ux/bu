@@ -40,12 +40,8 @@ class ApprovedUxContractTest(unittest.TestCase):
         self.assertIn("followStream = true", call)
         self.assertIn("listState.animateScrollToItem", call)
 
-    def test_empty_history_has_no_jump_chips(self):
-        text = (UI / "ChatHistorySheet.kt").read_text(encoding="utf-8")
-        section = text.split("if (hasRecords) {", 1)[1].split("if (!hasRecords)", 1)[0]
-        self.assertEqual(2, section.count("JumpChip("))
-        empty_state = text.split("if (!hasRecords) {", 1)[1].split("} else {", 1)[0]
-        self.assertNotIn("JumpChip", empty_state)
+    # Empty history visibility and absent jump actions now live in
+    # ChatHistorySheetTest.emptyHistoryShowsExplanationWithoutJumpActionsOrCallbacks.
 
     def test_error_details_remain_below_summary(self):
         text = (UI / "settings/ApiSettingsPage.kt").read_text(encoding="utf-8")

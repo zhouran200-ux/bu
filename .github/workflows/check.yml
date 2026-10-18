@@ -90,8 +90,13 @@ jobs:
           if-no-files-found: warn
 
   android-device-check:
+    name: Android device API ${{ matrix.api-level }}
     runs-on: ubuntu-24.04
     timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        api-level: [33, 35]
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-java@v5
@@ -125,7 +130,7 @@ jobs:
         if: ${{ !cancelled() }}
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 35
+          api-level: ${{ matrix.api-level }}
           target: google_apis
           arch: x86_64
           disable-animations: true
@@ -135,15 +140,32 @@ jobs:
         run: python3 tools/test_inventory.py app/build/outputs/androidTest-results/connected
       - name: Summarise instrumentation results
         if: always()
-        run: python3 tools/test_report_summary.py app/build/outputs/androidTest-results/connected "Android device"
+        run: python3 tools/test_report_summary.py app/build/outputs/androidTest-results/connected "Android device API ${{ matrix.api-level }}"
       - name: Upload instrumentation reports even after failure
         if: always()
         uses: actions/upload-artifact@v6
         with:
-          name: android-device-reports
+          name: android-device-reports-api-${{ matrix.api-level }}
           path: |
             ci-reports/
             app/build/reports/androidTests/
             app/build/outputs/androidTest-results/
             app/build/outputs/logs/
           if-no-files-found: warn
+
+  check:
+    name: check
+    if: always()
+    needs: [source-hygiene, android-jvm-check, android-device-check]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Require every validation job and device API
+        env:
+          SOURCE_RESULT: ${{ needs.source-hygiene.result }}
+          JVM_RESULT: ${{ needs.android-jvm-check.result }}
+          DEVICE_RESULT: ${{ needs.android-device-check.result }}
+        run: |
+          test "$SOURCE_RESULT" = success
+          test "$JVM_RESULT" = success
+          test "$DEVICE_RESULT" = success

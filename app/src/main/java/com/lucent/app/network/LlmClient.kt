@@ -131,7 +131,7 @@ object LlmClient {
             throw cancelled
         } catch (e: Exception) {
             coroutineContext.ensureActive()
-            Result.failure(e)
+            Result.failure(DiagnosticRedaction.failure(e, apiKey))
         }
     }
 
@@ -224,9 +224,9 @@ object LlmClient {
                 val errMsg = try {
                     val json = JSONObject(bodyStr)
                     val errorObj = json.optJSONObject("error")
-                    errorObj?.optString("message") ?: bodyStr.take(120)
+                    errorObj?.optString("message") ?: DiagnosticRedaction.text(bodyStr, apiKey).take(120)
                 } catch (_: Exception) {
-                    bodyStr.take(120)
+                    DiagnosticRedaction.text(bodyStr, apiKey).take(120)
                 }
                 val failureResult = TestConnectionResult(
                     success = false,
@@ -264,7 +264,7 @@ object LlmClient {
                     latencyMs = latency,
                     targetModel = model,
                     requestUrl = resolvedUrl,
-                    rawResponseBody = e.stackTraceToString().take(1500),
+                    rawResponseBody = DiagnosticRedaction.text(e.stackTraceToString(), apiKey).take(1500),
                     errorMessage = e.message ?: e.javaClass.simpleName,
                     userAgentUsed = usedUa
                 ).redacted(apiKey)
@@ -316,9 +316,9 @@ object LlmClient {
                         val errMsg = try {
                             val json = JSONObject(bodyStr)
                             val errorObj = json.optJSONObject("error")
-                            errorObj?.optString("message") ?: bodyStr.take(200)
+                            errorObj?.optString("message") ?: DiagnosticRedaction.text(bodyStr, apiKey).take(200)
                         } catch (_: JSONException) {
-                            bodyStr.take(200)
+                            DiagnosticRedaction.text(bodyStr, apiKey).take(200)
                         }
                         return@withContext Result.failure(Exception("HTTP ${response.code}: ${DiagnosticRedaction.text(errMsg.ifBlank { response.message }, apiKey)}"))
                     }
@@ -335,7 +335,7 @@ object LlmClient {
             throw e
         } catch (e: Exception) {
             ensureStreamActive()
-            Result.failure(e)
+            Result.failure(DiagnosticRedaction.failure(e, apiKey))
         }
     }
 }

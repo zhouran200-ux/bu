@@ -9,7 +9,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertSame
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.BufferedInputStream
@@ -195,7 +195,9 @@ class LlmClientStreamTest {
             awaitClientClose(socket)
         }.use { server ->
             val result = stream(server) { _, _ -> throw failure }
-            assertSame(failure, result.exceptionOrNull())
+            assertTrue(result.isFailure)
+            assertEquals(failure.message, result.exceptionOrNull()?.message)
+            assertNull(result.exceptionOrNull()?.cause)
             server.awaitFinished()
         }
     }

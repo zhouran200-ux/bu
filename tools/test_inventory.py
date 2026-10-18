@@ -10,31 +10,63 @@ BASELINE_FILE = REPO / "tools/test-baseline.json"
 
 def load_baseline():
     try:
-        return json.loads(BASELINE_FILE.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return {}
+        baseline = json.loads(BASELINE_FILE.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as error:
+        raise ValueError(f"Cannot load test baseline {BASELINE_FILE}: {error}") from error
+    if not isinstance(baseline, dict) or not baseline:
+        raise ValueError(f"Test baseline {BASELINE_FILE} must be a non-empty object")
+    return baseline
 
 
 def check_baseline(relative, totals, baseline):
     expected = baseline.get(relative)
-    if not expected:
-        return []
+    if not isinstance(expected, dict) or not expected:
+        return [f"Missing test baseline entry for {relative}"]
+    # Existing 'tests' baselines now require that many successful, non-skipped
+    # testcases. An explicit executed minimum may be supplied for newer baselines.
+    minima = {"tests": expected.get("tests"), "suites": expected.get("suites"),
+              "executed": expected.get("executed", expected.get("tests"))}
+    if any(type(value) is not int or value <= 0 for value in minima.values()):
+        return [f"Invalid test baseline entry for {relative}: positive integer tests/suites/executed required"]
     problems = []
-    minimum_tests = int(expected.get("tests", 0))
-    if totals["tests"] < minimum_tests:
-        problems.append(
-            f"Test count fell below baseline ({totals['tests']} < {minimum_tests}); a test class or suite disappeared"
-        )
-    minimum_suites = int(expected.get("suites", 0))
-    if minimum_suites and totals["suites"] < minimum_suites:
-        problems.append(
-            f"Suite count fell below baseline ({totals['suites']} < {minimum_suites}); a report file disappeared"
-        )
+    for key, minimum in minima.items():
+        if totals[key] < minimum:
+            problems.append(f"{key.capitalize()} count fell below baseline ({totals[key]} < {minimum}); a test or suite disappeared or was skipped")
+    if totals["passed"] < minima["executed"]:
+        problems.append(f"Passed count fell below baseline ({totals['passed']} < {minima['executed']}); skipped or failed tests cannot satisfy the baseline")
     return problems
 
 
+def case_totals(cases):
+    totals = dict(tests=len(cases), failures=0, errors=0, skipped=0, executed=0, passed=0)
+    for case in cases:
+        failure = case.find("failure") is not None
+        error = case.find("error") is not None
+        skipped = case.find("skipped") is not None
+        if sum((failure, error, skipped)) > 1:
+            raise ValueError("testcase has conflicting failure/error/skipped outcomes")
+        totals["failures"] += int(failure)
+        totals["errors"] += int(error)
+        totals["skipped"] += int(skipped)
+        totals["executed"] += int(not skipped)
+        totals["passed"] += int(not (failure or error or skipped))
+    return totals
+
+
+def validate_summary(element, actual, required_tests=True):
+    for key in ("tests", "failures", "errors", "skipped"):
+        raw = element.get(key)
+        if raw is None and key == "tests" and required_tests:
+            raise ValueError("testsuite is missing tests count")
+        if raw is None and not required_tests:
+            continue
+        declared = int(raw or "0")
+        if declared < 0 or declared != actual[key]:
+            raise ValueError(f"{key} summary mismatch: declared {declared}, actual testcases {actual[key]}")
+
+
 def inspect_results(root):
-    totals = dict(tests=0, failures=0, errors=0, skipped=0, suites=0)
+    totals = dict(tests=0, failures=0, errors=0, skipped=0, suites=0, executed=0, passed=0)
     problems = []
     files = sorted(Path(root).rglob("TEST-*.xml"))
     if not files:
@@ -42,28 +74,38 @@ def inspect_results(root):
     for path in files:
         try:
             report = ET.parse(path).getroot()
-            suites = [report] if report.tag == "testsuite" else report.findall(".//testsuite")
+            if report.tag not in ("testsuite", "testsuites"):
+                raise ValueError("root must be testsuite or testsuites")
+            suites = list(report.iter("testsuite"))
             if not suites:
                 raise ValueError("no testsuite element")
+            cases = list(report.iter("testcase"))
+            # Emit real failures even when the enclosing report has bad totals.
+            for case in cases:
+                if case.find("failure") is None and case.find("error") is None:
+                    continue
+                name = case.get("name", "?")
+                klass = case.get("classname", "?")
+                detail = (case.findtext("failure") or case.findtext("error") or "").strip()
+                first = detail.splitlines()[0] if detail else ""
+                problems.append(f"FAILED {klass}.{name}: {first[:180]}")
+            actual = case_totals(cases)
+            for key, value in actual.items():
+                totals[key] += value
+            # Nested container suites summarize descendants; count their cases once.
+            totals["suites"] += sum(bool(suite.findall("testcase")) or not suite.findall("testsuite") for suite in suites)
             for suite in suites:
-                for case in suite.findall(".//testcase"):
-                    if case.find("failure") is None and case.find("error") is None:
-                        continue
-                    name = case.get("name", "?")
-                    klass = case.get("classname", "?")
-                    detail = (case.findtext("failure") or case.findtext("error") or "").strip()
-                    first = detail.splitlines()[0] if detail else ""
-                    problems.append(f"FAILED {klass}.{name}: {first[:180]}")
-                for key in ("tests", "failures", "errors", "skipped"):
-                    value = int(suite.get(key, "0"))
-                    if value < 0:
-                        raise ValueError(f"negative {key}")
-                    totals[key] += value
-                totals["suites"] += 1
+                validate_summary(suite, case_totals(list(suite.iter("testcase"))))
+            if report.tag == "testsuites":
+                validate_summary(report, actual, required_tests=False)
+            if len(cases) != sum(len(suite.findall("testcase")) for suite in suites):
+                raise ValueError("testcase outside testsuite")
         except (ET.ParseError, ValueError, OSError) as error:
             problems.append(f"Invalid report {path}: {error}")
-    if totals["tests"] - totals["skipped"] <= 0:
+    if totals["executed"] <= 0:
         problems.append("No non-skipped tests executed")
+    if totals["passed"] <= 0:
+        problems.append("No passed tests executed")
     if totals["failures"] or totals["errors"]:
         problems.append("Tests reported failures or errors")
     return totals, problems
@@ -71,7 +113,11 @@ def inspect_results(root):
 
 def main():
     roots = sys.argv[1:] or ["app/build/test-results/testDebugUnitTest"]
-    baseline = load_baseline()
+    try:
+        baseline = load_baseline()
+    except ValueError as error:
+        print(f"::error::{error}")
+        return 1
     failed = False
     for relative in roots:
         root = Path(relative)

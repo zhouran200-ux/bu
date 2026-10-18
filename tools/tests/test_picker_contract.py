@@ -11,7 +11,9 @@ class PickerContractTest(unittest.TestCase):
         callback = text.split("onSelect = { profile, modelName ->", 1)[1].split("onDismiss =", 1)[0]
         self.assertNotIn("showProfileModelPickerSheet = false", callback)
 
-    def test_picker_saves_selection_then_closes_with_feedback(self):
+    # Selection, disclosure, current-model clicks and management callbacks are exercised
+    # by ProfileModelPickerSheetTest; retain visual and fixed-header source guards here.
+    def test_picker_keeps_selection_feedback_and_fixed_header_structure(self):
         text = (UI / "ProfileModelPickerSheet.kt").read_text(encoding="utf-8")
         self.assertIn("if (modelSelected) LucentStatusColors.Selected", text)
         self.assertIn("if (modelSelected) FontWeight.ExtraBold", text)
@@ -76,8 +78,7 @@ class PickerContractTest(unittest.TestCase):
 
     def test_manage_api_uses_existing_settings_without_overlay_or_dismiss(self):
         picker = (UI / "ProfileModelPickerSheet.kt").read_text(encoding="utf-8")
-        self.assertIn("Text(S.pickerManageApi", picker)
-        self.assertIn("onClick = onManageApi", picker)
+        # ProfileModelPickerSheetTest covers the management click and no-dismiss behavior.
         self.assertIn("if (!visible) return", picker)
         self.assertNotIn("openManagementAfterDismiss", picker)
         self.assertNotIn("ApiConfigurationPage", picker)
@@ -101,8 +102,8 @@ class PickerContractTest(unittest.TestCase):
         self.assertIn(".background(Color.White, CircleShape)", drawer)
         self.assertIn("handlePressed || dragged", drawer)
         self.assertNotIn("DragHandle(height =", drawer)
-        api = (UI / "SettingsComponents.kt").read_text(encoding="utf-8")
-        self.assertIn("drawer.close { onDone(draft) }", api)
+        # ApiModelPickerDialogTest checks confirmation callback order, draft contents,
+        # clear-all and cancellation; shared drawer animation remains guarded above.
         self.assertNotIn("Icons.Default.Check", text)
         self.assertIn("HorizontalDivider", text)
         self.assertNotIn("LucentDragHandle", text)

@@ -2,6 +2,10 @@
   "retired": [
     "HandleOnlyDrawerProperties",
     "LucentDragHandle",
-    "byteArrayToHex"
+    "byteArrayToHex",
+    "chatUnsavedAnswersRetry",
+    "getByTrimmedTitleOnce",
+    "retryUnsavedMessages",
+    "unsavedMessageCount"
   ]
 }

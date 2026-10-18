@@ -775,4 +775,124 @@ class AppDatabaseMigrationTest {
         }
     }
 
+    @Test
+    fun fullChain25To35_preservesNotesAndChatAndValidatesCurrentRoomSchema() {
+        val noteColumns = "id, title, body, updatedAt, tags, attachments, archived, archivedAt, " +
+            "pinned, color, trashedAt, manualOrder, isDraft, draftSavedAt, hidden, bodySpans, formatOverride"
+        val chatColumns = "id, role, content, timestamp, attachmentMime, attachmentData, attachmentName, " +
+            "attachmentList, conversationId, tokens, replyToId, reasoningBlocks, reasoningText, quotedRole, quotedText"
+        val originalNotes: List<List<String?>>
+        val originalChat: List<List<String?>>
+        createLegacyDatabase(25).apply {
+            assertEquals(25, version)
+            execSQL(
+                "INSERT INTO notes ($noteColumns, isChecklist, checklist, isDoodle, doodle) VALUES " +
+                    "(41, 'Kept note', 'Rich body', 1234, 'tag', '[1]', 1, 1200, 1, 'ocean', " +
+                    "1300, 7, 1, 1100, 1, 'spans', 'markdown', 1, '[2]', 1, 'old doodle')"
+            )
+            execSQL(
+                "INSERT INTO notes ($noteColumns, isChecklist, checklist, isDoodle, doodle) VALUES " +
+                    "(42, 'Nullable note', '', 2345, '', '[]', 0, NULL, 0, '', " +
+                    "NULL, 0, 0, NULL, 0, '', NULL, 0, '[]', 0, '')"
+            )
+            execSQL(
+                "INSERT INTO chat_messages ($chatColumns, agentTrace) VALUES " +
+                    "(51, 'user', 'Question', 3456, NULL, NULL, NULL, NULL, 7001, 3, 0, " +
+                    "NULL, NULL, NULL, NULL, NULL)"
+            )
+            execSQL(
+                "INSERT INTO chat_messages ($chatColumns, agentTrace) VALUES " +
+                    "(52, 'assistant', 'Answer', 4567, 'image/png', 'encoded', 'image.png', '[3]', " +
+                    "7001, 19, 51, '[4]', 'Reasoning', 'user', 'Question', 'retired trace')"
+            )
+            originalNotes = readRows(this, "notes", noteColumns)
+            originalChat = readRows(this, "chat_messages", chatColumns)
+            assertEquals(2, originalNotes.size)
+            assertEquals(2, originalChat.size)
+            val legacyIndexes = readRows(
+                this, "sqlite_master", "name", "WHERE type = 'index' AND name IN " +
+                    "('index_notes_isDraft', 'index_notes_hidden', 'index_tasks_isDraft', 'index_tasks_hidden')"
+            ).flatten().toSet()
+            assertEquals(
+                setOf("index_notes_isDraft", "index_notes_hidden", "index_tasks_isDraft", "index_tasks_hidden"),
+                legacyIndexes
+            )
+            close()
+        }
+        runLegacyMigrations(26, MIGRATION_25_26).apply {
+            assertEquals(26, version)
+            assertEquals(originalNotes, readRows(this, "notes", noteColumns))
+            assertEquals(originalChat, readRows(this, "chat_messages", chatColumns))
+            assertRetiredColumnsAbsent(this, "notes", "isChecklist", "checklist", "isDoodle", "doodle")
+            close()
+        }
+        legacyOpenHelpers.forEach { it.close() }
+        legacyOpenHelpers.clear()
+        helper.runMigrationsAndValidate(
+            legacyDatabaseName, 35, true,
+            MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30,
+            MIGRATION_30_31, MIGRATION_31_32, MIGRATION_32_33, MIGRATION_33_34, MIGRATION_34_35
+        ).use { db ->
+            assertEquals(35, db.version)
+            assertEquals(originalNotes, readRows(db, "notes", noteColumns))
+            assertEquals(originalChat, readRows(db, "chat_messages", chatColumns))
+            assertRetiredColumnsAbsent(db, "notes", "isChecklist", "checklist", "isDoodle", "doodle")
+            assertRetiredColumnsAbsent(db, "chat_messages", "agentTrace")
+            db.query(
+                "SELECT cachedTokens, answerSeconds, cachedTokensKnown, firstTokenMillis, " +
+                    "generationMillis, sourceNoteId, sourceRevision FROM chat_messages ORDER BY id"
+            ).use { cursor ->
+                assertEquals(2, cursor.count)
+                while (cursor.moveToNext()) {
+                    assertEquals(0, cursor.getInt(0))
+                    assertEquals(0, cursor.getInt(1))
+                    assertEquals(0, cursor.getInt(2))
+                    (3..6).forEach { assertTrue(cursor.isNull(it)) }
+                }
+            }
+            val noteIndexes = readRows(
+                db, "sqlite_master", "name", "WHERE type = 'index' AND tbl_name = 'notes'"
+            ).flatten().toSet()
+            assertEquals(
+                setOf("index_notes_updatedAt", "index_notes_archived", "index_notes_trashedAt", "index_notes_title"),
+                noteIndexes
+            )
+            assertEquals(
+                listOf(listOf("index_chat_messages_conversationId_timestamp")),
+                readRows(db, "sqlite_master", "name", "WHERE type = 'index' AND tbl_name = 'chat_messages'")
+            )
+            val schemaObjects = readRows(db, "sqlite_master", "name").flatten().filterNotNull()
+            val retiredObjects = setOf(
+                "index_notes_isDraft", "index_notes_hidden", "index_tasks_isDraft", "index_tasks_hidden",
+                "tasks", "task_versions", "note_versions", "note_embeddings", "note_embeddings_cleanup",
+                "chat_conversations", "notes_26", "chat_messages_27"
+            )
+            assertTrue("Retired objects and FTS shadow tables must be removed", schemaObjects.none {
+                it in retiredObjects || it.startsWith("notes_fts") || it.startsWith("tasks_fts")
+            })
+        }
+    }
+
+    private fun readRows(
+        db: SupportSQLiteDatabase,
+        table: String,
+        columns: String,
+        where: String = ""
+    ): List<List<String?>> = db.query("SELECT $columns FROM $table $where ORDER BY 1").use { cursor ->
+        buildList {
+            while (cursor.moveToNext()) {
+                add((0 until cursor.columnCount).map { if (cursor.isNull(it)) null else cursor.getString(it) })
+            }
+        }
+    }
+
+    private fun assertRetiredColumnsAbsent(db: SupportSQLiteDatabase, table: String, vararg retired: String) {
+        db.query("PRAGMA table_info($table)").use { cursor ->
+            val columns = buildSet {
+                while (cursor.moveToNext()) add(cursor.getString(cursor.getColumnIndexOrThrow("name")))
+            }
+            retired.forEach { assertFalse("$it must be gone from $table", it in columns) }
+        }
+    }
+
 }

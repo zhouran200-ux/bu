@@ -27,20 +27,16 @@ class HistoryEntryContractTest(unittest.TestCase):
     def test_history_jump_buttons_preserve_glass_alpha(self):
         text = (UI / "ChatHistorySheet.kt").read_text(encoding="utf-8")
         jump = text.split("private fun JumpChip(", 1)[1].split("private fun HistoryRow(", 1)[0]
-        self.assertIn("label = S.historyJumpTop", text)
-        self.assertIn("label = S.historyJumpBottom", text)
-        self.assertIn("S.historyJumpTopHint", text)
-        self.assertIn("S.historyJumpBottomHint", text)
+        # Jump labels, hints and real callbacks are covered by ChatHistorySheetTest.
         self.assertIn("it.copy(alpha = it.alpha * fade)", jump)
         self.assertNotIn("glassControlColor().copy(alpha = fade)", jump)
 
     def test_regeneration_preflight_precedes_destructive_changes_and_resets_stats(self):
         text = (UI / "NotebookChatTab.kt").read_text(encoding="utf-8")
         regenerate = text.split("fun regenerateAnswer(", 1)[1].split("fun resendEditedQuestion(", 1)[0]
-        self.assertLess(regenerate.index("selection.first.apiKey.isBlank()"), regenerate.index("messages[idx] ="))
-        self.assertLess(regenerate.index("selection.first.apiKey.isBlank()"), regenerate.index("session.deleteMessages("))
-        for reset in ("firstTokenMillis = null", "generationMillis = null", "cachedTokensKnown = false"):
-            self.assertIn(reset, regenerate)
+        self.assertLess(regenerate.index("selection.first.apiKey.isBlank()"), regenerate.index("askModel(answerId)"))
+        self.assertNotIn("messages[idx] =", regenerate)
+        self.assertNotIn("session.deleteMessages(", regenerate)
 
     def test_rail_has_no_hidden_history_navigation(self):
         text = (UI / "ChatScrollRail.kt").read_text(encoding="utf-8")

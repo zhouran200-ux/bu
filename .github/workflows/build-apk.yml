@@ -180,6 +180,7 @@ jobs:
           path: app/build/outputs/mapping/release/mapping.txt
           if-no-files-found: ignore
   publish-preview:
+    timeout-minutes: 50
     needs: build-apk
     if: ${{ !inputs.require_release_signing }}
     runs-on: ubuntu-24.04
@@ -194,8 +195,8 @@ jobs:
         run: |
           set -eu
           API="https://api.github.com/repos/${{ github.repository }}/actions/workflows/check.yml/runs?head_sha=$SHA&per_page=1"
-          for attempt in $(seq 1 40); do
-            BODY=$(curl -sS -H "Authorization: Bearer $GITHUB_TOKEN" -H "Accept: application/vnd.github+json" "$API")
+          for attempt in $(seq 1 120); do
+            BODY=$(curl --fail --connect-timeout 10 --max-time 30 -sS -H "Authorization: Bearer $GITHUB_TOKEN" -H "Accept: application/vnd.github+json" "$API")
             STATUS=$(printf '%s' "$BODY" | python3 -c 'import json,sys; r=json.load(sys.stdin).get("workflow_runs", []); print(r[0]["status"] if r else "missing")')
             CONCLUSION=$(printf '%s' "$BODY" | python3 -c 'import json,sys; r=json.load(sys.stdin).get("workflow_runs", []); print((r[0].get("conclusion") or "") if r else "")')
             echo "check status=$STATUS conclusion=$CONCLUSION (attempt $attempt)"

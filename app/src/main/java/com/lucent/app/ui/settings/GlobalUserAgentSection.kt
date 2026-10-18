@@ -105,7 +105,7 @@ internal fun GlobalUserAgentSection(repo: SettingsRepository) {
                 if (isTavernSelected) {
                     Icon(
                         imageVector = Icons.Default.Lock,
-                        contentDescription = "Locked",
+                        contentDescription = S.a11yLocked,
                         tint = onGradientMuted,
                         modifier = Modifier.size(15.dp)
                     )

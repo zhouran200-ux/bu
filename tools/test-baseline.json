@@ -1,11 +1,13 @@
 {
   "app/build/test-results/testDebugUnitTest": {
-    "tests": 419,
-    "suites": 66
+    "tests": 444,
+    "suites": 71,
+    "executed": 444
   },
   "app/build/test-results/testReleaseUnitTest": {
-    "tests": 419,
-    "suites": 66
+    "tests": 444,
+    "suites": 71,
+    "executed": 444
   },
   "app/build/outputs/androidTest-results/connected": {
     "tests": 36,

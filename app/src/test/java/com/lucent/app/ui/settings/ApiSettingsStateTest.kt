@@ -3,7 +3,6 @@ package com.lucent.app.ui.settings
 import com.lucent.app.data.ApiProfile
 import com.lucent.app.data.ApiProfileMutation
 import com.lucent.app.data.ApiProfileSnapshot
-import com.lucent.app.data.mutate
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.yield
 import org.junit.Assert.*

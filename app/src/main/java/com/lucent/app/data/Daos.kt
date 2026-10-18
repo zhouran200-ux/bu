@@ -7,6 +7,8 @@ import androidx.room.Query
 import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 
+data class NoteTitleCandidate(val id: Long, val title: String)
+
 @Dao
 interface NoteDao {
     @Query("SELECT * FROM notes ORDER BY updatedAt DESC")
@@ -15,8 +17,8 @@ interface NoteDao {
     @Query("SELECT * FROM notes WHERE title = :title")
     suspend fun getByTitleOnce(title: String): List<Note>
 
-    @Query("SELECT * FROM notes WHERE TRIM(title) = :title")
-    suspend fun getByTrimmedTitleOnce(title: String): List<Note>
+    @Query("SELECT id, title FROM notes WHERE title != :title")
+    suspend fun getNonExactTitlesOnce(title: String): List<NoteTitleCandidate>
 
     @Query("SELECT * FROM notes WHERE id = :id")
     suspend fun getByIdOnce(id: Long): Note?

@@ -21,7 +21,7 @@ class ChatSessionTest {
         var started = false
         val saved = mutableListOf<UiChatMessage>()
         val session = ChatSession(dispatcher, { emptyList() }, {
-            if (failSaving) error("disk unavailable")
+            if (failSaving && it.content.isNotEmpty()) error("disk unavailable")
             saved += it
         })
         dispatcher.drain()
@@ -33,16 +33,126 @@ class ChatSessionTest {
         dispatcher.drain()
         assertTrue(started)
         assertEquals("kept in memory", session.messages.single().content)
-        assertEquals(1, session.unsavedMessageCount)
+        assertEquals(1, session.pendingWriteCount)
         assertNotNull(session.storageError)
         assertNull(session.streamingAnswerId)
         failSaving = false
-        val retried = session.retryUnsavedMessages()
+        val retried = session.retryPendingWrites()
         dispatcher.drain()
         assertTrue(retried.getCompleted().isSuccess)
         assertEquals(session.messages.single().content, saved.last().content)
-        assertEquals(0, session.unsavedMessageCount)
+        assertEquals(0, session.pendingWriteCount)
         assertNull(session.storageError)
+    }
+
+    @Test fun initialSaveFailureNeverOpensNetworkAndRetainsPreviousAnswerForRetry() {
+        val dispatcher = QueueDispatcher()
+        var diskUnavailable = true
+        var requested = false
+        val original = UiChatMessage(1, "assistant", "original answer", promptTokens = 42)
+        val stored = mutableListOf<UiChatMessage>()
+        val session = ChatSession(dispatcher, { listOf(original) }, {
+            if (diskUnavailable) error("disk unavailable")
+            stored += it
+        })
+        dispatcher.drain()
+        session.start(1, null) { _, _ ->
+            requested = true
+            Result.success(ChatCompletionResult("must not replace original"))
+        }
+        dispatcher.drain()
+        assertFalse(requested)
+        assertEquals(original, session.messages.single())
+        assertNull(session.streamingAnswerId)
+        assertEquals(1, session.pendingWriteCount)
+        assertFalse(session.canRelease())
+        diskUnavailable = false
+        session.retryPendingWrites()
+        dispatcher.drain()
+        assertEquals(listOf(original), stored)
+        assertEquals(0, session.pendingWriteCount)
+        assertNull(session.storageError)
+    }
+
+    @Test fun leavingPageDoesNotCancelSaveThenGenerateIntentOrAllowIdleEviction() {
+        val dispatcher = QueueDispatcher()
+        val gate = CompletableDeferred<Unit>()
+        val session = ChatSession(dispatcher, { emptyList() }, { gate.await() })
+        dispatcher.drain()
+        val page = CoroutineScope(Job() + dispatcher)
+        var generated = false
+        val saved = session.saveMessage(UiChatMessage(1, "user", "question"))
+        session.afterWrite(saved) { generated = true }
+        assertTrue(session.hasPendingAction)
+        page.cancel()
+        dispatcher.drain()
+        assertFalse(generated)
+        assertFalse(session.canRelease())
+        gate.complete(Unit)
+        dispatcher.drain()
+        assertTrue(generated)
+        assertFalse(session.hasPendingAction)
+        assertTrue(session.canRelease())
+    }
+
+    @Test fun deletingNotebookSuppressesPendingGenerationContinuation() {
+        val dispatcher = QueueDispatcher()
+        val gate = CompletableDeferred<Unit>()
+        val session = ChatSession(dispatcher, { emptyList() }, { gate.await() })
+        dispatcher.drain()
+        var generated = false
+        session.afterWrite(session.saveMessage(UiChatMessage(1, "user", "question"))) { generated = true }
+        CoroutineScope(Job() + dispatcher).launch { session.prepareDelete() }
+        dispatcher.drain()
+        gate.complete(Unit)
+        dispatcher.drain()
+        assertFalse(generated)
+        assertFalse(session.ready)
+    }
+
+    @Test fun cancelledInitialPersistenceAndRollbackAlwaysClearRunningState() {
+        val dispatcher = QueueDispatcher()
+        var running = false
+        var requested = false
+        val original = UiChatMessage(1, "assistant", "original")
+        val session = ChatSession(dispatcher, { listOf(original) }, {
+            throw CancellationException("storage cancelled")
+        }, { running = it })
+        dispatcher.drain()
+        session.start(1, null) { _, _ ->
+            requested = true
+            Result.success(ChatCompletionResult("unexpected"))
+        }
+        dispatcher.drain()
+        assertFalse(requested)
+        assertFalse(running)
+        assertNull(session.streamingAnswerId)
+        assertEquals(original, session.messages.single())
+    }
+
+    @Test fun failedQuestionEditAndDeleteRemainRetryableInTransactionOrder() {
+        val dispatcher = QueueDispatcher()
+        var unavailable = true
+        val events = mutableListOf<String>()
+        val session = ChatSession(dispatcher, { emptyList() }, {},
+            updateContent = { id, text -> events += "update:$id:$text" },
+            deleteMessagesByIds = { events += "delete:$it" },
+            replaceQuestion = { id, text, following ->
+                if (unavailable) error("transaction failed")
+                events += "replace:$id:$text:$following"
+            })
+        dispatcher.drain()
+        session.replaceQuestionAndDropFollowing(1, "edited", listOf(2, 3))
+        session.updateMessageContent(4, "answer edit")
+        session.deleteMessages(listOf(5))
+        dispatcher.drain()
+        assertTrue(events.isEmpty())
+        assertEquals(3, session.pendingWriteCount)
+        unavailable = false
+        session.retryPendingWrites()
+        dispatcher.drain()
+        assertEquals(listOf("replace:1:edited:[2, 3]", "update:4:answer edit", "delete:[5]"), events)
+        assertEquals(0, session.pendingWriteCount)
     }
 
     @Test fun onlyReadyCleanSessionsCanReleaseTheirScopeAndMessages() {
@@ -193,7 +303,7 @@ class ChatSessionTest {
 
     @Test fun storageFailureStillClearsBusyStateAndKeepsInMemoryAnswer() {
         val d = QueueDispatcher()
-        val session = ChatSession(d, { emptyList() }, { error("disk full") })
+        val session = ChatSession(d, { emptyList() }, { if (it.content.isNotEmpty()) error("disk full") })
         d.drain()
         session.messages.add(UiChatMessage(1, "assistant", ""))
         session.start(1, null) { _, _ -> Result.success(ChatCompletionResult("retained", null)) }

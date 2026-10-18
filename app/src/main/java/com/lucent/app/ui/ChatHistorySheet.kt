@@ -39,6 +39,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -249,6 +251,7 @@ private fun HistoryRow(
             .background(bg)
             .border(1.dp, border, RoundedCornerShape(16.dp))
             .clickable { onClick() }
+            .semantics { selected = current }
             .padding(horizontal = 12.dp, vertical = 10.dp)
     ) {
         Box(

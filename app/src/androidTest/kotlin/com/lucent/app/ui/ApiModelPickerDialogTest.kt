@@ -6,6 +6,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.lucent.app.i18n.S
+import java.util.concurrent.atomic.AtomicReference
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -19,13 +20,13 @@ class ApiModelPickerDialogTest {
 
     @Test
     fun selectingAllThenConfirmingReportsEveryName() {
-        var done: Set<String>? = null
+        val done = AtomicReference<Set<String>?>(null)
 
         rule.setContent {
             ApiModelPickerDialog(
                 names = listOf("模型甲", "模型乙"),
                 selected = emptySet(),
-                onDone = { done = it },
+                onDone = { done.set(it) },
                 onDismiss = {}
             )
         }
@@ -36,6 +37,7 @@ class ApiModelPickerDialogTest {
         rule.onNodeWithText(S.selectAll).performClick()
         rule.onNodeWithText(S.settingsConfirmSelection(2)).performClick()
 
-        assertEquals(setOf("模型甲", "模型乙"), done)
+        rule.waitUntil(timeoutMillis = 5_000) { done.get() != null }
+        assertEquals(setOf("模型甲", "模型乙"), done.get())
     }
 }

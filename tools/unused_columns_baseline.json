@@ -1,0 +1,25 @@
+{
+  "columns": [
+    "addedAt",
+    "archived",
+    "archivedAt",
+    "attachmentData",
+    "attachmentList",
+    "attachmentMime",
+    "attachmentName",
+    "attachments",
+    "bodySpans",
+    "createdAt",
+    "draftSavedAt",
+    "formatOverride",
+    "hidden",
+    "isDraft",
+    "pinned",
+    "quotedRole",
+    "quotedText",
+    "reasoningBlocks",
+    "replyToId",
+    "tags",
+    "trashedAt"
+  ]
+}

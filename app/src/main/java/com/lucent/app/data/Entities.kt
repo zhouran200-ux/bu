@@ -38,7 +38,7 @@ data class Note(
     tableName = "notebooks",
     indices = [
         Index(value = ["updatedAt"]),
-        Index(value = ["manualOrder", "updatedAt"])
+        Index(value = ["manualOrder", "updatedAt"], orders = [Index.Order.ASC, Index.Order.DESC])
     ]
 )
 data class Notebook(

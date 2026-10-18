@@ -1,7 +1,8 @@
 package com.lucent.app.data
 
 import android.content.Context
-import androidx.datastore.core.CorruptionException
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
@@ -9,7 +10,6 @@ import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -17,37 +17,58 @@ import java.io.File
 
 internal object SettingsCorruptionSignal {
     @Volatile
-    private var pending: CorruptionException? = null
+    private var backedUp: Boolean? = null
 
-    fun record(exception: CorruptionException) {
-        pending = exception
+    fun recordBackup(succeeded: Boolean) {
+        backedUp = succeeded
     }
 
-    fun consume(): CorruptionException? {
-        val current = pending
-        pending = null
+    fun consumeBackup(): Boolean? {
+        val current = backedUp
+        backedUp = null
         return current
     }
 }
 
-internal fun backupCorruptedSettings(directory: File, pending: CorruptionException?): Boolean {
-    if (pending == null) return false
-    return runCatching {
-        val prefsFile = File(directory, "datastore/lucent_settings.preferences_pb")
-        if (!prefsFile.exists()) return@runCatching false
-        val backup = File(directory, "datastore/lucent_settings.corrupt")
-        backup.parentFile?.mkdirs()
-        prefsFile.copyTo(backup, overwrite = true)
-        backup.exists() && backup.length() == prefsFile.length()
-    }.getOrDefault(false)
+internal fun settingsPreferencesFile(filesDir: File): File =
+    File(filesDir, "datastore/lucent_settings.preferences_pb")
+
+internal fun backupCorruptedSettingsFile(filesDir: File): Boolean = runCatching {
+    val source = settingsPreferencesFile(filesDir)
+    if (!source.exists()) return@runCatching false
+    val backup = File(filesDir, "datastore/lucent_settings.corrupt")
+    backup.parentFile?.mkdirs()
+    source.copyTo(backup, overwrite = true)
+    backup.exists() && backup.length() == source.length()
+}.getOrDefault(false)
+
+internal fun createSettingsDataStore(
+    filesDir: File,
+    onCorruption: (Boolean) -> Unit
+): DataStore<Preferences> = PreferenceDataStoreFactory.create(
+    corruptionHandler = androidx.datastore.core.handlers.ReplaceFileCorruptionHandler<Preferences> {
+        onCorruption(backupCorruptedSettingsFile(filesDir))
+        emptyPreferences()
+    },
+    produceFile = { settingsPreferencesFile(filesDir) }
+)
+
+private object SettingsStoreHolder {
+    @Volatile
+    private var store: DataStore<Preferences>? = null
+
+    fun get(context: Context): DataStore<Preferences> {
+        store?.let { return it }
+        return synchronized(this) {
+            store ?: createSettingsDataStore(context.applicationContext.filesDir) { succeeded ->
+                SettingsCorruptionSignal.recordBackup(succeeded)
+            }.also { store = it }
+        }
+    }
 }
 
-private val settingsCorruptionHandler = androidx.datastore.core.handlers.ReplaceFileCorruptionHandler<Preferences> { exception ->
-    SettingsCorruptionSignal.record(exception)
-    emptyPreferences()
-}
-
-private val Context.settingsDataStore by preferencesDataStore(name = "lucent_settings", corruptionHandler = settingsCorruptionHandler)
+private val Context.settingsDataStore: DataStore<Preferences>
+    get() = SettingsStoreHolder.get(this)
 
 private object SettingsKeys {
     val THEME_MODE = stringPreferencesKey("theme_mode")
@@ -70,9 +91,8 @@ private object SettingsKeys {
 class SettingsRepository(context: Context) {
     private val context: Context = context.applicationContext
 
-    init {
-        backupCorruptedSettings(context.filesDir, SettingsCorruptionSignal.consume())
-    }
+    internal val recoveredCorruptSettings: Boolean
+        get() = SettingsCorruptionSignal.consumeBackup() == true
 
     private fun setting(
         prefs: androidx.datastore.preferences.core.Preferences,

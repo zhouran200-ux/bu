@@ -64,6 +64,19 @@ class AppDatabaseResidualCleanupTest {
         }
     }
 
+    @Test
+    fun migrate36To37_ordersTheNotebookIndexForTheManualOrderQuery() {
+        helper.createDatabase(DB_NAME, 36).close()
+
+        val db = helper.runMigrationsAndValidate(DB_NAME, 37, true, MIGRATION_36_37)
+
+        db.query("SELECT sql FROM sqlite_master WHERE type = 'index' AND name = 'index_notebooks_manualOrder_updatedAt'").use { c ->
+            assertTrue("index must exist", c.moveToFirst())
+            val sql = c.getString(0)
+            assertTrue("index must match the query order", sql.contains("DESC"))
+        }
+    }
+
     private companion object {
         const val DB_NAME = "app-database-residual-cleanup-test"
     }

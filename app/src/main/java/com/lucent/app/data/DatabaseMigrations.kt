@@ -407,3 +407,10 @@ val MIGRATION_33_34 = object : Migration(33, 34) {
         db.execSQL("DROP INDEX IF EXISTS `index_tasks_hidden`")
     }
 }
+
+val MIGRATION_36_37 = object : Migration(36, 37) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("DROP INDEX IF EXISTS `index_notebooks_manualOrder_updatedAt`")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_notebooks_manualOrder_updatedAt` ON `notebooks` (`manualOrder` ASC, `updatedAt` DESC)")
+    }
+}

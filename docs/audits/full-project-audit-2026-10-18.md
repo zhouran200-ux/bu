@@ -279,3 +279,12 @@
 
 - 提交 `cd402de` 的 **check、API33、API35、android-jvm-check、source-hygiene、build-apk、publish-preview 全部 success**。设备矩阵两个 API 各 103 例/21 套全部通过，包含新增 `migrate35To36_addsNotebookAndItemIndexes`、拆分后的 `AppDatabaseEarlyMigrationsTest` 全部 17 项、以及修复后的 `FontStoreTransactionTest` 全部 3 项。
 - 本地最终证据：JVM 466 项/76 套（含 LRU 策略 4 项、损坏备份 4 项）、Python 工具 113 项、verify quick 9 项（含 i18n 生成一致）、Debug/Release 编译、lintDebug、androidTest 编译全部通过。`NotebookChatTab`/`ApiSettingsPage`/`FontSettingsPage` 三个 500–800 行文件仍只记录拆分审查未执行；§5 其余观察项（滚动记忆三套并存、`LlmClient` 四职责单文件、`TrashCleanup` 之外的启动期删除等）未在本轮处理。
+
+### 全清单复核后的补充修复（本轮）
+
+| 复核发现 | 处理 | 验证 |
+|---|---|---|
+| 损坏配置备份时序错误：handler 只记录信号，Repository 初始化时才复制，此时 DataStore 已用空值覆盖原文件，**备份下来的是空文件** | 改为在 `ReplaceFileCorruptionHandler` 内部、覆盖发生前复制原始字节到 `lucent_settings.corrupt`；仅在复制成功后回退空配置，并暴露 `recoveredCorruptSettings` 供启动提示 | 真实损坏文件（写入非法 proto）经 DataStore 读取触发处理器的测试，断言备份字节与原始字节完全一致；另测健康文件不备份、文件缺失报告 false、二次损坏刷新备份 |
+| 索引排序与查询不匹配：`notebooks` 实际查询为 `manualOrder ASC, updatedAt DESC`，而 v36 建的索引两列都是 ASC，SQLite 仍需临时排序 | `Index(orders = [ASC, DESC])` 对齐查询；因 v36 已发布，新增 **v36→v37 迁移** drop 后按 `manualOrder ASC, updatedAt DESC` 重建，`37.json` 由 KSP 生成 | 新增 `migrate36To37_ordersTheNotebookIndexForTheManualOrderQuery` 断言索引含 DESC；全链测试推进到 v25→v37 并保留数据与索引断言 |
+
+补充说明：`notebook_items` 的 `(notebookId, addedAt)` 与其 `WHERE notebookId = ? ORDER BY addedAt DESC` 可由索引反向扫描满足，无需改向，故未改动。

@@ -260,23 +260,23 @@ class DeviceMigrationGateContractTest(unittest.TestCase):
         import json
         import re
         source = (self.root / "app/src/androidTest/kotlin/com/lucent/app/data/AppDatabaseMigrationTest.kt").read_text(encoding="utf-8")
-        chain = source.split("fun fullChain25To36_preservesNotesAndChatAndValidatesCurrentRoomSchema()", 1)[1]
+        chain = source.split("fun fullChain25To37_preservesNotesAndChatAndValidatesCurrentRoomSchema()", 1)[1]
         chain = chain.split("private fun readRows", 1)[0]
         self.assertLessEqual(len(source.splitlines()), 1200)
         self.assertIn("createLegacyDatabase(25)", chain)
         self.assertIn("runLegacyMigrations(26, MIGRATION_25_26)", chain)
         self.assertNotIn("helper.createDatabase", chain)
-        self.assertRegex(chain, r"helper\.runMigrationsAndValidate\(\s*legacyDatabaseName, 36, true,")
+        self.assertRegex(chain, r"helper\.runMigrationsAndValidate\(\s*legacyDatabaseName, 37, true,")
         self.assertEqual(
-            [f"MIGRATION_{version}_{version + 1}" for version in range(25, 36)],
+            [f"MIGRATION_{version}_{version + 1}" for version in range(25, 37)],
             re.findall(r"MIGRATION_\d+_\d+", chain),
         )
         self.assertIn('assertEquals(originalNotes, readRows(db, "notes", noteColumns))', chain)
         self.assertIn('assertEquals(originalChat, readRows(db, "chat_messages", chatColumns))', chain)
         for index in ("index_notes_isDraft", "index_notes_hidden", "index_tasks_isDraft", "index_tasks_hidden", "index_notes_title", "index_chat_messages_conversationId_timestamp", "index_notebooks_manualOrder_updatedAt", "index_notebook_items_notebookId_addedAt"):
             self.assertIn(index, chain)
-        schema = json.loads((self.root / "app/schemas/com.lucent.app.data.AppDatabase/36.json").read_text(encoding="utf-8"))
-        self.assertEqual(36, schema["database"]["version"])
+        schema = json.loads((self.root / "app/schemas/com.lucent.app.data.AppDatabase/37.json").read_text(encoding="utf-8"))
+        self.assertEqual(37, schema["database"]["version"])
 
 
 if __name__ == "__main__":

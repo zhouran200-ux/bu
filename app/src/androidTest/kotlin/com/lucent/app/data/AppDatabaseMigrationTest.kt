@@ -242,7 +242,7 @@ class AppDatabaseMigrationTest {
     }
 
     @Test
-    fun fullChain25To36_preservesNotesAndChatAndValidatesCurrentRoomSchema() {
+    fun fullChain25To37_preservesNotesAndChatAndValidatesCurrentRoomSchema() {
         val noteColumns = "id, title, body, updatedAt, tags, attachments, archived, archivedAt, " +
             "pinned, color, trashedAt, manualOrder, isDraft, draftSavedAt, hidden, bodySpans, formatOverride"
         val chatColumns = "id, role, content, timestamp, attachmentMime, attachmentData, attachmentName, " +
@@ -294,11 +294,11 @@ class AppDatabaseMigrationTest {
         }
         fixture.closeOpenHelpers()
         helper.runMigrationsAndValidate(
-            legacyDatabaseName, 36, true,
+            legacyDatabaseName, 37, true,
             MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30,
-            MIGRATION_30_31, MIGRATION_31_32, MIGRATION_32_33, MIGRATION_33_34, MIGRATION_34_35, MIGRATION_35_36
+            MIGRATION_30_31, MIGRATION_31_32, MIGRATION_32_33, MIGRATION_33_34, MIGRATION_34_35, MIGRATION_35_36, MIGRATION_36_37
         ).use { db ->
-            assertEquals(36, db.version)
+            assertEquals(37, db.version)
             assertEquals(originalNotes, readRows(db, "notes", noteColumns))
             assertEquals(originalChat, readRows(db, "chat_messages", chatColumns))
             assertRetiredColumnsAbsent(db, "notes", "isChecklist", "checklist", "isDoodle", "doodle")

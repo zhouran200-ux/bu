@@ -5,6 +5,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Rule
 import org.junit.Test
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 
 class AppDatabaseResidualCleanupTest {
 
@@ -35,6 +36,17 @@ class AppDatabaseResidualCleanupTest {
                 "('notes_fts', 'tasks_fts', 'tasks', 'task_versions', 'notes_fts_ai', 'tasks_fts_ai')"
         ).use { c ->
             assertFalse("retired search and task objects must be gone", c.moveToFirst())
+        }
+    }
+
+    @Test
+    fun migrate34To35_addsTheNoteTitleIndex() {
+        helper.createDatabase(DB_NAME, 34).close()
+
+        val db = helper.runMigrationsAndValidate(DB_NAME, 35, true, MIGRATION_34_35)
+
+        db.query("SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'index_notes_title'").use { c ->
+            assertTrue("index_notes_title must exist", c.moveToFirst())
         }
     }
 

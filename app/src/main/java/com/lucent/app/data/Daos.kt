@@ -12,6 +12,9 @@ interface NoteDao {
     @Query("SELECT * FROM notes ORDER BY updatedAt DESC")
     suspend fun getAllOnce(): List<Note>
 
+    @Query("SELECT * FROM notes WHERE title = :title")
+    suspend fun getByTitleOnce(title: String): List<Note>
+
     @Query("SELECT * FROM notes WHERE TRIM(title) = :title")
     suspend fun getByTrimmedTitleOnce(title: String): List<Note>
 

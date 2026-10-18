@@ -10,7 +10,8 @@ import androidx.room.PrimaryKey
     indices = [
         Index(value = ["updatedAt"]),
         Index(value = ["archived"]),
-        Index(value = ["trashedAt"])
+        Index(value = ["trashedAt"]),
+        Index(value = ["title"])
     ]
 )
 data class Note(

@@ -56,14 +56,7 @@ internal object StreamingRequestBuilder {
                     put("messages", messagesArray)
                     if (reasoningConfig != null && !reasoningConfig.isAuto) {
                         val wireEffort = reasoningConfig.openAiEffort ?: reasoningConfig.claudeEffort
-                        if (reasoningConfig.openAiMode != null) {
-                            put("reasoning", JSONObject().apply {
-                                put("mode", reasoningConfig.openAiMode)
-                                if (wireEffort != null) {
-                                    put("effort", wireEffort)
-                                }
-                            })
-                        } else if (wireEffort != null) {
+                        if (wireEffort != null) {
                             put("reasoning_effort", wireEffort)
                         }
                         val budget = reasoningConfig.claudeBudgetTokens

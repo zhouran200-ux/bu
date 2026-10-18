@@ -94,7 +94,6 @@ data class ResolvedReasoningConfig(
     val preset: ReasoningPreset,
     val isAuto: Boolean = false,
     val openAiEffort: String? = null,
-    val openAiMode: String? = null,
     val geminiThinkingLevel: String? = null,
     val geminiThinkingBudget: Int? = null,
     val claudeEffort: String? = null,
@@ -120,8 +119,6 @@ class OpenAiReasoningMapper : ReasoningMapper {
     override fun map(preset: ReasoningPreset, model: ModelDefinition): ResolvedReasoningConfig {
         if (preset == ReasoningPreset.AUTO) return ResolvedReasoningConfig.AUTO
 
-        val clean = model.id.lowercase()
-        val isGpt6 = clean.contains("gpt-6") || clean.contains("gpt6")
         val desired = when (preset) {
             ReasoningPreset.AUTO -> "low"
             ReasoningPreset.FAST -> "low"
@@ -130,13 +127,11 @@ class OpenAiReasoningMapper : ReasoningMapper {
             ReasoningPreset.MAXIMUM -> "max"
         }
         val effort = ReasoningLevels.supported(desired, model.reasoning.levels)
-        val modeStr = if (isGpt6 && (preset == ReasoningPreset.DEEP || preset == ReasoningPreset.MAXIMUM)) "pro" else null
 
         return ResolvedReasoningConfig(
             preset = preset,
             openAiEffort = effort,
-            openAiMode = modeStr,
-            displayTag = if (modeStr != null) "OpenAI $effort (Pro模式)" else "OpenAI $effort"
+            displayTag = "OpenAI $effort"
         )
     }
 }

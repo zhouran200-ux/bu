@@ -97,12 +97,10 @@ class LlmClientReasoningPayloadTest {
     }
 
     @Test(timeout = 15000)
-    fun gptSixMaximumUsesTheProModeReasoningObject() = runBlocking {
+    fun gptSixMaximumSendsOnlyTheEffortField() = runBlocking {
         val json = org.json.JSONObject(send(ReasoningPreset.MAXIMUM, "gpt-6.1-sol"))
-        val reasoning = json.optJSONObject("reasoning")
-        assertEquals("pro", reasoning?.optString("mode"))
-        assertEquals("max", reasoning?.optString("effort"))
-        assertNull(json.opt("reasoning_effort"))
+        assertEquals("max", json.optString("reasoning_effort"))
+        assertNull(json.opt("reasoning"))
     }
 
     @Test(timeout = 15000)

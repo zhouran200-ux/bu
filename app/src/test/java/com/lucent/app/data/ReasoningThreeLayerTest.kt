@@ -36,19 +36,15 @@ class ReasoningThreeLayerTest {
         val autoConfig = ReasoningResolver.resolve(ReasoningPreset.AUTO, "openai", "gpt-6.1-sol")
         assertTrue(autoConfig.isAuto)
         assertNull(autoConfig.openAiEffort)
-        assertNull(autoConfig.openAiMode)
 
         val fastConfig = ReasoningResolver.resolve(ReasoningPreset.FAST, "openai", "gpt-6.1-sol")
         assertEquals("low", fastConfig.openAiEffort)
-        assertNull(fastConfig.openAiMode)
 
         val deepConfig = ReasoningResolver.resolve(ReasoningPreset.DEEP, "openai", "gpt-6.1-sol")
         assertEquals("high", deepConfig.openAiEffort)
-        assertEquals("pro", deepConfig.openAiMode)
 
         val maxConfig = ReasoningResolver.resolve(ReasoningPreset.MAXIMUM, "openai", "gpt-6.1-sol")
         assertEquals("max", maxConfig.openAiEffort)
-        assertEquals("pro", maxConfig.openAiMode)
     }
 
     @Test
@@ -144,7 +140,6 @@ class ReasoningThreeLayerTest {
 
         val gpt6 = ReasoningResolver.resolve(ReasoningPreset.MAXIMUM, "openai", "gpt-6.1-sol")
         assertEquals("max", gpt6.openAiEffort)
-        assertEquals("pro", gpt6.openAiMode)
 
         val customReasoner = ReasoningResolver.resolve(ReasoningPreset.DEEP, "openai", "custom-reasoner-v1")
         assertEquals("high", customReasoner.openAiEffort)

@@ -33,6 +33,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.unit.sp
+import com.lucent.app.data.FontLibrary
 import com.lucent.app.data.FontStore
 import com.lucent.app.data.SettingsCache
 import com.lucent.app.data.SettingsRepository
@@ -74,7 +75,7 @@ internal fun FontSettingsPage(
     var fontRefreshIndex by remember { mutableStateOf(0) }
     var importedFonts by remember { mutableStateOf<List<FontStore.FontSlot>>(emptyList()) }
     LaunchedEffect(fontRefreshIndex) {
-        importedFonts = withContext(Dispatchers.IO) { FontStore.index(context).slots }
+        importedFonts = FontLibrary.slots(context)
     }
     val canImportMore = importedFonts.size < FontStore.MAX_FONTS
 
@@ -117,9 +118,7 @@ internal fun FontSettingsPage(
         fontError = ""
         scope.launch {
             try {
-                val slot = withContext(Dispatchers.IO) {
-                    FontStore.import(context, uri, name)
-                }
+                val slot = FontLibrary.import(context, uri, name)
                 fontRefreshIndex++
                 repo.setFont(slot.id)
                 Toast.makeText(context, S.fontImportedToast, Toast.LENGTH_SHORT).show()
@@ -568,7 +567,7 @@ internal fun FontSettingsPage(
                         fontPendingDelete = null
                         scope.launch {
                             try {
-                                withContext(Dispatchers.IO) { FontStore.delete(context, idToDelete) }
+                                FontLibrary.delete(context, idToDelete)
                                 LucentFontResolver.evict(idToDelete)
                                 fontRefreshIndex++
                                 if (fontKey == idToDelete) repo.setFont(SYSTEM_FONT_KEY)

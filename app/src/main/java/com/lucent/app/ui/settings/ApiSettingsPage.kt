@@ -68,7 +68,7 @@ import com.lucent.app.data.ApiProfile
 import com.lucent.app.data.SettingsRepository
 import com.lucent.app.i18n.S
 import com.lucent.app.network.ApiSpec
-import com.lucent.app.network.LlmClient
+import com.lucent.app.network.ApiProbe
 import com.lucent.app.network.TestConnectionResult
 import com.lucent.app.ui.ApiModelPickerDialog
 import com.lucent.app.ui.GlassButton
@@ -237,19 +237,7 @@ internal fun ApiConfigSettingsPage(
                             isTargetCurrent = { latestRequestTarget.value == target },
                             setBusy = onLoadingChange,
                             onFailure = { fetchModelsError = "读取模型失败，请重试" },
-                            request = {
-                            val apiSpecEnum = when (spec) {
-                                "anthropic" -> ApiSpec.ANTHROPIC
-                                "google" -> ApiSpec.GOOGLE
-                                else -> ApiSpec.OPENAI
-                            }
-                            LlmClient.fetchModels(
-                                baseUrl = url.trim(),
-                                spec = apiSpecEnum,
-                                apiKey = key.trim(),
-                                rawEndpoint = spec == "custom"
-                            )
-                            }
+                            request = { ApiProbe.fetchModels(url, spec, key) }
                         ) { result ->
                             result.onSuccess { list ->
                                 if (list.isEmpty()) {
@@ -484,21 +472,7 @@ internal fun ApiConfigSettingsPage(
                     isTargetCurrent = { latestRequestTarget.value == target && latestTestModel.value == targetModel },
                     setBusy = { testingConn = it },
                     onFailure = { testSuccess = false; testStatusText = "连接测试失败，请重试" },
-                    request = {
-                    val apiSpecEnum = when (spec) {
-                        "anthropic" -> ApiSpec.ANTHROPIC
-                        "google" -> ApiSpec.GOOGLE
-                        else -> ApiSpec.OPENAI
-                    }
-                    val targetToTest = targetModel
-                    LlmClient.testConnection(
-                        baseUrl = url.trim(),
-                        spec = apiSpecEnum,
-                        apiKey = key.trim(),
-                        model = targetToTest,
-                        rawEndpoint = spec == "custom"
-                    )
-                    }
+                    request = { ApiProbe.testConnection(url, spec, key, targetModel) }
                 ) { result ->
                     result.onSuccess { res ->
                         lastTestResult = res

@@ -1,6 +1,3 @@
 {
-  "offenders": [
-    "ApiSettingsPage.kt",
-    "FontSettingsPage.kt"
-  ]
+  "offenders": []
 }

@@ -20,7 +20,7 @@ object UserAgentPresets {
 
 object ApiProfiles {
 
-    const val MAX = 20
+    const val MAX = 50
 
     val DEFAULT_PROFILES = listOf(
         ApiProfile(

@@ -12,3 +12,5 @@ __pycache__/
 keystore-base64.txt
 
 RELEASE_NOTES*.md
+hs_err_pid*.log
+replay_pid*.log

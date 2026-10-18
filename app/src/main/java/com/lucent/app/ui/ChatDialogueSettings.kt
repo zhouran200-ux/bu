@@ -91,7 +91,7 @@ internal fun DialogueSettingsSheet(
             ) {
                 Spacer(modifier = Modifier.width(64.dp))
                 Text(
-                    text = "对话设置",
+                    text = S.dialogueTitle,
                     fontSize = LucentTitles.ItemSize,
                     fontWeight = LucentTitles.ItemWeight,
                     color = ink,
@@ -121,7 +121,7 @@ internal fun DialogueSettingsSheet(
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
-                    text = "系统提示词",
+                    text = S.dialogueSystemPrompt,
                     fontSize = 13.sp,
                     color = muted,
                     modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
@@ -148,7 +148,7 @@ internal fun DialogueSettingsSheet(
                             decorationBox = { innerTextField ->
                                 if (prompt.isEmpty()) {
                                     Text(
-                                        text = "告诉模型该如何回答：语气、篇幅、格式，或必须遵守的规则。",
+                                        text = S.dialoguePromptHint,
                                         color = ink.copy(alpha = 0.40f),
                                         fontSize = 15.sp,
                                         lineHeight = 22.sp
@@ -161,7 +161,7 @@ internal fun DialogueSettingsSheet(
                         Spacer(modifier = Modifier.height(8.dp))
 
                         Text(
-                            text = "${prompt.length} 字",
+                            text = S.dialogueCharCount(prompt.length),
                             fontSize = 12.sp,
                             color = ink.copy(alpha = 0.45f),
                             modifier = Modifier.align(Alignment.End)
@@ -172,7 +172,7 @@ internal fun DialogueSettingsSheet(
                 Spacer(modifier = Modifier.height(20.dp))
 
                 Text(
-                    text = "对话上下文",
+                    text = S.dialogueContext,
                     fontSize = 13.sp,
                     color = muted,
                     modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
@@ -187,8 +187,8 @@ internal fun DialogueSettingsSheet(
                 ) {
                     Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)) {
                         StepperSlider(
-                            title = "携带历史轮数",
-                            valueLabel = if (historyRounds == 10) "默认 10 轮" else "$historyRounds 轮",
+                            title = S.dialogueHistoryRounds,
+                            valueLabel = if (historyRounds == 10) S.dialogueRoundsDefault else S.dialogueRoundsValue(historyRounds),
                             value = historyRounds.toFloat(),
                             valueRange = 1f..20f,
                             step = 1f,

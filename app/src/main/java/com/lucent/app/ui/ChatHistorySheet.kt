@@ -1,6 +1,7 @@
 package com.lucent.app.ui
 
 import com.lucent.app.chat.UiChatMessage
+import com.lucent.app.i18n.S
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -96,7 +97,7 @@ internal fun ChatHistorySheet(
                 modifier = Modifier.fillMaxWidth().then(drawer.dragModifier)
             ) {
                 Text(
-                    text = "对话记录",
+                    text = S.historyTitle,
                     fontSize = LucentTitles.SectionSize,
                     fontWeight = LucentTitles.SectionWeight,
                     color = ink
@@ -109,7 +110,7 @@ internal fun ChatHistorySheet(
                         .padding(horizontal = 8.dp, vertical = 2.dp)
                 ) {
                     Text(
-                        text = "共 ${messages.size} 条",
+                        text = S.historyCount(messages.size),
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Medium,
                         color = accent
@@ -127,16 +128,16 @@ internal fun ChatHistorySheet(
                 ) {
                     JumpChip(
                         icon = Icons.Default.KeyboardArrowUp,
-                        label = "跳到顶部",
-                        hint = "首条",
+                        label = S.historyJumpTop,
+                        hint = S.historyJumpTopHint,
                         enabled = true,
                         modifier = Modifier.weight(1f),
                         onClick = onTop
                     )
                     JumpChip(
                         icon = Icons.Default.KeyboardArrowDown,
-                        label = "跳到底部",
-                        hint = "最新",
+                        label = S.historyJumpBottom,
+                        hint = S.historyJumpBottomHint,
                         enabled = true,
                         modifier = Modifier.weight(1f),
                         onClick = onBottom
@@ -152,7 +153,7 @@ internal fun ChatHistorySheet(
                         .heightIn(min = 120.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(text = "暂无对话记录", fontSize = 13.sp, color = muted)
+                    Text(text = S.historyEmpty, fontSize = 13.sp, color = muted)
                 }
             } else {
                 var userSeq = 0
@@ -160,10 +161,10 @@ internal fun ChatHistorySheet(
                 val numbered = messages.map { m ->
                     if (m.role == "user") {
                         userSeq += 1
-                        Triple(m, "问 $userSeq", true)
+                        Triple(m, S.historyUserTag(userSeq), true)
                     } else {
                         aiSeq += 1
-                        Triple(m, "答 $aiSeq", false)
+                        Triple(m, S.historyAiTag(aiSeq), false)
                     }
                 }
                 LazyColumn(
@@ -176,10 +177,10 @@ internal fun ChatHistorySheet(
                     items(numbered, key = { it.first.id }) { (m, tag, isUser) ->
                         val isCurrent = m.id == currentMessageId
                         val summary = when {
-                            m.id == streamingAnswerId && m.content.isBlank() -> "正在回答…"
+                            m.id == streamingAnswerId && m.content.isBlank() -> S.historyStreaming
                             m.content.isNotBlank() -> previewExcerpt(m.content.take(1024), limit = 70)
                             !m.reasoningText.isNullOrBlank() -> previewExcerpt(m.reasoningText.take(1024), limit = 70)
-                            else -> "暂无正文"
+                            else -> S.historyNoBody
                         }
                         HistoryRow(
                             tag = tag,
@@ -267,7 +268,7 @@ private fun HistoryRow(
         Spacer(modifier = Modifier.size(10.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = if (isUser) "提问" else "回答",
+                text = if (isUser) S.historyRoleUser else S.historyRoleAnswer,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
                 color = ink.copy(alpha = 0.9f)

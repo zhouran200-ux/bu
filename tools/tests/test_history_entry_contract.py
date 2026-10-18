@@ -27,8 +27,10 @@ class HistoryEntryContractTest(unittest.TestCase):
     def test_history_jump_buttons_preserve_glass_alpha(self):
         text = (UI / "ChatHistorySheet.kt").read_text(encoding="utf-8")
         jump = text.split("private fun JumpChip(", 1)[1].split("private fun HistoryRow(", 1)[0]
-        self.assertIn('label = "跳到顶部"', text)
-        self.assertIn('label = "跳到底部"', text)
+        self.assertIn("label = S.historyJumpTop", text)
+        self.assertIn("label = S.historyJumpBottom", text)
+        self.assertIn("S.historyJumpTopHint", text)
+        self.assertIn("S.historyJumpBottomHint", text)
         self.assertIn("it.copy(alpha = it.alpha * fade)", jump)
         self.assertNotIn("glassControlColor().copy(alpha = fade)", jump)
 

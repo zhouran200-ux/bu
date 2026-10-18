@@ -46,6 +46,14 @@ def inspect_results(root):
             if not suites:
                 raise ValueError("no testsuite element")
             for suite in suites:
+                for case in suite.findall(".//testcase"):
+                    if case.find("failure") is None and case.find("error") is None:
+                        continue
+                    name = case.get("name", "?")
+                    klass = case.get("classname", "?")
+                    detail = (case.findtext("failure") or case.findtext("error") or "").strip()
+                    first = detail.splitlines()[0] if detail else ""
+                    problems.append(f"FAILED {klass}.{name}: {first[:180]}")
                 for key in ("tests", "failures", "errors", "skipped"):
                     value = int(suite.get(key, "0"))
                     if value < 0:

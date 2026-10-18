@@ -50,7 +50,7 @@ class ApprovedUxContractTest(unittest.TestCase):
     def test_error_details_remain_below_summary(self):
         text = (UI / "settings/ApiSettingsPage.kt").read_text(encoding="utf-8")
         self.assertLess(text.index("text = testStatusText"), text.index("lastTestResult?.let { res ->"))
-        self.assertIn('appendLine("详细信息")', text)
+        self.assertIn("appendLine(S.apiDetails)", text)
         self.assertIn("res.prettyResponseBody()", text)
         self.assertIn("onCopy = { copyRawResponse(textToCopy) }", text)
 

@@ -199,7 +199,7 @@ internal fun ApiConfigSettingsPage(
                 "openai" to "OpenAI",
                 "anthropic" to "Anthropic",
                 "google" to "Google",
-                "custom" to "自定义"
+                "custom" to S.apiSpecCustom
             ),
             selectedKey = spec,
             onSelect = { onSpecChange(it) }
@@ -210,7 +210,7 @@ internal fun ApiConfigSettingsPage(
             value = url,
             onValueChange = { onUrlChange(collapseExcessBlankLines(it)) },
             label = S.fieldBaseUrl,
-            placeholder = if (spec == "custom") "完整地址，不再自动补路径" else "",
+            placeholder = if (spec == "custom") S.apiCustomPlaceholder else "",
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() })
         )
@@ -236,7 +236,7 @@ internal fun ApiConfigSettingsPage(
                             scope = scope,
                             isTargetCurrent = { latestRequestTarget.value == target },
                             setBusy = onLoadingChange,
-                            onFailure = { fetchModelsError = "读取模型失败，请重试" },
+                            onFailure = { fetchModelsError = S.apiFetchModelsFailed },
                             request = { ApiProbe.fetchModels(url, spec, key) }
                         ) { result ->
                             result.onSuccess { list ->
@@ -293,7 +293,7 @@ internal fun ApiConfigSettingsPage(
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(
-                text = "对话模型",
+                text = S.apiChatModel,
                 color = onGradient,
                 fontSize = LucentTitles.SectionSize,
                 fontWeight = LucentTitles.SectionWeight
@@ -387,7 +387,7 @@ internal fun ApiConfigSettingsPage(
                                 iconSize = 16.dp,
                                 confirmTextPadding = PaddingValues(horizontal = 7.dp, vertical = 3.dp),
                                 confirmTextSize = 11.sp,
-                                contentDescription = "删除模型"
+                                contentDescription = S.apiRemoveModel
                             )
                         }
                     }
@@ -410,7 +410,7 @@ internal fun ApiConfigSettingsPage(
         CompactField(
             value = customModelInput,
             onValueChange = { customModelInput = collapseExcessBlankLines(it) },
-            placeholder = "输入模型名称",
+            placeholder = S.apiModelNamePlaceholder,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(onDone = { addCustomModel() }),
             trailing = {
@@ -418,7 +418,7 @@ internal fun ApiConfigSettingsPage(
                     IconButton(onClick = { addCustomModel() }, modifier = Modifier.size(28.dp)) {
                         Icon(
                             Icons.Default.Add,
-                            contentDescription = "添加模型",
+                            contentDescription = S.apiAddModel,
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(17.dp)
                         )
@@ -435,11 +435,11 @@ internal fun ApiConfigSettingsPage(
         }
         val latestTestModel = rememberUpdatedState(currentTestTarget)
         val testBtnText = if (testingConn) {
-            "测试中..."
+            S.apiTesting
         } else if (currentTestTarget.isNotBlank()) {
-            "测试连接 ($currentTestTarget)"
+            S.apiTestConnectionTarget(currentTestTarget)
         } else {
-            "测试连接"
+            S.apiTestConnection
         }
 
         fun copyRawResponse(text: String) {
@@ -471,7 +471,7 @@ internal fun ApiConfigSettingsPage(
                     scope = scope,
                     isTargetCurrent = { latestRequestTarget.value == target && latestTestModel.value == targetModel },
                     setBusy = { testingConn = it },
-                    onFailure = { testSuccess = false; testStatusText = "连接测试失败，请重试" },
+                    onFailure = { testSuccess = false; testStatusText = S.apiTestConnectionFailed },
                     request = { ApiProbe.testConnection(url, spec, key, targetModel) }
                 ) { result ->
                     result.onSuccess { res ->
@@ -480,8 +480,8 @@ internal fun ApiConfigSettingsPage(
                         testStatusText = res.formatDisplayMessage()
                     }.onFailure { err ->
                         testSuccess = false
-                        val msg = (err.message ?: "").trim().ifBlank { "连接失败" }.take(180)
-                        testStatusText = "[网络连接失败/无法访问服务器] $msg"
+                        val msg = (err.message ?: "").trim().ifBlank { S.apiConnectionFailed }.take(180)
+                        testStatusText = S.apiNetworkFailed(msg)
                     }
                 }
             },
@@ -529,12 +529,12 @@ internal fun ApiConfigSettingsPage(
         lastTestResult?.let { res ->
             val prettyBody = remember(res) {
                 if (res.success) res.prettyResponseBody() else buildString {
-                appendLine("详细信息")
-                if (res.httpCode > 0) appendLine("HTTP 状态码：${res.httpCode}")
-                appendLine("耗时：${res.latencyMs}ms")
+                appendLine(S.apiDetails)
+                if (res.httpCode > 0) appendLine(S.apiHttpStatus(res.httpCode))
+                appendLine(S.apiLatency(res.latencyMs))
                 res.errorMessage?.takeIf { it.isNotBlank() }?.let { appendLine(it) }
-                appendLine("--- 原始响应 / 异常 ---")
-                append(res.prettyResponseBody().ifBlank { "（无响应正文）" })
+                appendLine(S.apiRawResponse)
+                append(res.prettyResponseBody().ifBlank { S.apiEmptyResponse })
                 }
             }
             val textToCopy = prettyBody
@@ -577,7 +577,7 @@ internal fun ApiConfigSettingsPage(
                 if (selectedModel !in list) {
                     onSelectedModelChange(list.firstOrNull().orEmpty())
                 }
-                LucentToast.show(context, "已应用模型选择")
+                LucentToast.show(context, S.apiModelsApplied)
             },
             onDismiss = { pickerOpen = false }
         )

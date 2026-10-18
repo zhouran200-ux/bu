@@ -28,7 +28,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -46,7 +45,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.lucent.app.data.ApiProfile
@@ -61,7 +59,6 @@ internal fun ProfileModelPickerSheet(
     onSelect: (ApiProfile, String) -> Unit,
     onDismiss: () -> Unit,
     visible: Boolean = true,
-    handleWidth: Dp = 72.dp,
     onManageApi: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -71,9 +68,7 @@ internal fun ProfileModelPickerSheet(
     var expandedProfileId by remember { mutableStateOf(initialPosition.expandedProfileId) }
     val listState = remember { LazyListState(initialPosition.firstVisibleItemIndex, 0) }
     val latestDismiss by rememberUpdatedState(onDismiss)
-    val drawer = rememberModelPickerDrawer(
-        sheetState, handleWidth, onDismiss = { latestDismiss() }, brightHandle = true
-    )
+    val drawer = rememberModelPickerDrawer(sheetState, onDismiss = { latestDismiss() })
     val ink = LocalOnGradient.current
     val accent = MaterialTheme.colorScheme.primary
     val context = LocalContext.current
@@ -85,10 +80,7 @@ internal fun ProfileModelPickerSheet(
         shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
         tonalElevation = 0.dp,
         modifier = drawer.modifier,
-        properties = ModalBottomSheetProperties(
-            shouldDismissOnBackPress = true,
-            shouldDismissOnClickOutside = true
-        ),
+        properties = DrawerSheetProperties,
         sheetGesturesEnabled = false,
         dragHandle = null
     ) {

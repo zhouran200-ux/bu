@@ -41,7 +41,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.platform.LocalContext
@@ -66,7 +65,6 @@ internal fun BottomGlassComposer(
     onOpenDialogueSettings: () -> Unit,
     selectedProfileName: String,
     onOpenModelPicker: () -> Unit,
-    onModelPickerWidth: (Int) -> Unit,
     streaming: Boolean,
     onSend: () -> Unit,
     onStop: () -> Unit
@@ -262,7 +260,6 @@ internal fun BottomGlassComposer(
                         modifier = Modifier
                             .weight(1f)
                             .clip(RoundedCornerShape(18.dp))
-                            .onSizeChanged { onModelPickerWidth(it.width) }
                             .clickable { onOpenModelPicker() }
                     ) {
                         Row(

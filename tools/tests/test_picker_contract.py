@@ -28,44 +28,37 @@ class PickerContractTest(unittest.TestCase):
         self.assertNotIn("animateScrollToItem", text)
         self.assertNotIn("remember(position)", text)
 
-    def test_model_sheets_keep_custom_header_gestures(self):
+    def test_all_sheets_share_bright_handle_and_fixed_header(self):
         sheets = []
         for path in UI.rglob("*.kt"):
             text = path.read_text(encoding="utf-8")
             count = text.count("    ModalBottomSheet(")
             if count:
                 sheets.append(path.name)
-                if path.name in ("SettingsComponents.kt", "ProfileModelPickerSheet.kt", "ChatHistorySheet.kt"):
-                    self.assertEqual(count, text.count("sheetGesturesEnabled = false"), path.name)
-                    if path.name == "ProfileModelPickerSheet.kt":
-                        self.assertIn("dragHandle = null", text)
-                        self.assertIn("drawer.handle()", text)
-                    else:
-                        self.assertIn("dragHandle = drawer.handle", text)
-                else:
-                    self.assertEqual(count, text.count("sheetGesturesEnabled = true"), path.name)
-                    self.assertEqual(count, text.count("dragHandle = { BottomSheetDefaults.DragHandle() }"), path.name)
+                self.assertEqual(count, text.count("sheetGesturesEnabled = false"), path.name)
+                self.assertEqual(count, text.count("properties = DrawerSheetProperties"), path.name)
+                self.assertEqual(count, text.count("dragHandle = null"), path.name)
+                self.assertEqual(count, text.count("drawer.handle()"), path.name)
             self.assertNotIn("LucentDragHandle", text, path.name)
         self.assertEqual(4, len(sheets))
 
-    def test_picker_allows_outside_dismiss_without_changing_other_drawers(self):
+    def test_drawers_dismiss_from_backdrop_and_handle(self):
         drawer = (UI / "ModelPickerDrawer.kt").read_text(encoding="utf-8")
+        self.assertIn("internal val DrawerSheetProperties", drawer)
         self.assertIn("shouldDismissOnBackPress = true", drawer)
-        self.assertIn("shouldDismissOnClickOutside = false", drawer)
-        for name in ("ChatHistorySheet.kt", "SettingsComponents.kt"):
+        self.assertIn("shouldDismissOnClickOutside = true", drawer)
+        self.assertIn("Modifier.fillMaxWidth(0.4f).height(5.dp)", drawer)
+        self.assertIn(".background(Color.White, CircleShape)", drawer)
+        self.assertNotIn("HandleOnlyDrawerProperties", drawer)
+        self.assertNotIn("BottomSheetDefaults", drawer)
+        for name in ("ChatHistorySheet.kt", "ProfileModelPickerSheet.kt", "SettingsComponents.kt", "ChatDialogueSettings.kt"):
             text = (UI / name).read_text(encoding="utf-8")
-            self.assertIn("properties = HandleOnlyDrawerProperties", text)
-            self.assertIn("sheetGesturesEnabled = false", text)
-            self.assertIn("dragHandle = drawer.handle", text)
-        picker = (UI / "ProfileModelPickerSheet.kt").read_text(encoding="utf-8")
-        self.assertIn("shouldDismissOnBackPress = true", picker)
-        self.assertIn("shouldDismissOnClickOutside = true", picker)
-        self.assertIn(".then(drawer.dragModifier)", picker)
-        self.assertIn("brightHandle = true", picker)
+            self.assertIn("rememberModelPickerDrawer(", text, name)
+            self.assertIn(".then(drawer.dragModifier)", text, name)
+            self.assertNotIn("HandleOnlyDrawerProperties", text, name)
         chat = (UI / "NotebookChatTab.kt").read_text(encoding="utf-8")
-        self.assertIn("(modelPickerButtonWidthPx * 1.25f).toDp()", chat)
-        self.assertIn(".onSizeChanged { onModelPickerWidth(it.width) }", (UI / "ChatOverlayComponents.kt").read_text(encoding="utf-8"))
-        self.assertEqual(2, chat.count("handleWidth = drawerHandleWidth"))
+        self.assertNotIn("handleWidth", chat)
+        self.assertNotIn("handleWidth", (UI / "ChatOverlayComponents.kt").read_text(encoding="utf-8"))
 
     def test_history_and_settings_callbacks_do_not_dismiss(self):
         text = (UI / "NotebookChatTab.kt").read_text(encoding="utf-8")
@@ -110,7 +103,6 @@ class PickerContractTest(unittest.TestCase):
         self.assertIn(".then(dragModifier)", drawer)
         self.assertIn(".background(Color.White, CircleShape)", drawer)
         self.assertIn("handlePressed || dragged", drawer)
-        self.assertIn("BottomSheetDefaults.DragHandle(width = handleWidth)", drawer)
         self.assertNotIn("DragHandle(height =", drawer)
         api = (UI / "SettingsComponents.kt").read_text(encoding="utf-8")
         self.assertIn("drawer.close { onDone(draft) }", api)

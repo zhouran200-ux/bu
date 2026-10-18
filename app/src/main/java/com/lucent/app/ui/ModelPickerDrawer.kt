@@ -14,9 +14,7 @@ import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.height
-import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.SheetState
 import androidx.compose.runtime.Composable
@@ -36,15 +34,14 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.Dp
 import androidx.compose.material3.ModalBottomSheetProperties
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
-internal val HandleOnlyDrawerProperties = ModalBottomSheetProperties(
+internal val DrawerSheetProperties = ModalBottomSheetProperties(
     shouldDismissOnBackPress = true,
-    shouldDismissOnClickOutside = false
+    shouldDismissOnClickOutside = true
 )
 
 internal fun shouldDismissModelDrawer(distance: Float, velocity: Float, threshold: Float): Boolean =
@@ -62,9 +59,7 @@ internal class ModelPickerDrawer(
 @Composable
 internal fun rememberModelPickerDrawer(
     sheetState: SheetState,
-    handleWidth: Dp = 72.dp,
-    onDismiss: () -> Unit,
-    brightHandle: Boolean = false
+    onDismiss: () -> Unit
 ): ModelPickerDrawer {
     val scope = rememberCoroutineScope()
     val dismiss by rememberUpdatedState(onDismiss)
@@ -105,7 +100,7 @@ internal fun rememberModelPickerDrawer(
         interactionSource = dragInteraction,
         onDragStarted = {
             rebound?.cancel()
-            if (brightHandle) Haptics.tick(context)
+            Haptics.tick(context)
         },
         onDragStopped = { velocity ->
             if (shouldDismissModelDrawer(travel, velocity, threshold)) {
@@ -120,27 +115,23 @@ internal fun rememberModelPickerDrawer(
         dragModifier = dragModifier,
         handle = {
             Box(
-                modifier = (if (brightHandle) Modifier.fillMaxWidth() else Modifier.width(handleWidth))
-                    .height(if (brightHandle) 32.dp else 40.dp)
+                modifier = Modifier.fillMaxWidth()
+                    .height(32.dp)
                     .then(dragModifier)
-                    .then(if (brightHandle) Modifier.pointerInput(Unit) {
+                    .then(Modifier.pointerInput(Unit) {
                         detectTapGestures(onPress = {
                             handlePressed = true
                             try { tryAwaitRelease() } finally { handlePressed = false }
                         })
-                    } else Modifier),
+                    }),
                 contentAlignment = Alignment.Center
             ) {
-                if (brightHandle) {
-                    Box(
-                        Modifier.fillMaxWidth(0.6f).height(5.dp)
-                            .graphicsLayer { scaleY = handleScale }
-                            .shadow(2.dp, CircleShape)
-                            .background(Color.White, CircleShape)
-                    )
-                } else {
-                    BottomSheetDefaults.DragHandle(width = handleWidth)
-                }
+                Box(
+                    Modifier.fillMaxWidth(0.4f).height(5.dp)
+                        .graphicsLayer { scaleY = handleScale }
+                        .shadow(2.dp, CircleShape)
+                        .background(Color.White, CircleShape)
+                )
             }
         },
         close = close

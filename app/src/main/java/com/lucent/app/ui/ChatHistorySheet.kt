@@ -41,7 +41,6 @@ import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -53,11 +52,10 @@ internal fun ChatHistorySheet(
     onMessageClick: (Long) -> Unit,
     onTop: () -> Unit,
     onBottom: () -> Unit,
-    onDismiss: () -> Unit,
-    handleWidth: Dp = 72.dp
+    onDismiss: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val drawer = rememberModelPickerDrawer(sheetState, handleWidth, onDismiss)
+    val drawer = rememberModelPickerDrawer(sheetState, onDismiss = onDismiss)
     val ink = LocalOnGradient.current
     val muted = LocalOnGradientMuted.current
     val accent = MaterialTheme.colorScheme.primary
@@ -79,22 +77,23 @@ internal fun ChatHistorySheet(
         shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
         tonalElevation = 0.dp,
         modifier = drawer.modifier,
-        properties = HandleOnlyDrawerProperties,
+        properties = DrawerSheetProperties,
         sheetGesturesEnabled = false,
-        dragHandle = drawer.handle
+        dragHandle = null
     ) {
         KeepKeyboardForNonEditingDialog()
+        drawer.handle()
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .imePadding()
                 .navigationBarsPadding()
-                .padding(horizontal = 18.dp)
-                .padding(bottom = 16.dp)
+                .padding(horizontal = 14.dp)
+                .padding(bottom = 10.dp)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth().then(drawer.dragModifier)
             ) {
                 Text(
                     text = "对话记录",
@@ -119,7 +118,7 @@ internal fun ChatHistorySheet(
                 Spacer(modifier = Modifier.weight(1f))
             }
 
-            Spacer(modifier = Modifier.size(10.dp))
+            Spacer(modifier = Modifier.size(6.dp))
 
             if (hasRecords) {
                 Row(
@@ -143,7 +142,7 @@ internal fun ChatHistorySheet(
                         onClick = onBottom
                     )
                 }
-                Spacer(modifier = Modifier.size(12.dp))
+                Spacer(modifier = Modifier.size(8.dp))
             }
 
             if (!hasRecords) {

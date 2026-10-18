@@ -20,7 +20,6 @@ import androidx.compose.material.icons.rounded.History
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -54,6 +53,7 @@ internal fun DialogueSettingsSheet(
     var prompt by remember { mutableStateOf(initialPrompt) }
     var historyRounds by remember { mutableIntStateOf(initialHistoryRounds) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val drawer = rememberModelPickerDrawer(sheetState, onDismiss = onDismiss)
     val promptScroll = rememberScrollState()
     val keepEditing = rememberImeVisibleOnOpen()
     val inputFocus = remember { androidx.compose.ui.focus.FocusRequester() }
@@ -67,23 +67,25 @@ internal fun DialogueSettingsSheet(
         containerColor = glassPanelColor(),
         shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
         tonalElevation = 0.dp,
-        sheetGesturesEnabled = true,
-        dragHandle = { BottomSheetDefaults.DragHandle() }
+        modifier = drawer.modifier,
+        properties = DrawerSheetProperties,
+        sheetGesturesEnabled = false,
+        dragHandle = null
     ) {
         PreserveEditingKeyboardOnOpen(keepEditing, inputFocus)
+        drawer.handle()
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .imePadding()
                 .heightIn(max = sheetContentHeightLimit())
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp)
-                .padding(bottom = 28.dp)
+                .padding(horizontal = 16.dp)
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(46.dp),
+                    .height(44.dp)
+                    .then(drawer.dragModifier),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Spacer(modifier = Modifier.width(64.dp))
@@ -109,102 +111,109 @@ internal fun DialogueSettingsSheet(
                 }
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
-
-            Text(
-                text = "系统提示词",
-                fontSize = 13.sp,
-                color = muted,
-                modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
-            )
-
-            Surface(
-                shape = RoundedCornerShape(18.dp),
-                color = glassControlColor(),
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(18.dp))
+                    .weight(1f, fill = false)
+                    .verticalScroll(rememberScrollState())
             ) {
-                Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
-                    BasicTextField(
-                        value = prompt,
-                        onValueChange = { prompt = it },
-                        textStyle = TextStyle(fontSize = 15.sp, color = ink, lineHeight = 22.sp),
-                        cursorBrush = SolidColor(accent),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = 88.dp, max = 188.dp)
-                            .verticalScroll(promptScroll)
-                            .focusRequester(inputFocus),
-                        decorationBox = { innerTextField ->
-                            if (prompt.isEmpty()) {
-                                Text(
-                                    text = "告诉模型该如何回答：语气、篇幅、格式，或必须遵守的规则。",
-                                    color = ink.copy(alpha = 0.40f),
-                                    fontSize = 15.sp,
-                                    lineHeight = 22.sp
-                                )
-                            }
-                            innerTextField()
-                        }
-                    )
+                Spacer(modifier = Modifier.height(4.dp))
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "系统提示词",
+                    fontSize = 13.sp,
+                    color = muted,
+                    modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
+                )
 
-                    Text(
-                        text = "${prompt.length} 字",
-                        fontSize = 12.sp,
-                        color = ink.copy(alpha = 0.45f),
-                        modifier = Modifier.align(Alignment.End)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            Text(
-                text = "对话上下文",
-                fontSize = 13.sp,
-                color = muted,
-                modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
-            )
-
-            Surface(
-                shape = RoundedCornerShape(18.dp),
-                color = glassControlColor(),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(18.dp))
-            ) {
-                Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)) {
-                    StepperSlider(
-                        title = "携带历史轮数",
-                        valueLabel = if (historyRounds == 10) "默认 10 轮" else "$historyRounds 轮",
-                        value = historyRounds.toFloat(),
-                        valueRange = 1f..20f,
-                        step = 1f,
-                        onValueChange = { historyRounds = it.toInt() }
-                    )
-                }
-            }
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 6.dp),
-                horizontalArrangement = Arrangement.Center
-            ) {
-                TextButton(
-                    onClick = {
-                        prompt = ""
-                        historyRounds = 10
-                    }
+                Surface(
+                    shape = RoundedCornerShape(18.dp),
+                    color = glassControlColor(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(18.dp))
                 ) {
-                    Text(
-                        text = "恢复默认",
-                        fontSize = 13.sp,
-                        color = muted
-                    )
+                    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
+                        BasicTextField(
+                            value = prompt,
+                            onValueChange = { prompt = it },
+                            textStyle = TextStyle(fontSize = 15.sp, color = ink, lineHeight = 22.sp),
+                            cursorBrush = SolidColor(accent),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 88.dp, max = 188.dp)
+                                .verticalScroll(promptScroll)
+                                .focusRequester(inputFocus),
+                            decorationBox = { innerTextField ->
+                                if (prompt.isEmpty()) {
+                                    Text(
+                                        text = "告诉模型该如何回答：语气、篇幅、格式，或必须遵守的规则。",
+                                        color = ink.copy(alpha = 0.40f),
+                                        fontSize = 15.sp,
+                                        lineHeight = 22.sp
+                                    )
+                                }
+                                innerTextField()
+                            }
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Text(
+                            text = "${prompt.length} 字",
+                            fontSize = 12.sp,
+                            color = ink.copy(alpha = 0.45f),
+                            modifier = Modifier.align(Alignment.End)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                Text(
+                    text = "对话上下文",
+                    fontSize = 13.sp,
+                    color = muted,
+                    modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
+                )
+
+                Surface(
+                    shape = RoundedCornerShape(18.dp),
+                    color = glassControlColor(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(18.dp))
+                ) {
+                    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)) {
+                        StepperSlider(
+                            title = "携带历史轮数",
+                            valueLabel = if (historyRounds == 10) "默认 10 轮" else "$historyRounds 轮",
+                            value = historyRounds.toFloat(),
+                            valueRange = 1f..20f,
+                            step = 1f,
+                            onValueChange = { historyRounds = it.toInt() }
+                        )
+                    }
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 6.dp),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    TextButton(
+                        onClick = {
+                            prompt = ""
+                            historyRounds = 10
+                        }
+                    ) {
+                        Text(
+                            text = "恢复默认",
+                            fontSize = 13.sp,
+                            color = muted
+                        )
+                    }
                 }
             }
         }

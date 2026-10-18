@@ -230,19 +230,20 @@ internal fun ApiModelPickerDialog(
         tonalElevation = 0.dp,
         shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
         modifier = drawer.modifier,
-        properties = HandleOnlyDrawerProperties,
+        properties = DrawerSheetProperties,
         sheetGesturesEnabled = false,
-        dragHandle = drawer.handle
+        dragHandle = null
     ) {
+        drawer.handle()
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp)
-                .padding(bottom = 24.dp)
+                .padding(horizontal = 14.dp)
+                .padding(bottom = 12.dp)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth().then(drawer.dragModifier)
             ) {
                 Text(
                     text = S.apiModelsTitle,

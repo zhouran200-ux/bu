@@ -1,5 +1,7 @@
 package com.lucent.app.chat
 
+import com.lucent.app.i18n.S
+
 import android.content.Context
 import androidx.room.withTransaction
 import com.lucent.app.data.AppDatabase
@@ -58,7 +60,7 @@ object ChatSessions {
         ChatSession(
             dispatcher = Dispatchers.Main.immediate,
             load = {
-                check(notebookId !in deletedNotebooks) { "笔记本正在删除或已删除" }
+                check(notebookId !in deletedNotebooks) { S.notebookDeleting }
                 dao.getForConversationOnce(conversationId).map { message ->
                     UiChatMessage(message.id, message.role, message.content, message.reasoningText,
                         message.answerSeconds, promptTokens = message.tokens,
@@ -81,7 +83,7 @@ object ChatSessions {
             },
             onRunningChanged = { active ->
                 if (active) {
-                    check(notebookId !in deletedNotebooks) { "笔记本正在删除或已删除" }
+                    check(notebookId !in deletedNotebooks) { S.notebookDeleting }
                     running.value += 1
                     try {
                         ChatGenerationService.ensureRunning(app)
@@ -102,8 +104,8 @@ object ChatSessions {
     fun isRunning(notebookId: Long): Boolean = sessions[notebookId]?.streamingAnswerId != null
 
     suspend fun prepareDelete(notebookId: Long) {
-        check(!isRunning(notebookId)) { "请先停止此笔记本中的回答，再删除笔记本" }
-        check(deletedNotebooks.add(notebookId)) { "笔记本正在删除或已删除" }
+        check(!isRunning(notebookId)) { S.chatStopBeforeDelete }
+        check(deletedNotebooks.add(notebookId)) { S.notebookDeleting }
         try {
             sessions[notebookId]?.prepareDelete()
         } catch (e: Exception) {

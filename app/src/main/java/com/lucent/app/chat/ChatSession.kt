@@ -1,5 +1,7 @@
 package com.lucent.app.chat
 
+import com.lucent.app.i18n.S
+
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -55,13 +57,13 @@ class ChatSession(
                 messages.addAll(load())
                 ready = !unavailable
             } catch (e: Exception) {
-                storageError = "读取对话失败：${e.message}"
+                storageError = S.chatLoadFailed(e.message ?: "")
             }
         }
     }
 
     fun write(block: suspend () -> Unit): Deferred<Result<Unit>> {
-        if (unavailable) return CompletableDeferred(Result.failure(IllegalStateException("笔记本不可写")))
+        if (unavailable) return CompletableDeferred(Result.failure(IllegalStateException(S.chatNotebookNotWritable)))
         val previous = writeTail
         return scope.async(start = CoroutineStart.LAZY) {
             previous?.join()
@@ -71,7 +73,7 @@ class ChatSession(
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (failure: Exception) {
-                storageError = "保存对话失败：" + failure.message
+                storageError = S.chatSaveFailed(failure.message ?: "")
                 Result.failure(failure)
             }
         }.also { writeTail = it; it.start() }
@@ -172,10 +174,10 @@ class ChatSession(
                     scheduler.forceFlush()
                     val partial = scheduler.getFinalContent()
                     val content = when {
-                        callHandle.isCancelled -> partial.ifBlank { "（已停止生成）" }
-                        result != null -> result.content.ifBlank { partial }.ifBlank { "（模型返回了空回复）" }
-                        partial.isNotBlank() -> "$partial\n\n[网络中断：${failure?.message ?: "连接已关闭"}，已保留已生成内容]"
-                        else -> "【请求失败】${failure?.message ?: "网络或接口异常"}\n\n请检查网络连接、API 密钥与模型端点配置。"
+                        callHandle.isCancelled -> partial.ifBlank { S.chatStopped }
+                        result != null -> result.content.ifBlank { partial }.ifBlank { S.chatEmptyReply }
+                        partial.isNotBlank() -> S.chatNetworkInterrupted(partial, failure?.message ?: S.chatConnectionClosed)
+                        else -> S.chatRequestFailed(failure?.message ?: S.chatNetworkError)
                     }
                     val final = initial.copy(
                         content = content,
@@ -205,12 +207,12 @@ class ChatSession(
     }
 
     suspend fun prepareDelete() {
-        check(streamingAnswerId == null) { "请先停止此笔记本中的回答，再删除笔记本" }
+        check(streamingAnswerId == null) { S.chatStopBeforeDelete }
         val previousReady = ready
         val previousError = storageError
         unavailable = true
         ready = false
-        storageError = "笔记本正在删除或已删除"
+        storageError = S.notebookDeleting
         try {
             writeTail?.join()
         } catch (e: Exception) {
@@ -224,7 +226,7 @@ class ChatSession(
     fun deletionFailed() {
         unavailable = false
         ready = true
-        storageError = "删除失败，请重试"
+        storageError = S.chatDeleteFailed
     }
 
     internal fun canRelease(): Boolean = ready && !unavailable && storageError == null &&

@@ -1,5 +1,7 @@
 package com.lucent.app.chat
 
+import com.lucent.app.i18n.S
+
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -39,7 +41,7 @@ class ChatGenerationService : Service() {
             }
         } catch (error: RuntimeException) {
             android.util.Log.e(TAG, "Unable to protect chat generation in foreground", error)
-            Toast.makeText(this, "无法启动后台生成保护，已停止生成：${error.message.orEmpty()}", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, S.serviceStartFailed(error.message.orEmpty()), Toast.LENGTH_LONG).show()
             ChatSessions.stopAll()
             stopSelf()
             return START_NOT_STICKY
@@ -72,7 +74,7 @@ class ChatGenerationService : Service() {
     }
 
     override fun onTimeout(startId: Int, fgsType: Int) {
-        Toast.makeText(this, "后台生成已达到系统时限，已停止生成", Toast.LENGTH_LONG).show()
+        Toast.makeText(this, S.serviceTimeout, Toast.LENGTH_LONG).show()
         ChatSessions.stopAll()
         stopProtection()
     }
@@ -90,8 +92,8 @@ class ChatGenerationService : Service() {
 
     private fun createNotificationChannel() {
         getSystemService(NotificationManager::class.java).createNotificationChannel(
-            NotificationChannel(CHANNEL_ID, "对话后台生成", NotificationManager.IMPORTANCE_LOW)
-                .apply { description = "在切换页面或应用进入后台时保持回答生成" }
+            NotificationChannel(CHANNEL_ID, S.serviceChannelName, NotificationManager.IMPORTANCE_LOW)
+                .apply { description = S.serviceChannelDescription }
         )
     }
 
@@ -106,13 +108,13 @@ class ChatGenerationService : Service() {
         )
         return Notification.Builder(this, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.stat_notify_sync)
-            .setContentTitle("Lucent 正在生成回答")
-            .setContentText(if (count > 1) "$count 个笔记本正在生成，点击返回应用" else "可切换页面或进入后台，点击返回应用")
+            .setContentTitle(S.serviceTitle)
+            .setContentText(if (count > 1) S.serviceTextMany(count) else S.serviceTextSingle)
             .setContentIntent(openApp)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setCategory(Notification.CATEGORY_PROGRESS)
-            .addAction(Notification.Action.Builder(null, "停止全部", stop).build())
+            .addAction(Notification.Action.Builder(null, S.serviceStopAll, stop).build())
             .build()
     }
 

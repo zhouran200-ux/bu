@@ -292,54 +292,65 @@ val MIGRATION_24_25 = object : Migration(24, 25) {
 
 val MIGRATION_25_26 = object : Migration(25, 26) {
     override fun migrate(db: SupportSQLiteDatabase) {
-        try {
-            db.execSQL("ALTER TABLE notes DROP COLUMN isChecklist")
-            db.execSQL("ALTER TABLE notes DROP COLUMN checklist")
-            db.execSQL("ALTER TABLE notes DROP COLUMN isDoodle")
-            db.execSQL("ALTER TABLE notes DROP COLUMN doodle")
-            db.execSQL("ALTER TABLE note_versions DROP COLUMN isChecklist")
-            db.execSQL("ALTER TABLE note_versions DROP COLUMN checklist")
-        } catch (_: Throwable) {
-        }
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `notes_26` (" +
+                "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                "`title` TEXT NOT NULL, `body` TEXT NOT NULL, `updatedAt` INTEGER NOT NULL, " +
+                "`tags` TEXT NOT NULL, `attachments` TEXT NOT NULL, `archived` INTEGER NOT NULL, " +
+                "`archivedAt` INTEGER, `pinned` INTEGER NOT NULL, `color` TEXT NOT NULL, " +
+                "`trashedAt` INTEGER, `manualOrder` INTEGER NOT NULL, `isDraft` INTEGER NOT NULL, " +
+                "`draftSavedAt` INTEGER, `hidden` INTEGER NOT NULL, `bodySpans` TEXT NOT NULL, " +
+                "`formatOverride` TEXT)"
+        )
+        db.execSQL(
+            "INSERT INTO `notes_26` (`id`, `title`, `body`, `updatedAt`, `tags`, `attachments`, `archived`, `archivedAt`, `pinned`, `color`, `trashedAt`, `manualOrder`, `isDraft`, `draftSavedAt`, `hidden`, `bodySpans`, `formatOverride`) " +
+                "SELECT `id`, `title`, `body`, `updatedAt`, `tags`, `attachments`, `archived`, `archivedAt`, `pinned`, `color`, `trashedAt`, `manualOrder`, `isDraft`, `draftSavedAt`, `hidden`, `bodySpans`, `formatOverride` FROM `notes`"
+        )
+        db.execSQL("DROP TABLE `notes`")
+        db.execSQL("ALTER TABLE `notes_26` RENAME TO `notes`")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_notes_updatedAt` ON `notes` (`updatedAt`)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_notes_archived` ON `notes` (`archived`)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_notes_trashedAt` ON `notes` (`trashedAt`)")
     }
 }
 
 val MIGRATION_26_27 = object : Migration(26, 27) {
     override fun migrate(db: SupportSQLiteDatabase) {
-        try {
-            db.execSQL("ALTER TABLE chat_messages DROP COLUMN agentTrace")
-        } catch (_: Throwable) {
-        }
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `chat_messages_27` (" +
+                "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `role` TEXT NOT NULL, " +
+                "`content` TEXT NOT NULL, `timestamp` INTEGER NOT NULL, `attachmentMime` TEXT, " +
+                "`attachmentData` TEXT, `attachmentName` TEXT, `attachmentList` TEXT, " +
+                "`conversationId` INTEGER NOT NULL, `tokens` INTEGER NOT NULL, `replyToId` INTEGER NOT NULL, " +
+                "`reasoningBlocks` TEXT, `reasoningText` TEXT, `quotedRole` TEXT, `quotedText` TEXT)"
+        )
+        db.execSQL(
+            "INSERT INTO `chat_messages_27` (`id`, `role`, `content`, `timestamp`, `attachmentMime`, `attachmentData`, `attachmentName`, `attachmentList`, `conversationId`, `tokens`, `replyToId`, `reasoningBlocks`, `reasoningText`, `quotedRole`, `quotedText`) " +
+                "SELECT `id`, `role`, `content`, `timestamp`, `attachmentMime`, `attachmentData`, `attachmentName`, `attachmentList`, `conversationId`, `tokens`, `replyToId`, `reasoningBlocks`, `reasoningText`, `quotedRole`, `quotedText` FROM `chat_messages`"
+        )
+        db.execSQL("DROP TABLE `chat_messages`")
+        db.execSQL("ALTER TABLE `chat_messages_27` RENAME TO `chat_messages`")
     }
 }
 
 val MIGRATION_27_28 = object : Migration(27, 28) {
     override fun migrate(db: SupportSQLiteDatabase) {
-        try {
-            db.execSQL("DROP TRIGGER IF EXISTS `note_embeddings_cleanup`")
-            db.execSQL("DROP TABLE IF EXISTS `note_embeddings`")
-            db.execSQL("DROP TABLE IF EXISTS `note_versions`")
-        } catch (_: Throwable) {
-        }
+        db.execSQL("DROP TRIGGER IF EXISTS `note_embeddings_cleanup`")
+        db.execSQL("DROP TABLE IF EXISTS `note_embeddings`")
+        db.execSQL("DROP TABLE IF EXISTS `note_versions`")
     }
 }
 
 val MIGRATION_28_29 = object : Migration(28, 29) {
     override fun migrate(db: SupportSQLiteDatabase) {
-        try {
-            db.execSQL("ALTER TABLE chat_messages ADD COLUMN cachedTokens INTEGER NOT NULL DEFAULT 0")
-            db.execSQL("ALTER TABLE chat_messages ADD COLUMN answerSeconds INTEGER NOT NULL DEFAULT 0")
-        } catch (_: Throwable) {
-        }
+        db.execSQL("ALTER TABLE chat_messages ADD COLUMN cachedTokens INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE chat_messages ADD COLUMN answerSeconds INTEGER NOT NULL DEFAULT 0")
     }
 }
 
 val MIGRATION_29_30 = object : Migration(29, 30) {
     override fun migrate(db: SupportSQLiteDatabase) {
-        try {
-            db.execSQL("DROP TABLE IF EXISTS `chat_conversations`")
-        } catch (_: Throwable) {
-        }
+        db.execSQL("DROP TABLE IF EXISTS `chat_conversations`")
     }
 }
 
@@ -361,5 +372,25 @@ val MIGRATION_31_32 = object : Migration(31, 32) {
 val MIGRATION_32_33 = object : Migration(32, 33) {
     override fun migrate(db: SupportSQLiteDatabase) {
         db.execSQL("CREATE INDEX IF NOT EXISTS index_chat_messages_conversationId_timestamp ON chat_messages(conversationId, timestamp)")
+    }
+}
+
+val MIGRATION_33_34 = object : Migration(33, 34) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("DROP TRIGGER IF EXISTS `notes_fts_ai`")
+        db.execSQL("DROP TRIGGER IF EXISTS `notes_fts_ad`")
+        db.execSQL("DROP TRIGGER IF EXISTS `notes_fts_au`")
+        db.execSQL("DROP TRIGGER IF EXISTS `tasks_fts_ai`")
+        db.execSQL("DROP TRIGGER IF EXISTS `tasks_fts_ad`")
+        db.execSQL("DROP TRIGGER IF EXISTS `tasks_fts_au`")
+        db.execSQL("DROP TRIGGER IF EXISTS `note_embeddings_cleanup`")
+        db.execSQL("DROP TABLE IF EXISTS `notes_fts`")
+        db.execSQL("DROP TABLE IF EXISTS `tasks_fts`")
+        db.execSQL("DROP TABLE IF EXISTS `tasks`")
+        db.execSQL("DROP TABLE IF EXISTS `task_versions`")
+        db.execSQL("DROP INDEX IF EXISTS `index_notes_isDraft`")
+        db.execSQL("DROP INDEX IF EXISTS `index_notes_hidden`")
+        db.execSQL("DROP INDEX IF EXISTS `index_tasks_isDraft`")
+        db.execSQL("DROP INDEX IF EXISTS `index_tasks_hidden`")
     }
 }

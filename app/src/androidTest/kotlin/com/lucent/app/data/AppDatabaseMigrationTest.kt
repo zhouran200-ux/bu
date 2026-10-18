@@ -739,4 +739,40 @@ class AppDatabaseMigrationTest {
             assertEquals("Hello", c.getString(1))
         }
     }
+
+    @Test
+    fun migrate25To26_rebuildsNotesWithoutDropColumnAndKeepsData() {
+        createLegacyDatabase(25).apply {
+            execSQL(
+                "INSERT INTO notes (id, title, body, updatedAt, tags, attachments, archived, pinned, " +
+                    "color, manualOrder, isDraft, hidden, bodySpans, isChecklist, checklist, isDoodle, doodle) " +
+                    "VALUES (1, 'Kept', 'Body', 1000, '', '[]', 0, 0, '', 0, 0, 0, '', 0, '[]', 0, '')"
+            )
+            close()
+        }
+
+        val db = runLegacyMigrations(26, MIGRATION_25_26)
+
+        val retired = listOf("isChecklist", "checklist", "isDoodle", "doodle")
+        db.query("PRAGMA table_info(notes)").use { c ->
+            val columns = mutableListOf<String>()
+            while (c.moveToNext()) columns += c.getString(c.getColumnIndexOrThrow("name"))
+            retired.forEach { assertFalse("$it must be gone from notes", it in columns) }
+        }
+        db.query("SELECT title, body FROM notes WHERE id = 1").use { c ->
+            assertTrue(c.moveToFirst())
+            assertEquals("Kept", c.getString(0))
+            assertEquals("Body", c.getString(1))
+        }
+        db.query("SELECT name FROM sqlite_master WHERE type = 'index' AND tbl_name = 'notes'").use { c ->
+            val indexes = mutableListOf<String>()
+            while (c.moveToNext()) indexes += c.getString(0)
+            assertFalse("legacy isDraft index must be gone", "index_notes_isDraft" in indexes)
+            assertFalse("legacy hidden index must be gone", "index_notes_hidden" in indexes)
+            assertTrue("index_notes_updatedAt" in indexes)
+            assertTrue("index_notes_archived" in indexes)
+            assertTrue("index_notes_trashedAt" in indexes)
+        }
+    }
+
 }

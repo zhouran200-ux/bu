@@ -8,29 +8,9 @@ import kotlin.test.assertTrue
 class SourceCitationsTest {
 
     @Test
-    fun footnoteNumbersFollowFirstAppearanceAndReuseTheSameNumber() {
-        val text = "甲。〔REF:42:3f2a91c4:S12-7〕乙。〔REF:7:0001:S1-1〕丙。〔REF:42:3f2a91c4:S12-7〕"
-
-        val numbering = SourceCitations.numbering(text)
-
-        assertEquals(1, numbering["〔REF:42:3f2a91c4:S12-7〕"])
-        assertEquals(2, numbering["〔REF:7:0001:S1-1〕"])
-        assertEquals(2, numbering.size)
-    }
-
-    @Test
-    fun shortFormIsNumberedToo() {
-        val numbering = SourceCitations.numbering("甲。〔S12-7〕乙。〔S12-8〕")
-
-        assertEquals(1, numbering["〔S12-7〕"])
-        assertEquals(2, numbering["〔S12-8〕"])
-    }
-
-    @Test
     fun commonModelBracketVariantsAreRecognized() {
         assertEquals("S12-7", SourceCitations.parse("【S：12-7】", 5L, "rev")?.sliceId)
         assertEquals("S12-8", SourceCitations.parse("[S:12-8]", 5L, "rev")?.sliceId)
-        assertEquals(2, SourceCitations.numbering("甲【S：12-7】乙[S:12-8]").size)
     }
 
     @Test
@@ -58,7 +38,6 @@ class SourceCitationsTest {
         assertNull(SourceCitations.parse("〔REF:42:S12〕"))
         assertNull(SourceCitations.parse("〔REF:42:3f2a91c4:S12〕"))
         assertNull(SourceCitations.parse("s12-7"))
-        assertTrue(SourceCitations.numbering("普通正文，没有任何引用。").isEmpty())
     }
 
     @Test
@@ -85,7 +64,6 @@ class SourceCitationsTest {
         val short = SourceCitations.parse("〔S1-1〕")!!
         assertTrue(SourceCitations.rejectionReason(old, 42L, revision) != null)
         assertTrue(SourceCitations.rejectionReason(short, 42L, revision) != null)
-        assertEquals(1, SourceCitations.numbering(old.raw)[old.raw])
     }
 
     @Test

@@ -25,13 +25,6 @@ object SourceCitations {
         else -> null
     }
 
-    fun numbering(text: String): Map<String, Int> {
-        val numbers = LinkedHashMap<String, Int>()
-        for (match in marker.findAll(text)) {
-            if (!numbers.containsKey(match.value)) numbers[match.value] = numbers.size + 1
-        }
-        return numbers
-    }
 }
 
 data class CitationRef(

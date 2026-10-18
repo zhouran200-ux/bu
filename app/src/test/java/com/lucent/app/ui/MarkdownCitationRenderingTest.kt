@@ -1,8 +1,10 @@
 package com.lucent.app.ui
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import com.lucent.app.data.SourceCitations
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -13,61 +15,68 @@ class MarkdownCitationRenderingTest {
     private val second = "〔S2-2〕"
     private val full = "〔REF:7:abcdef:S3-3〕"
 
-    private fun render(text: String, emphasized: Boolean = false, enabled: Boolean = true) = inlineAnnotated(
-        text,
-        Color.Black,
-        Color.Blue,
-        CitationDecor(markdownCitationNumbering(parseBlocks(text), enabled), null, 7L, "abcdef", enabled, emphasized)
-    )
+    private fun render(text: String, emphasized: Boolean = false, enabled: Boolean = true): AnnotatedString =
+        inlineAnnotated(
+            text,
+            Color.Black,
+            Color.Blue,
+            CitationDecor(null, 7L, "abcdef", enabled, emphasized)
+        )
+
+    @Test
+    fun citationsAreNumberedByAppearanceOrder() {
+        assertEquals("甲 [1] 乙 [2] 丙 [3]", render("甲 $first 乙 $second 丙 $full").text)
+    }
+
+    @Test
+    fun theSameCitationReappearingGetsTheNextNumber() {
+        assertEquals("甲 [1] 乙 [2]", render("甲 $first 乙 $first").text)
+    }
+
+    @Test
+    fun numberingRestartsForEachReply() {
+        assertEquals("[1]", render(first).text)
+        assertEquals("[1]", render(second).text)
+    }
 
     @Test
     fun inlineCodeKeepsMarkersAndDoesNotConsumeNumbers() {
-        val text = "`$first` $second $full"
-        assertEquals(mapOf(second to 1, full to 2), markdownCitationNumbering(parseBlocks(text)))
-        assertEquals("$first [1] [2]", render(text).text)
+        assertEquals("$first [1] [2]", render("`$first` $second $full").text)
     }
 
     @Test
     fun multipleBackticksProtectInnerBackticksAndCitations() {
-        val text = "``code `$first` **literal**`` $second"
-        assertEquals(mapOf(second to 1), markdownCitationNumbering(parseBlocks(text)))
-        assertEquals("code `$first` **literal** [1]", render(text).text)
+        assertEquals("code `$first` **literal** [1]", render("``code `$first` **literal**`` $second").text)
     }
 
     @Test
     fun formattingAcrossACitationIsNotSplit() {
         for (delimiter in listOf("**", "__", "*", "_", "~~")) {
-            val text = "${delimiter}before $first after$delimiter"
-            assertEquals("before [1] after", render(text).text)
-            assertEquals(mapOf(first to 1), markdownCitationNumbering(parseBlocks(text)))
+            assertEquals("before [1] after", render("${delimiter}before $first after$delimiter").text)
         }
     }
 
     @Test
     fun inlineCodeWithinBoldKeepsItsMarkerLiteral() {
-        val text = "**before `$first` after $second**"
-        assertEquals("before $first after [1]", render(text).text)
-        assertEquals(mapOf(second to 1), markdownCitationNumbering(parseBlocks(text)))
+        assertEquals("before $first after [1]", render("**before `$first` after $second**").text)
     }
 
     @Test
     fun codeContentIsNotClosedByAnInnerFormattingDelimiter() {
-        val text = "**before `**$first` after $second"
-        assertEquals(mapOf(second to 1), markdownCitationNumbering(parseBlocks(text)))
-        assertTrue(render(text).text.contains("**$first"))
+        assertTrue(render("**before `**$first` after $second").text.contains("**$first"))
     }
 
     @Test
     fun fencedCodeAndLinkTargetsDoNotConsumeNumbers() {
-        val text = "```\n$first\n```\n[label](https://example.test/$full)\n$second"
-        assertEquals(mapOf(second to 1), markdownCitationNumbering(parseBlocks(text)))
-        assertEquals(listOf(first), (parseBlocks(text).first() as MdBlock.Code).lines)
+        val text = "```" + 10.toChar() + "$first" + 10.toChar() + "```" + 10.toChar() + "[label](https://example.test/$full) $second"
+        val blocks = parseBlocks(text)
+        assertEquals(listOf(first), (blocks.first() as MdBlock.Code).lines)
+        assertEquals("label [1]", render("[label](https://example.test/$full) $second").text)
     }
 
     @Test
     fun sourceModeLeavesEveryMarkerLiteralAndSkipsNumbering() {
         val text = "$first $full **$second** `$first`"
-        assertTrue(markdownCitationNumbering(parseBlocks(text), false).isEmpty())
         assertEquals("$first $full $second $first", render(text, enabled = false).text)
         assertFalse(markdownInlineTokens(text, false).any { it.kind == MdInlineKind.Citation })
     }
@@ -82,17 +91,13 @@ class MarkdownCitationRenderingTest {
     }
 
     @Test
-    fun repeatedCitationsCollapseInsideOneBlock() {
-        val text = "甲 $first 乙 $first 丙 $second"
-        assertEquals("甲 [1] 乙  丙 [2]", render(text).text)
-    }
-
-    @Test
-    fun everyNumberedMarkerGetsADistinctInlineBadge() {
-        val text = "$first $second"
-        val numbering = markdownCitationNumbering(parseBlocks(text))
-        val contents = citationBadgeContents(numbering, Color.Blue, { _ -> }, 7L, "abcdef")
-        assertEquals(setOf("cite:$first", "cite:$second"), contents.keys)
+    fun everyCitationOccurrenceGetsItsOwnBadge() {
+        val refs = listOf(
+            SourceCitations.parse(first, 7L, "abcdef")!!,
+            SourceCitations.parse(second, 7L, "abcdef")!!
+        )
+        val contents = citationBadgeContents(refs, Color.Blue) { _ -> }
+        assertEquals(setOf("cite:1", "cite:2"), contents.keys)
     }
 
     @Test

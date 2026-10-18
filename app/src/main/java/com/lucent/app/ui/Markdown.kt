@@ -36,7 +36,7 @@ import kotlinx.coroutines.sync.withLock
 
 internal data class MarkdownParseSnapshot(
     val blocks: List<MdBlock>,
-    val numbering: Map<String, Int>,
+    val refs: List<CitationRef>,
     val annotated: List<AnnotatedString> = emptyList()
 )
 
@@ -55,15 +55,15 @@ fun MarkdownText(
     val accent = MaterialTheme.colorScheme.primary
     val incrementalParser = remember { IncrementalMarkdownParser() }
     val parserMutex = remember { Mutex() }
-    var parsed by remember { mutableStateOf(MarkdownParseSnapshot(emptyList(), emptyMap())) }
+    var parsed by remember { mutableStateOf(MarkdownParseSnapshot(emptyList(), emptyList())) }
     val currentClick = rememberUpdatedState(onCitationClick)
     val click: (CitationRef) -> Unit = remember { { ref -> currentClick.value?.invoke(ref) } }
     LaunchedEffect(text, citationsEnabled, emphasized, onGradient, onGradientMuted, accent, sourceNoteId, sourceRevision, onCitationClick != null) {
         parsed = withContext(Dispatchers.Default) {
             parserMutex.withLock {
                 val blocks = incrementalParser.parse(text)
-                val numbering = markdownCitationNumbering(blocks, citationsEnabled)
-                val decor = CitationDecor(numbering, if (onCitationClick != null) click else null, sourceNoteId, sourceRevision, citationsEnabled, emphasized)
+                val cursor = CitationCursor()
+                val decor = CitationDecor(if (onCitationClick != null) click else null, sourceNoteId, sourceRevision, citationsEnabled, emphasized)
                 val annotated = blocks.map { block ->
                     val raw = when (block) {
                         is MdBlock.Heading -> block.text
@@ -74,21 +74,19 @@ fun MarkdownText(
                         is MdBlock.Code -> return@map AnnotatedString(block.lines.joinToString(10.toChar().toString()))
                         else -> return@map AnnotatedString("")
                     }
-                    inlineAnnotated(raw, if (block is MdBlock.Quote) onGradientMuted else onGradient, accent, decor)
+                    inlineAnnotated(raw, if (block is MdBlock.Quote) onGradientMuted else onGradient, accent, decor, cursor)
                 }
-                MarkdownParseSnapshot(blocks, numbering, annotated)
+                MarkdownParseSnapshot(blocks, cursor.refs.toList(), annotated)
             }
         }
     }
     val blocks = parsed.blocks
     val fontWeight = if (emphasized) FontWeight.Bold else null
-    val badgeContents = remember(parsed.numbering, accent, onCitationClick != null, sourceNoteId, sourceRevision) {
+    val badgeContents = remember(parsed.refs, accent, onCitationClick != null) {
         citationBadgeContents(
-            numbering = parsed.numbering,
+            refs = parsed.refs,
             accent = accent,
-            onClick = if (onCitationClick != null) click else null,
-            sourceNoteId = sourceNoteId,
-            sourceRevision = sourceRevision
+            onClick = if (onCitationClick != null) click else null
         )
     }
 

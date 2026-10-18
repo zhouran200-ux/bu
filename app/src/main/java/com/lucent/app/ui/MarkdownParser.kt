@@ -256,27 +256,3 @@ internal fun markdownInlineTokens(text: String, citationsEnabled: Boolean = true
     return tokens
 }
 
-internal fun markdownCitationNumbering(blocks: List<MdBlock>, citationsEnabled: Boolean = true): Map<String, Int> {
-    if (!citationsEnabled) return emptyMap()
-    val markers = mutableListOf<String>()
-    fun collect(text: String) {
-        for (token in markdownInlineTokens(text)) {
-            when (token.kind) {
-                MdInlineKind.Citation -> markers += token.text
-                MdInlineKind.Bold, MdInlineKind.Strike, MdInlineKind.Italic -> collect(token.text)
-                else -> Unit
-            }
-        }
-    }
-    for (block in blocks) {
-        when (block) {
-            is MdBlock.Heading -> collect(block.text)
-            is MdBlock.Paragraph -> collect(block.text)
-            is MdBlock.Bullet -> collect(block.text)
-            is MdBlock.Numbered -> collect(block.text)
-            is MdBlock.Quote -> collect(block.text)
-            else -> Unit
-        }
-    }
-    return SourceCitations.numbering(markers.joinToString("\n"))
-}

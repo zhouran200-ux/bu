@@ -90,25 +90,26 @@ internal fun ProfileModelPickerSheet(
             shouldDismissOnClickOutside = true
         ),
         sheetGesturesEnabled = false,
-        dragHandle = drawer.handle
+        dragHandle = null
     ) {
         KeepKeyboardForNonEditingDialog()
+        drawer.handle()
         Column(
             modifier = Modifier.fillMaxWidth()
                 .heightIn(max = sheetContentHeightLimit())
-                .padding(horizontal = 16.dp)
+                .padding(horizontal = 14.dp)
         ) {
             Text(
                 text = "模型选择",
                 fontSize = LucentTitles.SectionSize,
                 fontWeight = LucentTitles.SectionWeight,
                 color = ink,
-                modifier = Modifier.fillMaxWidth().then(drawer.dragModifier).padding(vertical = 12.dp)
+                modifier = Modifier.fillMaxWidth().then(drawer.dragModifier).padding(vertical = 6.dp)
             )
             LazyColumn(
                 state = listState,
                 modifier = Modifier.fillMaxWidth().weight(1f, fill = false),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
                 if (profiles.isEmpty()) {
                     item(key = "empty") {
@@ -121,7 +122,7 @@ internal fun ProfileModelPickerSheet(
                     val expanded = expandedProfileId == profile.id
                     item(key = "profile:${profile.id}") {
                         if (profileIndex > 0) {
-                            HorizontalDivider(color = ink.copy(alpha = 0.12f), modifier = Modifier.padding(vertical = 6.dp))
+                            HorizontalDivider(color = ink.copy(alpha = 0.12f), modifier = Modifier.padding(vertical = 3.dp))
                         }
                         val arrowRotation = animateFloatAsState(
                             if (expanded) 90f else 0f,
@@ -132,7 +133,7 @@ internal fun ProfileModelPickerSheet(
                             modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
                                 .clickable(enabled = models.isNotEmpty(), role = Role.Button) {
                                     expandedProfileId = if (expanded) null else profile.id
-                                }.heightIn(min = 40.dp).padding(horizontal = 8.dp, vertical = 6.dp),
+                                }.heightIn(min = 40.dp).padding(horizontal = 6.dp, vertical = 4.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
@@ -160,7 +161,7 @@ internal fun ProfileModelPickerSheet(
                             item(key = "model:${profile.id}:$index") {
                                 val modelSelected = selected && currentModel == model
                                 Row(
-                                    modifier = Modifier.fillMaxWidth().padding(start = 24.dp)
+                                    modifier = Modifier.fillMaxWidth().padding(start = 20.dp)
                                         .clip(RoundedCornerShape(8.dp))
                                         .selectedCard(modelSelected, 8.dp)
                                         .selectable(selected = modelSelected, role = Role.RadioButton) {
@@ -168,7 +169,7 @@ internal fun ProfileModelPickerSheet(
                                             onSelect(profile, model)
                                             drawer.close {}
                                         }
-                                        .heightIn(min = 44.dp).padding(horizontal = 12.dp, vertical = 8.dp),
+                                        .heightIn(min = 40.dp).padding(horizontal = 10.dp, vertical = 6.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Box(
@@ -193,15 +194,15 @@ internal fun ProfileModelPickerSheet(
             }
             HorizontalDivider(color = ink.copy(alpha = 0.12f))
             Row(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)
                     .clip(RoundedCornerShape(12.dp)).background(glassControlColor())
                     .clickable(role = Role.Button, onClick = onManageApi)
-                    .heightIn(min = 48.dp).padding(horizontal = 14.dp, vertical = 10.dp),
+                    .heightIn(min = 44.dp).padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(Icons.Default.Tune, null, tint = ink, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(10.dp))
-                Text("管理 API 配置", modifier = Modifier.weight(1f), color = ink)
+                Text("管理 API 配置", modifier = Modifier.weight(1f), fontSize = 14.sp, color = ink)
                 Icon(Icons.AutoMirrored.Filled.ArrowForward, "前往 API 设置", tint = ink, modifier = Modifier.size(18.dp))
             }
         }

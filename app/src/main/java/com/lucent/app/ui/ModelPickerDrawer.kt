@@ -121,7 +121,7 @@ internal fun rememberModelPickerDrawer(
         handle = {
             Box(
                 modifier = (if (brightHandle) Modifier.fillMaxWidth() else Modifier.width(handleWidth))
-                    .height(40.dp)
+                    .height(if (brightHandle) 32.dp else 40.dp)
                     .then(dragModifier)
                     .then(if (brightHandle) Modifier.pointerInput(Unit) {
                         detectTapGestures(onPress = {
@@ -133,8 +133,8 @@ internal fun rememberModelPickerDrawer(
             ) {
                 if (brightHandle) {
                     Box(
-                        Modifier.width(56.dp).height(6.dp)
-                            .graphicsLayer { scaleX = handleScale; scaleY = handleScale }
+                        Modifier.fillMaxWidth(0.6f).height(5.dp)
+                            .graphicsLayer { scaleY = handleScale }
                             .shadow(2.dp, CircleShape)
                             .background(Color.White, CircleShape)
                     )

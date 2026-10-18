@@ -28,7 +28,7 @@ class PickerContractTest(unittest.TestCase):
         self.assertNotIn("animateScrollToItem", text)
         self.assertNotIn("remember(position)", text)
 
-    def test_model_sheets_restrict_gestures_to_handle(self):
+    def test_model_sheets_keep_custom_header_gestures(self):
         sheets = []
         for path in UI.rglob("*.kt"):
             text = path.read_text(encoding="utf-8")
@@ -37,7 +37,11 @@ class PickerContractTest(unittest.TestCase):
                 sheets.append(path.name)
                 if path.name in ("SettingsComponents.kt", "ProfileModelPickerSheet.kt", "ChatHistorySheet.kt"):
                     self.assertEqual(count, text.count("sheetGesturesEnabled = false"), path.name)
-                    self.assertIn("dragHandle = drawer.handle", text)
+                    if path.name == "ProfileModelPickerSheet.kt":
+                        self.assertIn("dragHandle = null", text)
+                        self.assertIn("drawer.handle()", text)
+                    else:
+                        self.assertIn("dragHandle = drawer.handle", text)
                 else:
                     self.assertEqual(count, text.count("sheetGesturesEnabled = true"), path.name)
                     self.assertEqual(count, text.count("dragHandle = { BottomSheetDefaults.DragHandle() }"), path.name)
@@ -97,7 +101,8 @@ class PickerContractTest(unittest.TestCase):
     def test_handle_moves_drawer_and_confirmation_hides_before_removal(self):
         text = (UI / "ProfileModelPickerSheet.kt").read_text(encoding="utf-8")
         self.assertIn("sheetGesturesEnabled = false", text)
-        self.assertIn("dragHandle = drawer.handle", text)
+        self.assertIn("dragHandle = null", text)
+        self.assertIn("drawer.handle()", text)
         drawer = (UI / "ModelPickerDrawer.kt").read_text(encoding="utf-8")
         self.assertIn("sheetState.hide()", drawer)
         self.assertIn("translationY = travel", drawer)

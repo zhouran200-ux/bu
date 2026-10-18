@@ -17,6 +17,7 @@ SETTINGS = [PY, "tools/settings_cache_check.py"]
 SCROLL_SELFTEST = [PY, "tools/compose_scroll_check.py", "--self-test"]
 SCROLL = [PY, "tools/compose_scroll_check.py"]
 DESIGN = [PY, "tools/design_audit.py", "--strict"]
+I18N_GEN = [PY, "tools/i18n_gen_check.py"]
 
 GRADLE = "./gradlew" if os.name != "nt" else "gradlew.bat"
 UNIT_TESTS = [GRADLE, ":app:testDebugUnitTest", "--console=plain"]
@@ -34,6 +35,7 @@ def plan(level):
         ("设置缓存回写一致", SETTINGS),
         ("嵌套滚动自检", SCROLL_SELFTEST),
         ("嵌套滚动扫描", SCROLL),
+        ("i18n 生成一致", I18N_GEN),
     ]
     design = [("UI/美术规范评分", DESIGN)]
     if level == "quick":

@@ -36,7 +36,10 @@ data class Note(
 
 @Entity(
     tableName = "notebooks",
-    indices = [Index(value = ["updatedAt"])]
+    indices = [
+        Index(value = ["updatedAt"]),
+        Index(value = ["manualOrder", "updatedAt"])
+    ]
 )
 data class Notebook(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -53,7 +56,8 @@ data class Notebook(
     tableName = "notebook_items",
     indices = [
         Index(value = ["notebookId"]),
-        Index(value = ["itemKind", "itemId"])
+        Index(value = ["itemKind", "itemId"]),
+        Index(value = ["notebookId", "addedAt"])
     ]
 )
 data class NotebookItem(

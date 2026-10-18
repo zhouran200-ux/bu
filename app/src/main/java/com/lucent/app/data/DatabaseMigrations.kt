@@ -381,6 +381,13 @@ val MIGRATION_34_35 = object : Migration(34, 35) {
     }
 }
 
+val MIGRATION_35_36 = object : Migration(35, 36) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_notebooks_manualOrder_updatedAt` ON `notebooks` (`manualOrder`, `updatedAt`)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_notebook_items_notebookId_addedAt` ON `notebook_items` (`notebookId`, `addedAt`)")
+    }
+}
+
 val MIGRATION_33_34 = object : Migration(33, 34) {
     override fun migrate(db: SupportSQLiteDatabase) {
         db.execSQL("DROP TRIGGER IF EXISTS `notes_fts_ai`")

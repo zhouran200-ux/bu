@@ -1,10 +1,7 @@
 package com.lucent.app.data
 
-import androidx.room.migration.Migration
 import androidx.room.testing.MigrationTestHelper
 import androidx.sqlite.db.SupportSQLiteDatabase
-import androidx.sqlite.db.SupportSQLiteOpenHelper
-import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.After
@@ -26,548 +23,17 @@ class AppDatabaseMigrationTest {
         AppDatabase::class.java
     )
 
-    private val legacyOpenHelpers = mutableListOf<SupportSQLiteOpenHelper>()
-    private val legacyDatabaseName = "app-database-legacy-migration-test"
-    private val legacyMigrations = arrayOf(
-        MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7,
-        MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12,
-        MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16,
-        MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20,
-        MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24,
-        MIGRATION_24_25
-    )
+    private val fixture = LegacyMigrationFixture()
+    private val legacyDatabaseName get() = fixture.databaseName
 
     @After
     fun closeLegacyDatabases() {
-        legacyOpenHelpers.forEach { it.close() }
-        InstrumentationRegistry.getInstrumentation().targetContext.deleteDatabase(legacyDatabaseName)
-    }
-
-    private fun createLegacyDatabase(version: Int): SupportSQLiteDatabase {
-        require(version in 2..25)
-        InstrumentationRegistry.getInstrumentation().targetContext.deleteDatabase(legacyDatabaseName)
-        return openLegacyDatabase(object : SupportSQLiteOpenHelper.Callback(version) {
-            override fun onCreate(db: SupportSQLiteDatabase) {
-                db.execSQL(
-                    "CREATE TABLE notes (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
-                        "title TEXT NOT NULL, body TEXT NOT NULL, updatedAt INTEGER NOT NULL)"
-                )
-                db.execSQL(
-                    "CREATE TABLE tasks (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
-                        "title TEXT NOT NULL, isDone INTEGER NOT NULL, createdAt INTEGER NOT NULL)"
-                )
-                db.execSQL(
-                    "CREATE TABLE chat_messages (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
-                        "role TEXT NOT NULL, content TEXT NOT NULL, timestamp INTEGER NOT NULL, " +
-                        "attachmentMime TEXT, attachmentData TEXT, attachmentName TEXT)"
-                )
-                applyLegacyMigrations(db, 2, version, legacyMigrations)
-            }
-
-            override fun onUpgrade(db: SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) {
-                error("Legacy fixture must be created from an empty database")
-            }
-        })
-    }
-
-    private fun runLegacyMigrations(
-        version: Int,
-        vararg migrations: Migration
-    ): SupportSQLiteDatabase = openLegacyDatabase(object : SupportSQLiteOpenHelper.Callback(version) {
-        override fun onCreate(db: SupportSQLiteDatabase) {
-            error("Create and seed the legacy fixture before migrating it")
-        }
-
-        override fun onUpgrade(db: SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) {
-            applyLegacyMigrations(db, oldVersion, newVersion, migrations)
-        }
-    })
-
-    private fun openLegacyDatabase(callback: SupportSQLiteOpenHelper.Callback): SupportSQLiteDatabase {
-        val openHelper = FrameworkSQLiteOpenHelperFactory().create(
-            SupportSQLiteOpenHelper.Configuration.builder(
-                InstrumentationRegistry.getInstrumentation().targetContext
-            ).name(legacyDatabaseName).callback(callback).build()
-        )
-        legacyOpenHelpers += openHelper
-        return openHelper.writableDatabase
-    }
-
-    private fun applyLegacyMigrations(
-        db: SupportSQLiteDatabase,
-        fromVersion: Int,
-        toVersion: Int,
-        migrations: Array<out Migration>
-    ) {
-        var version = fromVersion
-        while (version < toVersion) {
-            val migration = migrations.single {
-                it.startVersion == version && it.endVersion == version + 1
-            }
-            migration.migrate(db)
-            version = migration.endVersion
-        }
-        assertEquals("The complete legacy migration path must run", toVersion, version)
-    }
-
-    @Test
-    fun migrate2To3_addsNotesTagsColumnDefaultingToEmpty() {
-        createLegacyDatabase(2).apply {
-            execSQL("INSERT INTO notes (id, title, body, updatedAt) VALUES (1, 'Title', 'Body', 1000)")
-            close()
-        }
-
-        val db = runLegacyMigrations(3, MIGRATION_2_3)
-
-        db.query("SELECT title, tags FROM notes WHERE id = 1").use { c ->
-            assertTrue(c.moveToFirst())
-            assertEquals("Title", c.getString(0))
-            assertEquals("", c.getString(1))
-        }
-    }
-
-
-    @Test
-    fun migrate3To4_addsAttachmentsColumnToNotesAndTasks() {
-        createLegacyDatabase(3).apply {
-            execSQL("INSERT INTO notes (id, title, body, updatedAt, tags) VALUES (1, 'N', 'B', 1000, '')")
-            execSQL("INSERT INTO tasks (id, title, isDone, createdAt) VALUES (1, 'T', 0, 1000)")
-            close()
-        }
-
-        val db = runLegacyMigrations(4, MIGRATION_3_4)
-
-        db.query("SELECT attachments FROM notes WHERE id = 1").use { c ->
-            assertTrue(c.moveToFirst()); assertEquals("[]", c.getString(0))
-        }
-        db.query("SELECT attachments FROM tasks WHERE id = 1").use { c ->
-            assertTrue(c.moveToFirst()); assertEquals("[]", c.getString(0))
-        }
-    }
-
-
-    @Test
-    fun migrate4To5_addsTasksDueAtColumnDefaultingToNull() {
-        createLegacyDatabase(4).apply {
-            execSQL(
-                "INSERT INTO tasks (id, title, isDone, createdAt, attachments) " +
-                    "VALUES (1, 'T', 0, 1000, '[]')"
-            )
-            close()
-        }
-
-        val db = runLegacyMigrations(5, MIGRATION_4_5)
-
-        db.query("SELECT dueAt FROM tasks WHERE id = 1").use { c ->
-            assertTrue(c.moveToFirst()); assertTrue(c.isNull(0))
-        }
-    }
-
-
-    @Test
-    fun migrate5To6_addsTasksNotesColumnDefaultingToEmpty() {
-        createLegacyDatabase(5).apply {
-            execSQL(
-                "INSERT INTO tasks (id, title, isDone, createdAt, attachments, dueAt) " +
-                    "VALUES (1, 'T', 0, 1000, '[]', NULL)"
-            )
-            close()
-        }
-
-        val db = runLegacyMigrations(6, MIGRATION_5_6)
-
-        db.query("SELECT notes FROM tasks WHERE id = 1").use { c ->
-            assertTrue(c.moveToFirst()); assertEquals("", c.getString(0))
-        }
-    }
-
-
-    @Test
-    fun migrate6To7_backfillsCompletedAtForAlreadyDoneTasksOnly() {
-        createLegacyDatabase(6).apply {
-            execSQL(
-                "INSERT INTO tasks (id, title, isDone, createdAt, attachments, dueAt, notes) " +
-                    "VALUES (1, 'Done already', 1, 5000, '[]', NULL, '')"
-            )
-            execSQL(
-                "INSERT INTO tasks (id, title, isDone, createdAt, attachments, dueAt, notes) " +
-                    "VALUES (2, 'Still pending', 0, 6000, '[]', NULL, '')"
-            )
-            close()
-        }
-
-        val db = runLegacyMigrations(7, MIGRATION_6_7)
-
-        db.query("SELECT completedAt FROM tasks WHERE id = 1").use { c ->
-            assertTrue(c.moveToFirst()); assertEquals(5000L, c.getLong(0))
-        }
-        db.query("SELECT completedAt FROM tasks WHERE id = 2").use { c ->
-            assertTrue(c.moveToFirst()); assertTrue(c.isNull(0))
-        }
-    }
-
-
-    @Test
-    fun migrate7To8_seedsOneConversationAndBackfillsExistingMessagesWhenHistoryExists() {
-        createLegacyDatabase(7).apply {
-            execSQL(
-                "INSERT INTO chat_messages (id, role, content, timestamp, attachmentMime, " +
-                    "attachmentData, attachmentName) VALUES (1, 'user', 'hello', 1000, NULL, NULL, NULL)"
-            )
-            close()
-        }
-
-        val db = runLegacyMigrations(8, MIGRATION_7_8)
-
-        db.query("SELECT COUNT(*) FROM chat_conversations").use { c ->
-            assertTrue(c.moveToFirst()); assertEquals(1, c.getInt(0))
-        }
-        db.query("SELECT conversationId FROM chat_messages WHERE id = 1").use { c ->
-            assertTrue(c.moveToFirst()); assertEquals(1L, c.getLong(0))
-        }
-    }
-
-    @Test
-    fun migrate7To8_seedsNoConversationWhenThereIsNoExistingChatHistory() {
-        createLegacyDatabase(7).close()
-
-        val db = runLegacyMigrations(8, MIGRATION_7_8)
-
-        db.query("SELECT COUNT(*) FROM chat_conversations").use { c ->
-            assertTrue(c.moveToFirst()); assertEquals(0, c.getInt(0))
-        }
-    }
-
-
-    @Test
-    fun migrate8To9_addsNotesArchivedColumns() {
-        createLegacyDatabase(8).apply {
-            execSQL(
-                "INSERT INTO notes (id, title, body, updatedAt, tags, attachments) " +
-                    "VALUES (1, 'N', 'B', 1000, '', '[]')"
-            )
-            close()
-        }
-
-        val db = runLegacyMigrations(9, MIGRATION_8_9)
-
-        db.query("SELECT archived, archivedAt FROM notes WHERE id = 1").use { c ->
-            assertTrue(c.moveToFirst())
-            assertEquals(0, c.getInt(0))
-            assertTrue(c.isNull(1))
-        }
-    }
-
-
-    @Test
-    fun migrate9To10_addsNoteAndTaskOrganizationColumnsPlusUsableNoteVersionsTable() {
-        createLegacyDatabase(9).apply {
-            execSQL(
-                "INSERT INTO notes (id, title, body, updatedAt, tags, attachments, archived, archivedAt) " +
-                    "VALUES (1, 'N', 'B', 1000, '', '[]', 0, NULL)"
-            )
-            execSQL(
-                "INSERT INTO tasks (id, title, isDone, createdAt, attachments, dueAt, notes, completedAt) " +
-                    "VALUES (1, 'T', 0, 1000, '[]', NULL, '', NULL)"
-            )
-            close()
-        }
-
-        val db = runLegacyMigrations(10, MIGRATION_9_10)
-
-        db.query(
-            "SELECT pinned, color, isChecklist, checklist, trashedAt FROM notes WHERE id = 1"
-        ).use { c ->
-            assertTrue(c.moveToFirst())
-            assertEquals(0, c.getInt(0))
-            assertEquals("", c.getString(1))
-            assertEquals(0, c.getInt(2))
-            assertEquals("[]", c.getString(3))
-            assertTrue(c.isNull(4))
-        }
-        db.query(
-            "SELECT priority, pinned, subtasks, repeatRule, reminderEnabled, trashedAt " +
-                "FROM tasks WHERE id = 1"
-        ).use { c ->
-            assertTrue(c.moveToFirst())
-            assertEquals(0, c.getInt(0))
-            assertEquals(0, c.getInt(1))
-            assertEquals("[]", c.getString(2))
-            assertEquals("NONE", c.getString(3))
-            assertEquals(0, c.getInt(4))
-            assertTrue(c.isNull(5))
-        }
-
-        db.execSQL(
-            "INSERT INTO note_versions (id, noteId, title, body, tags, isChecklist, checklist, savedAt) " +
-                "VALUES (1, 1, 'N', 'B', '', 0, '[]', 1000)"
-        )
-        db.query("SELECT COUNT(*) FROM note_versions WHERE noteId = 1").use { c ->
-            assertTrue(c.moveToFirst()); assertEquals(1, c.getInt(0))
-        }
-    }
-
-
-    @Test
-    fun migrate10To11_addsChatMessagesTokensColumnAndListQueryIndices() {
-        createLegacyDatabase(10).apply {
-            execSQL(
-                "INSERT INTO chat_messages (id, role, content, timestamp, attachmentMime, " +
-                    "attachmentData, attachmentName, conversationId) " +
-                    "VALUES (1, 'user', 'hi', 1000, NULL, NULL, NULL, 1)"
-            )
-            close()
-        }
-
-        val db = runLegacyMigrations(11, MIGRATION_10_11)
-
-        db.query("SELECT tokens FROM chat_messages WHERE id = 1").use { c ->
-            assertTrue(c.moveToFirst()); assertEquals(0, c.getInt(0))
-        }
-        db.query(
-            "SELECT COUNT(*) FROM sqlite_master WHERE type = 'index' AND name = 'index_notes_updatedAt'"
-        ).use { c ->
-            assertTrue(c.moveToFirst()); assertEquals(1, c.getInt(0))
-        }
-    }
-
-
-    @Test
-    fun migrate11To12_addsDraftAndHiddenColumnsPlusUsableTaskVersionsTable() {
-        createLegacyDatabase(11).apply {
-            execSQL(
-                "INSERT INTO notes (id, title, body, updatedAt, tags, attachments, archived, " +
-                    "archivedAt, pinned, color, isChecklist, checklist, trashedAt) " +
-                    "VALUES (1, 'N', 'B', 1000, '', '[]', 0, NULL, 0, '', 0, '[]', NULL)"
-            )
-            execSQL(
-                "INSERT INTO tasks (id, title, isDone, createdAt, attachments, dueAt, notes, " +
-                    "completedAt, priority, pinned, subtasks, repeatRule, reminderEnabled, trashedAt) " +
-                    "VALUES (1, 'T', 0, 1000, '[]', NULL, '', NULL, 0, 0, '[]', 'NONE', 0, NULL)"
-            )
-            close()
-        }
-
-        val db = runLegacyMigrations(12, MIGRATION_11_12)
-
-        db.query("SELECT manualOrder, isDraft, draftSavedAt, hidden FROM notes WHERE id = 1").use { c ->
-            assertTrue(c.moveToFirst())
-            assertEquals(0, c.getInt(0))
-            assertEquals(0, c.getInt(1))
-            assertTrue(c.isNull(2))
-            assertEquals(0, c.getInt(3))
-        }
-        db.query("SELECT manualOrder, isDraft, draftSavedAt, hidden FROM tasks WHERE id = 1").use { c ->
-            assertTrue(c.moveToFirst())
-            assertEquals(0, c.getInt(0))
-            assertEquals(0, c.getInt(1))
-            assertTrue(c.isNull(2))
-            assertEquals(0, c.getInt(3))
-        }
-
-        db.execSQL(
-            "INSERT INTO task_versions (id, taskId, title, notes, subtasks, priority, dueAt, savedAt) " +
-                "VALUES (1, 1, 'T', '', '[]', 0, NULL, 1000)"
-        )
-        db.query("SELECT COUNT(*) FROM task_versions WHERE taskId = 1").use { c ->
-            assertTrue(c.moveToFirst()); assertEquals(1, c.getInt(0))
-        }
-    }
-
-
-    @Test
-    fun migrate12To13_addsNotesDoodleColumns() {
-        createLegacyDatabase(12).apply {
-            execSQL(
-                "INSERT INTO notes (id, title, body, updatedAt, tags, attachments, archived, " +
-                    "archivedAt, pinned, color, isChecklist, checklist, trashedAt, manualOrder, " +
-                    "isDraft, draftSavedAt, hidden) VALUES " +
-                    "(1, 'N', 'B', 1000, '', '[]', 0, NULL, 0, '', 0, '[]', NULL, 0, 0, NULL, 0)"
-            )
-            close()
-        }
-
-        val db = runLegacyMigrations(13, MIGRATION_12_13)
-
-        db.query("SELECT isDoodle, doodle FROM notes WHERE id = 1").use { c ->
-            assertTrue(c.moveToFirst())
-            assertEquals(0, c.getInt(0))
-            assertEquals("", c.getString(1))
-        }
-    }
-
-
-    @Test
-    fun migrate13To14_addsChatMessagesReplyToIdColumn() {
-        createLegacyDatabase(13).apply {
-            execSQL(
-                "INSERT INTO chat_messages (id, role, content, timestamp, attachmentMime, " +
-                    "attachmentData, attachmentName, conversationId, tokens) " +
-                    "VALUES (1, 'assistant', 'hi', 1000, NULL, NULL, NULL, 1, 12)"
-            )
-            close()
-        }
-
-        val db = runLegacyMigrations(14, MIGRATION_13_14)
-
-        db.query("SELECT replyToId FROM chat_messages WHERE id = 1").use { c ->
-            assertTrue(c.moveToFirst()); assertEquals(0L, c.getLong(0))
-        }
-    }
-
-
-    @Test
-    fun migrate14To15_addsRichTextSpanColumnsToNotesAndTasks() {
-        createLegacyDatabase(14).apply {
-            execSQL(
-                "INSERT INTO notes (id, title, body, updatedAt, tags, attachments, archived, " +
-                    "archivedAt, pinned, color, isChecklist, checklist, trashedAt, manualOrder, " +
-                    "isDraft, draftSavedAt, hidden, isDoodle, doodle) VALUES " +
-                    "(1, 'N', 'B', 1000, '', '[]', 0, NULL, 0, '', 0, '[]', NULL, 0, 0, NULL, 0, 0, '')"
-            )
-            execSQL(
-                "INSERT INTO tasks (id, title, isDone, createdAt, attachments, dueAt, notes, " +
-                    "completedAt, priority, pinned, subtasks, repeatRule, reminderEnabled, trashedAt, " +
-                    "manualOrder, isDraft, draftSavedAt, hidden) VALUES " +
-                    "(1, 'T', 0, 1000, '[]', NULL, '', NULL, 0, 0, '[]', 'NONE', 0, NULL, 0, 0, NULL, 0)"
-            )
-            close()
-        }
-
-        val db = runLegacyMigrations(15, MIGRATION_14_15)
-
-        db.query("SELECT bodySpans FROM notes WHERE id = 1").use { c ->
-            assertTrue(c.moveToFirst()); assertEquals("", c.getString(0))
-        }
-        db.query("SELECT notesSpans FROM tasks WHERE id = 1").use { c ->
-            assertTrue(c.moveToFirst()); assertEquals("", c.getString(0))
-        }
-    }
-
-
-    @Test
-    fun migrate15To16_addsChatMessagesAttachmentListColumn() {
-        createLegacyDatabase(15).apply {
-            execSQL(
-                "INSERT INTO chat_messages (id, role, content, timestamp, attachmentMime, " +
-                    "attachmentData, attachmentName, conversationId, tokens, replyToId) " +
-                    "VALUES (1, 'user', 'hi', 1000, NULL, NULL, NULL, 1, 0, 0)"
-            )
-            close()
-        }
-
-        val db = runLegacyMigrations(16, MIGRATION_15_16)
-
-        db.query("SELECT attachmentList FROM chat_messages WHERE id = 1").use { c ->
-            assertTrue(c.moveToFirst()); assertTrue(c.isNull(0))
-        }
-    }
-
-
-    @Test
-    fun migrate16To17_createsUsableNotebookAndNotebookItemTables() {
-        createLegacyDatabase(16).close()
-
-        val db = runLegacyMigrations(17, MIGRATION_16_17)
-
-        db.execSQL("INSERT INTO notebooks (id, title, createdAt, updatedAt) VALUES (1, 'Trips', 1000, 1000)")
-        db.execSQL(
-            "INSERT INTO notebook_items (id, notebookId, itemKind, itemId, addedAt) " +
-                "VALUES (1, 1, 'NOTE', 1, 1000)"
-        )
-
-        db.query("SELECT title FROM notebooks WHERE id = 1").use { c ->
-            assertTrue(c.moveToFirst()); assertEquals("Trips", c.getString(0))
-        }
-        db.query("SELECT itemKind, itemId FROM notebook_items WHERE notebookId = 1").use { c ->
-            assertTrue(c.moveToFirst())
-            assertEquals("NOTE", c.getString(0))
-            assertEquals(1L, c.getLong(1))
-        }
-    }
-
-
-    @Test
-    fun migrate17To18_addsFtsTablesWhenAvailableAndNeverBreaksTheBaseTables() {
-        createLegacyDatabase(17).apply {
-            execSQL(
-                "INSERT INTO notes (id, title, body, updatedAt, tags, attachments, archived, " +
-                    "archivedAt, pinned, color, isChecklist, checklist, trashedAt, manualOrder, " +
-                    "isDraft, draftSavedAt, hidden, isDoodle, doodle, bodySpans) VALUES " +
-                    "(1, 'FTS seed', 'a searchable body', 1000, '', '[]', 0, NULL, 0, '', 0, '[]', " +
-                    "NULL, 0, 0, NULL, 0, 0, '', '')"
-            )
-            execSQL(
-                "INSERT INTO tasks (id, title, isDone, createdAt, attachments, dueAt, notes, " +
-                    "completedAt, priority, pinned, subtasks, repeatRule, reminderEnabled, trashedAt, " +
-                    "manualOrder, isDraft, draftSavedAt, hidden, notesSpans) VALUES " +
-                    "(1, 'FTS task', 0, 1000, '[]', NULL, 'notes body', NULL, 0, 0, '[]', 'NONE', 0, " +
-                    "NULL, 0, 0, NULL, 0, '')"
-            )
-            close()
-        }
-
-        val db = runLegacyMigrations(18, MIGRATION_17_18)
-
-        db.query("SELECT title FROM notes WHERE id = 1").use { c ->
-            assertTrue(c.moveToFirst()); assertEquals("FTS seed", c.getString(0))
-        }
-        db.query("SELECT title FROM tasks WHERE id = 1").use { c ->
-            assertTrue(c.moveToFirst()); assertEquals("FTS task", c.getString(0))
-        }
-
-        val ftsAvailable = try {
-            db.query("SELECT name FROM sqlite_master WHERE name = 'notes_fts'").use { it.moveToFirst() }
-        } catch (t: Throwable) {
-            false
-        }
-        if (ftsAvailable) {
-            db.query("SELECT title FROM notes_fts WHERE rowid = 1").use { c ->
-                assertTrue(c.moveToFirst()); assertEquals("FTS seed", c.getString(0))
-            }
-            db.query("SELECT title FROM tasks_fts WHERE rowid = 1").use { c ->
-                assertTrue(c.moveToFirst()); assertEquals("FTS task", c.getString(0))
-            }
-        }
-    }
-
-
-    @Test
-    fun fullChain2To18_migratesSeedDataThroughEveryRegisteredStepInOrder() {
-        createLegacyDatabase(2).apply {
-            execSQL("INSERT INTO notes (id, title, body, updatedAt) VALUES (1, 'Seed note', 'Seed body', 1000)")
-            execSQL("INSERT INTO tasks (id, title, isDone, createdAt) VALUES (1, 'Seed task', 1, 500)")
-            close()
-        }
-
-        val db = runLegacyMigrations(
-            18,
-            MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7,
-            MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12,
-            MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16,
-            MIGRATION_16_17, MIGRATION_17_18
-        )
-
-        db.query("SELECT title, tags, hidden, bodySpans, doodle FROM notes WHERE id = 1").use { c ->
-            assertTrue(c.moveToFirst())
-            assertEquals("Seed note", c.getString(0))
-            assertEquals("", c.getString(1))
-            assertEquals(0, c.getInt(2))
-            assertEquals("", c.getString(3))
-            assertEquals("", c.getString(4))
-        }
-        db.query("SELECT title, isDone, completedAt, notesSpans FROM tasks WHERE id = 1").use { c ->
-            assertTrue(c.moveToFirst())
-            assertEquals("Seed task", c.getString(0))
-            assertEquals(1, c.getInt(1))
-            assertEquals(500L, c.getLong(2))
-            assertEquals("", c.getString(3))
-        }
+        fixture.closeAll()
     }
 
     @Test
     fun migrate19To20_addsChatMessagesAgentTraceColumn() {
-        createLegacyDatabase(19).apply {
+        fixture.createLegacyDatabase(19).apply {
             execSQL(
                 "INSERT INTO chat_messages (id, role, content, timestamp, attachmentMime, " +
                     "attachmentData, attachmentName, attachmentList, conversationId, tokens, replyToId) " +
@@ -576,7 +42,7 @@ class AppDatabaseMigrationTest {
             close()
         }
 
-        val db = runLegacyMigrations(20, MIGRATION_19_20)
+        val db = fixture.runLegacyMigrations(20, MIGRATION_19_20)
 
         db.query("SELECT agentTrace FROM chat_messages WHERE id = 1").use { c ->
             assertTrue(c.moveToFirst()); assertTrue(c.isNull(0))
@@ -585,7 +51,7 @@ class AppDatabaseMigrationTest {
 
     @Test
     fun migrate20To21_addsFormatOverrideColumnsToNotesAndTasks() {
-        createLegacyDatabase(20).apply {
+        fixture.createLegacyDatabase(20).apply {
             execSQL(
                 "INSERT INTO notes (id, title, body, updatedAt, tags, attachments, archived, " +
                     "archivedAt, pinned, color, isChecklist, checklist, trashedAt, manualOrder, " +
@@ -601,7 +67,7 @@ class AppDatabaseMigrationTest {
             close()
         }
 
-        val db = runLegacyMigrations(21, MIGRATION_20_21)
+        val db = fixture.runLegacyMigrations(21, MIGRATION_20_21)
 
         db.query("SELECT formatOverride FROM notes WHERE id = 1").use { c ->
             assertTrue(c.moveToFirst()); assertTrue(c.isNull(0))
@@ -613,14 +79,14 @@ class AppDatabaseMigrationTest {
 
     @Test
     fun migrate21To22_addsCoverOrderAndTrashToNotebooks() {
-        createLegacyDatabase(21).apply {
+        fixture.createLegacyDatabase(21).apply {
             execSQL(
                 "INSERT INTO notebooks (id, title, createdAt, updatedAt) VALUES (1, 'Ideas', 1000, 1000)"
             )
             close()
         }
 
-        val db = runLegacyMigrations(22, MIGRATION_21_22)
+        val db = fixture.runLegacyMigrations(22, MIGRATION_21_22)
 
         db.query("SELECT title, color, manualOrder, trashedAt FROM notebooks WHERE id = 1").use { c ->
             assertTrue(c.moveToFirst())
@@ -633,7 +99,7 @@ class AppDatabaseMigrationTest {
 
     @Test
     fun migrate22To23_addsPinnedToNotebooks() {
-        createLegacyDatabase(22).apply {
+        fixture.createLegacyDatabase(22).apply {
             execSQL(
                 "INSERT INTO notebooks (id, title, createdAt, updatedAt, color, manualOrder, trashedAt) " +
                     "VALUES (1, 'Trips', 1000, 1000, 'ocean', 0, NULL)"
@@ -641,7 +107,7 @@ class AppDatabaseMigrationTest {
             close()
         }
 
-        val db = runLegacyMigrations(23, MIGRATION_22_23)
+        val db = fixture.runLegacyMigrations(23, MIGRATION_22_23)
 
         db.query("SELECT title, color, pinned FROM notebooks WHERE id = 1").use { c ->
             assertTrue(c.moveToFirst())
@@ -742,7 +208,7 @@ class AppDatabaseMigrationTest {
 
     @Test
     fun migrate25To26_rebuildsNotesWithoutDropColumnAndKeepsData() {
-        createLegacyDatabase(25).apply {
+        fixture.createLegacyDatabase(25).apply {
             execSQL(
                 "INSERT INTO notes (id, title, body, updatedAt, tags, attachments, archived, pinned, " +
                     "color, manualOrder, isDraft, hidden, bodySpans, isChecklist, checklist, isDoodle, doodle) " +
@@ -751,7 +217,7 @@ class AppDatabaseMigrationTest {
             close()
         }
 
-        val db = runLegacyMigrations(26, MIGRATION_25_26)
+        val db = fixture.runLegacyMigrations(26, MIGRATION_25_26)
 
         val retired = listOf("isChecklist", "checklist", "isDoodle", "doodle")
         db.query("PRAGMA table_info(notes)").use { c ->
@@ -776,14 +242,14 @@ class AppDatabaseMigrationTest {
     }
 
     @Test
-    fun fullChain25To35_preservesNotesAndChatAndValidatesCurrentRoomSchema() {
+    fun fullChain25To36_preservesNotesAndChatAndValidatesCurrentRoomSchema() {
         val noteColumns = "id, title, body, updatedAt, tags, attachments, archived, archivedAt, " +
             "pinned, color, trashedAt, manualOrder, isDraft, draftSavedAt, hidden, bodySpans, formatOverride"
         val chatColumns = "id, role, content, timestamp, attachmentMime, attachmentData, attachmentName, " +
             "attachmentList, conversationId, tokens, replyToId, reasoningBlocks, reasoningText, quotedRole, quotedText"
         val originalNotes: List<List<String?>>
         val originalChat: List<List<String?>>
-        createLegacyDatabase(25).apply {
+        fixture.createLegacyDatabase(25).apply {
             assertEquals(25, version)
             execSQL(
                 "INSERT INTO notes ($noteColumns, isChecklist, checklist, isDoodle, doodle) VALUES " +
@@ -819,21 +285,20 @@ class AppDatabaseMigrationTest {
             )
             close()
         }
-        runLegacyMigrations(26, MIGRATION_25_26).apply {
+        fixture.runLegacyMigrations(26, MIGRATION_25_26).apply {
             assertEquals(26, version)
             assertEquals(originalNotes, readRows(this, "notes", noteColumns))
             assertEquals(originalChat, readRows(this, "chat_messages", chatColumns))
             assertRetiredColumnsAbsent(this, "notes", "isChecklist", "checklist", "isDoodle", "doodle")
             close()
         }
-        legacyOpenHelpers.forEach { it.close() }
-        legacyOpenHelpers.clear()
+        fixture.closeOpenHelpers()
         helper.runMigrationsAndValidate(
-            legacyDatabaseName, 35, true,
+            legacyDatabaseName, 36, true,
             MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30,
-            MIGRATION_30_31, MIGRATION_31_32, MIGRATION_32_33, MIGRATION_33_34, MIGRATION_34_35
+            MIGRATION_30_31, MIGRATION_31_32, MIGRATION_32_33, MIGRATION_33_34, MIGRATION_34_35, MIGRATION_35_36
         ).use { db ->
-            assertEquals(35, db.version)
+            assertEquals(36, db.version)
             assertEquals(originalNotes, readRows(db, "notes", noteColumns))
             assertEquals(originalChat, readRows(db, "chat_messages", chatColumns))
             assertRetiredColumnsAbsent(db, "notes", "isChecklist", "checklist", "isDoodle", "doodle")
@@ -860,6 +325,20 @@ class AppDatabaseMigrationTest {
             assertEquals(
                 listOf(listOf("index_chat_messages_conversationId_timestamp")),
                 readRows(db, "sqlite_master", "name", "WHERE type = 'index' AND tbl_name = 'chat_messages'")
+            )
+            val notebookIndexes = readRows(
+                db, "sqlite_master", "name", "WHERE type = 'index' AND tbl_name = 'notebooks'"
+            ).flatten().toSet()
+            assertEquals(
+                setOf("index_notebooks_updatedAt", "index_notebooks_manualOrder_updatedAt"),
+                notebookIndexes
+            )
+            val itemIndexes = readRows(
+                db, "sqlite_master", "name", "WHERE type = 'index' AND tbl_name = 'notebook_items'"
+            ).flatten().toSet()
+            assertEquals(
+                setOf("index_notebook_items_notebookId", "index_notebook_items_itemKind_itemId", "index_notebook_items_notebookId_addedAt"),
+                itemIndexes
             )
             val schemaObjects = readRows(db, "sqlite_master", "name").flatten().filterNotNull()
             val retiredObjects = setOf(

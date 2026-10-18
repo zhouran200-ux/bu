@@ -7,7 +7,6 @@ import androidx.room.withTransaction
 import com.lucent.app.data.AppDatabase
 import com.lucent.app.data.ChatMessage
 import com.lucent.app.data.ChatScope
-import com.lucent.app.chat.UiChatMessage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -16,12 +15,17 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.withContext
 
 object ChatSessions {
-    private val sessions = linkedMapOf<Long, ChatSession>()
-    private val pageOwners = mutableMapOf<Long, Int>()
+    private val sessions = java.util.concurrent.ConcurrentHashMap<Long, Pair<ChatSession, Long>>()
+    private val accessClock = java.util.concurrent.atomic.AtomicLong()
+    private val pageOwners = java.util.concurrent.ConcurrentHashMap<Long, Int>()
+    private val deletedNotebooks = java.util.Collections.newSetFromMap(java.util.concurrent.ConcurrentHashMap<Long, Boolean>())
     private const val MAX_IDLE_SESSIONS = 4
     private val maintenanceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private val running = MutableStateFlow(0)
+    val activeCount: StateFlow<Int> = running.asStateFlow()
 
     private fun scheduleIdleTrim() {
         maintenanceScope.launch {
@@ -31,44 +35,56 @@ object ChatSessions {
     }
 
     fun retain(notebookId: Long) {
-        pageOwners[notebookId] = (pageOwners[notebookId] ?: 0) + 1
+        pageOwners.compute(notebookId) { _, count -> (count ?: 0) + 1 }
     }
 
     fun release(notebookId: Long) {
-        val count = (pageOwners[notebookId] ?: 1) - 1
-        if (count <= 0) pageOwners.remove(notebookId) else pageOwners[notebookId] = count
+        val next = pageOwners.compute(notebookId) { _, count ->
+            if (count == null || count <= 1) null else count - 1
+        }
         trimIdle()
-        scheduleIdleTrim()
+        if (next == null) scheduleIdleTrim()
+    }
+
+    private fun touch(id: Long) {
+        sessions.computeIfPresent(id) { _, entry -> entry.first to accessClock.incrementAndGet() }
     }
 
     private fun trimIdle(excluded: Long? = null) {
-        val idle = sessions.filter { (id, session) -> id != excluded && id !in pageOwners && session.canRelease() }
-        for ((id, session) in idle.entries.take((idle.size - MAX_IDLE_SESSIONS).coerceAtLeast(0))) {
-            if (session.releaseIfIdle()) sessions.remove(id)
+        val idle = sessions.entries.asSequence()
+            .filter { (id, entry) -> id != excluded && !pageOwners.containsKey(id) && entry.first.canRelease() }
+            .sortedBy { it.value.second }
+            .toList()
+        for ((id, entry) in idle.take((idle.size - MAX_IDLE_SESSIONS).coerceAtLeast(0))) {
+            if (entry.first.releaseIfIdle()) sessions.remove(id, entry)
         }
     }
-    private val deletedNotebooks = mutableSetOf<Long>()
-    private val running = MutableStateFlow(0)
-    val activeCount: StateFlow<Int> = running.asStateFlow()
 
     fun forNotebook(context: Context, notebookId: Long): ChatSession {
         trimIdle(notebookId)
-        return sessions.getOrPut(notebookId) {
-        val app = context.applicationContext
+        return sessions.computeIfAbsent(notebookId) {
+            createSession(context.applicationContext, notebookId) to accessClock.incrementAndGet()
+        }.also { touch(notebookId) }.first
+    }
+
+    private fun createSession(app: Context, notebookId: Long): ChatSession {
         val dao = AppDatabase.getInstance(app).chatDao()
         val conversationId = ChatScope.forNotebook(notebookId)
-        ChatSession(
+        return ChatSession(
             dispatcher = Dispatchers.Main.immediate,
             load = {
                 check(notebookId !in deletedNotebooks) { S.notebookDeleting }
-                dao.getForConversationOnce(conversationId).map { message ->
-                    UiChatMessage(message.id, message.role, message.content, message.reasoningText,
-                        message.answerSeconds, promptTokens = message.tokens,
-                        cachedTokens = message.cachedTokens, timestamp = message.timestamp,
-                        firstTokenMillis = message.firstTokenMillis, generationMillis = message.generationMillis,
-                        cachedTokensKnown = message.cachedTokensKnown,
-                        sourceNoteId = message.sourceNoteId, sourceRevision = message.sourceRevision)
-                }.filter { it.role != "assistant" || it.content.isNotBlank() || !it.reasoningText.isNullOrBlank() }
+                val messages = dao.getForConversationOnce(conversationId)
+                withContext(Dispatchers.Default) {
+                    messages.map { message ->
+                        UiChatMessage(message.id, message.role, message.content, message.reasoningText,
+                            message.answerSeconds, promptTokens = message.tokens,
+                            cachedTokens = message.cachedTokens, timestamp = message.timestamp,
+                            firstTokenMillis = message.firstTokenMillis, generationMillis = message.generationMillis,
+                            cachedTokensKnown = message.cachedTokensKnown,
+                            sourceNoteId = message.sourceNoteId, sourceRevision = message.sourceRevision)
+                    }.filter { it.role != "assistant" || it.content.isNotBlank() || !it.reasoningText.isNullOrBlank() }
+                }
             },
             save = { message ->
                 dao.upsert(mergeChatMessage(dao.getById(message.id), message, conversationId))
@@ -99,15 +115,13 @@ object ChatSessions {
         )
     }
 
-    }
-
-    fun isRunning(notebookId: Long): Boolean = sessions[notebookId]?.streamingAnswerId != null
+    fun isRunning(notebookId: Long): Boolean = sessions[notebookId]?.first?.streamingAnswerId != null
 
     suspend fun prepareDelete(notebookId: Long) {
         check(!isRunning(notebookId)) { S.chatStopBeforeDelete }
         check(deletedNotebooks.add(notebookId)) { S.notebookDeleting }
         try {
-            sessions[notebookId]?.prepareDelete()
+            sessions[notebookId]?.first?.prepareDelete()
         } catch (e: Exception) {
             deletedNotebooks.remove(notebookId)
             throw e
@@ -119,12 +133,12 @@ object ChatSessions {
             sessions.remove(notebookId)
         } else {
             deletedNotebooks.remove(notebookId)
-            sessions[notebookId]?.deletionFailed()
+            sessions[notebookId]?.first?.deletionFailed()
         }
     }
 
     fun stopAll() {
-        sessions.values.forEach { it.stop() }
+        sessions.values.forEach { it.first.stop() }
     }
 }
 

@@ -50,6 +50,20 @@ class AppDatabaseResidualCleanupTest {
         }
     }
 
+    @Test
+    fun migrate35To36_addsNotebookAndItemIndexes() {
+        helper.createDatabase(DB_NAME, 35).close()
+
+        val db = helper.runMigrationsAndValidate(DB_NAME, 36, true, MIGRATION_35_36)
+
+        db.query("SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'index_notebooks_manualOrder_updatedAt'").use { c ->
+            assertTrue("index_notebooks_manualOrder_updatedAt must exist", c.moveToFirst())
+        }
+        db.query("SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'index_notebook_items_notebookId_addedAt'").use { c ->
+            assertTrue("index_notebook_items_notebookId_addedAt must exist", c.moveToFirst())
+        }
+    }
+
     private companion object {
         const val DB_NAME = "app-database-residual-cleanup-test"
     }

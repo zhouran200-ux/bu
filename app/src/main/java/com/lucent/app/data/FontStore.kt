@@ -29,16 +29,24 @@ object FontStore {
 
     data class FontIndex(val slots: List<FontSlot>)
 
+    @Volatile
+    private var cachedIndex: FontIndex? = null
+
     private fun dir(context: Context): File = File(context.filesDir, DIR)
 
 
     @Synchronized
     fun index(context: Context): FontIndex {
+        cachedIndex?.let { return it }
         val dir = dir(context)
         val indexFile = File(dir, INDEX_FILE)
-        if (!indexFile.exists() && !File(dir, INDEX_FILE + ".bak").exists()) return FontIndex(emptyList())
+        if (!indexFile.exists() && !File(dir, INDEX_FILE + ".bak").exists()) {
+            val empty = FontIndex(emptyList())
+            cachedIndex = empty
+            return empty
+        }
 
-        return try {
+        val loaded = try {
             val root = JSONObject(AtomicFile(indexFile).openRead().bufferedReader(Charsets.UTF_8).use { it.readText() })
             val arr = root.optJSONArray("fonts") ?: JSONArray()
             recoverDeletions(dir, (0 until arr.length()).mapNotNull { arr.optJSONObject(it)?.optString("file") }.toSet())
@@ -54,17 +62,24 @@ object FontStore {
         } catch (_: Throwable) {
             rebuildFromFiles(context)
         }
+        cachedIndex = loaded
+        return loaded
     }
 
     @Synchronized
     private fun rebuildFromFiles(context: Context): FontIndex {
+        cachedIndex = null
         val dir = dir(context)
         val files = dir.listFiles()?.filter { f ->
             safeFontFile(dir, f.name) != null && f.isFile && f.length() > 0L && listOf(".ttf", ".otf", ".ttc").any {
                 f.name.lowercase().endsWith(it)
             }
         }.orEmpty().sortedBy { it.name }
-        if (files.isEmpty()) return FontIndex(emptyList())
+        if (files.isEmpty()) {
+            val empty = FontIndex(emptyList())
+            cachedIndex = empty
+            return empty
+        }
         val slots = files.take(MAX_FONTS).map { f ->
             val id = f.name.removePrefix("font_").substringBeforeLast('.').ifBlank { newId() }
             FontSlot(id = id, name = f.name, fileName = f.name)
@@ -91,6 +106,7 @@ object FontStore {
         try {
             output.write(root.toString().toByteArray(Charsets.UTF_8))
             atomic.finishWrite(output)
+            cachedIndex = idx
         } catch (failure: Throwable) {
             atomic.failWrite(output)
             throw failure

@@ -1,8 +1,11 @@
 package com.lucent.app.data
 
 import android.content.Context
+import androidx.datastore.core.CorruptionException
+import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -10,8 +13,44 @@ import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import java.io.File
 
-private val Context.settingsDataStore by preferencesDataStore(name = "lucent_settings")
+internal object SettingsCorruptionSignal {
+    @Volatile
+    private var pending: CorruptionException? = null
+
+    fun record(exception: CorruptionException) {
+        pending = exception
+    }
+
+    fun consume(): CorruptionException? {
+        val current = pending
+        pending = null
+        return current
+    }
+}
+
+internal fun backupCorruptedSettings(context: Context): Boolean {
+    if (SettingsCorruptionSignal.consume() == null) return false
+    return runCatching {
+        val prefsFile = File(context.filesDir, "datastore/lucent_settings.preferences_pb")
+        if (prefsFile.exists()) {
+            val backup = File(context.filesDir, "datastore/lucent_settings.corrupt")
+            prefsFile.copyTo(backup, overwrite = true)
+            backup.setReadable(true, false)
+            true
+        } else {
+            false
+        }
+    }.getOrDefault(false)
+}
+
+private val settingsCorruptionHandler = androidx.datastore.core.handlers.ReplaceFileCorruptionHandler<Preferences> { exception ->
+    SettingsCorruptionSignal.record(exception)
+    emptyPreferences()
+}
+
+private val Context.settingsDataStore by preferencesDataStore(name = "lucent_settings", corruptionHandler = settingsCorruptionHandler)
 
 private object SettingsKeys {
     val THEME_MODE = stringPreferencesKey("theme_mode")
@@ -33,6 +72,10 @@ private object SettingsKeys {
 
 class SettingsRepository(context: Context) {
     private val context: Context = context.applicationContext
+
+    init {
+        backupCorruptedSettings(context)
+    }
 
     private fun setting(
         prefs: androidx.datastore.preferences.core.Preferences,

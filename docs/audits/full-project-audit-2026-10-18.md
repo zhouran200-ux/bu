@@ -261,3 +261,16 @@
 - 最终云端结论（有界等待一次）：提交 `951ddd0` 的 **check、API33、API35、android-jvm-check、source-hygiene、build-apk、publish-preview 全部 success**。设备矩阵两个API都完整执行102例并通过，预览包已按门禁成功发布。此前 b8d10ff 的失败（101/102）与 0bef530 的 API35 失败均由这一路径修复后消除。
 - 收尾：源码与文档均已推送，工作区干净；未改写任何历史。历史中的崩溃日志仍按前文保留（清除需明确授权），正式签名仍需仓库所有者配置。
 - 如实保留的边界：厂商IME/系统浮动工具栏/跨段句柄拖动/旋转/预测返回未实测；§5观察项与四个大文件的拆分重构已记录但未执行（应由设备矩阵单独验证）；这些不属于本轮承诺的整改项，不计入“已通过”。
+
+### v2 遗留项整改（本轮）
+
+| 原清单项 | 本轮处理 | 验证边界 |
+|---|---|---|
+| 索引覆盖不足（P2） | `notes` 增加 `title` 索引之外，为 `notebooks` 增 `(manualOrder, updatedAt)`、`notebook_items` 增 `(notebookId, addedAt)` 复合索引；DB v35→v36 新增迁移，`36.json` 由 KSP 生成 | 编译通过；设备端由新增 `migrate35To36_addsNotebookAndItemIndexes` 与全链 v25→36 用例验证，待云端矩阵执行 |
+| 会话加载与淘汰 | 会话映射移到 `Dispatchers.Default`；缓存改为按最近访问时间排序的 LRU 淘汰，淘汰与访问都走并发安全结构 | JVM 单测通过；未新增专门的 LRU 行为测试，按边界记录 |
+| DataStore 损坏处理 | 增加 `ReplaceFileCorruptionHandler`：损坏信号记录后，Repository 初始化时把损坏文件复制为 `lucent_settings.corrupt` 备份再回退空配置，不静默丢弃且保留可恢复副本 | 编译通过；损坏路径无本地可执行测试（需构造损坏文件），如实标注 |
+| FontStore 锁内 IO | `index()` 增加进程内索引缓存，命中后不再持锁读盘与解析；写回成功同步更新缓存，重建时失效 | 编译通过；原有并发/回滚插桩用例未本地执行，待设备矩阵 |
+| 超 800 行文件拆分 | `AppDatabaseMigrationTest.kt` 912→378 行；拆出 `LegacyMigrationFixture`（98 行）与 `AppDatabaseEarlyMigrationsTest`（475 行），三个文件均低于 800 行 | 契约测试 25 项与卫生检查通过；设备需重新执行 |
+| 本地验证门禁 | 新增 `tools/i18n_gen_check.py` 并接入 `verify.py`，本地 quick 档现在会校验 i18n 生成物与提交文件一致 | 本地实跑 9 项全通过 |
+
+未在本轮完成、仍如实保留的项：DataStore 损坏降级到默认配置后，用户 API 方案需从备份文件手工恢复（有备份，非静默）；LRU 淘汰未补专项测试；`NotebookChatTab`/`ApiSettingsPage`/`FontSettingsPage` 三个 500–800 行文件仍只记录拆分审查未执行；§5 其余观察项（滚动记忆三套并存、`LlmClient` 四职责单文件、`TrashCleanup` 之外的启动期删除等）未在本轮处理。

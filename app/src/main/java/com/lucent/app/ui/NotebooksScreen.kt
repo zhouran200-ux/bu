@@ -59,9 +59,8 @@ import androidx.compose.ui.unit.sp
 import com.lucent.app.AppNavigation
 import com.lucent.app.AppScope
 import com.lucent.app.BackClaim
-import com.lucent.app.data.AppDatabase
+import com.lucent.app.data.NotebookRepository
 import com.lucent.app.data.Notebook
-import com.lucent.app.data.NotebookPurge
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -73,10 +72,10 @@ fun NotebooksScreen(
     active: Boolean = true
 ) {
     val context = LocalContext.current
-    val db = remember { AppDatabase.getInstance(context) }
+    val repository = remember { NotebookRepository.from(context) }
     val scope = rememberCoroutineScope()
-    val notebooks by db.notebookDao().getAll().collectAsState(initial = emptyList())
-    val counts by db.notebookDao().itemCounts().collectAsState(initial = emptyList())
+    val notebooks by repository.notebooks().collectAsState(initial = emptyList())
+    val counts by repository.itemCounts().collectAsState(initial = emptyList())
     val countById = remember(counts) { counts.associate { it.notebookId to it.count } }
 
     var openNotebookId by remember { mutableStateOf<Long?>(null) }
@@ -134,7 +133,7 @@ fun NotebooksScreen(
                     deleting = null
                     AppScope.io.launch {
                         try {
-                            NotebookPurge.purge(db, target.id)
+                            repository.purge(target.id)
                             ReadingPositionMemory.clearNotebook(context, target.id)
                             LucentToast.show(context, com.lucent.app.i18n.S.notebookDeletedToast)
                         } catch (e: kotlinx.coroutines.CancellationException) {
@@ -163,7 +162,7 @@ fun NotebooksScreen(
                 val finalName = if (name.isBlank()) nextDefaultNotebookName(notebooks) else name.trim()
                 creating = false
                 scope.launch {
-                    val newId = db.notebookDao().insert(Notebook(title = finalName))
+                    val newId = repository.create(finalName)
                     if (newId > 0) {
                         openNotebookId = newId
                     }
@@ -180,9 +179,7 @@ fun NotebooksScreen(
             initialName = notebook.title,
             onConfirm = { name ->
                 scope.launch {
-                    db.notebookDao().update(
-                        notebook.copy(title = name.trim(), updatedAt = System.currentTimeMillis())
-                    )
+                    repository.rename(notebook, name.trim())
                     LucentToast.show(context, com.lucent.app.i18n.S.notebookRenamedToast)
                 }
             },
@@ -203,7 +200,7 @@ fun NotebooksScreen(
             if (notebook.manualOrder == order) null else notebook.copy(manualOrder = order)
         }
         if (changes.isEmpty()) { reorderState.cancel(); return }
-        AppScope.io.launch { db.notebookDao().updateAll(changes) }
+        AppScope.io.launch { repository.reorder(changes) }
     }
 
     Column(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {

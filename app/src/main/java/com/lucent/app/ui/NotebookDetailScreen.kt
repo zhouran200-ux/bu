@@ -35,7 +35,7 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.lucent.app.data.AppDatabase
+import com.lucent.app.data.NotebookRepository
 import com.lucent.app.data.Note
 import kotlinx.coroutines.launch
 
@@ -61,7 +61,7 @@ fun NotebookDetailScreen(
     active: Boolean = true
 ) {
     val context = LocalContext.current
-    val db = remember { AppDatabase.getInstance(context) }
+    val repository = remember { NotebookRepository.from(context) }
 
     val tabs = NotebookDetailTab.entries
     val pagerState = rememberPagerState { tabs.size }
@@ -99,9 +99,9 @@ fun NotebookDetailScreen(
 
     LaunchedEffect(notebookId, reloadCount) {
         try {
-            val items = db.notebookDao().getItemsOnce(notebookId)
+            val items = repository.items(notebookId)
             val itemIds = items.filter { it.itemKind == com.lucent.app.data.NotebookItem.KIND_NOTE }.map { it.itemId }
-            sourceNotes = if (itemIds.isNotEmpty()) db.noteDao().getByIds(itemIds) else emptyList()
+            sourceNotes = repository.notes(itemIds)
             sourcesLoaded = true
             sourceError = null
         } catch (e: kotlinx.coroutines.CancellationException) {

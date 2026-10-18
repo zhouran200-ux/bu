@@ -43,10 +43,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.lucent.app.AppScope
-import com.lucent.app.data.AppDatabase
+import com.lucent.app.data.NotebookRepository
 import com.lucent.app.data.MarkdownDocumentParser
 import com.lucent.app.data.Note
-import com.lucent.app.data.NotebookPurge
 import com.lucent.app.data.IndexedSource
 import com.lucent.app.data.NovelSourceIndex
 import kotlinx.coroutines.CancellationException
@@ -72,7 +71,7 @@ fun NotebookSourcesTab(
     active: Boolean = true
 ) {
     val context = LocalContext.current
-    val db = remember { AppDatabase.getInstance(context) }
+    val repository = remember { NotebookRepository.from(context) }
     val accent = MaterialTheme.colorScheme.primary
 
     val documentMimeTypes = arrayOf(
@@ -91,7 +90,7 @@ fun NotebookSourcesTab(
             try {
                 val parsed = MarkdownDocumentParser.parseUri(context, uri).getOrThrow()
                 val document = Note(title = parsed.title, body = parsed.markdown)
-                val noteId = NotebookPurge.importDocument(db, notebookId, document)
+                val noteId = repository.importDocument(notebookId, document)
                 withContext(Dispatchers.Default) { NovelSourceIndex.get(document.copy(id = noteId)) }
                 withContext(Dispatchers.Main) {
                     onReload()

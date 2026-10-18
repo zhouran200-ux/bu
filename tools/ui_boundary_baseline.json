@@ -1,9 +1,6 @@
 {
   "offenders": [
     "NotebookChatTab.kt",
-    "NotebooksScreen.kt",
-    "NotebookDetailScreen.kt",
-    "NotebookSourcesTab.kt",
     "ApiSettingsPage.kt",
     "FontSettingsPage.kt"
   ]

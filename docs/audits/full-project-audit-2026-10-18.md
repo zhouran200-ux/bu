@@ -269,8 +269,13 @@
 | 索引覆盖不足（P2） | `notes` 增加 `title` 索引之外，为 `notebooks` 增 `(manualOrder, updatedAt)`、`notebook_items` 增 `(notebookId, addedAt)` 复合索引；DB v35→v36 新增迁移，`36.json` 由 KSP 生成 | 编译通过；设备端由新增 `migrate35To36_addsNotebookAndItemIndexes` 与全链 v25→36 用例验证，待云端矩阵执行 |
 | 会话加载与淘汰 | 会话映射移到 `Dispatchers.Default`；缓存改为按最近访问时间排序的 LRU 淘汰，淘汰顺序抽为纯函数 `evictionOrder`，访问与淘汰都走并发安全结构 | `SessionEvictionPolicyTest` 4 项策略测试（限额内保留、按访问时间淘汰、零限额、时间相同按先后）通过 |
 | DataStore 损坏处理 | 增加 `ReplaceFileCorruptionHandler`：损坏信号记录后，Repository 初始化时把损坏文件复制为 `lucent_settings.corrupt` 备份再回退空配置，不静默丢弃且保留可恢复副本 | `SettingsCorruptionBackupTest` 4 项文件级测试（备份内容一致、无损坏不备份、文件缺失、覆盖旧备份）通过 |
-| FontStore 锁内 IO | `index()` 增加**按目录分别缓存**的索引快照，命中且索引文件存在时不再读盘解析；写回成功同步更新缓存，重建时按目录失效 | 首版全局单例缓存导致设备并发/备份恢复两项用例失败（缓存串目录），已改为按 `filesDir` 路径分键并加文件存在性校验保留备份恢复语义；待云端复验 |
+| FontStore 锁内 IO | `index()` 增加**按目录分别缓存**的索引快照，命中且索引文件存在时不再读盘解析；写回成功同步更新缓存，重建时按目录失效 | 首版全局单例缓存导致设备并发/备份恢复两项用例失败（缓存串目录），改为按 `filesDir` 路径分键并加文件存在性校验保留备份恢复语义；`cd402de` 的 API33/35 设备矩阵 103/103 全绿确认修复 |
 | 超 800 行文件拆分 | `AppDatabaseMigrationTest.kt` 912→378 行；拆出 `LegacyMigrationFixture`（98 行）与 `AppDatabaseEarlyMigrationsTest`（475 行），三个文件均低于 800 行 | 契约测试 25 项与卫生检查通过；设备需重新执行 |
 | 本地验证门禁 | 新增 `tools/i18n_gen_check.py` 并接入 `verify.py`，本地 quick 档现在会校验 i18n 生成物与提交文件一致 | 本地实跑 9 项全通过 |
 
-未在本轮完成、仍如实保留的项：DataStore 损坏降级到默认配置后，用户 API 方案需从备份文件手工恢复（有备份，非静默）；`NotebookChatTab`/`ApiSettingsPage`/`FontSettingsPage` 三个 500–800 行文件仍只记录拆分审查未执行；§5 其余观察项（滚动记忆三套并存、`LlmClient` 四职责单文件、`TrashCleanup` 之外的启动期删除等）未在本轮处理。
+未在本轮完成、仍如实保留的项：DataStore 损坏降级到默认配置后，用户 API 方案需从备份文件手工恢复（有备份，非静默）；三个 500–800 行页面（`NotebookChatTab` 688、`ApiSettingsPage` 581、`FontSettingsPage` 597）拆分审查已记录但未执行重构；§5 其余观察项（三套滚动记忆并存、`LlmClient` 单文件四职责等）未处理。
+
+### 本目标最终验证
+
+- 提交 `cd402de` 的 **check、API33、API35、android-jvm-check、source-hygiene、build-apk、publish-preview 全部 success**。设备矩阵两个 API 各 103 例/21 套全部通过，包含新增 `migrate35To36_addsNotebookAndItemIndexes`、拆分后的 `AppDatabaseEarlyMigrationsTest` 全部 17 项、以及修复后的 `FontStoreTransactionTest` 全部 3 项。
+- 本地最终证据：JVM 466 项/76 套（含 LRU 策略 4 项、损坏备份 4 项）、Python 工具 113 项、verify quick 9 项（含 i18n 生成一致）、Debug/Release 编译、lintDebug、androidTest 编译全部通过。`NotebookChatTab`/`ApiSettingsPage`/`FontSettingsPage` 三个 500–800 行文件仍只记录拆分审查未执行；§5 其余观察项（滚动记忆三套并存、`LlmClient` 四职责单文件、`TrashCleanup` 之外的启动期删除等）未在本轮处理。

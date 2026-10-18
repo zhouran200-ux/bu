@@ -46,9 +46,6 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.dp
 import com.lucent.app.data.ApiProfiles
-import com.lucent.app.data.AppDatabase
-import com.lucent.app.data.ChatMessage
-import com.lucent.app.data.ChatScope
 import com.lucent.app.data.CitationRef
 import com.lucent.app.data.Note
 import com.lucent.app.data.ReasoningPreset
@@ -91,7 +88,6 @@ fun NotebookChatTab(
     ) { granted ->
         if (!granted) LucentToast.show(context, "通知未开启，后台生成仍可继续；请返回对话页停止生成")
     }
-    val db = remember { AppDatabase.getInstance(context) }
     val scope = rememberCoroutineScope()
     val messages = session.messages
     val readingKeys = listOf("header") + messages.map { "message:${it.id}" } + "footer"
@@ -205,7 +201,7 @@ fun NotebookChatTab(
     fun settlePendingDelete() {
         val pending = pendingDelete ?: return
         pendingDelete = null
-        session.write { db.chatDao().deleteByIds(listOf(pending.message.id)) }
+        session.deleteMessages(listOf(pending.message.id))
     }
 
     DisposableEffect(notebookId) {
@@ -296,18 +292,7 @@ fun NotebookChatTab(
             content = promptText
         )
         messages.add(userMsg)
-        val convId = ChatScope.forNotebook(notebookId)
-        session.write {
-            db.chatDao().insert(
-                ChatMessage(
-                    id = userMsg.id,
-                    role = "user",
-                    content = promptText,
-                    timestamp = userMsg.timestamp,
-                    conversationId = convId
-                )
-            )
-        }
+        val saved = session.saveMessage(userMsg)
         val answerId = userMsg.id + 1
         messages.add(UiChatMessage(id = answerId, role = "assistant", content = "", timestamp = answerId))
         followStream = true
@@ -317,7 +302,14 @@ fun NotebookChatTab(
                 listState.animateScrollToItem((messages.size - 1).coerceAtLeast(0))
             }
         }
-        askModel(answerId)
+        scope.launch {
+            if (saved.await().isFailure) {
+                messages.removeAll { it.id == answerId }
+                LucentToast.show(context, "提问未能保存，已停止发送")
+            } else {
+                askModel(answerId)
+            }
+        }
     }
 
     fun regenerateAnswer(answerId: Long) {
@@ -351,7 +343,7 @@ fun NotebookChatTab(
             sourceRevision = null
         )
         settlePendingDelete()
-        session.write { db.chatDao().deleteByIds(listOf(answerId)) }
+        session.deleteMessages(listOf(answerId))
         askModel(answerId)
     }
 
@@ -363,10 +355,7 @@ fun NotebookChatTab(
         val followingIds = messages.drop(idx + 1).map { it.id }
         while (messages.size > idx + 1) messages.removeAt(messages.size - 1)
         messages[idx] = messages[idx].copy(content = newText)
-        session.write {
-            db.chatDao().updateContent(questionId, newText)
-            if (followingIds.isNotEmpty()) db.chatDao().deleteByIds(followingIds)
-        }
+        session.replaceQuestionAndDropFollowing(questionId, newText, followingIds)
         val answerId = System.currentTimeMillis() + 1
         messages.add(UiChatMessage(id = answerId, role = "assistant", content = "", timestamp = answerId))
         askModel(answerId)
@@ -377,7 +366,7 @@ fun NotebookChatTab(
         val idx = messages.indexOfFirst { it.id == answerId }
         if (idx < 0) return
         messages[idx] = messages[idx].copy(content = newText)
-        session.write { db.chatDao().updateContent(answerId, newText) }
+        session.updateMessageContent(answerId, newText)
     }
 
     fun deleteMessage(target: UiChatMessage) {

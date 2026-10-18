@@ -27,7 +27,10 @@ class ChatSession(
     private val load: suspend () -> List<UiChatMessage>,
     private val save: suspend (UiChatMessage) -> Unit,
     private val onRunningChanged: (Boolean) -> Unit = {},
-    private val monotonicNanos: () -> Long = System::nanoTime
+    private val monotonicNanos: () -> Long = System::nanoTime,
+    private val updateContent: suspend (Long, String) -> Unit = { _, _ -> },
+    private val deleteMessagesByIds: suspend (List<Long>) -> Unit = {},
+    private val replaceQuestion: suspend (Long, String, List<Long>) -> Unit = { _, _, _ -> }
 ) {
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
     val messages = mutableStateListOf<UiChatMessage>()
@@ -98,6 +101,18 @@ class ChatSession(
         }
         if (pendingMessages.isEmpty()) storageError = null
     }
+
+    fun updateMessageContent(id: Long, content: String): Deferred<Result<Unit>> =
+        write { updateContent(id, content) }
+
+    fun deleteMessages(ids: List<Long>): Deferred<Result<Unit>> =
+        if (ids.isEmpty()) CompletableDeferred(Result.success(Unit)) else write { deleteMessagesByIds(ids) }
+
+    fun replaceQuestionAndDropFollowing(
+        questionId: Long,
+        text: String,
+        followingIds: List<Long>
+    ): Deferred<Result<Unit>> = write { replaceQuestion(questionId, text, followingIds) }
 
     fun start(
         answerId: Long,

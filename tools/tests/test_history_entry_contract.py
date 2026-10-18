@@ -36,7 +36,7 @@ class HistoryEntryContractTest(unittest.TestCase):
         text = (UI / "NotebookChatTab.kt").read_text(encoding="utf-8")
         regenerate = text.split("fun regenerateAnswer(", 1)[1].split("fun resendEditedQuestion(", 1)[0]
         self.assertLess(regenerate.index("selection.first.apiKey.isBlank()"), regenerate.index("messages[idx] ="))
-        self.assertLess(regenerate.index("selection.first.apiKey.isBlank()"), regenerate.index("deleteByIds"))
+        self.assertLess(regenerate.index("selection.first.apiKey.isBlank()"), regenerate.index("session.deleteMessages("))
         for reset in ("firstTokenMillis = null", "generationMillis = null", "cachedTokensKnown = false"):
             self.assertIn(reset, regenerate)
 

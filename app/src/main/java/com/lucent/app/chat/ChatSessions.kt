@@ -1,6 +1,7 @@
 package com.lucent.app.chat
 
 import android.content.Context
+import androidx.room.withTransaction
 import com.lucent.app.data.AppDatabase
 import com.lucent.app.data.ChatMessage
 import com.lucent.app.data.ChatScope
@@ -77,6 +78,14 @@ object ChatSessions {
                     cachedTokensKnown = message.cachedTokensKnown,
                     sourceNoteId = message.sourceNoteId, sourceRevision = message.sourceRevision
                 ))
+            },
+            updateContent = { id, content -> dao.updateContent(id, content) },
+            deleteMessagesByIds = { ids -> dao.deleteByIds(ids) },
+            replaceQuestion = { questionId, text, following ->
+                AppDatabase.getInstance(app).withTransaction {
+                    dao.updateContent(questionId, text)
+                    if (following.isNotEmpty()) dao.deleteByIds(following)
+                }
             },
             onRunningChanged = { active ->
                 if (active) {

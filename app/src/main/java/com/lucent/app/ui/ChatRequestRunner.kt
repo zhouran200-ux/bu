@@ -53,6 +53,7 @@ internal fun buildChatHistory(
     rounds: Int
 ): List<ChatMessagePayload> = messages
     .takeWhile { it.id != answerId }
+    .filter { it.content.isNotBlank() }
     .takeLast(rounds * 2)
     .map {
         ChatMessagePayload(

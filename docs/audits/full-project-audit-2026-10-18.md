@@ -258,4 +258,6 @@
 - 本地复核：androidTest完整编译通过；Debug/Release JVM各 **458/74** 实际通过（新增3个取消边界用例）；Python工具113项、verify quick 8项通过。
 - 云端结果（有界等待一次，非轮询）：0bef530 的 **API33 全绿（102/102）**，**API35 仍是同一用例失败**，此时错误已变成 `Condition (Edited draft should dismiss when the scrim is tapped) still not satisfied after 5000 ms`。说明遮罩取消在API33生效、在API35未生效，属于API相关差异；android-jvm-check、source-hygiene、build-apk success，publish-preview仍被check门禁正确拦下。
 - 第二次修复仍不改生产业务、不放宽阈值：改用该弹窗实际绑定了 `drawer.dragModifier` 的标题行做**下拉关闭**，与本批共享抽屉测试中已在 API33/API35 双双通过的 titleDrag 完全同一路径与阈值；草稿不保存与重开还原原值断言不变。该用例仍不覆盖返回键优先级，缺口保留。
-- 设备最终结论需新提交再次执行；在拿到 API35 结果前不声称设备通过。
+- 最终云端结论（有界等待一次）：提交 `951ddd0` 的 **check、API33、API35、android-jvm-check、source-hygiene、build-apk、publish-preview 全部 success**。设备矩阵两个API都完整执行102例并通过，预览包已按门禁成功发布。此前 b8d10ff 的失败（101/102）与 0bef530 的 API35 失败均由这一路径修复后消除。
+- 收尾：源码与文档均已推送，工作区干净；未改写任何历史。历史中的崩溃日志仍按前文保留（清除需明确授权），正式签名仍需仓库所有者配置。
+- 如实保留的边界：厂商IME/系统浮动工具栏/跨段句柄拖动/旋转/预测返回未实测；§5观察项与四个大文件的拆分重构已记录但未执行（应由设备矩阵单独验证）；这些不属于本轮承诺的整改项，不计入“已通过”。

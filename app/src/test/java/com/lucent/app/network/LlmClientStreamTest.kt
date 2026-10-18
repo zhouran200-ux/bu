@@ -25,10 +25,10 @@ import java.util.concurrent.TimeUnit
 class LlmClientStreamTest {
     @Test
     fun streamingHasFortySecondReadTimeoutAndNoOverallDeadline() {
-        assertEquals(40000, LlmClient.streamClient.readTimeoutMillis)
-        assertEquals(0, LlmClient.streamClient.callTimeoutMillis)
-        assertTrue(LlmClient.streamClient.connectTimeoutMillis > 0)
-        assertFalse(LlmClient.streamClient.retryOnConnectionFailure)
+        assertEquals(40000, LlmHttpClients.streamClient.readTimeoutMillis)
+        assertEquals(0, LlmHttpClients.streamClient.callTimeoutMillis)
+        assertTrue(LlmHttpClients.streamClient.connectTimeoutMillis > 0)
+        assertFalse(LlmHttpClients.streamClient.retryOnConnectionFailure)
     }
 
     @Test(timeout = 10000)

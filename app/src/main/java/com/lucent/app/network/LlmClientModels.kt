@@ -92,22 +92,4 @@ data class TestConnectionResult(
         }
         return fallback ?: bodyStr.take(180)
     }
-
-    fun toFullReport(): String = DiagnosticRedaction.text(fullReportRaw())
-
-    private fun fullReportRaw(): String = buildString {
-        appendLine("=== 测试连接报告 ===")
-        appendLine("目标模型: ${targetModel.ifBlank { "(未指定)" }}")
-        appendLine("请求地址: $requestUrl")
-        if (!userAgentUsed.isNullOrBlank()) {
-            appendLine("客户端标识 (UA): $userAgentUsed")
-        }
-        if (httpCode > 0) appendLine("HTTP 状态码: $httpCode")
-        appendLine("响应延迟: ${latencyMs}ms")
-        if (!errorMessage.isNullOrBlank()) {
-            appendLine("错误概要: $errorMessage")
-        }
-        appendLine("--- 原始响应报文 (Raw Response Body) ---")
-        appendLine(rawResponseBody.ifBlank { "(空响应)" })
-    }
 }

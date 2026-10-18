@@ -95,7 +95,7 @@ fun NotebooksScreen(
     }
 
     val reorderState = rememberReorderDragState()
-    val listState = rememberRestoredListState("NotebooksScreen#list")
+    val listState = rememberReadingListState("NotebooksScreen#list", notebooks.map { "notebook:${it.id}" })
     val reorderSlots = rememberListSlots(listState)
     ReorderSettleEffect(reorderState, reorderSlots)
     if (active && openNotebookId == null) ReorderAutoScrollEffect(listState, reorderState)

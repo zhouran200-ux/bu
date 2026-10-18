@@ -54,7 +54,7 @@ class DiagnosticRedactionResponseTest {
         StubServer(body).use { server ->
             val result = LlmClient.testConnection(server.url, ApiSpec.OPENAI, key).getOrThrow()
             assertEquals(401, result.httpCode)
-            for (field in listOf(result.rawResponseBody, result.prettyResponseBody(), result.formatDisplayMessage(), result.toFullReport())) {
+            for (field in listOf(result.rawResponseBody, result.prettyResponseBody(), result.formatDisplayMessage())) {
                 assertFalse(field.contains(key))
                 assertTrue(field.contains("[REDACTED]"))
                 assertTrue(field.contains("visible") || field == result.formatDisplayMessage())

@@ -18,13 +18,13 @@ class DiagnosticRedactionTest {
 
     @Test fun sanitizesKnownSecretInAllReturnedDiagnosticFields() {
         val result = TestConnectionResult(false, 401, 1, "model", "https://host/?key=abc-secret", "echo abc-secret", "failure abc-secret", "agent abc-secret").redacted("abc-secret")
-        for (field in listOf(result.requestUrl, result.rawResponseBody, result.errorMessage.orEmpty(), result.userAgentUsed.orEmpty(), result.toFullReport(), result.formatDisplayMessage())) assertFalse(field.contains("abc-secret"))
+        for (field in listOf(result.requestUrl, result.rawResponseBody, result.errorMessage.orEmpty(), result.userAgentUsed.orEmpty(), result.formatDisplayMessage())) assertFalse(field.contains("abc-secret"))
     }
 
     @Test fun formatterProtectsDirectlyConstructedResults() {
         val raw = "https://host/?key=url-secret"
         val result = TestConnectionResult(false, 500, 1, "m", raw, raw, raw)
-        assertFalse(result.toFullReport().contains("url-secret"))
+        assertFalse(result.formatDisplayMessage().contains("url-secret"))
         assertFalse(result.prettyResponseBody().contains("url-secret"))
         assertFalse(result.formatDisplayMessage().contains("url-secret"))
     }
@@ -35,7 +35,7 @@ class DiagnosticRedactionTest {
             apiKey = "network-secret", model = "gemini-test"
         ).getOrThrow()
         assertFalse(result.success)
-        for (field in listOf(result.requestUrl, result.rawResponseBody, result.errorMessage.orEmpty(), result.toFullReport())) assertFalse(field.contains("network-secret"))
+        for (field in listOf(result.requestUrl, result.rawResponseBody, result.errorMessage.orEmpty(), result.prettyResponseBody())) assertFalse(field.contains("network-secret"))
     }
 
     @Test fun modelFetchAndStreamFailuresDoNotExposeCredentialsFromInvalidUrls() = kotlinx.coroutines.runBlocking {
@@ -71,7 +71,7 @@ class DiagnosticRedactionTest {
         for (escaped in listOf("a\\/b\\/c", "\\u0061/b/c", "a\\u002Fb/c")) {
             val body = """{"error":{"message":"echo $escaped"},"other":"visible"}"""
             val result = TestConnectionResult(false, 401, 1, "m", "https://host", body).redacted(key)
-            for (field in listOf(result.rawResponseBody, result.prettyResponseBody(), result.formatDisplayMessage(), result.toFullReport())) {
+            for (field in listOf(result.rawResponseBody, result.prettyResponseBody(), result.formatDisplayMessage())) {
                 assertFalse(field.contains(key))
                 assertTrue(field.contains("[REDACTED]"))
             }

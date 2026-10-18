@@ -1,5 +1,6 @@
 package com.lucent.app.ui
 
+import com.lucent.app.i18n.S
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -196,7 +197,7 @@ internal fun EditMessageDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("取消") }
+            TextButton(onClick = onDismiss) { Text(S.actionCancel) }
         }
     )
 }

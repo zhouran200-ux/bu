@@ -1,5 +1,6 @@
 package com.lucent.app.ui
 
+import com.lucent.app.i18n.S
 import com.lucent.app.chat.UiChatMessage
 
 import android.content.Context
@@ -186,7 +187,6 @@ fun NotebookChatTab(
     var questionToEdit by remember { mutableStateOf<UiChatMessage?>(null) }
     var answerToEdit by remember { mutableStateOf<UiChatMessage?>(null) }
     val streamingThought = session.thought
-    val lastDelete = remember { mutableStateOf<PendingChatDelete?>(null) }
     LaunchedEffect(session.storageError) {
         session.storageError?.let { LucentToast.show(context, it) }
     }
@@ -206,10 +206,6 @@ fun NotebookChatTab(
 
     DisposableEffect(notebookId) {
         onDispose { settlePendingDelete() }
-    }
-
-    LaunchedEffect(pendingDelete) {
-        pendingDelete?.let { lastDelete.value = it }
     }
 
     fun askModel(answerId: Long) {
@@ -689,7 +685,7 @@ fun NotebookChatTab(
                 title = "编辑回答",
                 subtitle = "只改写这条回答的文字，不会重新提问。",
                 initial = target.content,
-                confirmLabel = "保存",
+                confirmLabel = S.userAgentSaveButton,
                 onConfirm = { text ->
                     answerToEdit = null
                     saveAnswerEdit(target.id, text)

@@ -24,7 +24,6 @@ ENTRIES = [
     ("pressBackAgainToExit", "再按一次返回键退出"),
     ("actionCancel", "取消"),
     ("actionDelete", "删除"),
-    ("untitled", "无标题"),
     ("themeSystem", "跟随系统"),
     ("themeSystemDesc", "跟随设备的浅色/深色设置"),
     ("themeLight", "浅色"),

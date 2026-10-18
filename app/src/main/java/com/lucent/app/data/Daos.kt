@@ -71,9 +71,6 @@ interface NotebookDao {
     @Query("SELECT * FROM notebook_items WHERE notebookId = :notebookId ORDER BY addedAt DESC")
     suspend fun getItemsOnce(notebookId: Long): List<NotebookItem>
 
-    @Query("SELECT * FROM notebook_items")
-    suspend fun getAllItemsOnce(): List<NotebookItem>
-
     @Query("DELETE FROM notebook_items WHERE itemKind = :kind AND itemId = :itemId")
     suspend fun unlinkEverywhere(kind: String, itemId: Long)
 
@@ -91,9 +88,6 @@ interface NotebookDao {
 
     @Insert
     suspend fun insertItem(item: NotebookItem): Long
-
-    @Query("DELETE FROM notebook_items WHERE id = :itemId")
-    suspend fun deleteItemById(itemId: Long)
 
     @Query("DELETE FROM notebook_items WHERE notebookId = :notebookId AND itemKind = :itemKind AND itemId = :itemId")
     suspend fun removeItem(notebookId: Long, itemKind: String, itemId: Long)

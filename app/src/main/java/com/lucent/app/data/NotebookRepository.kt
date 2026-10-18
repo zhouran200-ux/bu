@@ -31,10 +31,6 @@ class NotebookRepository(private val db: AppDatabase) {
     suspend fun importDocument(notebookId: Long, note: Note): Long =
         NotebookPurge.importDocument(db, notebookId, note)
 
-    suspend fun releaseNote(notebookId: Long, noteId: Long) {
-        NotebookPurge.releaseNote(db, notebookId, noteId)
-    }
-
     companion object {
         fun from(context: Context): NotebookRepository =
             NotebookRepository(AppDatabase.getInstance(context.applicationContext))

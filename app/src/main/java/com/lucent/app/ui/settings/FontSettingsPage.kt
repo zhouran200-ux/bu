@@ -542,7 +542,7 @@ internal fun FontSettingsPage(
                     horizontalArrangement = Arrangement.End,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    TextButton(onClick = { pendingImportUri = null }) { Text("取消") }
+                    TextButton(onClick = { pendingImportUri = null }) { Text(S.actionCancel) }
                     Spacer(modifier = Modifier.width(8.dp))
                     TextButton(onClick = {
                         startImportFont(uri, importFontNameDraft.ifBlank { "Custom Font" })
@@ -579,12 +579,12 @@ internal fun FontSettingsPage(
                         }
                     }
                 ) {
-                    Text("删除", color = MaterialTheme.colorScheme.error)
+                    Text(S.actionDelete, color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { fontPendingDelete = null }) {
-                    Text("取消")
+                    Text(S.actionCancel)
                 }
             }
         )

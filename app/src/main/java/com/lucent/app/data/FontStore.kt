@@ -105,8 +105,6 @@ object FontStore {
             ?.let { safeFontFile(dir(context), it.fileName) }
             ?.takeIf { it.exists() && it.length() > 0L }
 
-    fun canImportMore(context: Context): Boolean = fonts(context).size < MAX_FONTS
-
 
     @Throws(IOException::class)
     fun import(context: Context, source: PlatformFontSource, customName: String? = null): FontSlot {

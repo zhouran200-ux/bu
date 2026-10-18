@@ -1,5 +1,6 @@
 package com.lucent.app.ui
 
+import com.lucent.app.i18n.S
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -103,7 +104,7 @@ internal fun DialogueSettingsSheet(
                     modifier = Modifier.width(64.dp)
                 ) {
                     Text(
-                        text = "保存",
+                        text = S.userAgentSaveButton,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = accent
@@ -209,7 +210,7 @@ internal fun DialogueSettingsSheet(
                         }
                     ) {
                         Text(
-                            text = "恢复默认",
+                            text = S.resetTypographyDefaults,
                             fontSize = 13.sp,
                             color = muted
                         )

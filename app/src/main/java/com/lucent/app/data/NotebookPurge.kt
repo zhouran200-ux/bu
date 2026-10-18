@@ -33,13 +33,6 @@ object NotebookPurge {
         noteId
     }
 
-    suspend fun releaseNote(db: AppDatabase, notebookId: Long, noteId: Long) {
-        val exclusive = db.notebookDao().exclusiveItemIds(notebookId, NotebookItem.KIND_NOTE).contains(noteId)
-        db.notebookDao().removeItem(notebookId, NotebookItem.KIND_NOTE, noteId)
-        if (!exclusive) return
-        db.noteDao().getByIdOnce(noteId)?.let { TrashCleanup.purgeNote(db, it) }
-    }
-
     suspend fun purge(db: AppDatabase, notebookId: Long) {
         com.lucent.app.chat.guardedNotebookDeletion(
             dispatcher = kotlinx.coroutines.Dispatchers.Main.immediate,

@@ -1,5 +1,6 @@
 package com.lucent.app.ui
 
+import com.lucent.app.i18n.S
 import com.lucent.app.chat.UiChatMessage
 
 import androidx.compose.animation.core.animateFloatAsState
@@ -84,7 +85,7 @@ internal fun UserMessageCard(
             )
             BubbleAction(
                 icon = Icons.Rounded.Delete,
-                label = "删除",
+                label = S.actionDelete,
                 tint = textColor,
                 enabled = actionsEnabled,
                 onClick = onDelete
@@ -189,7 +190,7 @@ internal fun AiMessageCard(
                         )
                         BubbleAction(
                             icon = Icons.Rounded.Delete,
-                            label = "删除",
+                            label = S.actionDelete,
                             tint = LocalOnGradient.current,
                             enabled = actionsEnabled,
                             onClick = onDelete

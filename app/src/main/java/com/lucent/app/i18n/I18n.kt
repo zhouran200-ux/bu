@@ -25,7 +25,6 @@ open class Tr {
     open val pressBackAgainToExit: String = "再按一次返回键退出"
     open val actionCancel: String = "取消"
     open val actionDelete: String = "删除"
-    open val untitled: String = "无标题"
     open val themeSystem: String = "跟随系统"
     open val themeSystemDesc: String = "跟随设备的浅色/深色设置"
     open val themeLight: String = "浅色"

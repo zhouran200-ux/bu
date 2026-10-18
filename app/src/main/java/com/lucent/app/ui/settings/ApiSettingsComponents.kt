@@ -134,7 +134,7 @@ internal fun DeleteWithConfirmButton(
     confirmTextPadding: PaddingValues = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
     confirmTextSize: TextUnit = 11.sp,
     modifier: Modifier = Modifier,
-    contentDescription: String = "删除"
+    contentDescription: String = S.actionDelete
 ) {
     val context = LocalContext.current
     var confirmOpen by remember { mutableStateOf(false) }
@@ -174,7 +174,7 @@ internal fun DeleteWithConfirmButton(
             ) {
                 Icon(
                     imageVector = Icons.Default.Close,
-                    contentDescription = "取消",
+                    contentDescription = S.actionCancel,
                     tint = tint,
                     modifier = Modifier.size(iconSize)
                 )

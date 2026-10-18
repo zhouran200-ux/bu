@@ -82,6 +82,15 @@ fun MarkdownText(
     }
     val blocks = parsed.blocks
     val fontWeight = if (emphasized) FontWeight.Bold else null
+    val badgeContents = remember(parsed.numbering, accent, onCitationClick != null, sourceNoteId, sourceRevision) {
+        citationBadgeContents(
+            numbering = parsed.numbering,
+            accent = accent,
+            onClick = if (onCitationClick != null) click else null,
+            sourceNoteId = sourceNoteId,
+            sourceRevision = sourceRevision
+        )
+    }
 
     Column(modifier = modifier.fillMaxWidth()) {
         blocks.forEachIndexed { index, block ->
@@ -91,6 +100,7 @@ fun MarkdownText(
                     Text(
                         parsed.annotated[index],
                         color = onGradient,
+                        inlineContent = badgeContents,
                         fontSize = when (block.level) {
                             1 -> 22.sp
                             2 -> 19.sp
@@ -107,7 +117,8 @@ fun MarkdownText(
                     Text(
                         parsed.annotated[index],
                         color = onGradient,
-                        fontWeight = fontWeight
+                        fontWeight = fontWeight,
+                        inlineContent = badgeContents
                     )
                 }
 
@@ -119,6 +130,7 @@ fun MarkdownText(
                             parsed.annotated[index],
                             color = onGradient,
                             fontWeight = fontWeight,
+                            inlineContent = badgeContents,
                             modifier = Modifier.weight(1f)
                         )
                     }
@@ -151,6 +163,7 @@ fun MarkdownText(
                             color = onGradientMuted,
                             fontWeight = fontWeight,
                             fontStyle = FontStyle.Italic,
+                            inlineContent = badgeContents,
                             modifier = Modifier.padding(start = 8.dp)
                         )
                     }

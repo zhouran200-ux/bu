@@ -152,4 +152,5 @@ ChatSession的finally/取消/计数、有序写；SourceTagging算法内部状�
   - 契约测试同步迁移归属（test_approved_ux_contract 的“回到底部”断言改查 ChatScrollOverlays.kt，followStream/animateScrollToItem 仍查页面调用点），行为断言未删。
   - 子代理复核 3105fca 的 Actions 后落实三项：①test_inventory.py 增加 tools/test-baseline.json 最低测试数/suite 基线，测试类被静默丢弃会失败；②device job 三次 dependencyInsight 去掉 --no-daemon（--configuration/--dependency 是逐任务选项，无法合并为一次调用，先复用 daemon 降低冷启动）；③三个 workflow 的 ubuntu-latest 固定为 ubuntu-24.04，规避 2026-10-19 起的 Ubuntu 26 迁移对 cmdline-tools/KVM 路径的风险。另修正文档中写错的 Build APK run id。
   - 定向验证：compileDebugKotlin + compileReleaseKotlin + testDebugUnitTest 通过；Python 契约 57 项通过；verify.py quick 100/100。全量矩阵仍交云端。
+- 批次33 引用徽标改版（用户指定样式）：`〔REF:…〕` 渲染从 `[N]` 上标文本改为 InlineTextContent 圆形徽标——主题 primary 加深 15%（lerp→black）作圆底，按圆底亮度自动取黑/白数字，字号 9sp SemiBold；Placeholder 高 0.95em、`TextBottom` 对齐贴行底，宽度按位数 0.95+0.42em 自适应，连续引用间不加空格；点击跳转逻辑与兜底文本 `[N]`（无 onClick 场景）保持原行为。实现集中在 MarkdownAnnotations（appendInlineContent + citationBadgeContents + CitationBadge），Markdown.kt 四类文本（标题/段落/列表/引用）统一挂 inlineContent，代码块不含引用不挂。验证：compileDebugKotlin 通过、MarkdownCitationRenderingTest 全过（徽标为占位内容，测试断言的 `[N]` 兜底文本不变）。纯视觉样式改动，真实观感待设备复核。
 - 不得跳过任务账本直接大规模搬目录。

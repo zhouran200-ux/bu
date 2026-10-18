@@ -9,10 +9,12 @@ object TrashCleanup {
 
     private const val LEGACY_ATTACHMENT_DIR = "attachments"
     private const val LEGACY_PREVIEW_DIR = "attachment-preview"
+    private const val LEGACY_CLEANUP_PREFS = "lucent_legacy_cleanup"
+    private const val LEGACY_PURGE_DONE = "legacy_attachment_purge_done"
 
-    suspend fun purgeExpired(context: Context) = withContext(Dispatchers.IO) {
+    suspend fun cleanupLegacyArtifacts(context: Context) = withContext(Dispatchers.IO) {
         val appContext = context.applicationContext
-        discardLegacyAttachmentFiles(appContext)
+        discardLegacyAttachmentFilesOnce(appContext)
 
         val db = AppDatabase.getInstance(appContext)
         val notes = db.noteDao().getByTrimmedTitleOnce(LegacyPurge.SAMPLE_TITLE)
@@ -21,10 +23,15 @@ object TrashCleanup {
             .forEach { LegacyPurge.release(db, it) }
     }
 
-    private fun discardLegacyAttachmentFiles(context: Context) {
+    private fun discardLegacyAttachmentFilesOnce(context: Context) {
+        val prefs = context.getSharedPreferences(LEGACY_CLEANUP_PREFS, Context.MODE_PRIVATE)
+        if (prefs.getBoolean(LEGACY_PURGE_DONE, false)) return
         val root = context.getExternalFilesDir(null) ?: context.filesDir
-        File(root, LEGACY_ATTACHMENT_DIR).deleteRecursively()
-        File(context.cacheDir, LEGACY_PREVIEW_DIR).deleteRecursively()
+        val removed = listOf(
+            File(root, LEGACY_ATTACHMENT_DIR).deleteRecursively(),
+            File(context.cacheDir, LEGACY_PREVIEW_DIR).deleteRecursively()
+        )
+        if (removed.all { it }) prefs.edit().putBoolean(LEGACY_PURGE_DONE, true).apply()
     }
 
     suspend fun purgeNote(db: AppDatabase, note: Note) {

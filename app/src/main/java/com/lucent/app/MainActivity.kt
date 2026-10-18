@@ -148,7 +148,7 @@ class MainActivity : ComponentActivity() {
                     }
                     databaseReady = true
                     AppScope.io.launch {
-                        TrashCleanup.purgeExpired(applicationContext)
+                        TrashCleanup.cleanupLegacyArtifacts(applicationContext)
                         settingsRepo.dropRemovedFeatureKeys()
                     }
                 } catch (e: kotlinx.coroutines.CancellationException) {

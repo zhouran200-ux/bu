@@ -30,7 +30,7 @@ class UnusedEntityColumnTest(unittest.TestCase):
     def test_only_known_unused_columns_remain(self):
         sources = []
         for path in MAIN.rglob("*.kt"):
-            if "\\data\\" in str(path):
+            if "data" in path.parts:
                 continue
             sources.append((path, path.read_text(encoding="utf-8")))
         unused = sorted({

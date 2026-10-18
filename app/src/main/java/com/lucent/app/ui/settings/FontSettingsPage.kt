@@ -233,7 +233,7 @@ internal fun FontSettingsPage(
         StepperSlider(
             compact = true,
             title = S.fontSizeScaleTitle,
-            valueLabel = if (kotlin.math.abs(activeFontScale - 1f) < 0.005f) "默认" else "${(activeFontScale * 100).roundToInt()}%",
+            valueLabel = if (kotlin.math.abs(activeFontScale - 1f) < 0.005f) S.fontValueDefault else "${(activeFontScale * 100).roundToInt()}%",
             value = activeFontScale,
             valueRange = 0.85f..1.30f,
             step = 0.05f,
@@ -249,7 +249,7 @@ internal fun FontSettingsPage(
         StepperSlider(
             compact = true,
             title = S.lineSpacingTitle,
-            valueLabel = if (kotlin.math.abs(activeLineSpacing - 1.2f) < 0.005f) "默认" else String.format("%.2fx", activeLineSpacing),
+            valueLabel = if (kotlin.math.abs(activeLineSpacing - 1.2f) < 0.005f) S.fontValueDefault else String.format("%.2fx", activeLineSpacing),
             value = activeLineSpacing,
             valueRange = 1.0f..1.8f,
             step = 0.05f,
@@ -265,7 +265,7 @@ internal fun FontSettingsPage(
         StepperSlider(
             compact = true,
             title = S.letterSpacingTitle,
-            valueLabel = if (kotlin.math.abs(activeLetterSpacing) < 0.005f) "默认" else String.format("%+.1fsp", activeLetterSpacing),
+            valueLabel = if (kotlin.math.abs(activeLetterSpacing) < 0.005f) S.fontValueDefault else String.format("%+.1fsp", activeLetterSpacing),
             value = activeLetterSpacing,
             valueRange = -0.5f..2.0f,
             step = 0.1f,
@@ -546,7 +546,7 @@ internal fun FontSettingsPage(
                     Spacer(modifier = Modifier.width(8.dp))
                     TextButton(onClick = {
                         startImportFont(uri, importFontNameDraft.ifBlank { "Custom Font" })
-                    }) { Text("导入") }
+                    }) { Text(S.fontImport) }
                 }
             }
         }

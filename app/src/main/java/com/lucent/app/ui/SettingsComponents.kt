@@ -259,7 +259,7 @@ internal fun ApiModelPickerDialog(
                         .padding(horizontal = 8.dp, vertical = 2.dp)
                 ) {
                     Text(
-                        text = "共 ${names.size} 个",
+                        text = S.settingsModelCount(names.size),
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Medium,
                         color = MaterialTheme.colorScheme.primary
@@ -275,7 +275,7 @@ internal fun ApiModelPickerDialog(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    text = "已勾选 ${draft.size} 个模型",
+                    text = S.settingsSelectedModels(draft.size),
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -397,7 +397,7 @@ internal fun ApiModelPickerDialog(
                 )
             ) {
                 Text(
-                    text = "确定选择 (${draft.size})",
+                    text = S.settingsConfirmSelection(draft.size),
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold
                 )

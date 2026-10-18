@@ -1,5 +1,7 @@
 package com.lucent.app.ui
 
+import com.lucent.app.i18n.S
+
 import com.lucent.app.data.DocumentHeadings
 import com.lucent.app.data.SourceTagging
 
@@ -43,11 +45,11 @@ internal fun sourceFocusLocation(
     revision: String,
     items: List<SourceReadingItem>
 ): SourceFocusLocation {
-    if (focus.noteId != noteId) return SourceFocusLocation.Unavailable("未找到该引用的资料文档")
-    if (focus.revision != revision) return SourceFocusLocation.Unavailable("引用版本已变化，请重新生成引用")
+    if (focus.noteId != noteId) return SourceFocusLocation.Unavailable(S.sourcesCitationMissing)
+    if (focus.revision != revision) return SourceFocusLocation.Unavailable(S.readingRevisionChanged)
     val index = items.indexOfFirst { it.sliceId == focus.sliceId }
     return if (index >= 0) SourceFocusLocation.Found(index)
-    else SourceFocusLocation.Unavailable("未找到该引用的原文位置")
+    else SourceFocusLocation.Unavailable(S.readingAnchorMissing)
 }
 
 internal fun sourceSectionTitle(items: List<SourceReadingItem>, index: Int, fallback: String): String =

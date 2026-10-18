@@ -48,6 +48,7 @@ import com.lucent.app.data.MarkdownDocumentParser
 import com.lucent.app.data.Note
 import com.lucent.app.data.IndexedSource
 import com.lucent.app.data.NovelSourceIndex
+import com.lucent.app.i18n.S
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -94,13 +95,13 @@ fun NotebookSourcesTab(
                 withContext(Dispatchers.Default) { NovelSourceIndex.get(document.copy(id = noteId)) }
                 withContext(Dispatchers.Main) {
                     onReload()
-                    LucentToast.show(context, "已导入文档《${parsed.title}》并解析为 Markdown")
+                    LucentToast.show(context, S.sourcesImported(parsed.title))
                 }
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (failure: Exception) {
                 withContext(Dispatchers.Main) {
-                    LucentToast.show(context, failure.message ?: "导入文件失败")
+                    LucentToast.show(context, failure.message ?: S.sourcesImportFailed)
                 }
             } finally {
                 withContext(kotlinx.coroutines.NonCancellable + Dispatchers.Main) { importing = false }
@@ -115,7 +116,7 @@ fun NotebookSourcesTab(
         focus?.let {
             if (emphasizedFocus?.requestId != it.requestId) emphasizedFocus = null
             if (sourceNotes.any { note -> note.id == it.noteId }) selectedNoteId = it.noteId
-            else LucentToast.show(context, "未找到该引用的资料文档")
+            else LucentToast.show(context, S.sourcesCitationMissing)
         }
     }
     LaunchedEffect(sourceNotes) {
@@ -149,7 +150,7 @@ fun NotebookSourcesTab(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
-                    text = if (importing) "正在导入资料…" else "暂无关联资料文档",
+                    text = if (importing) S.sourcesImporting else S.sourcesEmpty,
                     fontSize = LucentTitles.SectionSize,
                     fontWeight = LucentTitles.SectionWeight,
                     color = LocalOnGradient.current
@@ -171,7 +172,7 @@ fun NotebookSourcesTab(
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         Icons.Default.Add,
-                        contentDescription = "上传文档",
+                        contentDescription = S.sourcesUpload,
                         tint = MaterialTheme.colorScheme.onPrimary,
                         modifier = Modifier.size(30.dp)
                     )
@@ -219,13 +220,13 @@ private fun SourceReader(
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (failure: Exception) {
-            error = failure.message ?: "资料加载失败"
+            error = failure.message ?: S.sourcesLoadFailed
         }
     }
     val loaded = content
     if (loaded == null) {
         Box(modifier = modifier.background(lucentPanelBackground()), contentAlignment = Alignment.Center) {
-            Text(text = error?.let { "资料加载失败：$it" } ?: "正在加载资料…", color = LocalOnGradient.current)
+            Text(text = error?.let { S.sourcesLoadFailedDetail(it) } ?: S.sourcesLoading, color = LocalOnGradient.current)
         }
         return
     }
@@ -295,7 +296,7 @@ private fun SourceReaderDocument(
             listState = listState,
             itemKeys = readingKeys,
             enabled = active,
-            label = "文档快速滚动",
+            label = S.sourcesFastScroll,
             modifier = Modifier.align(Alignment.CenterEnd)
         )
 

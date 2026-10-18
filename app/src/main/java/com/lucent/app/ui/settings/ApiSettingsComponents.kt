@@ -158,7 +158,7 @@ internal fun DeleteWithConfirmButton(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "确认删除",
+                    text = S.apiConfirmDelete,
                     color = MaterialTheme.colorScheme.onError,
                     fontSize = confirmTextSize,
                     fontWeight = FontWeight.SemiBold
@@ -366,13 +366,13 @@ internal fun FloatingCopyButton(
     ) {
         Icon(
             imageVector = if (copied) Icons.Default.Check else Icons.Default.ContentCopy,
-            contentDescription = "复制全文",
+            contentDescription = S.apiCopyFullText,
             tint = accent,
             modifier = Modifier.size(13.dp)
         )
         Spacer(modifier = Modifier.width(4.dp))
         Text(
-            text = if (copied) "已复制" else "复制全文",
+            text = if (copied) S.apiCopied else S.apiCopyFullText,
             color = accent,
             fontSize = 11.sp,
             fontWeight = FontWeight.Medium
@@ -410,7 +410,7 @@ internal fun ResponseCard(
             ) {
                 val scrollState = rememberScrollState()
                 Text(
-                    text = body.ifBlank { "(空响应体)" },
+                    text = body.ifBlank { S.apiEmptyBody },
                     color = onGradient,
                     fontSize = 11.sp,
                     lineHeight = 15.sp,
@@ -428,12 +428,12 @@ internal fun ResponseCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "长按卡片或点右上角按钮复制全文",
+                    text = S.apiCopyHint,
                     color = onGradientMuted.copy(alpha = 0.7f),
                     fontSize = 10.sp
                 )
                 Text(
-                    text = "$charCount 字符",
+                    text = S.apiCharCount(charCount),
                     color = onGradientMuted.copy(alpha = 0.7f),
                     fontSize = 10.sp
                 )

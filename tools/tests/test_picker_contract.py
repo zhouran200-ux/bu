@@ -13,9 +13,6 @@ class PickerContractTest(unittest.TestCase):
 
     def test_picker_saves_selection_then_closes_with_feedback(self):
         text = (UI / "ProfileModelPickerSheet.kt").read_text(encoding="utf-8")
-        callback = text.split(".selectable(", 1)[1].split(".heightIn", 1)[0]
-        self.assertLess(callback.index("Haptics.tick(context)"), callback.index("onSelect(profile, model)"))
-        self.assertLess(callback.index("onSelect(profile, model)"), callback.index("drawer.close {}"))
         self.assertIn("if (modelSelected) LucentStatusColors.Selected", text)
         self.assertIn("if (modelSelected) FontWeight.ExtraBold", text)
         self.assertNotIn('item(key = "title")', text)

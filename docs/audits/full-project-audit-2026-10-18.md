@@ -255,4 +255,7 @@
 - 新增3个取消边界用例（调度前取消、旧命令取消不回滚新输入、已取消owner），SettingsWriteCoordinatorTest共8项实际通过；verify quick8项通过、主源码增量编译通过。其余结果复用b8d10ff，不冒称本次全量测试；本修复未变设备测试。
 - 本轮已完成一次快照（非轮询）：b8d10ff 的 check 与 Build APK 两个workflow均 completed/failure。API33/35设备任务都执行了102例，**唯一失败**是 `DialogueSettingsSheetTest.cancellingEditedDraftOrRestoredDefaultsNeverSavesAndReopensOriginalValues`，错误 `ComposeTimeoutException: Condition still not satisfied after 5000 ms`；同一注解还有 `Passed count fell below baseline (101 < 102)`，即计数门禁按设计拦住了它。source-hygiene与android-jvm-check success；build-apk success，publish-preview因check失败被拒发（门禁正确，不是APK编译失败）。
 - 根因定位：对话设置是编辑型弹窗，会保留键盘；在模拟器上真实输入法会先消费第一次系统返回键，因此等待关闭超时。修复不改生产业务、不放宽5秒、不降低基线：取消路径改用与本批共享抽屉测试相同、已在设备上通过的遮罩点击，并断言点击前确有可触遮罩；草稿不保存与重开还原原值的断言全部保留。
-- 本地复核：androidTest完整编译通过；Debug/Release JVM各 **458/74** 实际通过（新增3个取消边界用例）；Python工具113项、verify quick 8项通过。设备结论仍需新提交的云端API33/35执行后确认，不提前声称通过。
+- 本地复核：androidTest完整编译通过；Debug/Release JVM各 **458/74** 实际通过（新增3个取消边界用例）；Python工具113项、verify quick 8项通过。
+- 云端结果（有界等待一次，非轮询）：0bef530 的 **API33 全绿（102/102）**，**API35 仍是同一用例失败**，此时错误已变成 `Condition (Edited draft should dismiss when the scrim is tapped) still not satisfied after 5000 ms`。说明遮罩取消在API33生效、在API35未生效，属于API相关差异；android-jvm-check、source-hygiene、build-apk success，publish-preview仍被check门禁正确拦下。
+- 第二次修复仍不改生产业务、不放宽阈值：改用该弹窗实际绑定了 `drawer.dragModifier` 的标题行做**下拉关闭**，与本批共享抽屉测试中已在 API33/API35 双双通过的 titleDrag 完全同一路径与阈值；草稿不保存与重开还原原值断言不变。该用例仍不覆盖返回键优先级，缺口保留。
+- 设备最终结论需新提交再次执行；在拿到 API35 结果前不声称设备通过。

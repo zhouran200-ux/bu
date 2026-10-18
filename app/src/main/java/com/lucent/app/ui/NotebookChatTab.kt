@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -35,6 +36,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.geometry.Offset
@@ -510,7 +512,8 @@ fun NotebookChatTab(
                             keyboardController?.hide()
                         })
                     }
-                    .padding(horizontal = 14.dp),
+                    .padding(horizontal = 14.dp)
+                    .clip(RoundedCornerShape(bottomStart = 18.dp, bottomEnd = 18.dp)),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 item(key = "header") {

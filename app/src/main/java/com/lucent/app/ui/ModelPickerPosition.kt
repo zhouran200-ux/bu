@@ -14,7 +14,7 @@ internal fun modelPickerPosition(
     if (profileIndex < 0) return ModelPickerPosition(null, 0)
     val profile = profiles[profileIndex]
     val models = ApiProfiles.availableModels(profile)
-    if (models.isEmpty()) return ModelPickerPosition(null, profileIndex + 1)
+    if (models.isEmpty()) return ModelPickerPosition(null, profileIndex)
     val modelIndex = models.indexOf(selectedModel).coerceAtLeast(0)
-    return ModelPickerPosition(profile.id, profileIndex + 2 + modelIndex)
+    return ModelPickerPosition(profile.id, profileIndex + 1 + modelIndex)
 }

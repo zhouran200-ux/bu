@@ -80,14 +80,14 @@ fun NotebookChatTab(
     }
     if (!session.ready) {
         Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text(session.storageError ?: "正在读取对话…", color = LocalOnGradient.current)
+            Text(session.storageError ?: S.chatLoadingConversation, color = LocalOnGradient.current)
         }
         return
     }
     val notificationPermission = androidx.activity.compose.rememberLauncherForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
     ) { granted ->
-        if (!granted) LucentToast.show(context, "通知未开启，后台生成仍可继续；请返回对话页停止生成")
+        if (!granted) LucentToast.show(context, S.chatNotificationDenied)
     }
     val scope = rememberCoroutineScope()
     val messages = session.messages
@@ -220,10 +220,10 @@ fun NotebookChatTab(
             if (slot >= 0) messages[slot] = msg else messages.add(msg)
         }
         if (targetModel.isBlank()) {
-            LucentToast.show(context, "该方案还没有可用模型，请到设置-API 配置获取并保存模型")
+            LucentToast.show(context, S.chatNoModelsForProfile)
             val blankIdx = messages.indexOfFirst { it.id == aiMsgId }
             if (blankIdx >= 0) {
-                messages[blankIdx] = messages[blankIdx].copy(content = "【未配置可用模型】请先在设置-API 配置里获取并保存模型。")
+                messages[blankIdx] = messages[blankIdx].copy(content = S.chatNoModelsAnswer)
                 session.saveMessage(messages[blankIdx])
             }
             return
@@ -234,7 +234,7 @@ fun NotebookChatTab(
         val effortLabel = resolvedReasoning.displayTag
 
         if (sourceNotes.size > 1) {
-            LucentToast.show(context, "当前笔记本资料关联异常，请先整理为一份文档")
+            LucentToast.show(context, S.chatSourceBindingBroken)
             return
         }
         val sourceNote = sourceNotes.singleOrNull()
@@ -246,7 +246,7 @@ fun NotebookChatTab(
             val pendingAi = UiChatMessage(
                 id = aiMsgId,
                 role = "assistant",
-                content = "【未配置 API 密钥】\n当前所选方案未设置有效的 API Key。请点击底部右侧「模型选择」卡片中的「管理API配置」，或前往「设置 -> API 配置」填入 API Key 与基础 URL，即可开始基于本地 Markdown 知识库与大模型对话。"
+                content = S.chatMissingApiKey
             )
             upsertAnswerSlot(pendingAi.copy(timestamp = answerStamp))
             session.saveMessage(pendingAi.copy(timestamp = answerStamp))
@@ -273,10 +273,10 @@ fun NotebookChatTab(
                 )
             } catch (e: Exception) {
                 val failed = UiChatMessage(aiMsgId, "assistant",
-                    "【无法启动后台生成】${e.message ?: "请重试"}", timestamp = answerStamp)
+                    S.chatStartFailed(e.message ?: S.chatRetry), timestamp = answerStamp)
                 upsertAnswerSlot(failed)
                 session.saveMessage(failed)
-                LucentToast.show(context, "无法启动后台生成，请保持应用在前台后重试")
+                LucentToast.show(context, S.chatStartFailedToast)
             }
         }
     }
@@ -301,7 +301,7 @@ fun NotebookChatTab(
         scope.launch {
             if (saved.await().isFailure) {
                 messages.removeAll { it.id == answerId }
-                LucentToast.show(context, "提问未能保存，已停止发送")
+                LucentToast.show(context, S.chatQuestionNotSaved)
             } else {
                 askModel(answerId)
             }
@@ -311,19 +311,19 @@ fun NotebookChatTab(
     fun regenerateAnswer(answerId: Long) {
         if (!session.ready) return
         if (streamingAnswerId != null) {
-            LucentToast.show(context, "上一条回答还没有结束")
+            LucentToast.show(context, S.chatStillAnswering)
             return
         }
         val idx = messages.indexOfFirst { it.id == answerId }
         if (idx < 0) return
         val question = messages.take(idx).lastOrNull { it.role == "user" }?.content.orEmpty()
         if (question.isBlank()) {
-            LucentToast.show(context, "找不到这条回答对应的问题，无法重新生成")
+            LucentToast.show(context, S.chatRegenerateTargetMissing)
             return
         }
         val selection = ApiProfiles.resolveSelection(savedProfiles, selectedProfileId, selectedProfileName, selectedModel)
         if (selection == null || selection.second.isBlank() || selection.first.apiKey.isBlank()) {
-            LucentToast.show(context, "当前方案未配置有效模型或密钥，已保留原回答")
+            LucentToast.show(context, S.chatNoModelOrKey)
             return
         }
         messages[idx] = messages[idx].copy(
@@ -369,7 +369,7 @@ fun NotebookChatTab(
         if (!session.ready || session.streamingAnswerId != null) return
         val idx = messages.indexOfFirst { it.id == target.id }
         if (idx < 0) return
-        if (pendingDelete != null) LucentToast.show(context, "上一条删除已生效")
+        if (pendingDelete != null) LucentToast.show(context, S.chatPreviousDeleteApplied)
         settlePendingDelete()
         val firstIndex = listState.firstVisibleItemIndex
         val keys = listOf("header") + messages.map { "message:${it.id}" } + "footer"
@@ -436,11 +436,11 @@ fun NotebookChatTab(
         val text = inputText.trim()
         if (text.isEmpty()) return@send
         if (!session.ready) {
-            LucentToast.show(context, session.storageError ?: "正在读取对话，请稍候")
+            LucentToast.show(context, session.storageError ?: S.chatLoadingRetry)
             return@send
         }
         if (streamingAnswerId != null) {
-            LucentToast.show(context, "正在回答，点右下角的方块可以停止")
+            LucentToast.show(context, S.chatStreamingHint)
             return@send
         }
         inputText = ""
@@ -502,7 +502,7 @@ fun NotebookChatTab(
                         Spacer(modifier = Modifier.height(8.dp))
                         if (session.unsavedMessageCount > 0) {
                             TextButton(onClick = { session.retryUnsavedMessages() }) {
-                                Text("有未保存的回答，点击重试保存")
+                                Text(S.chatUnsavedAnswersRetry)
                             }
                         }
                     }
@@ -643,7 +643,7 @@ fun NotebookChatTab(
                     systemPrompt = p
                     historyRounds = r
                     saveDialogueSettings(prefs, notebookId, p, r)
-                    LucentToast.show(context, "对话设置已保存")
+                    LucentToast.show(context, S.chatSettingsSaved)
                 },
                 onDismiss = { showDialogueSettingsDialog = false }
             )
@@ -668,10 +668,10 @@ fun NotebookChatTab(
 
         questionToEdit?.let { target ->
             EditMessageDialog(
-                title = "编辑提问",
-                subtitle = "保存后会删掉这条之后的对话，并用新文字重新提问。",
+                title = S.chatEditQuestionTitle,
+                subtitle = S.chatEditQuestionSubtitle,
                 initial = target.content,
-                confirmLabel = "重新提问",
+                confirmLabel = S.chatEditQuestionConfirm,
                 onConfirm = { text ->
                     questionToEdit = null
                     resendEditedQuestion(target.id, text)
@@ -682,8 +682,8 @@ fun NotebookChatTab(
 
         answerToEdit?.let { target ->
             EditMessageDialog(
-                title = "编辑回答",
-                subtitle = "只改写这条回答的文字，不会重新提问。",
+                title = S.chatEditAnswerTitle,
+                subtitle = S.chatEditAnswerSubtitle,
                 initial = target.content,
                 confirmLabel = S.userAgentSaveButton,
                 onConfirm = { text ->

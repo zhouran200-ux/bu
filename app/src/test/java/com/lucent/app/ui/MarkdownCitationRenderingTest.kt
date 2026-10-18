@@ -82,6 +82,20 @@ class MarkdownCitationRenderingTest {
     }
 
     @Test
+    fun repeatedCitationsCollapseInsideOneBlock() {
+        val text = "甲 $first 乙 $first 丙 $second"
+        assertEquals("甲 [1] 乙  丙 [2]", render(text).text)
+    }
+
+    @Test
+    fun everyNumberedMarkerGetsADistinctInlineBadge() {
+        val text = "$first $second"
+        val numbering = markdownCitationNumbering(parseBlocks(text))
+        val contents = citationBadgeContents(numbering, Color.Blue, { _ -> }, 7L, "abcdef")
+        assertEquals(setOf("cite:$first", "cite:$second"), contents.keys)
+    }
+
+    @Test
     fun boldCitationDoesNotOverrideItsWeightWithMedium() {
         val rendered = render("**$first**")
         assertEquals("[1]", rendered.text)

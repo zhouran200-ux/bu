@@ -1,19 +1,20 @@
 package com.lucent.app.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.lerp
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.ui.text.*
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
@@ -36,10 +37,11 @@ internal fun inlineAnnotated(
     line: String,
     textColor: Color,
     accent: Color,
-    citation: CitationDecor
+    citation: CitationDecor,
+    seen: MutableSet<String> = mutableSetOf()
 ): AnnotatedString = buildAnnotatedString {
     withStyle(SpanStyle(fontWeight = if (citation.emphasized) FontWeight.Bold else null)) {
-        appendInline(line, textColor, accent, citation, citation.emphasized)
+        appendInline(line, textColor, accent, citation, citation.emphasized, seen)
     }
 }
 
@@ -59,20 +61,18 @@ internal fun citationBadgeContents(
     sourceNoteId: Long?,
     sourceRevision: String?
 ): Map<String, InlineTextContent> {
-    if (onClick == null) return emptyMap()
-    val badgeColor = lerp(accent, Color.Black, 0.15f)
-    val onBadge = if (badgeColor.luminance() > 0.5f) Color.Black else Color.White
+    val click = onClick ?: return emptyMap()
     return numbering.entries.associate { (raw, number) ->
         val ref = SourceCitations.parse(raw, sourceNoteId, sourceRevision) ?: return@associate raw to null
         val digits = number.toString().length
         val content = InlineTextContent(
             Placeholder(
-                width = (0.95f + 0.42f * digits).em,
-                height = 0.95.em,
-                placeholderVerticalAlign = PlaceholderVerticalAlign.TextBottom
+                width = (0.52f + 0.34f * digits).em,
+                height = 0.82.em,
+                placeholderVerticalAlign = PlaceholderVerticalAlign.TextTop
             )
         ) {
-            CitationBadge(number, badgeColor, onBadge, onClick)
+            CitationBadge(number, accent) { click(ref) }
         }
         citationBadgeId(ref) to content
     }.filterValues { it != null }.mapValues { it.value!! }
@@ -82,20 +82,22 @@ internal fun citationBadgeContents(
 private fun CitationBadge(
     number: Int,
     accent: Color,
-    onAccent: Color,
-    onClick: (CitationRef) -> Unit
+    onClick: () -> Unit
 ) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(lerp(accent, Color.Black, 0.15f), CircleShape),
+            .clip(RoundedCornerShape(3.dp))
+            .background(accent.copy(alpha = 0.14f))
+            .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         Text(
             text = number.toString(),
-            color = onAccent,
+            color = accent,
             fontSize = 9.sp,
-            fontWeight = FontWeight.SemiBold
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1
         )
     }
 }
@@ -105,7 +107,8 @@ private fun AnnotatedString.Builder.appendInline(
     textColor: Color,
     accent: Color,
     citation: CitationDecor,
-    emphasized: Boolean
+    emphasized: Boolean,
+    seen: MutableSet<String>
 ) {
     for (token in markdownInlineTokens(segment, citation.enabled)) {
         when (token.kind) {
@@ -130,8 +133,11 @@ private fun AnnotatedString.Builder.appendInline(
             MdInlineKind.Citation -> {
                 val number = citation.numbering[token.text] ?: 0
                 val ref = SourceCitations.parse(token.text, citation.sourceNoteId, citation.sourceRevision)
-                if (number > 0 && ref != null) appendCitation(number, ref)
-                else append(token.text)
+                if (number > 0 && ref != null) {
+                    if (seen.add(token.text)) appendCitation(number, ref)
+                } else {
+                    append(token.text)
+                }
             }
             else -> {
                 val bold = emphasized || token.kind == MdInlineKind.Bold
@@ -140,7 +146,7 @@ private fun AnnotatedString.Builder.appendInline(
                     fontStyle = if (token.kind == MdInlineKind.Italic) FontStyle.Italic else null,
                     textDecoration = if (token.kind == MdInlineKind.Strike) TextDecoration.LineThrough else null
                 )
-                withStyle(style) { appendInline(token.text, textColor, accent, citation, bold) }
+                withStyle(style) { appendInline(token.text, textColor, accent, citation, bold, seen) }
             }
         }
     }

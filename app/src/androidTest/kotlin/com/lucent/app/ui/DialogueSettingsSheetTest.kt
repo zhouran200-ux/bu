@@ -1,13 +1,15 @@
 package com.lucent.app.ui
 
-import android.view.KeyEvent
 import androidx.compose.material3.Text
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.hasAnyDescendant
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextEquals
@@ -16,11 +18,13 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performTextReplacement
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import androidx.test.platform.app.InstrumentationRegistry
 import com.lucent.app.i18n.S
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -88,10 +92,7 @@ class DialogueSettingsSheetTest {
         val open = mutableStateOf(true)
         val saved = mutableListOf<Pair<String, Int>>()
         var dismissed = 0
-        var clearFocus: () -> Unit = {}
         rule.setContent {
-            val focusManager = LocalFocusManager.current
-            clearFocus = { focusManager.clearFocus(force = true) }
             Text("dialogue settings host")
             if (open.value) {
                 DialogueSettingsSheet(
@@ -106,10 +107,9 @@ class DialogueSettingsSheetTest {
         rule.onNodeWithContentDescription(S.dialogueSystemPrompt).performTextReplacement("不保存的编辑")
         rule.onNodeWithContentDescription(S.sliderIncrease(S.dialogueHistoryRounds))
             .performScrollTo().performClick()
-        rule.runOnIdle { clearFocus() }
+        dismissFromScrim()
         rule.waitForIdle()
-        InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
-        rule.waitUntil(5_000) { dismissed == 1 }
+        rule.waitUntil("Edited draft should dismiss when the scrim is tapped", 5_000) { dismissed == 1 }
         rule.onNodeWithText(S.dialogueTitle).assertDoesNotExist()
         rule.runOnIdle {
             assertEquals(emptyList<Pair<String, Int>>(), saved)
@@ -118,10 +118,9 @@ class DialogueSettingsSheetTest {
         rule.onNodeWithContentDescription(S.dialogueSystemPrompt).assertTextEquals("保留提示")
         rule.onNodeWithText(S.dialogueRoundsValue(4)).performScrollTo().assertIsDisplayed()
         rule.onNodeWithText(S.resetTypographyDefaults).performScrollTo().performClick()
-        rule.runOnIdle { clearFocus() }
+        dismissFromScrim()
         rule.waitForIdle()
-        InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
-        rule.waitUntil(5_000) { dismissed == 2 }
+        rule.waitUntil("Restored defaults should dismiss when the scrim is tapped", 5_000) { dismissed == 2 }
         rule.runOnIdle {
             assertEquals(emptyList<Pair<String, Int>>(), saved)
             open.value = true
@@ -146,5 +145,25 @@ class DialogueSettingsSheetTest {
         rule.onNodeWithContentDescription(S.sliderIncrease(S.dialogueHistoryRounds)).assertIsNotEnabled()
         rule.onNodeWithText(S.userAgentSaveButton).performClick()
         rule.runOnIdle { assertEquals(listOf("" to 20), saved) }
+    }
+
+    private fun dismissFromScrim() {
+        val window = rule.onNode(
+            isRoot() and hasAnyDescendant(hasTestTag(handleTag)),
+            useUnmergedTree = true
+        )
+        val windowBounds = window.fetchSemanticsNode().boundsInRoot
+        val sheetTop = handle().fetchSemanticsNode().boundsInRoot.top - windowBounds.top
+        assertTrue("Fixture must leave an exposed scrim above the sheet", sheetTop > 2f)
+        window.performTouchInput {
+            down(Offset(center.x, sheetTop / 2f))
+            up()
+        }
+    }
+
+    private fun handle() = rule.onNodeWithTag(handleTag, useUnmergedTree = true)
+
+    private companion object {
+        const val handleTag = "model_picker_drawer_handle"
     }
 }

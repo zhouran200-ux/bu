@@ -244,4 +244,6 @@
 - 对 b8d10ff 的独立一次快照（2026-10-18 20:00 UTC+8）：source-hygiene、android-jvm-check、build-apk success；API33/35及publish-preview仍运行，无设备失败注解。入口check run 39125059389 / APK run 39125059385。未轮询等待，不将运行中写成通过。
 - 新增确定复现：设置命令接受后更新缓存，但worker尚未调度即取消时，原try/catch不会执行，缓存残留draft。已用先失败后通过的JUnit证实。新增统一且幂等finish，并在Job completion兜底；不更改普通保存顺序或revision保护。
 - 新增3个取消边界用例（调度前取消、旧命令取消不回滚新输入、已取消owner），SettingsWriteCoordinatorTest共8项实际通过；verify quick8项通过、主源码增量编译通过。其余结果复用b8d10ff，不冒称本次全量测试；本修复未变设备测试。
-- 此小修先本地提交，不立即推送：避免仓库cancel-in-progress配置取消正在跑的API33/35完整验收。下一轮一次核查取得设备结论后，合并必要修复统一推送。
+- 本轮已完成一次快照（非轮询）：b8d10ff 的 check 与 Build APK 两个workflow均 completed/failure。API33/35设备任务都执行了102例，**唯一失败**是 `DialogueSettingsSheetTest.cancellingEditedDraftOrRestoredDefaultsNeverSavesAndReopensOriginalValues`，错误 `ComposeTimeoutException: Condition still not satisfied after 5000 ms`；同一注解还有 `Passed count fell below baseline (101 < 102)`，即计数门禁按设计拦住了它。source-hygiene与android-jvm-check success；build-apk success，publish-preview因check失败被拒发（门禁正确，不是APK编译失败）。
+- 根因定位：对话设置是编辑型弹窗，会保留键盘；在模拟器上真实输入法会先消费第一次系统返回键，因此等待关闭超时。修复不改生产业务、不放宽5秒、不降低基线：取消路径改用与本批共享抽屉测试相同、已在设备上通过的遮罩点击，并断言点击前确有可触遮罩；草稿不保存与重开还原原值的断言全部保留。
+- 本地复核：androidTest完整编译通过；Debug/Release JVM各 **458/74** 实际通过（新增3个取消边界用例）；Python工具113项、verify quick 8项通过。设备结论仍需新提交的云端API33/35执行后确认，不提前声称通过。

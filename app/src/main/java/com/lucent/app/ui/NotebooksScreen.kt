@@ -60,6 +60,7 @@ import com.lucent.app.AppNavigation
 import com.lucent.app.AppScope
 import com.lucent.app.BackClaim
 import com.lucent.app.data.NotebookRepository
+import com.lucent.app.i18n.S
 import com.lucent.app.data.Notebook
 import java.time.Instant
 import java.time.ZoneId
@@ -139,7 +140,7 @@ fun NotebooksScreen(
                         } catch (e: kotlinx.coroutines.CancellationException) {
                             throw e
                         } catch (e: Exception) {
-                            LucentToast.show(context, e.message ?: "删除失败，资料库事务已回滚")
+                            LucentToast.show(context, e.message ?: S.notebookDeleteRolledBack)
                         }
                     }
                 }) { Text(com.lucent.app.i18n.S.actionDelete) }
@@ -274,7 +275,7 @@ fun NotebooksScreen(
 }
 
 private val monthDateTimeFormatter: DateTimeFormatter =
-    DateTimeFormatter.ofPattern("M月d日 · HH:mm", Locale.getDefault())
+    DateTimeFormatter.ofPattern(S.dateMonthDayPattern, Locale.getDefault())
 
 private fun formatMonthDateTime(millis: Long): String {
     val zoned = Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault())
@@ -324,7 +325,7 @@ private fun NotebookShelfItem(
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "$sourceCount 个来源 · $formattedDate",
+                text = S.notebookSourcesSummary(sourceCount, formattedDate),
                 color = onGradientMuted,
                 fontSize = 13.sp,
                 maxLines = 1,
@@ -372,7 +373,7 @@ private fun NotebookShelfItem(
 }
 
 fun nextDefaultNotebookName(existingNotebooks: List<Notebook>): String {
-    val base = "新建笔记本"
+    val base = S.notebookNewDefaultName
     val existingTitles = existingNotebooks.map { it.title.trim() }.toSet()
     if (base !in existingTitles) return base
     var index = 2

@@ -49,6 +49,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.lucent.app.data.ApiProfile
 import com.lucent.app.data.ApiProfiles
+import com.lucent.app.i18n.S
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -92,7 +93,7 @@ internal fun ProfileModelPickerSheet(
                 .padding(horizontal = 14.dp)
         ) {
             Text(
-                text = "模型选择",
+                text = S.pickerTitle,
                 fontSize = LucentTitles.SectionSize,
                 fontWeight = LucentTitles.SectionWeight,
                 color = ink,
@@ -105,7 +106,7 @@ internal fun ProfileModelPickerSheet(
             ) {
                 if (profiles.isEmpty()) {
                     item(key = "empty") {
-                        Text("暂无 API 方案，请先添加", color = ink, modifier = Modifier.padding(12.dp))
+                        Text(S.pickerEmpty, color = ink, modifier = Modifier.padding(12.dp))
                     }
                 }
                 profiles.forEachIndexed { profileIndex, profile ->
@@ -130,7 +131,7 @@ internal fun ProfileModelPickerSheet(
                         ) {
                             Icon(
                                 Icons.Default.ChevronRight,
-                                contentDescription = if (models.isNotEmpty()) if (expanded) "收起模型列表" else "展开模型列表" else null,
+                                contentDescription = if (models.isNotEmpty()) if (expanded) S.pickerCollapse else S.pickerExpand else null,
                                 tint = accent,
                                 modifier = Modifier.size(20.dp).graphicsLayer { rotationZ = arrowRotation.value }
                             )
@@ -194,8 +195,8 @@ internal fun ProfileModelPickerSheet(
             ) {
                 Icon(Icons.Default.Tune, null, tint = ink, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(10.dp))
-                Text("管理 API 配置", modifier = Modifier.weight(1f), fontSize = 14.sp, color = ink)
-                Icon(Icons.AutoMirrored.Filled.ArrowForward, "前往 API 设置", tint = ink, modifier = Modifier.size(18.dp))
+                Text(S.pickerManageApi, modifier = Modifier.weight(1f), fontSize = 14.sp, color = ink)
+                Icon(Icons.AutoMirrored.Filled.ArrowForward, S.pickerGoApi, tint = ink, modifier = Modifier.size(18.dp))
             }
         }
     }

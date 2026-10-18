@@ -36,6 +36,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.lucent.app.data.NotebookRepository
+import com.lucent.app.i18n.S
 import com.lucent.app.data.Note
 import kotlinx.coroutines.launch
 
@@ -107,14 +108,14 @@ fun NotebookDetailScreen(
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
-            sourceError = "读取文档失败：${e.message}"
+            sourceError = S.detailReadDocumentFailed(e.message ?: "")
         }
     }
 
     if (!sourcesLoaded || sourceError != null) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             androidx.compose.material3.TextButton(onClick = { reloadCount++ }) {
-                Text(sourceError?.plus("，点击重试") ?: "正在读取文档…")
+                Text(sourceError?.plus(S.detailRetryHint) ?: S.detailLoadingDocument)
             }
         }
         return
@@ -203,7 +204,7 @@ private fun NotebookDetailHeader(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 TabPill(
-                    label = "对话",
+                    label = S.detailTabChat,
                     selected = selectedTab == NotebookDetailTab.CHAT,
                     accent = accent,
                     selectedBg = tabPillSelected,
@@ -215,7 +216,7 @@ private fun NotebookDetailHeader(
                 Spacer(modifier = Modifier.padding(horizontal = 2.dp))
 
                 TabPill(
-                    label = "来源 ($sourceCount)",
+                    label = S.detailTabSources(sourceCount),
                     selected = selectedTab == NotebookDetailTab.SOURCES,
                     accent = accent,
                     selectedBg = tabPillSelected,

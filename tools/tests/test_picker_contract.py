@@ -79,7 +79,7 @@ class PickerContractTest(unittest.TestCase):
 
     def test_manage_api_uses_existing_settings_without_overlay_or_dismiss(self):
         picker = (UI / "ProfileModelPickerSheet.kt").read_text(encoding="utf-8")
-        self.assertIn('Text("管理 API 配置"', picker)
+        self.assertIn("Text(S.pickerManageApi", picker)
         self.assertIn("onClick = onManageApi", picker)
         self.assertIn("if (!visible) return", picker)
         self.assertNotIn("openManagementAfterDismiss", picker)

@@ -134,7 +134,7 @@ internal fun DeleteUndoBar(
             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
             modifier = Modifier.padding(start = 4.dp)
         ) {
-            Text(text = "撤销", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+            Text(text = S.actionUndo, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
         }
     }
 }
@@ -183,7 +183,7 @@ internal fun EditMessageDialog(
                             .focusRequester(inputFocus),
                         decorationBox = { inner ->
                             if (text.isEmpty()) {
-                                Text("在这里输入…", color = onGradientMuted.copy(alpha = 0.6f), fontSize = 14.sp)
+                                Text(S.dialogInputPlaceholder, color = onGradientMuted.copy(alpha = 0.6f), fontSize = 14.sp)
                             }
                             inner()
                         }
@@ -206,5 +206,5 @@ internal fun copyTextToClipboard(context: Context, text: String) {
     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
     val clip = ClipData.newPlainText("Copied Text", text)
     clipboard.setPrimaryClip(clip)
-    com.lucent.app.ui.LucentToast.show(context, "已复制到剪贴板")
+    com.lucent.app.ui.LucentToast.show(context, S.copiedToClipboard)
 }

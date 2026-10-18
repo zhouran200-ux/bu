@@ -50,6 +50,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.lucent.app.data.ReasoningPreset
+import com.lucent.app.i18n.S
 
 @Composable
 internal fun BottomGlassComposer(
@@ -97,7 +98,7 @@ internal fun BottomGlassComposer(
                 decorationBox = { innerTextField ->
                     if (inputText.isEmpty()) {
                         Text(
-                            text = "输入问题或针对笔记本提问...",
+                            text = S.composerPlaceholder,
                             color = onGradientMuted.copy(alpha = 0.65f),
                             fontSize = 15.sp
                         )
@@ -148,7 +149,7 @@ internal fun BottomGlassComposer(
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
                                     LucentIcons.presetIcon(reasoningPreset),
-                                    contentDescription = "思考程度",
+                                    contentDescription = S.composerReasoning,
                                     tint = thinkingTint,
                                     modifier = Modifier.size(18.dp)
                                 )
@@ -167,7 +168,7 @@ internal fun BottomGlassComposer(
                             border = glassPopupBorder(),
                         ) {
                             Text(
-                                text = "思考强度",
+                                text = S.composerReasoningTitle,
                                 fontSize = LucentTitles.SectionSize,
                                 fontWeight = LucentTitles.SectionWeight,
                                 color = onGradientMuted,
@@ -229,7 +230,7 @@ internal fun BottomGlassComposer(
                         Box(contentAlignment = Alignment.Center) {
                             Icon(
                                 Icons.Rounded.History,
-                                contentDescription = "对话记录",
+                                contentDescription = S.composerHistory,
                                 tint = onGradient,
                                 modifier = Modifier.size(19.dp)
                             )
@@ -247,7 +248,7 @@ internal fun BottomGlassComposer(
                         Box(contentAlignment = Alignment.Center) {
                             Icon(
                                 Icons.Default.Tune,
-                                contentDescription = "对话设置",
+                                contentDescription = S.composerSettings,
                                 tint = onGradient,
                                 modifier = Modifier.size(19.dp)
                             )
@@ -282,7 +283,7 @@ internal fun BottomGlassComposer(
                             }
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = selectedProfileName.ifBlank { "选择方案" },
+                                text = selectedProfileName.ifBlank { S.composerPickProfile },
                                 modifier = Modifier.weight(1f),
                                 maxLines = 1,
                                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
@@ -293,7 +294,7 @@ internal fun BottomGlassComposer(
                             Spacer(modifier = Modifier.width(3.dp))
                             Icon(
                                 Icons.Default.KeyboardArrowUp,
-                                contentDescription = "展开模型选择",
+                                contentDescription = S.composerExpandModels,
                                 tint = accent,
                                 modifier = Modifier.size(15.dp)
                             )
@@ -318,14 +319,14 @@ internal fun BottomGlassComposer(
                         if (streaming) {
                             Icon(
                                 Icons.Rounded.Stop,
-                                contentDescription = "停止生成",
+                                contentDescription = S.composerStop,
                                 tint = onAccent,
                                 modifier = Modifier.size(19.dp)
                             )
                         } else {
                             Icon(
                                 Icons.AutoMirrored.Filled.Send,
-                                contentDescription = "发送",
+                                contentDescription = S.composerSend,
                                 tint = if (inputText.isNotBlank()) onAccent else onGradient.copy(alpha = 0.4f),
                                 modifier = Modifier.size(18.dp)
                             )

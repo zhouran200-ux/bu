@@ -8,8 +8,8 @@ class HistoryEntryContractTest(unittest.TestCase):
     def test_history_action_is_between_reasoning_and_settings(self):
         text = (UI / "NotebookChatTab.kt").read_text(encoding="utf-8")
         composer = (UI / "ChatOverlayComponents.kt").read_text(encoding="utf-8").split("internal fun BottomGlassComposer(", 1)[1]
-        self.assertLess(composer.index('contentDescription = "思考程度"'), composer.index('contentDescription = "对话记录"'))
-        self.assertLess(composer.index('contentDescription = "对话记录"'), composer.index('contentDescription = "对话设置"'))
+        self.assertLess(composer.index("contentDescription = S.composerReasoning"), composer.index("contentDescription = S.composerHistory"))
+        self.assertLess(composer.index("contentDescription = S.composerHistory"), composer.index("contentDescription = S.composerSettings"))
         self.assertIn("Icons.Rounded.History", composer)
         self.assertIn("onOpenHistory()", composer)
         self.assertIn("onOpenHistory = { openHistorySheet() }", text)

@@ -72,13 +72,13 @@ internal fun UserMessageCard(
         ) {
             BubbleAction(
                 icon = Icons.Rounded.ContentCopy,
-                label = "复制全文",
+                label = S.msgCopyFull,
                 tint = textColor,
                 onClick = { copyTextToClipboard(context, message.content) }
             )
             BubbleAction(
                 icon = Icons.Rounded.Edit,
-                label = "编辑",
+                label = S.msgEdit,
                 tint = textColor,
                 enabled = actionsEnabled,
                 onClick = onEdit
@@ -170,20 +170,20 @@ internal fun AiMessageCard(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         BubbleAction(
                             icon = Icons.Rounded.ContentCopy,
-                            label = "复制",
+                            label = S.msgCopy,
                             tint = LocalOnGradient.current,
                             onClick = { copyTextToClipboard(context, message.content) }
                         )
                         BubbleAction(
                             icon = Icons.Rounded.Refresh,
-                            label = "重新生成",
+                            label = S.msgRegenerate,
                             tint = LocalOnGradient.current,
                             enabled = actionsEnabled,
                             onClick = onRegenerate
                         )
                         BubbleAction(
                             icon = Icons.Rounded.Edit,
-                            label = "编辑",
+                            label = S.msgEdit,
                             tint = LocalOnGradient.current,
                             enabled = actionsEnabled,
                             onClick = onEditAnswer

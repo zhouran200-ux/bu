@@ -14,7 +14,7 @@ VERSION = [PY, "tools/version_check.py"]
 SETTINGS = [PY, "tools/settings_cache_check.py"]
 SCROLL_SELFTEST = [PY, "tools/compose_scroll_check.py", "--self-test"]
 SCROLL = [PY, "tools/compose_scroll_check.py"]
-DESIGN = [PY, "tools/design_audit.py"]
+DESIGN = [PY, "tools/design_audit.py", "--strict"]
 
 GRADLE = "./gradlew" if os.name != "nt" else "gradlew.bat"
 UNIT_TESTS = [GRADLE, ":app:testDebugUnitTest", "--console=plain"]
@@ -69,16 +69,13 @@ def main():
     print("\n================ 验证分项报告 ================")
     hard_fail = False
     for name, ok in results:
-        if name == "UI/美术规范评分":
-            mark = "参考" if ok else "参考(有告警)"
-        else:
-            mark = "通过" if ok else "失败"
-            if not ok:
-                hard_fail = True
+        mark = "通过" if ok else "失败"
+        if not ok:
+            hard_fail = True
         print(f"  [{mark}] {name}")
 
     print("\n本次仅执行上表列出的检查；未执行或失败的检查不视为通过。")
-    print("UI/美术规范为静态评分, 仅供参考, 不作阻断。")
+    print("UI/美术规范为静态评分, 已以 --strict 纳入阻断。")
     print("未自动验证 (需真机实测): 动画手感、手势是否跟手、视觉居中与配色观感、长按拖动与边缘返回冲突。")
     print("云端验证: push 到 main 后由 GitHub Actions 执行单测、编译、Lint 和模拟器测试；推送后不等待结果。")
 

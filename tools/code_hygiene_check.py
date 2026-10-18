@@ -5,7 +5,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.abspath(os.path.join(HERE, ".."))
 
 SOURCE_ROOTS = ["app/src", "baselineprofile/src"]
-MAX_LINES = 3000
+MAX_LINES = 1200
+REVIEW_LINES = 500
 GENERATED = {"app/src/main/java/com/lucent/app/i18n/I18n.kt"}
 PAIRS = {")": "(", "]": "[", "}": "{"}
 
@@ -124,6 +125,8 @@ def main():
                 largest = (lines, rel)
             if lines > MAX_LINES:
                 problems.append(f"{rel}: {lines} lines exceeds the {MAX_LINES}-line cap; split it")
+            elif lines > REVIEW_LINES:
+                print(f"::warning::{rel}: {lines} lines needs a recorded split review (500-800 band)")
         if rel in GENERATED:
             continue
         if "\t" in text:

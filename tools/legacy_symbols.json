@@ -1,0 +1,7 @@
+{
+  "retired": [
+    "HandleOnlyDrawerProperties",
+    "LucentDragHandle",
+    "byteArrayToHex"
+  ]
+}

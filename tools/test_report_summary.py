@@ -49,11 +49,12 @@ def main():
             lines.extend(f"- `{f}`" for f in failures)
     text = "\n".join(lines) + "\n"
     print(text)
+    failed_total = totals[1]
     summary = os.environ.get("GITHUB_STEP_SUMMARY")
     if summary:
         with open(summary, "a", encoding="utf-8") as handle:
             handle.write(text)
-    return 0
+    return 1 if failed_total else 0
 
 
 if __name__ == "__main__":

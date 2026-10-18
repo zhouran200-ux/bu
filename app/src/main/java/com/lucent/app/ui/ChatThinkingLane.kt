@@ -1,6 +1,7 @@
 package com.lucent.app.ui
 
 import android.content.Context
+import com.lucent.app.i18n.S
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.delay
 import androidx.compose.animation.AnimatedVisibility
@@ -84,9 +85,9 @@ internal fun ThinkingLane(
     }
 
     val title = when {
-        streaming -> "思考中"
-        answerSeconds > 0 -> "已深度思考（用时 ${answerSeconds} 秒）"
-        else -> "已深度思考"
+        streaming -> S.thinkingStreaming
+        answerSeconds > 0 -> S.thinkingDoneSeconds(answerSeconds)
+        else -> S.thinkingDone
     }
 
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -106,7 +107,7 @@ internal fun ThinkingLane(
             Spacer(modifier = Modifier.width(4.dp))
             Icon(
                 imageVector = if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                contentDescription = if (expanded) "收起思考过程" else "展开思考过程",
+                contentDescription = if (expanded) S.thinkingCollapse else S.thinkingExpand,
                 tint = accent,
                 modifier = Modifier.size(18.dp)
             )
@@ -141,7 +142,7 @@ internal fun ThinkingLane(
                     )
                 }
                 Text(
-                    text = thought.ifBlank { "等待模型给出推理内容…" },
+                    text = thought.ifBlank { S.thinkingWaiting },
                     color = if (thought.isBlank()) onGradientMuted.copy(alpha = 0.7f) else onGradientMuted,
                     fontSize = 13.sp,
                     fontFamily = FontFamily.Monospace,

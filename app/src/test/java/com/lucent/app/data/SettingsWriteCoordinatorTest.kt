@@ -77,6 +77,48 @@ class SettingsWriteCoordinatorTest {
         assertEquals(0, cache)
     }
 
+    @Test fun cancellationBeforeDispatchRestoresOptimisticCache() = runBlocking {
+        var cache = "saved"
+        var writes = 0
+        var notices = 0
+        val writer = SettingsWriteCoordinator(this)
+        val setting = SettingsWriteCoordinator.Setting({ cache }, { cache = it })
+        val job = writer.submit(listOf(setting.change("draft") { "saved" }), { writes++ }, { notices++ })
+        assertEquals("draft", cache)
+        job.cancel()
+        job.join()
+        assertEquals("saved", cache)
+        assertEquals(0, writes)
+        assertEquals(0, notices)
+    }
+
+    @Test fun cancellingAnOlderUndispatchedWriteNeverRollsBackNewerInput() = runBlocking {
+        var cache = "saved"
+        var disk = "saved"
+        val writer = SettingsWriteCoordinator(this)
+        val setting = SettingsWriteCoordinator.Setting({ cache }, { cache = it })
+        val old = writer.submit(listOf(setting.change("old") { disk }), { disk = "old" }, {})
+        val latest = writer.submit(listOf(setting.change("latest") { disk }), { disk = "latest" }, {})
+        old.cancel()
+        old.join()
+        assertEquals("latest", cache)
+        latest.join()
+        assertEquals("latest", disk)
+        assertEquals("latest", cache)
+    }
+
+    @Test fun anAlreadyCancelledOwnerDoesNotLeaveAnOptimisticDraftBehind() = runBlocking {
+        val owner = CoroutineScope(coroutineContext + SupervisorJob())
+        owner.cancel()
+        var cache = "saved"
+        var writes = 0
+        val writer = SettingsWriteCoordinator(owner)
+        val setting = SettingsWriteCoordinator.Setting({ cache }, { cache = it })
+        writer.submit(listOf(setting.change("draft") { "saved" }), { writes++ }, {}).join()
+        assertEquals("saved", cache)
+        assertEquals(0, writes)
+    }
+
     @Test fun failedResetDoesNotRollbackNewerScaleButRestoresOtherFields() = runBlocking {
         var scale = 2
         var spacing = 3

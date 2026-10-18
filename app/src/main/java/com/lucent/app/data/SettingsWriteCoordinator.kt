@@ -45,19 +45,29 @@ internal class SettingsWriteCoordinator(private val scope: CoroutineScope) {
     ): Job = synchronized(lock) {
         changes.forEach { it.accept() }
         val previous = tail
+        var finalized = false
+        fun finish(success: Boolean) = synchronized(lock) {
+            if (!finalized) {
+                finalized = true
+                changes.forEach { it.finish(success) }
+            }
+        }
         scope.launch {
             try {
                 previous?.join()
                 changes.forEach { it.read() }
                 write()
-                synchronized(lock) { changes.forEach { it.finish(true) } }
+                finish(true)
             } catch (cancelled: CancellationException) {
-                synchronized(lock) { changes.forEach { it.finish(false) } }
+                finish(false)
                 throw cancelled
             } catch (failure: Exception) {
-                synchronized(lock) { changes.forEach { it.finish(false) } }
+                finish(false)
                 failed(failure)
             }
-        }.also { tail = it }
+        }.also { job ->
+            tail = job
+            job.invokeOnCompletion { finish(false) }
+        }
     }
 }

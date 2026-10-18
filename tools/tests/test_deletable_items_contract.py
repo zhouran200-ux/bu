@@ -27,7 +27,7 @@ class DeletableItemsContractTest(unittest.TestCase):
         self.assertIn("apiProfilePreferences", owner)
 
     def test_chat_picker_respects_an_empty_profile_list(self):
-        text = (MAIN / "ui/NotebookChatTab.kt").read_text(encoding="utf-8")
+        text = (MAIN / "ui/chat/ChatActionsCoordinator.kt").read_text(encoding="utf-8")
         self.assertIn("ApiProfiles.parseStored", text)
 
     def test_empty_state_string_exists_in_the_catalog(self):

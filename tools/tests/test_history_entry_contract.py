@@ -32,7 +32,7 @@ class HistoryEntryContractTest(unittest.TestCase):
         self.assertNotIn("glassControlColor().copy(alpha = fade)", jump)
 
     def test_regeneration_preflight_precedes_destructive_changes_and_resets_stats(self):
-        text = (UI / "NotebookChatTab.kt").read_text(encoding="utf-8")
+        text = (UI / "chat/ChatActionsCoordinator.kt").read_text(encoding="utf-8")
         regenerate = text.split("fun regenerateAnswer(", 1)[1].split("fun resendEditedQuestion(", 1)[0]
         self.assertLess(regenerate.index("selection.first.apiKey.isBlank()"), regenerate.index("askModel(answerId)"))
         self.assertNotIn("messages[idx] =", regenerate)

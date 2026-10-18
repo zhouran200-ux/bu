@@ -31,7 +31,6 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.structuralEqualityPolicy
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.mutableIntStateOf
 import com.lucent.app.chat.ChatSessions
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -50,12 +49,12 @@ import androidx.compose.ui.unit.dp
 import com.lucent.app.data.ApiProfiles
 import com.lucent.app.data.CitationRef
 import com.lucent.app.data.Note
-import com.lucent.app.data.ReasoningPreset
 import com.lucent.app.data.SettingsCache
 import com.lucent.app.data.SettingsRepository
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.getValue
+import com.lucent.app.ui.chat.ChatActionsCoordinator
 import androidx.compose.runtime.setValue
 
 
@@ -91,6 +90,9 @@ fun NotebookChatTab(
         if (!granted) LucentToast.show(context, S.chatNotificationDenied)
     }
     val scope = rememberCoroutineScope()
+    val prefs = remember(notebookId) {
+        context.getSharedPreferences("lucent_notebook_chat_prefs", Context.MODE_PRIVATE)
+    }
     val messages = session.messages
     val readingKeys by remember(messages) {
         derivedStateOf(structuralEqualityPolicy()) {
@@ -103,10 +105,25 @@ fun NotebookChatTab(
             !listState.canScrollForward
         }
     }
-    var followStream by remember(notebookId) { mutableStateOf(false) }
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val actions = remember(session, notebookId) {
+        ChatActionsCoordinator(
+            context = context,
+            session = session,
+            scope = scope,
+            listState = listState,
+            sourceNotes = sourceNotes,
+            prefs = prefs,
+            notebookId = notebookId,
+            notificationPermission = notificationPermission,
+            focusManager = focusManager,
+            keyboardController = keyboardController
+        )
+    }
     val viewportAnchor = remember(notebookId) { ChatViewportAnchor() }
     LaunchedEffect(active) {
-        if (!active) followStream = false
+        if (!active) actions.followStream = false
     }
     val readingScrollConnection = remember(listState) {
         object : androidx.compose.ui.input.nestedscroll.NestedScrollConnection {
@@ -115,7 +132,7 @@ fun NotebookChatTab(
                 source: androidx.compose.ui.input.nestedscroll.NestedScrollSource
             ): androidx.compose.ui.geometry.Offset {
                 if (source == androidx.compose.ui.input.nestedscroll.NestedScrollSource.UserInput && available.y != 0f) {
-                    followStream = false
+                    actions.followStream = false
                     viewportAnchor.userScrolled()
                 }
                 return androidx.compose.ui.geometry.Offset.Zero
@@ -125,8 +142,8 @@ fun NotebookChatTab(
                 consumed: androidx.compose.ui.unit.Velocity,
                 available: androidx.compose.ui.unit.Velocity
             ): androidx.compose.ui.unit.Velocity {
-                followStream = ChatScrollMath.shouldFollowAfterScroll(
-                    wasFollowing = followStream,
+                actions.followStream = ChatScrollMath.shouldFollowAfterScroll(
+                    wasFollowing = actions.followStream,
                     atBottom = !listState.canScrollForward,
                     userScrolling = true
                 )
@@ -138,33 +155,17 @@ fun NotebookChatTab(
     var showHistorySheet by remember { mutableStateOf(false) }
     var historyAnchorId by remember { mutableStateOf<Long?>(null) }
 
-    val prefs = remember(notebookId) {
-        context.getSharedPreferences("lucent_notebook_chat_prefs", Context.MODE_PRIVATE)
-    }
-
-    var inputText by remember { mutableStateOf("") }
     val settingsRepo = remember { SettingsRepository(context) }
     val profilesJson by settingsRepo.apiProfilesJson.collectAsState(initial = SettingsCache.apiProfilesJson)
-    val savedProfiles = remember(profilesJson) {
-        ApiProfiles.parseStored(profilesJson) ?: ApiProfiles.DEFAULT_PROFILES
-    }
-    var selectedProfileId by remember(notebookId) {
-        mutableStateOf(prefs.getString("profile_id_$notebookId", "") ?: "")
-    }
-    var selectedProfileName by remember(notebookId) {
-        mutableStateOf(prefs.getString("profile_name_$notebookId", "") ?: "")
-    }
-    var selectedModel by remember(notebookId) {
-        mutableStateOf(prefs.getString("model_$notebookId", "") ?: "")
-    }
-
-    val resolvedSelection = ApiProfiles.resolveSelection(savedProfiles, selectedProfileId, selectedProfileName, selectedModel)
+    actions.profilesJson = profilesJson
+    val savedProfiles = remember(actions.profilesJson) { actions.savedProfiles }
+    val resolvedSelection = ApiProfiles.resolveSelection(savedProfiles, actions.selectedProfileId, actions.selectedProfileName, actions.selectedModel)
     LaunchedEffect(notebookId, resolvedSelection) {
         val (profile, model) = resolvedSelection ?: return@LaunchedEffect
-        if (profile.id != selectedProfileId || profile.name != selectedProfileName || model != selectedModel) {
-            selectedProfileId = profile.id
-            selectedProfileName = profile.name
-            selectedModel = model
+        if (profile.id != actions.selectedProfileId || profile.name != actions.selectedProfileName || model != actions.selectedModel) {
+            actions.selectedProfileId = profile.id
+            actions.selectedProfileName = profile.name
+            actions.selectedModel = model
             prefs.edit()
                 .putString("profile_id_$notebookId", profile.id)
                 .putString("profile_name_$notebookId", profile.name)
@@ -172,234 +173,32 @@ fun NotebookChatTab(
                 .apply()
         }
     }
-    var reasoningPreset by remember {
-        val savedKey = prefs.getString("reasoning_preset_$notebookId", null)
-            ?: prefs.getString("reasoning_$notebookId", ReasoningPreset.DEFAULT.key)
-        mutableStateOf(ReasoningPreset.fromKey(savedKey))
-    }
-    var systemPrompt by remember {
-        mutableStateOf(prefs.getString("prompt_$notebookId", "") ?: "")
-    }
-    var historyRounds by remember {
-        mutableIntStateOf(prefs.getInt("history_rounds_$notebookId", 10))
-    }
     var showDialogueSettingsDialog by remember { mutableStateOf(false) }
     var showProfileModelPickerSheet by remember { mutableStateOf(false) }
-
     val placementSpec = rememberReorderPlacementSpec()
     val streamingAnswerId = session.streamingAnswerId
-    var pendingDelete by remember { mutableStateOf<PendingChatDelete?>(null) }
     var questionToEdit by remember { mutableStateOf<UiChatMessage?>(null) }
     var answerToEdit by remember { mutableStateOf<UiChatMessage?>(null) }
     val streamingThought = session.thought
     LaunchedEffect(session.storageError) {
         session.storageError?.let { LucentToast.show(context, it) }
     }
-
     fun openHistorySheet() {
         historyAnchorId = listState.layoutInfo.visibleItemsInfo
             .firstOrNull { it.index in 1..messages.size }
             ?.let { messages.getOrNull(it.index - 1)?.id }
         showHistorySheet = true
     }
-
-    fun settlePendingDelete() {
-        val pending = pendingDelete ?: return
-        pendingDelete = null
-        session.deleteMessages(listOf(pending.message.id))
-    }
-
     DisposableEffect(notebookId) {
-        onDispose { settlePendingDelete() }
+        onDispose { actions.settlePendingDelete() }
     }
 
-    fun askModel(answerId: Long) {
-        if (!session.ready || session.pendingWriteCount > 0) return
-        val selection = ApiProfiles.resolveSelection(savedProfiles, selectedProfileId, selectedProfileName, selectedModel)
-        val matchedProfile = selection?.first
-        val targetModel = selection?.second.orEmpty()
-        val aiMsgId = answerId
-        val answerStamp = messages.firstOrNull { it.id == aiMsgId }?.timestamp ?: System.currentTimeMillis()
-        fun upsertAnswerSlot(msg: UiChatMessage) {
-            val slot = messages.indexOfFirst { it.id == msg.id }
-            if (slot >= 0) messages[slot] = msg else messages.add(msg)
-        }
-        if (targetModel.isBlank()) {
-            LucentToast.show(context, S.chatNoModelsForProfile)
-            val blankIdx = messages.indexOfFirst { it.id == aiMsgId }
-            if (blankIdx >= 0) {
-                messages[blankIdx] = messages[blankIdx].copy(content = S.chatNoModelsAnswer)
-                session.saveMessage(messages[blankIdx])
-            }
-            return
-        }
-
-        val endpoint = resolveChatEndpoint(matchedProfile)
-        val resolvedReasoning = resolveChatReasoning(reasoningPreset, matchedProfile, targetModel)
-        val effortLabel = resolvedReasoning.displayTag
-
-        if (sourceNotes.size > 1) {
-            LucentToast.show(context, S.chatSourceBindingBroken)
-            return
-        }
-        val sourceNote = sourceNotes.singleOrNull()
-        val customPrompt = systemPrompt
-
-        val historyPayload = buildChatHistory(messages, aiMsgId, historyRounds)
-
-        if (endpoint.apiKey.isBlank()) {
-            val pendingAi = UiChatMessage(
-                id = aiMsgId,
-                role = "assistant",
-                content = S.chatMissingApiKey
-            )
-            upsertAnswerSlot(pendingAi.copy(timestamp = answerStamp))
-            session.saveMessage(pendingAi.copy(timestamp = answerStamp))
-        } else {
-            if (android.os.Build.VERSION.SDK_INT >= 33 &&
-                !prefs.getBoolean("generation_notification_asked", false) &&
-                androidx.core.content.ContextCompat.checkSelfPermission(context,
-                    android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED
-            ) {
-                prefs.edit().putBoolean("generation_notification_asked", true).apply()
-                notificationPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
-            }
-            try {
-                startChatStream(
-                    session = session,
-                    answerId = aiMsgId,
-                    effortLabel = effortLabel,
-                    sourceNote = sourceNote,
-                    customPrompt = customPrompt,
-                    endpoint = endpoint,
-                    model = targetModel,
-                    historyPayload = historyPayload,
-                    resolvedReasoning = resolvedReasoning
-                )
-            } catch (e: Exception) {
-                val failed = UiChatMessage(aiMsgId, "assistant",
-                    S.chatStartFailed(e.message ?: S.chatRetry), timestamp = answerStamp)
-                upsertAnswerSlot(failed)
-                session.saveMessage(failed)
-                LucentToast.show(context, S.chatStartFailedToast)
-            }
-        }
-    }
-
-    fun startAnswer(promptText: String) {
-        val userMsg = UiChatMessage(
-            id = System.currentTimeMillis(),
-            role = "user",
-            content = promptText
-        )
-        messages.add(userMsg)
-        val saved = session.saveMessage(userMsg)
-        val answerId = userMsg.id + 1
-        messages.add(UiChatMessage(id = answerId, role = "assistant", content = "", timestamp = answerId))
-        followStream = true
-        scope.launch {
-            delay(100)
-            if (followStream && !listState.isScrollInProgress) {
-                listState.animateScrollToItem((messages.size - 1).coerceAtLeast(0))
-            }
-        }
-        session.afterWrite(saved, onFailure = {
-            messages.removeAll { it.id == answerId }
-            LucentToast.show(context, S.chatQuestionNotSaved)
-        }) { askModel(answerId) }
-    }
-
-    fun regenerateAnswer(answerId: Long) {
-        if (!session.ready || session.pendingWriteCount > 0 || session.hasPendingAction) return
-        if (streamingAnswerId != null) {
-            LucentToast.show(context, S.chatStillAnswering)
-            return
-        }
-        val idx = messages.indexOfFirst { it.id == answerId }
-        if (idx < 0) return
-        val question = messages.take(idx).lastOrNull { it.role == "user" }?.content.orEmpty()
-        if (question.isBlank()) {
-            LucentToast.show(context, S.chatRegenerateTargetMissing)
-            return
-        }
-        val selection = ApiProfiles.resolveSelection(savedProfiles, selectedProfileId, selectedProfileName, selectedModel)
-        if (selection == null || selection.second.isBlank() || selection.first.apiKey.isBlank()) {
-            LucentToast.show(context, S.chatNoModelOrKey)
-            return
-        }
-        settlePendingDelete()
-        session.afterWrite(session.retryPendingWrites()) { askModel(answerId) }
-    }
-
-    fun resendEditedQuestion(questionId: Long, newText: String) {
-        if (!session.ready || session.streamingAnswerId != null || session.pendingWriteCount > 0 || session.hasPendingAction) return
-        val idx = messages.indexOfFirst { it.id == questionId }
-        if (idx < 0) return
-        settlePendingDelete()
-        val followingIds = messages.drop(idx + 1).map { it.id }
-        while (messages.size > idx + 1) messages.removeAt(messages.size - 1)
-        messages[idx] = messages[idx].copy(content = newText)
-        val saved = session.replaceQuestionAndDropFollowing(questionId, newText, followingIds)
-        session.afterWrite(saved) {
-            val answerId = System.currentTimeMillis() + 1
-            messages.add(UiChatMessage(id = answerId, role = "assistant", content = "", timestamp = answerId))
-            askModel(answerId)
-        }
-    }
-
-    fun saveAnswerEdit(answerId: Long, newText: String) {
-        if (!session.ready || session.streamingAnswerId != null || session.pendingWriteCount > 0 || session.hasPendingAction) return
-        val idx = messages.indexOfFirst { it.id == answerId }
-        if (idx < 0) return
-        messages[idx] = messages[idx].copy(content = newText)
-        session.updateMessageContent(answerId, newText)
-    }
-
-    fun deleteMessage(target: UiChatMessage) {
-        if (!session.ready || session.streamingAnswerId != null || session.pendingWriteCount > 0 || session.hasPendingAction) return
-        val idx = messages.indexOfFirst { it.id == target.id }
-        if (idx < 0) return
-        if (pendingDelete != null) LucentToast.show(context, S.chatPreviousDeleteApplied)
-        settlePendingDelete()
-        val firstIndex = listState.firstVisibleItemIndex
-        val keys = listOf("header") + messages.map { "message:${it.id}" } + "footer"
-        val viewport = ReadingPosition(
-            itemKey = keys.getOrElse(firstIndex) { "header" },
-            index = firstIndex,
-            offset = listState.firstVisibleItemScrollOffset
-        )
-        messages.removeAt(idx)
-        pendingDelete = PendingChatDelete(message = target, index = idx, viewport = viewport)
-    }
-
-    fun undoDelete() {
-        val pending = pendingDelete ?: return
-        pendingDelete = null
-        if (messages.none { it.id == pending.message.id }) {
-            val at = pending.index.coerceIn(0, messages.size)
-            messages.add(at, pending.message)
-            followStream = false
-            val keys = listOf("header") + messages.map { "message:${it.id}" } + "footer"
-            val viewport = pending.viewport.resolve(keys)
-            listState.requestScrollToItem(viewport.index, viewport.offset)
-        }
-    }
-
-    val focusManager = LocalFocusManager.current
-    val keyboardController = LocalSoftwareKeyboardController.current
     val isImeVisible = WindowInsets.isImeVisible
     val barMotionOn = LocalBackgroundEnvironment.current.motionEnabled
     var showReasoningMenu by remember(notebookId) { mutableStateOf(false) }
     var reasoningButtonBounds by remember { mutableStateOf(androidx.compose.ui.geometry.Rect.Zero) }
     var chatCoordinates by remember { mutableStateOf<androidx.compose.ui.layout.LayoutCoordinates?>(null) }
     LaunchedEffect(active) { if (!active) showReasoningMenu = false }
-
-    fun stopStreaming() {
-        if (streamingAnswerId == null) return
-        session.stop()
-        Haptics.tick(context)
-    }
-
     val streamProgress by remember(session) {
         derivedStateOf {
             val id = session.streamingAnswerId ?: return@derivedStateOf 0
@@ -411,7 +210,7 @@ fun NotebookChatTab(
         if (!active || streamingAnswerId == null) return@LaunchedEffect
         followStreamUpdates(
             updates = androidx.compose.runtime.snapshotFlow { streamProgress },
-            canFollow = { followStream && !listState.isScrollInProgress },
+            canFollow = { actions.followStream && !listState.isScrollInProgress },
             awaitLayout = {
                 delay(80)
                 androidx.compose.runtime.withFrameNanos { }
@@ -422,23 +221,6 @@ fun NotebookChatTab(
         )
     }
 
-    val onSendMessage: () -> Unit = send@{
-        val text = inputText.trim()
-        if (text.isEmpty()) return@send
-        if (!session.ready || session.pendingWriteCount > 0 || session.hasPendingAction) {
-            LucentToast.show(context, session.storageError ?: S.chatLoadingRetry)
-            return@send
-        }
-        if (streamingAnswerId != null) {
-            LucentToast.show(context, S.chatStreamingHint)
-            return@send
-        }
-        inputText = ""
-        Haptics.tick(context)
-        focusManager.clearFocus()
-        keyboardController?.hide()
-        startAnswer(text)
-    }
 
     LaunchedEffect(listState, active, viewportAnchor) {
         if (!active) return@LaunchedEffect
@@ -451,7 +233,6 @@ fun NotebookChatTab(
             }
         }
     }
-
     Box(modifier = modifier.fillMaxSize()
         .onGloballyPositioned { chatCoordinates = it }
         .pointerInput(showReasoningMenu) {
@@ -515,7 +296,7 @@ fun NotebookChatTab(
                             message = msg,
                             actionsEnabled = actionsEnabled,
                             onEdit = { questionToEdit = msg },
-                            onDelete = { deleteMessage(msg) }
+                            onDelete = { actions.deleteMessage(msg) }
                         )
                     } else {
                         AiMessageCard(
@@ -525,9 +306,9 @@ fun NotebookChatTab(
                             streaming = msg.id == streamingAnswerId,
                             liveThought = if (msg.id == streamingAnswerId) streamingThought else null,
                             actionsEnabled = actionsEnabled,
-                            onRegenerate = { regenerateAnswer(msg.id) },
+                            onRegenerate = { actions.regenerateAnswer(msg.id) },
                             onEditAnswer = { answerToEdit = msg },
-                            onDelete = { deleteMessage(msg) },
+                            onDelete = { actions.deleteMessage(msg) },
                             onCitationClick = openCitation
                         )
                     }
@@ -540,7 +321,7 @@ fun NotebookChatTab(
                 itemKeys = readingKeys,
                 enabled = active && !isImeVisible,
                 onDragStart = {
-                    followStream = false
+                    actions.followStream = false
                     viewportAnchor.userScrolled()
                 },
                 modifier = Modifier.align(Alignment.CenterEnd)
@@ -555,14 +336,14 @@ fun NotebookChatTab(
                         if (!isImeVisible) Modifier.navigationBarsPadding()
                         else Modifier
                     ),
-                inputText = inputText,
-                onInputChange = { inputText = it },
+                inputText = actions.inputText,
+                onInputChange = { actions.inputText = it },
                 showReasoningMenu = showReasoningMenu,
                 onReasoningMenuChange = { showReasoningMenu = it },
                 onReasoningButtonBounds = { reasoningButtonBounds = it },
-                reasoningPreset = reasoningPreset,
+                reasoningPreset = actions.reasoningPreset,
                 onSelectReasoning = {
-                    reasoningPreset = it
+                    actions.reasoningPreset = it
                     saveReasoningSelection(prefs, notebookId, it)
                 },
                 onOpenHistory = { openHistorySheet() },
@@ -570,24 +351,24 @@ fun NotebookChatTab(
                 selectedProfileName = resolvedSelection?.first?.name.orEmpty(),
                 onOpenModelPicker = { showProfileModelPickerSheet = true },
                 streaming = streamingAnswerId != null,
-                onSend = onSendMessage,
-                onStop = { stopStreaming() }
+                onSend = actions.onSendMessage,
+                onStop = { actions.stopStreaming() }
             )
         }
 
         ChatDeleteUndoLayer(
-            pending = pendingDelete,
+            pending = actions.pendingDelete,
             motionOn = barMotionOn,
             imeVisible = isImeVisible,
-            onUndo = { undoDelete() },
-            onDismiss = { settlePendingDelete() }
+            onUndo = { actions.undoDelete() },
+            onDismiss = { actions.settlePendingDelete() }
         )
 
         ChatScrollToBottomButton(
             visible = !atBottom && !isImeVisible && messages.isNotEmpty(),
             motionOn = barMotionOn,
             onClick = {
-                followStream = true
+                actions.followStream = true
                 scope.launch {
                     listState.animateScrollToItem(
                         (listState.layoutInfo.totalItemsCount - 1).coerceAtLeast(0)
@@ -603,7 +384,7 @@ fun NotebookChatTab(
                 streamingAnswerId = streamingAnswerId,
                 onMessageClick = { id ->
                     historyAnchorId = id
-                    followStream = false
+                    actions.followStream = false
                     val target = messages.indexOfFirst { it.id == id }
                     if (target >= 0) {
                         scope.launch { listState.animateScrollToItem(target + 1) }
@@ -611,12 +392,12 @@ fun NotebookChatTab(
                 },
                 onTop = {
                     historyAnchorId = messages.firstOrNull()?.id
-                    followStream = false
+                    actions.followStream = false
                     scope.launch { listState.animateScrollToItem(0) }
                 },
                 onBottom = {
                     historyAnchorId = messages.lastOrNull()?.id
-                    followStream = true
+                    actions.followStream = true
                     scope.launch {
                         listState.animateScrollToItem((listState.layoutInfo.totalItemsCount - 1).coerceAtLeast(0))
                     }
@@ -627,11 +408,11 @@ fun NotebookChatTab(
 
         if (showDialogueSettingsDialog) {
             DialogueSettingsSheet(
-                initialPrompt = systemPrompt,
-                initialHistoryRounds = historyRounds,
+                initialPrompt = actions.systemPrompt,
+                initialHistoryRounds = actions.historyRounds,
                 onSave = { p, r ->
-                    systemPrompt = p
-                    historyRounds = r
+                    actions.systemPrompt = p
+                    actions.historyRounds = r
                     saveDialogueSettings(prefs, notebookId, p, r)
                     LucentToast.show(context, S.chatSettingsSaved)
                 },
@@ -645,9 +426,9 @@ fun NotebookChatTab(
                 currentProfileId = resolvedSelection?.first?.id.orEmpty(),
                 currentModel = resolvedSelection?.second.orEmpty(),
                 onSelect = { profile, modelName ->
-                    selectedProfileId = profile.id
-                    selectedProfileName = profile.name
-                    selectedModel = modelName
+                    actions.selectedProfileId = profile.id
+                    actions.selectedProfileName = profile.name
+                    actions.selectedModel = modelName
                     saveProfileSelection(prefs, notebookId, profile, modelName)
                 },
                 onDismiss = { showProfileModelPickerSheet = false },
@@ -664,7 +445,7 @@ fun NotebookChatTab(
                 confirmLabel = S.chatEditQuestionConfirm,
                 onConfirm = { text ->
                     questionToEdit = null
-                    resendEditedQuestion(target.id, text)
+                    actions.resendEditedQuestion(target.id, text)
                 },
                 onDismiss = { questionToEdit = null }
             )
@@ -678,7 +459,7 @@ fun NotebookChatTab(
                 confirmLabel = S.userAgentSaveButton,
                 onConfirm = { text ->
                     answerToEdit = null
-                    saveAnswerEdit(target.id, text)
+                    actions.saveAnswerEdit(target.id, text)
                 },
                 onDismiss = { answerToEdit = null }
             )

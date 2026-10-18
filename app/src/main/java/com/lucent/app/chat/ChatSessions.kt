@@ -53,9 +53,9 @@ object ChatSessions {
     private fun trimIdle(excluded: Long? = null) {
         val idle = sessions.entries.asSequence()
             .filter { (id, entry) -> id != excluded && !pageOwners.containsKey(id) && entry.first.canRelease() }
-            .sortedBy { it.value.second }
-            .toList()
-        for ((id, entry) in idle.take((idle.size - MAX_IDLE_SESSIONS).coerceAtLeast(0))) {
+            .associate { it.key to it.value.second }
+        for (id in evictionOrder(idle, MAX_IDLE_SESSIONS)) {
+            val entry = sessions[id] ?: continue
             if (entry.first.releaseIfIdle()) sessions.remove(id, entry)
         }
     }

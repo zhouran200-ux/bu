@@ -30,18 +30,15 @@ internal object SettingsCorruptionSignal {
     }
 }
 
-internal fun backupCorruptedSettings(context: Context): Boolean {
-    if (SettingsCorruptionSignal.consume() == null) return false
+internal fun backupCorruptedSettings(directory: File, pending: CorruptionException?): Boolean {
+    if (pending == null) return false
     return runCatching {
-        val prefsFile = File(context.filesDir, "datastore/lucent_settings.preferences_pb")
-        if (prefsFile.exists()) {
-            val backup = File(context.filesDir, "datastore/lucent_settings.corrupt")
-            prefsFile.copyTo(backup, overwrite = true)
-            backup.setReadable(true, false)
-            true
-        } else {
-            false
-        }
+        val prefsFile = File(directory, "datastore/lucent_settings.preferences_pb")
+        if (!prefsFile.exists()) return@runCatching false
+        val backup = File(directory, "datastore/lucent_settings.corrupt")
+        backup.parentFile?.mkdirs()
+        prefsFile.copyTo(backup, overwrite = true)
+        backup.exists() && backup.length() == prefsFile.length()
     }.getOrDefault(false)
 }
 
@@ -74,7 +71,7 @@ class SettingsRepository(context: Context) {
     private val context: Context = context.applicationContext
 
     init {
-        backupCorruptedSettings(context)
+        backupCorruptedSettings(context.filesDir, SettingsCorruptionSignal.consume())
     }
 
     private fun setting(

@@ -15,7 +15,7 @@ SCOPE = ("app/src/main/java/com/lucent/app/ui/", "app/src/main/java/com/lucent/a
 CJK = re.compile(r"[\u3400-\u9fff\uf900-\ufaff\U00020000-\U0002ffff]")
 DIRECT = re.compile(r"(?:\b(?:Text|BasicText)\s*\(\s*|\b(?:text|title|subtitle|placeholder|contentDescription)\s*=\s*)$")
 # Font specimens show glyph shapes rather than translatable words.
-SPECIMENS = {("app/src/main/java/com/lucent/app/ui/settings/FontSettingsPage.kt", "Aa")}
+SPECIMENS = {("app/src/main/java/com/lucent/app/ui/settings/FontLibrarySection.kt", "Aa")}
 
 
 def wording_findings(text, rel):

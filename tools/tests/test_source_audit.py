@@ -134,7 +134,7 @@ val ch = '中'
         self.assertEqual([(3, "literal-user-wording", "Locked")], self.findings('Icon(\ncontentDescription = /* comment */\n"Locked")'))
 
     def test_specimen_exception_is_path_and_value_specific(self):
-        rel = "app/src/main/java/com/lucent/app/ui/settings/FontSettingsPage.kt"
+        rel = "app/src/main/java/com/lucent/app/ui/settings/FontLibrarySection.kt"
         self.assertEqual([], wording.wording_findings('Text("Aa")', rel))
         self.assertTrue(self.findings('Text("Aa")'))
         self.assertTrue(wording.wording_findings('Text("English wording")', rel))

@@ -22,7 +22,7 @@ class CountSliderReorderContractTest(unittest.TestCase):
         self.assertNotIn("PointerEventPass.Initial", gesture)
 
     def test_typography_card_compacts_spacing_without_shrinking_hit_targets(self):
-        text = (UI / "settings/FontSettingsPage.kt").read_text(encoding="utf-8")
+        text = (UI / "settings/FontTypographySection.kt").read_text(encoding="utf-8")
         card = text.split("compact = true,", 1)[0].rsplit("Column(", 1)[1]
         self.assertIn(".padding(horizontal = 16.dp, vertical = 12.dp)", card)
         self.assertEqual(3, text.count("compact = true,"))

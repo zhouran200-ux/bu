@@ -57,7 +57,8 @@ android {
                 storeFile = file(releaseStorePath)
                 storePassword = System.getenv("LUCENT_KEYSTORE_PASSWORD")
                 keyAlias = System.getenv("LUCENT_KEY_ALIAS") ?: "lucent"
-                keyPassword = System.getenv("LUCENT_KEYSTORE_PASSWORD")
+                keyPassword = System.getenv("LUCENT_KEY_PASSWORD")
+                    ?: System.getenv("LUCENT_KEYSTORE_PASSWORD")
             }
         }
     }

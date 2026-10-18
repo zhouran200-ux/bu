@@ -16,6 +16,11 @@ on:
         required: false
         type: string
         default: ''
+      require_release_signing:
+        description: 'Reject debug signing for a formal release.'
+        required: false
+        type: boolean
+        default: false
     outputs:
       version:
         description: 'The version name baked into the APK'
@@ -63,15 +68,27 @@ jobs:
         env:
           KEYSTORE_B64: ${{ secrets.LUCENT_KEYSTORE_BASE64 }}
           KEYSTORE_PW: ${{ secrets.LUCENT_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.LUCENT_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.LUCENT_KEY_PASSWORD }}
+          REQUIRE_RELEASE_SIGNING: ${{ inputs.require_release_signing || false }}
         run: |
           set -eu
+          if { [ -n "$KEYSTORE_B64" ] && [ -z "$KEYSTORE_PW" ]; } || { [ -z "$KEYSTORE_B64" ] && [ -n "$KEYSTORE_PW" ]; }; then
+            echo "::error::正式签名配置不完整，必须同时配置 LUCENT_KEYSTORE_BASE64 和 LUCENT_KEYSTORE_PASSWORD。"
+            exit 1
+          fi
           if [ -n "$KEYSTORE_B64" ] && [ -n "$KEYSTORE_PW" ]; then
             STORE="$RUNNER_TEMP/lucent-release.keystore"
             printf '%s' "$KEYSTORE_B64" | base64 -d > "$STORE"
             echo "LUCENT_KEYSTORE_PASSWORD=$KEYSTORE_PW" >> "$GITHUB_ENV"
-            echo "alias=lucent" >> "$GITHUB_OUTPUT"
+            echo "LUCENT_KEY_PASSWORD=${KEY_PASSWORD:-$KEYSTORE_PW}" >> "$GITHUB_ENV"
+            echo "alias=${KEY_ALIAS:-lucent}" >> "$GITHUB_OUTPUT"
             echo "mode=release" >> "$GITHUB_OUTPUT"
           else
+            if [ "$REQUIRE_RELEASE_SIGNING" = "true" ]; then
+              echo "::error::正式发布必须配置专用签名密钥，不能使用预览调试签名。"
+              exit 1
+            fi
             echo "::warning::未配置 LUCENT_KEYSTORE_BASE64 / LUCENT_KEYSTORE_PASSWORD，本次改用仓库内的 debug.keystore 签名。APK 可以正常安装使用，但它不是可分发的正式发布签名。"
             STORE="$GITHUB_WORKSPACE/debug.keystore"
             echo "LUCENT_KEYSTORE_PASSWORD=android" >> "$GITHUB_ENV"
@@ -164,13 +181,13 @@ jobs:
           if-no-files-found: ignore
   publish-preview:
     needs: build-apk
-    if: github.event_name != 'workflow_call'
+    if: ${{ !inputs.require_release_signing }}
     runs-on: ubuntu-24.04
     permissions:
       contents: write
     steps:
       - name: Download APK
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8.0.2
         with:
           name: lucent-release-apk
           path: apk

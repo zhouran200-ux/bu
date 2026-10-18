@@ -174,7 +174,7 @@ internal fun ProfileModelPickerSheet(
                                 ) {
                                     Box(
                                         modifier = Modifier.size(7.dp)
-                                            .background(if (modelSelected) Color(0xFF22C55E) else Color.Transparent, CircleShape)
+                                            .background(if (modelSelected) LucentStatusColors.Selected else Color.Transparent, CircleShape)
                                     )
                                     Spacer(Modifier.width(8.dp))
                                     Text(

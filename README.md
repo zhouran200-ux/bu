@@ -37,6 +37,17 @@ Lucent 是一款中文 Android 笔记本应用：笔记、来源文档和对话�
 
 推送到 `main` 会触发这两个工作流。APK 工作流优先使用仓库 Secrets 中的正式签名；未配置时会使用仓库内 `debug.keystore`，产物可安装但不是正式发布签名。
 
+## 正式签名配置
+
+在仓库 Settings → Secrets and variables → Actions 配置以下 Secrets：
+
+- `LUCENT_KEYSTORE_BASE64`：专用签名 keystore 的 Base64 内容。
+- `LUCENT_KEYSTORE_PASSWORD`：keystore 密码。
+- `LUCENT_KEY_ALIAS`：可选，密钥别名，默认 `lucent`。
+- `LUCENT_KEY_PASSWORD`：可选，密钥密码，默认与 keystore 密码相同。
+
+正式 Release 工作流要求专用签名，缺少配置会停止；普通预览构建仍保留现有调试签名回退，且在产物名称和构建警告中标明。配置不完整会报错，不会静默回退。请备份并长期保留同一专用密钥；从调试签名切换到专用签名不能直接覆盖现有安装，应先安排本地数据迁移。不要将 keystore 或密码提交到仓库。
+
 ## 项目结构
 
     app/             Android 应用、Compose 界面、Room 数据层和本地资源

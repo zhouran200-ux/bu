@@ -55,7 +55,8 @@ class ForegroundGlassContractTest(unittest.TestCase):
             self.assertIn("sheetContentHeightLimit()", text)
         picker = POPUP_FILES["ProfileModelPickerSheet.kt"].read_text(encoding="utf-8")
         self.assertIn("sheetGesturesEnabled = false", picker)
-        self.assertIn("dragHandle = drawer.handle", picker)
+        self.assertIn("dragHandle = null", picker)
+        self.assertIn("drawer.handle()", picker)
         notebooks = POPUP_FILES["NotebooksScreen.kt"].read_text(encoding="utf-8")
         self.assertIn("LaunchedEffect(listScrolling) { if (listScrolling) menuOpen = false }", notebooks)
 

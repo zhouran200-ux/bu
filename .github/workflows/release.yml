@@ -78,11 +78,14 @@ jobs:
           python3 tools/compose_scroll_check.py
 
   apk:
+    permissions:
+      contents: write
     needs: prepare
     uses: ./.github/workflows/build-apk.yml
     secrets: inherit
     with:
       version_name: ${{ needs.prepare.outputs.version }}
+      require_release_signing: true
 
   create-release:
     runs-on: ubuntu-24.04

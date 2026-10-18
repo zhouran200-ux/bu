@@ -40,6 +40,7 @@ enum class ReasoningControl {
     GEMINI_THINKING_BUDGET,
     DEEPSEEK_EFFORT,
     QWEN_EFFORT,
+    ZHIPU_EFFORT,
     NONE
 }
 
@@ -258,6 +259,27 @@ class QwenReasoningMapper : ReasoningMapper {
 }
 
 
+class ZhipuReasoningMapper : ReasoningMapper {
+    override fun map(preset: ReasoningPreset, model: ModelDefinition): ResolvedReasoningConfig {
+        if (preset == ReasoningPreset.AUTO) return ResolvedReasoningConfig.AUTO
+
+        val desired = when (preset) {
+            ReasoningPreset.AUTO -> "low"
+            ReasoningPreset.FAST -> "low"
+            ReasoningPreset.BALANCED -> "high"
+            ReasoningPreset.DEEP -> "high"
+            ReasoningPreset.MAXIMUM -> "max"
+        }
+        val effort = ReasoningLevels.supported(desired, model.reasoning.levels)
+        return ResolvedReasoningConfig(
+            preset = preset,
+            openAiEffort = effort,
+            displayTag = "GLM $effort"
+        )
+    }
+}
+
+
 class FallbackReasoningMapper : ReasoningMapper {
     override fun map(preset: ReasoningPreset, model: ModelDefinition): ResolvedReasoningConfig {
         return ResolvedReasoningConfig(
@@ -276,6 +298,7 @@ object ReasoningResolver {
     private val geminiBudgetMapper = GeminiBudgetReasoningMapper()
     private val deepSeekMapper = DeepSeekReasoningMapper()
     private val qwenMapper = QwenReasoningMapper()
+    private val zhipuMapper = ZhipuReasoningMapper()
     private val fallbackMapper = FallbackReasoningMapper()
 
     fun resolve(
@@ -295,6 +318,7 @@ object ReasoningResolver {
             ReasoningControl.GEMINI_THINKING_BUDGET -> geminiBudgetMapper
             ReasoningControl.DEEPSEEK_EFFORT -> deepSeekMapper
             ReasoningControl.QWEN_EFFORT -> qwenMapper
+            ReasoningControl.ZHIPU_EFFORT -> zhipuMapper
             ReasoningControl.NONE -> fallbackMapper
         }
 

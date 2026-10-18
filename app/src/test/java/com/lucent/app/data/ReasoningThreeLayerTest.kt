@@ -221,6 +221,37 @@ class ReasoningThreeLayerTest {
     }
 
     @Test
+    fun zhipuGlmStaysInsideTheValuesEachVersionAccepts() {
+        val fast = ReasoningResolver.resolve(ReasoningPreset.FAST, "openai", "glm-5.3")
+        assertEquals("low", fast.openAiEffort)
+
+        val balanced = ReasoningResolver.resolve(ReasoningPreset.BALANCED, "openai", "glm-5.3")
+        assertEquals("high", balanced.openAiEffort)
+
+        val maximum = ReasoningResolver.resolve(ReasoningPreset.MAXIMUM, "openai", "glm-5.3")
+        assertEquals("max", maximum.openAiEffort)
+
+        val wide = ReasoningResolver.resolve(ReasoningPreset.DEEP, "openai", "glm-5.2")
+        assertEquals("high", wide.openAiEffort)
+
+        val legacy = ReasoningResolver.resolve(ReasoningPreset.DEEP, "openai", "glm-4.6")
+        assertTrue(legacy.isAuto)
+        assertEquals("模型默认", legacy.displayTag)
+    }
+
+    @Test
+    fun qwenThirtyEightKeepsItsDocumentedEffortValues() {
+        val deep = ReasoningResolver.resolve(ReasoningPreset.DEEP, "openai", "qwen3.8-max")
+        assertEquals("xhigh", deep.openAiEffort)
+
+        val balanced = ReasoningResolver.resolve(ReasoningPreset.BALANCED, "openai", "qwen3.8-max")
+        assertEquals("medium", balanced.openAiEffort)
+
+        val fast = ReasoningResolver.resolve(ReasoningPreset.FAST, "openai", "qwen3.8-omni-flash")
+        assertEquals("low", fast.openAiEffort)
+    }
+
+    @Test
     fun everyPresetStaysInsideTheDeclaredLevels() {
         ModelCapabilityRegistry.getAll().forEach { model ->
             val levels = model.reasoning.levels

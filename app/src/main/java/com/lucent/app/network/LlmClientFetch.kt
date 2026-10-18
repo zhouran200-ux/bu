@@ -57,6 +57,8 @@ internal object LlmClientFetch {
                             "gemini_thinking_level", "thinking_level" -> com.lucent.app.data.ReasoningControl.GEMINI_THINKING_LEVEL
                             "gemini_thinking_budget", "thinking_budget" -> com.lucent.app.data.ReasoningControl.GEMINI_THINKING_BUDGET
                             "deepseek_effort" -> com.lucent.app.data.ReasoningControl.DEEPSEEK_EFFORT
+                            "qwen_effort" -> com.lucent.app.data.ReasoningControl.QWEN_EFFORT
+                            "zhipu_effort", "glm_effort" -> com.lucent.app.data.ReasoningControl.ZHIPU_EFFORT
                             "none" -> com.lucent.app.data.ReasoningControl.NONE
                             else -> if (spec == ApiSpec.GOOGLE) com.lucent.app.data.ReasoningControl.GEMINI_THINKING_LEVEL else com.lucent.app.data.ReasoningControl.OPENAI_EFFORT
                         }

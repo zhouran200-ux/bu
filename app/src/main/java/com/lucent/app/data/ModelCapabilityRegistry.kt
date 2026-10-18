@@ -11,6 +11,9 @@ object ModelCapabilityRegistry {
     private val geminiModern = listOf("LOW", "MEDIUM", "HIGH")
     private val geminiHighLow = listOf("LOW", "HIGH")
     private val deepSeekLevels = listOf("low", "high", "max")
+    private val qwenLevels = listOf("low", "medium", "xhigh")
+    private val zhipuLevels = listOf("low", "high", "max")
+    private val zhipuWideLevels = listOf("low", "medium", "high", "xhigh", "max")
 
     init {
         registerOpenAiModels()
@@ -18,6 +21,7 @@ object ModelCapabilityRegistry {
         registerGeminiModels()
         registerDeepSeekModels()
         registerQwenModels()
+        registerZhipuModels()
     }
 
     @Synchronized
@@ -48,6 +52,7 @@ object ModelCapabilityRegistry {
             clean.contains("gemini") -> geminiControl(clean)
             clean.contains("deepseek") || clean.contains("r1") -> ReasoningControl.DEEPSEEK_EFFORT
             clean.contains("qwen") || clean.contains("qvq") -> ReasoningControl.QWEN_EFFORT
+            clean.contains("glm") -> zhipuControl(clean)
             prov.contains("openai") || prov.contains("chatgpt") || clean.startsWith("o1") || clean.startsWith("o3") ||
                 clean.startsWith("o4") || clean.contains("gpt-6") || clean.contains("gpt-5") -> ReasoningControl.OPENAI_EFFORT
             prov.contains("claude") || prov.contains("anthropic") -> claudeControl(clean)
@@ -62,6 +67,8 @@ object ModelCapabilityRegistry {
             ReasoningControl.OPENAI_EFFORT -> openAiLevels(clean)
             ReasoningControl.ANTHROPIC_EFFORT -> claudeLevels(clean)
             ReasoningControl.DEEPSEEK_EFFORT -> deepSeekLevels
+            ReasoningControl.QWEN_EFFORT -> qwenLevels
+            ReasoningControl.ZHIPU_EFFORT -> zhipuLevelsFor(clean)
             ReasoningControl.GEMINI_THINKING_LEVEL -> geminiLevels(clean)
             else -> emptyList()
         }
@@ -126,6 +133,18 @@ object ModelCapabilityRegistry {
         }
     }
 
+    private fun zhipuControl(clean: String): ReasoningControl {
+        return if (version(clean, "glm-") >= 5.2) ReasoningControl.ZHIPU_EFFORT else ReasoningControl.NONE
+    }
+
+    private fun zhipuLevelsFor(clean: String): List<String> {
+        return when {
+            version(clean, "glm-") >= 5.3 -> zhipuLevels
+            version(clean, "glm-") >= 5.2 -> zhipuWideLevels
+            else -> emptyList()
+        }
+    }
+
     private fun registerOpenAiModels() {
         listOf("o1", "o1-preview", "o1-mini", "o3", "o3-mini", "o4", "o4-mini").forEach { id ->
             register(ModelDefinition(id, ReasoningCapability(true, ReasoningControl.OPENAI_EFFORT, levels = openAiLegacy)))
@@ -181,8 +200,23 @@ object ModelCapabilityRegistry {
     }
 
     private fun registerQwenModels() {
-        listOf("qwen-max", "qwen-plus", "qwen3.8-max", "qwen3.8-flash", "qwen3.8-omni-flash", "qvq-72b-preview").forEach { id ->
+        listOf("qwen3.8-max", "qwen3.8-flash", "qwen3.8-omni-flash").forEach { id ->
+            register(ModelDefinition(id, ReasoningCapability(true, ReasoningControl.QWEN_EFFORT, levels = qwenLevels)))
+        }
+        listOf("qwen-max", "qwen-plus", "qvq-72b-preview").forEach { id ->
             register(ModelDefinition(id, ReasoningCapability(true, ReasoningControl.QWEN_EFFORT)))
+        }
+    }
+
+    private fun registerZhipuModels() {
+        listOf("glm-5.3", "glm-5.3-flash", "glm-5.3-flashx").forEach { id ->
+            register(ModelDefinition(id, ReasoningCapability(true, ReasoningControl.ZHIPU_EFFORT, levels = zhipuLevels)))
+        }
+        listOf("glm-5.2").forEach { id ->
+            register(ModelDefinition(id, ReasoningCapability(true, ReasoningControl.ZHIPU_EFFORT, levels = zhipuWideLevels)))
+        }
+        listOf("glm-5.1", "glm-5", "glm-5-turbo", "glm-4.7", "glm-4.6", "glm-4.5").forEach { id ->
+            register(ModelDefinition(id, ReasoningCapability.NONE))
         }
     }
 }

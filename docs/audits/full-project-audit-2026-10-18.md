@@ -1,111 +1,180 @@
-# 全项目审计报告（正向审计 + 反向合规）
+# 全项目审计报告（正向审计 + 反向合规）v2
 
-- 审计基线：提交 `9a3a9e8`（main，与 origin/main 同步，工作区干净）
-- 依据：`AGENTS.md`（交付约定、源码结构与 UI 复杂度约束、强制残留审计规范）+ 项目既有工具链
-- 方法：正向审计（规则 → 代码，找违反）+ 反向合规（代码/规则 → 检查手段，找无强制约束的盲区），两侧独立取证后交叉核对
-- 结论边界：静态审计，不等于设备验证。性能、内存、真实端点兼容、动画手感、厂商 ROM 行为不在本报告覆盖范围
+- 基线：`ff2e6bb`（main，比 origin/main 领先 1，工作区干净）
+- 依据：`AGENTS.md` 全部条款 + 项目现有工具链
+- 方法：六个领域并行深挖（持久化、网络会话、UI 职责、资源文案、测试 CI、反向合规矩阵），每条结论回到源码取证；本文覆盖并更正 v1 的两处错误
+- 边界：静态审计 + 本地可执行检查。性能、内存、真实端点、真机 UI、厂商 ROM 不在覆盖内
 
-## 一、结论摘要
+## 0. 对 v1 的更正
 
-| 维度 | 结果 |
+| v1 的说法 | 实际情况 |
 |---|---|
-| 已有自动检查且当前通过 | 源码卫生、设计审计、Python 契约 63 项、版本一致性、设置缓存回写、嵌套滚动、Debug/Release 编译、JVM 单测、Lint |
-| 明确违反 AGENTS.md 的代码事实 | 1 类结构性问题（页面层直连持久化，共 6 处入口）+ 1 类文案问题（155 处 UI 硬编码中文） |
-| 规则无任何检查强制（反向盲区） | 5 条强制规则无自动检查，见第四节矩阵 |
-| 检查强度与规则不一致 | 1 处：源码卫生上限 3000 行，规则要求 1200 行上限 |
-| 配置矛盾/死配置 | 2 处：备份规则与 allowBackup 矛盾；values-night 缺少 theme 覆盖 |
+| 「颜色无硬编码，审计 100/100 合规」 | 审计恒为 0 的原因：ui/ 全部十六进制色（实测 131 处）都在 `design_audit.py` 的 7 个整文件豁免里，白名单外 0 处。检查被绕过，不是没问题 |
+| 「verify.py 用正则拦截 assemble/package/bundle」 | 无此代码。`verify.py` 只是预先定义命令清单，靠 `test_cloud_validation.py` 断言「清单里不出现打包任务」，不构成运行时拦截 |
+| 「最大手写文件 NotebookChatTab 670 行」（只测了 main） | 全项目最大是 `AppDatabaseMigrationTest.kt` **743** 行；main 代码内最大 `NotebookChatTab.kt` **712** 总行 |
+| 「MIGRATION_18_19/23_24/24_25 无测试」 | 它们在 legacy 迁移数组里被实际执行（:35-37），只是缺独立断言；真正零引用的是 **MIGRATION_25_26** |
 
-## 二、正向审计（规则 → 代码）
+## 1. 阻断级风险（P0/P1）
 
-### 2.1 已合规（有证据）
+### P1-1 旧库升级可能无法打开（高置信推断，需实测确认）
 
-| 规则 | 结论 | 证据 |
-|---|---|---|
-| 禁止注释 | 合规 | `tools/code_hygiene_check.py` 全量扫描 199 个 Kotlin 文件：无注释、括号平衡 |
-| 手写文件规模 | 合规但接近审查线 | 126 个 main Kotlin 文件：<100 行 75 个、100–300 行 39 个、300–500 行 9 个、500–800 行 3 个、>800 行 0 个 |
-| 文件不得超 1200 行 | 合规 | 最大文件 `ui/NotebookChatTab.kt` 670 行 |
-| 长文本解析不得在高频重组路径同步执行 | 合规 | `ui/Markdown.kt:62`、`ui/ChatRequestRunner.kt:77-78`、`ui/NotebookSourcesTab.kt:95,216` 均 `withContext(Dispatchers.Default)` |
-| 不得阻塞主线程 | 合规 | main 源码 `runBlocking`/`Thread.sleep` 命中 0 处 |
-| 版本号单一来源 | 合规 | `app/build.gradle.kts` 与 `LucentBuild.kt` 均为 3.1.2，`version_check.py` 通过 |
-| 设置缓存回写 | 合规 | `settings_cache_check.py`：11 个缓存值均被 UI 读取且有写入方 |
-| 历史迁移不得删除 | 合规 | `AppDatabase` version=33，`addMigrations` 保留 2→33 全链；schema 26–33 已入库跟踪；无 destructive fallback |
-| 颜色不得硬编码 | 合规 | `design_audit.py --strict`：0 硬编码色、0 偏离调色板、0 小触摸目标，100/100 |
-| 构建与发布安全 | 合规 | Gradle 9.8.1 固定 SHA-256；正式发布缺密钥直接失败；预览保留调试签名回退 |
-| 仓库卫生 | 合规 | 无被跟踪构建产物、无 >512KB 大文件；.gitignore 覆盖 build/.gradle/.kotlin/local.properties/keystore |
-| 无 TODO/FIXME/注释残留 | 合规 | 全量搜索仅 `ui/Haptics.kt:19,32` 两处 `@Suppress("DEPRECATION")`，为必要的旧 API 兼容 |
+- `DatabaseMigrations.kt:293-305`：25→26 用 `ALTER TABLE … DROP COLUMN` 删 6 列，整段包在 `catch (_: Throwable) {}`；26→27 删 `agentTrace` 同样吞异常。
+- `DatabaseMigrations.kt:135-136`：11→12 用裸 SQL 建了 `index_notes_isDraft`、`index_notes_hidden`；全文件无任何 `DROP INDEX`；26.json/33.json 的 notes 只声明 3 个索引。
+- `minSdk = 28`，未引入 bundled SQLite；`AppDatabase` 无破坏性回退。
+- 迁移测试从 v26 起（schema 最低 26.json），25→26 无覆盖。
 
-### 2.2 不合规（有代码事实）
+推导：`DROP COLUMN` 需 SQLite 3.35+（Android 14/API 34）。API 28–33 上从 v25 及更早升级时删除失败被吞 → 旧列残留 → 最终 v33 校验列集合不匹配 → 数据库打不开。
 
-**[P1] 页面 Composable 直接持有 Room 数据库与 DAO**
+建议：改用「建新表—复制—删旧表—改名」；并补一个手工构造 v25 库、迁移至 33 的插桩测试，在 API 33 上实跑确认。
 
-AGENTS.md 明确：「页面 Composable 不得直接混合 DAO/Repository 持久化」「业务及异步协调使用 ViewModel、Session 或项目既有状态所有者」。
+### P1-2 页面层直连持久化与网络（明确违反 AGENTS.md:27-28）
 
 | 位置 | 事实 |
 |---|---|
-| `ui/NotebookChatTab.kt:94` | `AppDatabase.getInstance(context)` 在 Composable 内获取 |
-| `ui/NotebookChatTab.kt:301` | `db.chatDao().insert(...)` 直接写库 |
-| `ui/NotebooksScreen.kt:76,166,183` | 页面内 `getInstance` + `notebookDao().insert/update` |
-| `ui/NotebookDetailScreen.kt:64` | 页面内 `getInstance` |
-| `ui/NotebookSourcesTab.kt:75` | 页面内 `getInstance` |
+| `ui/NotebookChatTab.kt:94,208,301,354,367,368,380` | Composable 内 `AppDatabase.getInstance`，直接 `chatDao` 删/插/改 |
+| `ui/NotebooksScreen.kt:76,78,79,137,166,183,206` | 直接订阅 DAO Flow，执行 purge/insert/update/updateAll |
+| `ui/NotebookDetailScreen.kt:64,102,104` | 直接查 notebookDao/noteDao |
+| `ui/NotebookSourcesTab.kt:75,94` | 直接取库、直接调 `NotebookPurge.importDocument` |
+| `ui/settings/ApiSettingsPage.kt:246,494` | 页面直接调 `LlmClient.fetchModels / testConnection` |
+| `ui/settings/FontSettingsPage.kt:121,571` | 页面直接 `FontStore.import/delete` |
 
-影响：页面同时承担布局与持久化所有权，事务边界、失败重试、取消语义都散落在 UI；这与台账里 R01/R10「DAO 上移」未完成项一致。建议抽到既有 Session/状态所有者，页面只消费。
+### P1-3 最高优先级「残留审计」零门禁
 
-**[P1] 用户可见文案大量硬编码，与既有 i18n 机制并存**
+`check.yml:18-45` 的 source-hygiene 只有 unittest + verify quick + i18n diff，**没有任何旧符号/死代码/残留扫描**。AGENTS.md 用整章要求的功能，机器完全不设防。
 
-项目已有 `i18n/I18n.kt`（`S.*` 目录 207 条，实际引用 216 处），CI 还会校验生成文件与 `tools/i18n/catalog.py` 一致；但 UI 层仍有 **155 处中文字面量、分布在 26 个文件**（`ui/NotebookChatTab.kt` 22、`ui/settings/ApiSettingsPage.kt` 19、`ui/ChatHistorySheet.kt` 12…），另有 chat 层 21 处。
+### P1-4 数据被静默覆盖（P1）
 
-更明确的重叠证据：catalog 已有 `userAgentSaveButton = "保存"`、`resetTypographyDefaults = "恢复默认"`，而 `ui/ChatDialogueSettings.kt` 仍写死同名字面量。
+- `Entities.kt:76-88`：`chat_messages` 的 `attachmentMime/attachmentData/attachmentName/attachmentList/replyToId/reasoningBlocks/quotedRole/quotedText` 生产代码从不读取。
+- `ChatSessions.kt:70-79` 用默认值构造后 `@Upsert`：编辑或重生成旧回答会把这些列写成 null。
+- `SettingsRepository.kt:255`：`api_profiles_json` 解析失败静默回落默认方案，下一次写入即覆盖，全部 API 方案（含 key）被替换且无提示。
 
-影响：文案改动要改两处、易漂移；`localeFilters = ["zh"]` 只有中文，短期不影响显示，但机制形同半废弃。本次改动新增的「模型选择」「管理 API 配置」「对话记录」「对话设置」也属于此类，应一并收敛到 `S`。
+### P1-5 写入失败语义不完整（P1）
 
-## 三、配置与资源层问题
+- `NotebookChatTab.kt:300-310` 用户消息 insert 的 Deferred 不 await、不进 `pendingMessages`；失败只置 storageError，仍继续生成并保存回答 → 重启后问题丢失、回答成孤儿。
+- `ChatSession.kt:71` 通用 `write` 失败不进重试队列，只有 `saveMessage` 有。
 
-**[P2] 备份配置自相矛盾**：`AndroidManifest.xml:12` `allowBackup="false"`，但同处 `:13-14` 仍引用 `fullBackupContent="@xml/backup_rules"` 与 `dataExtractionRules="@xml/data_extraction_rules"`。备份已关闭，这两条规则是死配置；要么开启备份并保留规则，要么删掉引用与 `res/xml` 两个文件。
+### P1-6 错误信息未脱敏（P1）
 
-**[P2] 深色模式缺少主题覆盖**：`res/values-night` 只有 `colors.xml`，没有 `themes.xml`；`Theme.Lucent` 父主题固定为 `Theme.Material.Light.NoActionBar`。窗口背景走夜间色，但系统级基础主题仍是 Light，Compose 接管前的系统控件/过渡存在浅色残留风险。
+- `LlmClient.kt:323,338` 非 2xx 把服务端原始错误拼进异常，`ChatSession.kt:162-177` 会把它存进对话内容并展示；与 testConnection 的三条脱敏路径不一致。
+- `LlmClient.kt:89` fetchModels 失败把完整 body 拼进异常，`ApiSettingsPage.kt:262` 截 180 字直接显示。
 
-**[P3] 字符串资源几乎为空**：`res/values/strings.xml` 只有 `app_name`，全部文案在 Kotlin 侧，与第二节 i18n 现状一致（不是新问题，但决定了 i18n 迁移成本）。
+## 2. 正向审计：合规项（有证据）
 
-## 四、反向合规：规则 ↔ 检查手段覆盖矩阵
-
-| AGENTS.md 强制规则 | 是否有自动检查 | 说明 |
+| 规则/领域 | 结论 | 证据 |
 |---|---|---|
-| 禁止注释、括号平衡、文件大小 | 有（阻断） | `code_hygiene_check.py`，CI source-hygiene 执行 |
-| 颜色/触摸目标设计规范 | 有（参考，不阻断） | `design_audit.py --strict` 仅本地；CI 中为参考项 |
-| 文件 500–800 行必须审查拆分 | **无** | 卫生检查上限是 3000 行，规则要求 1200 行上限；两者不一致，等于没有检查 |
-| 页面不得混 DAO/Repository/网络/Prompt/手势 | **无** | 仅靠人工台账；本次即在 6 处发现违反 |
-| Route/Screen 职责分工 | **无** | 无任何工具或契约断言 |
-| 功能删除/迁移后残留审计 | **无** | 最高优先级规范，但完全依赖人工；无旧符号扫描脚本 |
-| 文案必须走 i18n（隐含于 i18n 机制） | **无** | 生成器只校验"生成结果与目录一致"，不校验"UI 是否用了 S" |
-| 单测/编译/Lint 必须跑 | 有（阻断） | `check.yml` 的 android-jvm-check、android-device-check |
-| 不在本地打包 APK | 部分 | `verify.py` 用正则拦截 assemble/package/bundle，但可绕过 |
-| 依赖/版本更新 | **无** | 仅依赖 GitHub 的过期提示 |
+| 禁止注释、括号平衡、行数上限 | 部分合规 | 199 文件通过（但上限 3000 与规则 1200 不一致，见 §4） |
+| 不得阻塞主线程 | 合规 | main 源码 `runBlocking`/`Thread.sleep` 0 处 |
+| 长文本解析后台化 | 合规 | `Markdown.kt:56-81`、`ChatRequestRunner.kt:76-93`、`ChatCitations.kt:21-28` 均在 Default |
+| 流式节流 | 合规 | `StreamUiScheduler.kt:48-59` 35ms/48 字符窗口，Session 已启用 |
+| SSE 帧边界与坏事件拒绝 | 合规 | `SseEventReader.kt:21-48`；`StreamingResponseReader.kt:34-46` 拒多 JSON/坏 JSON |
+| OpenAI/Anthropic 结束条件 | 合规 | `[DONE]`、`message_stop` 终止，EOF 无结束信号抛错 |
+| 取消与资源释放 | 合规 | `BufferedTransport.kt:15-29`、`LlmClient.kt:303-332` call.cancel + response.use |
+| 生成所有权与删除互斥 | 合规 | `ChatSession.kt:108-121,192-207`、`NotebookDeletionGuard.kt:13-24` |
+| DB schema 与迁移注册 | 合规 | v33，2→33 共 31 个迁移无缺号，33.json 与实体逐项一致，无破坏性回退 |
+| 聊天查询索引 | 合规 | `chat_messages(conversationId,timestamp)` 对应 `Daos.kt:33` |
+| 事务 | 部分合规 | 导入/删除用 `withTransaction`；编辑重生成两步写入未包事务（`NotebookChatTab.kt:366-369`） |
+| 缓存并发 | 合规 | `SettingsCache` AtomicReference 组合更新；`NovelSourceIndex` 锁外计算+锁内复核 |
+| 测试执行守卫 | 合规 | `test_inventory` 拒 0 测试/全 skip/失败/畸形 XML；基线 419/66 防删 |
+| 版本与缓存一致性 | 合规 | 3.1.2 双源一致；11 读/11 写 |
+| 签名与发布安全 | 合规 | Gradle 9.8.1+SHA256；正式发布缺密钥即失败 |
+| 权限与组件最小化 | 部分 | 组件仅 1 activity + 1 service；但 `ACCESS_NETWORK_STATE` 无任何使用 |
 
-结论：**规则里真正被机器强制的，只有"格式卫生 + 测试/编译 + 版本一致 + 缓存回写"这几类；职责边界、文案、残留审计这些最核心的架构规则，全部靠人工。**
+## 3. 反向合规：规则 ↔ 强制手段
 
-## 五、本次实测的自动化基线
+| AGENTS.md 规则 | 强制手段 | 缺口 |
+|---|---|---|
+| 无注释/括号/行数卫生 | `code_hygiene_check.py`（阻断） | 阈值 3000≠1200；无 500–800 提示；禁止注释是本工具自设，规则里没有 |
+| 单测/编译/Lint | check.yml（阻断） | 本地 `verify.py` 不跑 63 项契约与 i18n |
+| 测试不得静默减少 | `test-baseline.json`（阻断） | 只覆盖 JVM 419/66，设备测试 36 例无下限 |
+| i18n 生成一致 | check.yml（阻断） | 只校验生成物=catalog，不校验 UI 是否用 `S.*` |
+| 页面不得混 DAO/网络/Prompt | **无** | 现状 8+ 处违反 |
+| Route/Screen 分工 | **无** | 63 项契约中 48 项只是源码文本匹配 |
+| 500–800 审查 / 1200 上限 | **无**（3000 硬线） | `NotebookChatTab` 712、`ApiSettingsPage` 611、`FontSettingsPage` 593 均未记录审查 |
+| 残留审计（整章） | **无** | 无旧符号/死代码扫描；`lastDelete`、`untitled`、`getAllOnce` 等仍在 |
+| 未使用 import / 重复实现 | **无** | 无 detekt/ktlint；`MainActivity` 38 个、`ApiSettingsComponents` 62 个未使用 import（抽样确认） |
+| 不得本地打包 APK | **无** | 无 hook，`verify.py` 不拦截 |
+| 迁移须行为验证 | 部分 | 25→26、26→27 的关键删列无测试 |
+| 正式发布须已验证 | **无** | `release.yml` 不依赖 check，测试全红也能发 |
+| 设计规范 | 参考（不阻断） | 审计无 `--strict`；白名单整文件豁免 |
 
-| 检查 | 结果 |
+## 4. 检查工具自身的缺陷（本轮新发现）
+
+| 工具 | 缺陷 | 证据 |
+|---|---|---|
+| `code_hygiene_check.py` | `MAX_LINES=3000` 与规则 1200 冲突；只打印「最大文件」；强制 `ScaleIndication.kt` 保留版权注释却又全局禁止注释 | :8、:125-126、:131-139 |
+| `design_audit.py` | `if len(hex_hits) == 1` 只报单色行，一行多个色漏检；白名单 7 文件豁免全部颜色 | :65、:10 |
+| `verify.py` | 设计审计不带 `--strict`，永不阻断；不跑契约与 i18n；无打包拦截 | :17、:72-74 |
+| `test_report_summary.py` | 恒返回 0，CI 汇总步骤永不失败 | :56 |
+| `settings_cache_check.py` | 只比对「读过的键是否有写」，不校验值与原子性 | :31-48 |
+| `test_inventory.py` | 只比 tests/suites 总数，等量空测试或大面积 skip 可绕过；基线键缺失直接跳过 | :19-21、:57 |
+| `release.yml` | 只在 release_notes 非空时校验格式；prepare 只跑 scroll check | :66、:75 |
+| `check.yml` | 模拟器 api 35，target/compile 36；dependencyInsight 三次调用只 tee 不解析 | :128、:121 |
+
+## 5. 其余问题清单（按领域）
+
+**持久化/数据**
+- `chat_messages` 8 列、`Note` 14 列、`Notebook` 4 列在生产代码无读写；`notes_fts/tasks_fts/task_versions/tasks` 旧表与 6 个触发器永久保留，FTS 触发器每次导入/删除复制整段正文。
+- `TrashCleanup.kt:24-27` 每次启动无条件 `deleteRecursively` 两个附件目录且忽略返回值；函数名与 trashedAt 无关。
+- `SettingsRepository.kt:255` 解析失败静默回落（见 P1-4）；DataStore 无 corruption handler。
+- 设置页先写 cache 再异步落盘（`ThemeSettingsPage.kt:66-67` 等），失败只 Log；同类写入协程作用域不一致（`BackgroundSettingsPage.kt:85` 用页面 scope，离开即取消）。
+- `ChatSessions.kt:61-68` 一次读整段会话；dispatcher 为 `Main.immediate`；`forNotebook` 不查 tombstone；`linkedMap` 插入序淘汰非 LRU；`finishDelete` 不清 tombstone。
+- `FontStore.kt:35-57` 在 `@Synchronized` 内做磁盘 IO。
+- 索引覆盖不足：`Daos.kt:15` 用 `TRIM(title)`；`notebooks` 缺 manualOrder；`notebook_items` 缺 addedAt。
+
+**网络/会话**
+- `ChatSession.kt:112,137` 先写空 assistant 占位，流中只改内存；进程被杀后 DB 留空行，`load` 原样返回，历史里会把空内容发给模型。
+- `ChatGenerationService.kt:50,69-70` 停止后立即 `stopProtection`，最终保存未完成即撤通知。
+- `StreamingResponseReader.kt:72` Google finishReason 不终止读取，依赖 EOF，可能等满 40s 判失败。
+- `StreamingRequestBuilder.kt:114` Google key 未 URL 编码且 query+header 双发。
+- `StreamingRequestBuilder.kt:81` Anthropic `max_tokens` 固定 ≥8192，部分 4096 上限模型会 400。
+- `LlmClient.kt:17-341` 单文件四职责（header/UA、fetchModels、testConnection、chatStream）。
+- `LlmClientModels.kt:96` `toFullReport` 仅测试调用，`fullReportRaw` 成死代码。
+
+**UI/性能**
+- 0 个 ViewModel；`ApiSettingsPage` 611 行 / 29 入参 / 9 个自持状态。
+- 高频重组重活：`NotebookChatTab.kt:97` 每次重组重建 readingKeys；`ChatMessageComponents.kt:148-157` 每帧跑正则+新建 SimpleDateFormat；`ChatHistorySheet.kt:160-180` 每行跑 1024 字符正则。
+- 三套滚动位置记忆并存（`ListScrollMemory`/`SettingsScrollMemory`/`ReadingPositionMemory`）。
+- `NotebookChatTab.kt:482-491` 页面自写指针循环做浮层外点命中。
+
+**资源/文案**
+- 用户可见硬编码中文 189 处 / 29 文件；其中 11 处 catalog 已有键仍写死（“取消”“删除”“保存”“恢复默认”）。
+- `untitled` 键 0 引用；`ic_launcher_round` 无引用；`ACCESS_NETWORK_STATE` 无使用。
+- `values-night` 缺 themes.xml；`values/colors.xml` 与 `ThemeModes` 常量逐值重复。
+- 契约测试锁死中文字面量（“详细信息”“跳到顶部”“管理 API 配置”），迁移到 `S.*` 会先让测试变红。
+- 文案口径不一致（“模型选择” vs “选择模型”、“资料/文档/来源”）；错误提示丢 cause、不可执行。
+
+## 6. 量化基线（本次实测）
+
+| 项 | 数值 |
 |---|---|
-| `python -m unittest discover -s tools/tests` | 63 项通过 |
-| `design_audit.py --strict` | 100/100，0 警告 |
-| `code_hygiene_check.py` | 199 文件无问题 |
-| `verify.py quick` | 6 项通过（注释/版本/缓存/嵌套滚动/扫描/设计） |
-| `gradlew :app:compileDebugKotlin :app:testDebugUnitTest :app:compileReleaseKotlin :app:lintDebug` | BUILD SUCCESSFUL |
-| 测试资产 | 66 个 JVM 单测文件 + 6 个插桩测试文件 |
+| Kotlin 文件（main） | 126 个；<100 行 75、100–300 行 39、300–500 行 9、500–800 行 3、>800 行 0 |
+| 最大手写文件 | `AppDatabaseMigrationTest.kt` 743（androidTest）；main 内 `NotebookChatTab.kt` 712 |
+| 测试 | JVM 66 文件 / 419 例；插桩 6 文件 / 36 例；无 `@Ignore` |
+| Python 契约 | 63 项，其中 48 项只读源码文本 |
+| 中文字面量 | UI+chat 189 处；含 data/network 合计约 286 处 |
+| 十六进制色 | ui/ 内 131 处，全部在 7 个白名单文件 |
+| 未使用 import | `MainActivity` 38、`ApiSettingsComponents` 62 |
+| 数据库 | v33；2→33 共 31 个迁移；schema 26–33 |
+| 当前自动化 | hygiene 通过、design 100/100、契约 63 通过、verify quick 6 项通过、编译/单测/Lint 通过 |
 
-## 六、建议优先级
+## 7. 整改优先级
 
-1. **P1｜把页面里的 DAO 调用上移**（R01/R10 收尾）：先做 `NotebookChatTab:301` 与 `NotebooksScreen` 增删改，页面只调 Session/状态所有者；每步保留现有行为测试。
-2. **P1｜新增"硬编码文案"检查并分期迁移**：先让检查只统计、不阻断（基线 155 处），再按文件清零；目录里已有的键优先替换（保存/恢复默认）。
-3. **P2｜对齐检查强度**：`MAX_LINES` 从 3000 降到 1200（与规则一致），并对 500–800 行的 3 个文件输出"需审查"提示而非直接失败。
-4. **P2｜补两条反向检查**：①禁止 ui 层出现 `AppDatabase`/`Dao()`；②旧符号残留扫描（把这次删掉的 `HandleOnlyDrawerProperties`/`brightHandle` 这类做成通用清单）。
-5. **P2｜清理配置矛盾**：备份规则与 allowBackup 二选一；补 `values-night/themes.xml`。
-6. **P3｜设计审计白名单加约束**：`PALETTE_FILES` 目前可容纳任意颜色常量（本次状态色放在 `AppThemeColors` 即被豁免），建议限制白名单只允许调色板/主题语义色，并禁止在别处新增。
+| 优先级 | 事项 | 理由 |
+|---|---|---|
+| P0 | 迁移 25→26/26→27 改为全 API 安全实现 + 补 v25→33 插桩测试（API 33） | 可能是旧用户升级即崩的缺陷 |
+| P0 | 增加「残留审计」门禁（旧符号清单 + 未使用 import/dead code） | AGENTS 最高优先级规则，当前零强制 |
+| P1 | 页面 DAO/网络上移（R01/R10 收尾） | 明确违反规则，且是写失败语义混乱的根源 |
+| P1 | 修复静默数据覆盖：`@Upsert` 默认值覆盖 8 列；`api_profiles_json` 解析回落 | 数据丢失 |
+| P1 | 补齐写入失败语义（通用 write 进重试、user insert 失败阻断生成） | 数据不一致 |
+| P1 | 错误信息统一走 `DiagnosticRedaction` | 密钥/服务端内容泄露 |
+| P1 | 契约测试补行为断言 + 设备测试基线 | 当前 76% 契约是空转 |
+| P2 | 工具阈值对齐（3000→1200、500–800 提示）、设计审计 `--strict` 入阻断、release 依赖 check | 让规则真正生效 |
+| P2 | 文案迁 `S.*`（同步改契约测试）与未使用资源清理 | 一致性 |
+| P2 | 索引与查询优化、FTS/旧表清理、TrashCleanup 语义修正 | 性能与残留 |
 
-## 七、未覆盖 / 需设备或人工确认
+## 8. 未覆盖
 
-- 真机动画手感、手势冲突、视觉对齐与配色观感
+- 真机动画手感、手势冲突、视觉观感、厂商 ROM、IME
 - 长文峰值内存、增量解析性能、滚动帧耗时、多会话内存
-- 真实第三方中转与各模型端点协议兼容、IME 与厂商 ROM 行为
-- 本报告未修改任何源码；所有结论基于静态阅读与本地可执行检查，不代表设备无缺陷
+- 真实第三方中转与各模型端点协议兼容
+- P1-1 的升级故障未实机复现，结论基于代码逻辑推导，需按 §7 的测试验证后再定性

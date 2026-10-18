@@ -184,8 +184,30 @@ jobs:
     if: ${{ !inputs.require_release_signing }}
     runs-on: ubuntu-24.04
     permissions:
+      actions: read
       contents: write
     steps:
+      - name: Require a green check workflow before publishing
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -eu
+          API="https://api.github.com/repos/${{ github.repository }}/actions/workflows/check.yml/runs?head_sha=$SHA&per_page=1"
+          for attempt in $(seq 1 40); do
+            BODY=$(curl -sS -H "Authorization: Bearer $GITHUB_TOKEN" -H "Accept: application/vnd.github+json" "$API")
+            STATUS=$(printf '%s' "$BODY" | python3 -c 'import json,sys; r=json.load(sys.stdin).get("workflow_runs", []); print(r[0]["status"] if r else "missing")')
+            CONCLUSION=$(printf '%s' "$BODY" | python3 -c 'import json,sys; r=json.load(sys.stdin).get("workflow_runs", []); print((r[0].get("conclusion") or "") if r else "")')
+            echo "check status=$STATUS conclusion=$CONCLUSION (attempt $attempt)"
+            if [ "$STATUS" = "completed" ]; then
+              if [ "$CONCLUSION" = "success" ]; then exit 0; fi
+              echo "::error::check workflow finished with $CONCLUSION; refusing to publish a preview."
+              exit 1
+            fi
+            sleep 20
+          done
+          echo "::error::check workflow did not finish in time; refusing to publish a preview."
+          exit 1
       - name: Download APK
         uses: actions/download-artifact@v8.0.2
         with:

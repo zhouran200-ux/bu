@@ -87,6 +87,10 @@ internal object StreamingResponseReader {
                                 }
                             }
                         }
+                        if (sawGoogleFinish) {
+                            sawEndOfStream = true
+                            break
+                        }
                     }
                     ApiSpec.ANTHROPIC -> {
                         StreamUsageParser.parse(spec, json)?.let { usage = it }

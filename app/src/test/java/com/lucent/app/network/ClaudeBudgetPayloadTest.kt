@@ -24,6 +24,17 @@ class ClaudeBudgetPayloadTest {
         }
     }
 
+    @Test fun smallOutputModelsClampBudgetBelowRequested() {
+        val request = StreamingRequestBuilder.build("https://example.test/v1", ApiSpec.ANTHROPIC, "key", "claude-3-haiku-20240307",
+            listOf(ChatMessagePayload("user", "hello")), "",
+            ResolvedReasoningConfig(ReasoningPreset.DEEP, claudeBudgetTokens = 16384), false).build()
+        val buffer = Buffer()
+        request.body!!.writeTo(buffer)
+        val json = JSONObject(buffer.readUtf8())
+        assertEquals(4096, json.getInt("max_tokens"))
+        assertEquals(3072, json.getJSONObject("thinking").getInt("budget_tokens"))
+    }
+
     @Test fun adaptiveAndAutoKeepDefaultLimit() {
         val adaptive = payload(ResolvedReasoningConfig(ReasoningPreset.DEEP, claudeEffort = "high"))
         assertEquals(8192, adaptive.getInt("max_tokens"))

@@ -7,6 +7,12 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
 
+internal fun anthropicOutputCap(model: String): Int = when {
+    model.contains("claude-3-haiku") || model.contains("claude-3-sonnet") -> 4096
+    model.contains("claude-2") -> 4096
+    else -> Int.MAX_VALUE
+}
+
 internal object StreamingRequestBuilder {
     fun build(
         baseUrl: String, spec: ApiSpec, apiKey: String, model: String,
@@ -76,9 +82,19 @@ internal object StreamingRequestBuilder {
                 val payload = JSONObject().apply {
                     put("model", cleanModel)
                     put("stream", true)
-                    val thinkingBudget = reasoningConfig?.takeIf { !it.isAuto && it.claudeEffort == null }?.claudeBudgetTokens ?: 0
-                    require(thinkingBudget >= 0 && thinkingBudget <= Int.MAX_VALUE - 1024) { "Invalid thinking budget" }
-                    put("max_tokens", maxOf(8192, thinkingBudget + if (thinkingBudget > 0) 1024 else 0))
+                    val requestedBudget = reasoningConfig?.takeIf { !it.isAuto && it.claudeEffort == null }?.claudeBudgetTokens ?: 0
+                    require(requestedBudget >= 0 && requestedBudget <= Int.MAX_VALUE - 1024) { "Invalid thinking budget" }
+                    val outputCap = anthropicOutputCap(cleanModel)
+                    val maxTokens = minOf(
+                        outputCap,
+                        maxOf(8192, requestedBudget + if (requestedBudget > 0) 1024 else 0)
+                    )
+                    val thinkingBudget = if (requestedBudget > 0) {
+                        minOf(requestedBudget, maxTokens - 1024).coerceAtLeast(1024)
+                    } else {
+                        0
+                    }
+                    put("max_tokens", maxTokens)
                     if (systemInstruction.isNotBlank()) {
                         put("system", systemInstruction)
                     }
@@ -98,7 +114,7 @@ internal object StreamingRequestBuilder {
                         } else if (reasoningConfig.claudeBudgetTokens != null) {
                             put("thinking", JSONObject().apply {
                                 put("type", "enabled")
-                                put("budget_tokens", reasoningConfig.claudeBudgetTokens)
+                                put("budget_tokens", thinkingBudget)
                             })
                         }
                     }
@@ -111,7 +127,7 @@ internal object StreamingRequestBuilder {
                 val targetModel = cleanModel.removePrefix("models/")
                 val endpoint = "$base/models/$targetModel:streamGenerateContent?alt=sse"
                 val url = if (apiKey.isNotBlank() && !endpoint.contains("key=")) {
-                    if (endpoint.contains("?")) "$endpoint&key=$apiKey" else "$endpoint?key=$apiKey"
+                    if (endpoint.contains("?")) "$endpoint&key=${queryValue(apiKey)}" else "$endpoint?key=${queryValue(apiKey)}"
                 } else endpoint
 
                 val payload = JSONObject().apply {

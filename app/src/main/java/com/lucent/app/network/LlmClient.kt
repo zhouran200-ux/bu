@@ -73,7 +73,7 @@ object LlmClient {
                 ApiSpec.GOOGLE -> {
                     val base = if (trimmed.endsWith("/models")) trimmed else "$trimmed/models"
                     if (apiKey.isNotBlank() && !base.contains("key=")) {
-                        if (base.contains("?")) "$base&key=$apiKey" else "$base?key=$apiKey"
+                        if (base.contains("?")) "$base&key=${queryValue(apiKey)}" else "$base?key=${queryValue(apiKey)}"
                     } else base
                 }
                 ApiSpec.ANTHROPIC, ApiSpec.OPENAI -> {
@@ -86,7 +86,7 @@ object LlmClient {
 
             val response = BufferedTransport.executeBuffered(client, requestBuilder.build())
             val bodyStr = response.body
-            if (!response.isSuccessful) return@withContext Result.failure(Exception("HTTP ${response.code}: $bodyStr"))
+            if (!response.isSuccessful) return@withContext Result.failure(Exception("HTTP ${response.code}: ${DiagnosticRedaction.text(bodyStr, apiKey)}"))
             val json = JSONObject(bodyStr)
             val dataArray = json.optJSONArray("data") ?: json.optJSONArray("models") ?: JSONArray()
             val ids = mutableListOf<String>()
@@ -187,7 +187,7 @@ object LlmClient {
                         val base = if (trimmed.endsWith("/models")) trimmed.removeSuffix("/models") else trimmed
                         val endpoint = "$base/models/$cleanModel:generateContent"
                         url = if (apiKey.isNotBlank() && !endpoint.contains("key=")) {
-                            if (endpoint.contains("?")) "$endpoint&key=$apiKey" else "$endpoint?key=$apiKey"
+                            if (endpoint.contains("?")) "$endpoint&key=${queryValue(apiKey)}" else "$endpoint?key=${queryValue(apiKey)}"
                         } else endpoint
 
                         val payload = JSONObject().apply {
@@ -205,7 +205,7 @@ object LlmClient {
                     ApiSpec.GOOGLE -> {
                         val base = if (trimmed.endsWith("/models")) trimmed else "$trimmed/models"
                         if (apiKey.isNotBlank() && !base.contains("key=")) {
-                            if (base.contains("?")) "$base&key=$apiKey" else "$base?key=$apiKey"
+                            if (base.contains("?")) "$base&key=${queryValue(apiKey)}" else "$base?key=${queryValue(apiKey)}"
                         } else base
                     }
                     ApiSpec.ANTHROPIC, ApiSpec.OPENAI -> {
@@ -320,7 +320,7 @@ object LlmClient {
                         } catch (_: JSONException) {
                             bodyStr.take(200)
                         }
-                        return@withContext Result.failure(Exception("HTTP ${response.code}: ${errMsg.ifBlank { response.message }}"))
+                        return@withContext Result.failure(Exception("HTTP ${response.code}: ${DiagnosticRedaction.text(errMsg.ifBlank { response.message }, apiKey)}"))
                     }
 
                     val source = response.body?.source()

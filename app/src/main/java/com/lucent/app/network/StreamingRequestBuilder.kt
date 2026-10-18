@@ -154,6 +154,9 @@ internal object StreamingRequestBuilder {
                         if (reasoningConfig.geminiThinkingLevel != null) {
                             thinkingConfig.put("thinkingLevel", reasoningConfig.geminiThinkingLevel)
                         }
+                        if (reasoningConfig.geminiThinkingBudget != null) {
+                            thinkingConfig.put("thinkingBudget", reasoningConfig.geminiThinkingBudget)
+                        }
                         if (thinkingConfig.length() > 0) {
                             genConfig.put("thinkingConfig", thinkingConfig)
                         }

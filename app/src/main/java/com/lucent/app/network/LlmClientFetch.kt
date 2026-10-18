@@ -55,17 +55,23 @@ internal object LlmClientFetch {
                             "anthropic_effort" -> com.lucent.app.data.ReasoningControl.ANTHROPIC_EFFORT
                             "anthropic_budget" -> com.lucent.app.data.ReasoningControl.ANTHROPIC_BUDGET
                             "gemini_thinking_level", "thinking_level" -> com.lucent.app.data.ReasoningControl.GEMINI_THINKING_LEVEL
+                            "gemini_thinking_budget", "thinking_budget" -> com.lucent.app.data.ReasoningControl.GEMINI_THINKING_BUDGET
                             "deepseek_effort" -> com.lucent.app.data.ReasoningControl.DEEPSEEK_EFFORT
                             "none" -> com.lucent.app.data.ReasoningControl.NONE
                             else -> if (spec == ApiSpec.GOOGLE) com.lucent.app.data.ReasoningControl.GEMINI_THINKING_LEVEL else com.lucent.app.data.ReasoningControl.OPENAI_EFFORT
                         }
+                        val levelArray = reasoningObj.optJSONArray("levels")
+                        val levels = if (levelArray == null) emptyList<String>() else (0 until levelArray.length())
+                            .map { levelArray.optString(it) }
+                            .filter { it.isNotBlank() }
                         com.lucent.app.data.ModelCapabilityRegistry.register(
                             com.lucent.app.data.ModelDefinition(
                                 id = trimmedId,
                                 reasoning = com.lucent.app.data.ReasoningCapability(
                                     supported = supported,
                                     control = control,
-                                    isAdaptive = reasoningObj.optBoolean("adaptive", true)
+                                    isAdaptive = reasoningObj.optBoolean("adaptive", true),
+                                    levels = levels
                                 )
                             )
                         )

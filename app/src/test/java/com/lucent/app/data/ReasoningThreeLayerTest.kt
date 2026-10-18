@@ -1,6 +1,7 @@
 package com.lucent.app.data
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -63,7 +64,7 @@ class ReasoningThreeLayerTest {
         assertEquals("high", deepConfig.claudeEffort)
 
         val maxConfig = ReasoningResolver.resolve(ReasoningPreset.MAXIMUM, "anthropic", "claude-3-7-sonnet")
-        assertEquals("max", maxConfig.claudeEffort)
+        assertEquals("high", maxConfig.claudeEffort)
     }
 
     @Test
@@ -118,7 +119,8 @@ class ReasoningThreeLayerTest {
         assertNull(claude37.openAiEffort)
 
         val gemini = ReasoningResolver.resolve(ReasoningPreset.BALANCED, "openai", "gemini-2.5-flash")
-        assertEquals("MEDIUM", gemini.geminiThinkingLevel)
+        assertNull(gemini.geminiThinkingLevel)
+        assertEquals(8192, gemini.geminiThinkingBudget)
         assertNull(gemini.openAiEffort)
 
         val gemini15 = ReasoningResolver.resolve(ReasoningPreset.BALANCED, "openai", "gemini-1.5-flash")
@@ -176,4 +178,66 @@ class ReasoningThreeLayerTest {
         val all = ModelCapabilityRegistry.getAll()
         assertTrue(all.size >= 15)
     }
+
+    @Test
+    fun geminiUsesOnlyTheLevelsTheModelPublishes() {
+        val proBalanced = ReasoningResolver.resolve(ReasoningPreset.BALANCED, "google", "gemini-3-pro-preview")
+        assertEquals("LOW", proBalanced.geminiThinkingLevel)
+
+        val proMaximum = ReasoningResolver.resolve(ReasoningPreset.MAXIMUM, "google", "gemini-3-pro-preview")
+        assertEquals("HIGH", proMaximum.geminiThinkingLevel)
+
+        val flashDeep = ReasoningResolver.resolve(ReasoningPreset.DEEP, "google", "gemini-3.8-flash")
+        assertEquals("HIGH", flashDeep.geminiThinkingLevel)
+
+        val flashFast = ReasoningResolver.resolve(ReasoningPreset.FAST, "google", "gemini-3.8-flash")
+        assertEquals("LOW", flashFast.geminiThinkingLevel)
+    }
+
+    @Test
+    fun geminiTwoFiveFallsBackToAThinkingBudget() {
+        val deep = ReasoningResolver.resolve(ReasoningPreset.DEEP, "google", "gemini-2.5-pro")
+        assertNull(deep.geminiThinkingLevel)
+        assertEquals(16384, deep.geminiThinkingBudget)
+
+        val fast = ReasoningResolver.resolve(ReasoningPreset.FAST, "google", "gemini-2.5-flash")
+        assertEquals(1024, fast.geminiThinkingBudget)
+
+        val maximum = ReasoningResolver.resolve(ReasoningPreset.MAXIMUM, "google", "gemini-2.5-flash")
+        assertEquals(24576, maximum.geminiThinkingBudget)
+    }
+
+    @Test
+    fun datedClaudeSnapshotsStayOnTheBudgetControl() {
+        val model = ModelCapabilityRegistry.findOrRegister("claude-3-5-sonnet-20241022", "openai")
+        assertEquals(ReasoningControl.ANTHROPIC_BUDGET, model.reasoning.control)
+
+        val config = ReasoningResolver.resolve(ReasoningPreset.DEEP, "openai", "claude-3-5-sonnet-20241022")
+        assertEquals(16384, config.claudeBudgetTokens)
+        assertNull(config.claudeEffort)
+
+        val newer = ReasoningResolver.resolve(ReasoningPreset.MAXIMUM, "openai", "claude-sonnet-5-5-20260101")
+        assertEquals("max", newer.claudeEffort)
+    }
+
+    @Test
+    fun everyPresetStaysInsideTheDeclaredLevels() {
+        ModelCapabilityRegistry.getAll().forEach { model ->
+            val levels = model.reasoning.levels
+            if (levels.isNotEmpty()) {
+                ReasoningPreset.entries.forEach { preset ->
+                    if (preset != ReasoningPreset.AUTO) {
+                        val config = ReasoningResolver.resolve(preset, "openai", model.id)
+                        val wire = config.openAiEffort ?: config.claudeEffort ?: config.geminiThinkingLevel
+                        assertNotNull("${model.id} $preset", wire)
+                        assertTrue(
+                            "${model.id} $preset -> $wire",
+                            levels.any { it.equals(wire, ignoreCase = true) }
+                        )
+                    }
+                }
+            }
+        }
+    }
 }
+

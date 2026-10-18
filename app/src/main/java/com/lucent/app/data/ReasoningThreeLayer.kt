@@ -37,6 +37,7 @@ enum class ReasoningControl {
     ANTHROPIC_EFFORT,
     ANTHROPIC_BUDGET,
     GEMINI_THINKING_LEVEL,
+    GEMINI_THINKING_BUDGET,
     DEEPSEEK_EFFORT,
     QWEN_EFFORT,
     NONE
@@ -46,13 +47,38 @@ enum class ReasoningControl {
 data class ReasoningCapability(
     val supported: Boolean,
     val control: ReasoningControl,
-    val isAdaptive: Boolean = true
+    val isAdaptive: Boolean = true,
+    val levels: List<String> = emptyList()
 ) {
     companion object {
         val NONE = ReasoningCapability(
             supported = false,
             control = ReasoningControl.NONE
         )
+    }
+}
+
+
+object ReasoningLevels {
+    private val ladder = listOf("minimal", "low", "medium", "high", "xhigh", "max")
+
+    fun supported(desired: String, levels: List<String>): String {
+        if (levels.isEmpty()) return desired
+        val target = ladder.indexOf(desired.trim().lowercase())
+        if (target < 0) return desired
+        var chosen = levels.first()
+        var distance = Int.MAX_VALUE
+        levels.forEach { level ->
+            val index = ladder.indexOf(level.trim().lowercase())
+            if (index >= 0) {
+                val candidate = kotlin.math.abs(index - target)
+                if (candidate < distance) {
+                    distance = candidate
+                    chosen = level
+                }
+            }
+        }
+        return chosen
     }
 }
 
@@ -69,6 +95,7 @@ data class ResolvedReasoningConfig(
     val openAiEffort: String? = null,
     val openAiMode: String? = null,
     val geminiThinkingLevel: String? = null,
+    val geminiThinkingBudget: Int? = null,
     val claudeEffort: String? = null,
     val claudeBudgetTokens: Int? = null,
     val displayTag: String = ""
@@ -94,20 +121,21 @@ class OpenAiReasoningMapper : ReasoningMapper {
 
         val clean = model.id.lowercase()
         val isGpt6 = clean.contains("gpt-6") || clean.contains("gpt6")
-        val effortStr = when (preset) {
-            ReasoningPreset.AUTO -> null
+        val desired = when (preset) {
+            ReasoningPreset.AUTO -> "low"
             ReasoningPreset.FAST -> "low"
             ReasoningPreset.BALANCED -> "medium"
             ReasoningPreset.DEEP -> "high"
             ReasoningPreset.MAXIMUM -> if (isGpt6) "xhigh" else "high"
         }
+        val effort = ReasoningLevels.supported(desired, model.reasoning.levels)
         val modeStr = if (isGpt6 && (preset == ReasoningPreset.DEEP || preset == ReasoningPreset.MAXIMUM)) "pro" else null
 
         return ResolvedReasoningConfig(
             preset = preset,
-            openAiEffort = effortStr,
+            openAiEffort = effort,
             openAiMode = modeStr,
-            displayTag = if (modeStr != null) "OpenAI $effortStr (Pro模式)" else "OpenAI $effortStr"
+            displayTag = if (modeStr != null) "OpenAI $effort (Pro模式)" else "OpenAI $effort"
         )
     }
 }
@@ -117,14 +145,15 @@ class AnthropicReasoningMapper : ReasoningMapper {
     override fun map(preset: ReasoningPreset, model: ModelDefinition): ResolvedReasoningConfig {
         if (preset == ReasoningPreset.AUTO) return ResolvedReasoningConfig.AUTO
 
-        return if (model.reasoning.control == ReasoningControl.ANTHROPIC_EFFORT || model.reasoning.isAdaptive) {
-            val effort = when (preset) {
-                ReasoningPreset.AUTO -> null
+        return if (model.reasoning.control == ReasoningControl.ANTHROPIC_EFFORT) {
+            val desired = when (preset) {
+                ReasoningPreset.AUTO -> "low"
                 ReasoningPreset.FAST -> "low"
                 ReasoningPreset.BALANCED -> "medium"
                 ReasoningPreset.DEEP -> "high"
                 ReasoningPreset.MAXIMUM -> "max"
             }
+            val effort = ReasoningLevels.supported(desired, model.reasoning.levels)
             ResolvedReasoningConfig(
                 preset = preset,
                 claudeEffort = effort,
@@ -132,7 +161,7 @@ class AnthropicReasoningMapper : ReasoningMapper {
             )
         } else {
             val budget = when (preset) {
-                ReasoningPreset.AUTO -> null
+                ReasoningPreset.AUTO -> 2048
                 ReasoningPreset.FAST -> 2048
                 ReasoningPreset.BALANCED -> 8192
                 ReasoningPreset.DEEP -> 16384
@@ -152,12 +181,13 @@ class GeminiReasoningMapper : ReasoningMapper {
     override fun map(preset: ReasoningPreset, model: ModelDefinition): ResolvedReasoningConfig {
         if (preset == ReasoningPreset.AUTO) return ResolvedReasoningConfig.AUTO
 
-        val level = when (preset) {
-            ReasoningPreset.AUTO -> null
+        val desired = when (preset) {
+            ReasoningPreset.AUTO -> "LOW"
             ReasoningPreset.FAST -> "LOW"
             ReasoningPreset.BALANCED -> "MEDIUM"
             ReasoningPreset.DEEP, ReasoningPreset.MAXIMUM -> "HIGH"
         }
+        val level = ReasoningLevels.supported(desired, model.reasoning.levels)
         return ResolvedReasoningConfig(
             preset = preset,
             geminiThinkingLevel = level,
@@ -167,17 +197,38 @@ class GeminiReasoningMapper : ReasoningMapper {
 }
 
 
+class GeminiBudgetReasoningMapper : ReasoningMapper {
+    override fun map(preset: ReasoningPreset, model: ModelDefinition): ResolvedReasoningConfig {
+        if (preset == ReasoningPreset.AUTO) return ResolvedReasoningConfig.AUTO
+
+        val budget = when (preset) {
+            ReasoningPreset.AUTO -> 1024
+            ReasoningPreset.FAST -> 1024
+            ReasoningPreset.BALANCED -> 8192
+            ReasoningPreset.DEEP -> 16384
+            ReasoningPreset.MAXIMUM -> 24576
+        }
+        return ResolvedReasoningConfig(
+            preset = preset,
+            geminiThinkingBudget = budget,
+            displayTag = "Gemini ${budget}t 预算"
+        )
+    }
+}
+
+
 class DeepSeekReasoningMapper : ReasoningMapper {
     override fun map(preset: ReasoningPreset, model: ModelDefinition): ResolvedReasoningConfig {
         if (preset == ReasoningPreset.AUTO) return ResolvedReasoningConfig.AUTO
 
-        val effort = when (preset) {
-            ReasoningPreset.AUTO -> null
+        val desired = when (preset) {
+            ReasoningPreset.AUTO -> "low"
             ReasoningPreset.FAST -> "low"
             ReasoningPreset.BALANCED -> "high"
             ReasoningPreset.DEEP -> "high"
             ReasoningPreset.MAXIMUM -> "max"
         }
+        val effort = ReasoningLevels.supported(desired, model.reasoning.levels)
         return ResolvedReasoningConfig(
             preset = preset,
             openAiEffort = effort,
@@ -191,12 +242,13 @@ class QwenReasoningMapper : ReasoningMapper {
     override fun map(preset: ReasoningPreset, model: ModelDefinition): ResolvedReasoningConfig {
         if (preset == ReasoningPreset.AUTO) return ResolvedReasoningConfig.AUTO
 
-        val effort = when (preset) {
-            ReasoningPreset.AUTO -> null
+        val desired = when (preset) {
+            ReasoningPreset.AUTO -> "low"
             ReasoningPreset.FAST -> "low"
             ReasoningPreset.BALANCED -> "medium"
             ReasoningPreset.DEEP, ReasoningPreset.MAXIMUM -> "xhigh"
         }
+        val effort = ReasoningLevels.supported(desired, model.reasoning.levels)
         return ResolvedReasoningConfig(
             preset = preset,
             openAiEffort = effort,
@@ -221,6 +273,7 @@ object ReasoningResolver {
     private val openAiMapper = OpenAiReasoningMapper()
     private val anthropicMapper = AnthropicReasoningMapper()
     private val geminiMapper = GeminiReasoningMapper()
+    private val geminiBudgetMapper = GeminiBudgetReasoningMapper()
     private val deepSeekMapper = DeepSeekReasoningMapper()
     private val qwenMapper = QwenReasoningMapper()
     private val fallbackMapper = FallbackReasoningMapper()
@@ -239,6 +292,7 @@ object ReasoningResolver {
             ReasoningControl.OPENAI_EFFORT -> openAiMapper
             ReasoningControl.ANTHROPIC_EFFORT, ReasoningControl.ANTHROPIC_BUDGET -> anthropicMapper
             ReasoningControl.GEMINI_THINKING_LEVEL -> geminiMapper
+            ReasoningControl.GEMINI_THINKING_BUDGET -> geminiBudgetMapper
             ReasoningControl.DEEPSEEK_EFFORT -> deepSeekMapper
             ReasoningControl.QWEN_EFFORT -> qwenMapper
             ReasoningControl.NONE -> fallbackMapper
@@ -247,3 +301,4 @@ object ReasoningResolver {
         return mapper.map(preset, modelDef)
     }
 }
+

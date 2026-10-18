@@ -112,7 +112,9 @@ object FontStore {
         if (existing.slots.size >= MAX_FONTS) throw TooManyFontsException()
 
         val dir = dir(context)
-        if (!dir.exists() && !dir.mkdirs()) throw IOException("Could not create the font directory")
+        if (!dir.isDirectory && !dir.mkdirs() && !dir.isDirectory) {
+            throw IOException("Could not create the font directory")
+        }
 
         val id = newId()
         val pickedName = fontSourceDisplayName(context, source) ?: "font"

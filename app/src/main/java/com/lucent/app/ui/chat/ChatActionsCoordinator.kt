@@ -41,6 +41,7 @@ internal class ChatActionsCoordinator(
     internal val streamingAnswerId: Long? get() = session.streamingAnswerId
     internal var inputText by mutableStateOf("")
     internal var followStream by mutableStateOf(false)
+    internal var regenerateReserve by mutableStateOf<Pair<Long, Int>?>(null)
     internal var pendingDelete by mutableStateOf<PendingChatDelete?>(null)
     internal var profilesJson: String by mutableStateOf("")
     internal val savedProfiles: List<com.lucent.app.data.ApiProfile>
@@ -56,6 +57,14 @@ internal class ChatActionsCoordinator(
     )
     internal var systemPrompt by mutableStateOf(prefs.getString("prompt_$notebookId", "") ?: "")
     internal var historyRounds by androidx.compose.runtime.mutableIntStateOf(prefs.getInt("history_rounds_$notebookId", 10))
+
+    fun streamReserveBlocksFollow(): Boolean {
+        val entry = regenerateReserve ?: return false
+        if (streamingAnswerId != entry.first) return false
+        val info = listState.layoutInfo.visibleItemsInfo
+            .firstOrNull { it.key == "message:${entry.first}" } ?: return false
+        return info.size <= entry.second
+    }
 
     fun settlePendingDelete() {
         val pending = pendingDelete ?: return
@@ -184,7 +193,13 @@ internal class ChatActionsCoordinator(
             atBottom = atBottom
         )
         val itemIndex = idx + 1
-        if (!followStream && listState.firstVisibleItemIndex == itemIndex) {
+        val layout = listState.layoutInfo
+        val oldSize = layout.visibleItemsInfo.firstOrNull { it.key == "message:$answerId" }?.size
+        val reserve = oldSize?.let { minOf(it, layout.viewportSize.height) }
+        if (reserve != null) regenerateReserve = answerId to reserve
+        val answerTopHidden = listState.firstVisibleItemIndex == itemIndex &&
+            listState.firstVisibleItemScrollOffset > 0
+        if (reserve != null && oldSize != null && oldSize > reserve || answerTopHidden) {
             listState.requestScrollToItem(itemIndex, 0)
         }
         session.afterWrite(session.retryPendingWrites()) { askModel(answerId) }

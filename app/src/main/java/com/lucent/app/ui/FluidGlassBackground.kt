@@ -12,13 +12,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInspectionMode
 
 data class BackgroundEnvironment(val active: Boolean = true, val motionEnabled: Boolean = true)
@@ -29,11 +29,11 @@ val LocalBackgroundEnvironment = staticCompositionLocalOf { BackgroundEnvironmen
 fun FluidGlassBackground(
     palette: List<Color>,
     backdropColor: Color,
+    paletteName: String = "",
     modifier: Modifier = Modifier,
     animated: Boolean = true,
     pureWhite: Boolean = false
 ) {
-    val context = LocalContext.current
     val environment = LocalBackgroundEnvironment.current
     val inspection = LocalInspectionMode.current
     val moving = animated && environment.motionEnabled && !inspection && !pureWhite
@@ -43,9 +43,20 @@ fun FluidGlassBackground(
         return
     }
 
-    val primary = palette.getOrNull(0) ?: MaterialTheme.colorScheme.primary
-    val secondary = palette.getOrNull(1) ?: MaterialTheme.colorScheme.secondary
-    val tertiary = palette.getOrNull(2) ?: MaterialTheme.colorScheme.tertiary
+    val cyclePalettes = remember { LucentPalette.pickerEntries.map { it.colors } }
+    val activePalette: List<Color> = when (paletteName) {
+        PALETTE_CYCLE -> rememberCyclingPaletteColors(
+            palettes = cyclePalettes,
+            animated = animated,
+            environment = environment
+        )
+        PALETTE_RANDOM -> rememberRandomPaletteColors(animated = animated, environment = environment)
+        else -> palette
+    }
+
+    val primary = activePalette.getOrNull(0) ?: MaterialTheme.colorScheme.primary
+    val secondary = activePalette.getOrNull(1) ?: MaterialTheme.colorScheme.secondary
+    val tertiary = activePalette.getOrNull(2) ?: MaterialTheme.colorScheme.tertiary
     val isDark = backdropColor.luminance() < 0.5f
 
     val blobAlpha = if (isDark) 0.54f else 0.30f

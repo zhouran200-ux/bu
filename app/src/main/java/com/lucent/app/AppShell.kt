@@ -50,7 +50,13 @@ import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LucentApp(paletteColors: List<Color>, backdropColor: Color, backgroundAnimated: Boolean = true, pureWhite: Boolean = false) {
+fun LucentApp(
+    paletteColors: List<Color>,
+    backdropColor: Color,
+    backgroundAnimated: Boolean = true,
+    pureWhite: Boolean = false,
+    paletteName: String = ""
+) {
     var currentScreen by rememberSaveable { mutableStateOf(LastScreen.current) }
     val tabs = HomeTab.entries
     val pagerState = rememberPagerState(
@@ -108,6 +114,7 @@ fun LucentApp(paletteColors: List<Color>, backdropColor: Color, backgroundAnimat
             FluidGlassBackground(
                 palette = paletteColors,
                 backdropColor = backdropColor,
+                paletteName = paletteName,
                 animated = backgroundAnimated,
                 pureWhite = pureWhite,
                 modifier = Modifier

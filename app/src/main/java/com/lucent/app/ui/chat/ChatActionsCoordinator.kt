@@ -13,6 +13,7 @@ import com.lucent.app.data.ApiProfiles
 import com.lucent.app.data.Note
 import com.lucent.app.data.ReasoningPreset
 import com.lucent.app.i18n.S
+import com.lucent.app.ui.ChatScrollMath
 import com.lucent.app.ui.Haptics
 import com.lucent.app.ui.LucentToast
 import com.lucent.app.ui.PendingChatDelete
@@ -177,6 +178,15 @@ internal class ChatActionsCoordinator(
             return
         }
         settlePendingDelete()
+        val atBottom = !listState.canScrollForward
+        followStream = ChatScrollMath.shouldFollowRegeneration(
+            isLastMessage = idx == messages.lastIndex,
+            atBottom = atBottom
+        )
+        val itemIndex = idx + 1
+        if (!followStream && listState.firstVisibleItemIndex == itemIndex) {
+            listState.requestScrollToItem(itemIndex, 0)
+        }
         session.afterWrite(session.retryPendingWrites()) { askModel(answerId) }
     }
 

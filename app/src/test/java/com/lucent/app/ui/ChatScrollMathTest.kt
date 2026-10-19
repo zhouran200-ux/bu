@@ -35,6 +35,14 @@ class ChatScrollMathTest {
     }
 
     @Test
+    fun regenerationOnlyFollowsWhenItTargetsTheLastAnswerAtTheBottom() {
+        assertTrue(ChatScrollMath.shouldFollowRegeneration(isLastMessage = true, atBottom = true))
+        assertFalse(ChatScrollMath.shouldFollowRegeneration(isLastMessage = true, atBottom = false))
+        assertFalse(ChatScrollMath.shouldFollowRegeneration(isLastMessage = false, atBottom = true))
+        assertFalse(ChatScrollMath.shouldFollowRegeneration(isLastMessage = false, atBottom = false))
+    }
+
+    @Test
     fun pausedReadingStaysPausedAfterReleaseAndIncomingLayoutChanges() {
         assertFalse(ChatScrollMath.shouldFollowAfterScroll(false, false, true))
         assertFalse(ChatScrollMath.shouldFollowAfterScroll(false, false, false))

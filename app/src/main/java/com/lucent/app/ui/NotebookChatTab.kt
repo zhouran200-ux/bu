@@ -26,6 +26,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.structuralEqualityPolicy
@@ -175,7 +176,6 @@ fun NotebookChatTab(
     }
     var showDialogueSettingsDialog by remember { mutableStateOf(false) }
     var showProfileModelPickerSheet by remember { mutableStateOf(false) }
-    val placementSpec = rememberReorderPlacementSpec()
     val streamingAnswerId = session.streamingAnswerId
     var questionToEdit by remember { mutableStateOf<UiChatMessage?>(null) }
     var answerToEdit by remember { mutableStateOf<UiChatMessage?>(null) }
@@ -252,6 +252,7 @@ fun NotebookChatTab(
                 .imePadding()
         ) {
             Box(Modifier.weight(1f).fillMaxWidth()) {
+            CompositionLocalProvider(LocalLiveGlassEnabled provides false) {
             LazyColumn(
                 state = listState,
                 modifier = Modifier
@@ -286,7 +287,7 @@ fun NotebookChatTab(
                     } else {
                         Modifier.animateItem(
                             fadeInSpec = tween(200),
-                            placementSpec = placementSpec,
+                            placementSpec = if (streamingAnswerId == null) tween(180) else null,
                             fadeOutSpec = tween(140)
                         )
                     }
@@ -315,6 +316,7 @@ fun NotebookChatTab(
                 }
 
                 item(key = "footer") { Spacer(modifier = Modifier.height(8.dp)) }
+            }
             }
             FloatingScrollCapsule(
                 listState = listState,

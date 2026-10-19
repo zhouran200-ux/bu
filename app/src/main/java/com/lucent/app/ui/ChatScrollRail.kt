@@ -17,10 +17,11 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
@@ -54,16 +55,24 @@ fun FloatingScrollCapsule(
 ) {
     val ink = LocalOnGradient.current
     val latestDragStart by rememberUpdatedState(onDragStart)
-    val measured = remember(listState) { mutableStateMapOf<Any, Int>() }
+    val totalCount by remember(listState) { derivedStateOf { listState.layoutInfo.totalItemsCount } }
+    val viewport by remember(listState) {
+        derivedStateOf { listState.layoutInfo.viewportSize.height.coerceAtLeast(1) }
+    }
+    val spacing by remember(listState) { derivedStateOf { listState.layoutInfo.mainAxisItemSpacing } }
+    val scrollable by remember(listState) {
+        derivedStateOf { listState.canScrollBackward || listState.canScrollForward }
+    }
+    val measured = remember(listState) { mutableMapOf<Any, Int>() }
+    var sizesVersion by remember(listState) { mutableIntStateOf(0) }
     var dragging by remember(listState) { mutableStateOf(false) }
     var heldFraction by remember(listState) { mutableFloatStateOf(0f) }
     var show by remember(listState) { mutableStateOf(false) }
-    val info = listState.layoutInfo
-    val scrollable = listState.canScrollBackward || listState.canScrollForward
-    val viewport = info.viewportSize.height.coerceAtLeast(1)
-    val sizes = (0 until info.totalItemsCount).map { index -> itemKeys.getOrNull(index)?.let { measured[it] } ?: viewport }
-    val geometry = remember(sizes, viewport, info.mainAxisItemSpacing) {
-        ChatRailGeometry(sizes, viewport, info.mainAxisItemSpacing)
+    val sizes = remember(itemKeys, totalCount, viewport, sizesVersion) {
+        (0 until totalCount).map { index -> itemKeys.getOrNull(index)?.let { measured[it] } ?: viewport }
+    }
+    val geometry = remember(sizes, viewport, spacing) {
+        ChatRailGeometry(sizes, viewport, spacing)
     }
     val position = geometry.fraction(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset,
         listState.canScrollBackward, listState.canScrollForward)
@@ -78,7 +87,15 @@ fun FloatingScrollCapsule(
     }
     LaunchedEffect(listState) {
         snapshotFlow { listState.layoutInfo.visibleItemsInfo.map { it.key to it.size } }.collect { visible ->
-            if (!dragging) visible.forEach { measured[it.first] = it.second }
+            if (dragging) return@collect
+            var changed = false
+            visible.forEach { (key, size) ->
+                if (measured[key] != size) {
+                    measured[key] = size
+                    changed = true
+                }
+            }
+            if (changed) sizesVersion++
         }
     }
     LaunchedEffect(listState.isScrollInProgress, dragging, enabled) {

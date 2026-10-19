@@ -28,9 +28,7 @@ internal fun resolveAppThemeColors(
     pureWhite: Boolean,
     isDarkTheme: Boolean,
     dynamicColorOn: Boolean,
-    paletteName: String,
-    backgroundAnimated: Boolean,
-    backgroundEnvironment: BackgroundEnvironment
+    paletteName: String
 ): AppThemeColors {
     val context = LocalContext.current
     val dynamicActive = !pureWhite && dynamicColorOn && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
@@ -57,17 +55,8 @@ internal fun resolveAppThemeColors(
     } else {
         onGradient = if (isDarkTheme) Color.White else Color(0xFF20202B)
         backdropColor = themeChoice.backdrop(systemDark)
-        paletteColors = if (paletteName == com.lucent.app.ui.PALETTE_RANDOM) {
-            com.lucent.app.ui.rememberRandomPaletteColors(
-                animated = backgroundAnimated,
-                environment = backgroundEnvironment
-            )
-        } else if (paletteName == PALETTE_CYCLE) {
-            rememberCyclingPaletteColors(
-                LucentPalette.pickerEntries.map { it.colors },
-                animated = backgroundAnimated,
-                environment = backgroundEnvironment
-            )
+        paletteColors = if (paletteName == PALETTE_RANDOM || paletteName == PALETTE_CYCLE) {
+            LucentPalette.pickerEntries.firstOrNull()?.colors ?: LucentPalette.SUNSET.colors
         } else {
             LucentPalette.entries.firstOrNull { it.name == paletteName }?.colors
                 ?: LucentPalette.SUNSET.colors

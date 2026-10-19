@@ -8,4 +8,7 @@ object ChatScrollMath {
         atBottom -> true
         else -> false
     }
+
+    fun shouldFollowRegeneration(isLastMessage: Boolean, atBottom: Boolean): Boolean =
+        isLastMessage && atBottom
 }

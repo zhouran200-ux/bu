@@ -143,7 +143,7 @@ class MainActivity : ComponentActivity() {
 
             val themeColors = com.lucent.app.ui.resolveAppThemeColors(
                 themeChoice, systemDark, pureWhite, isDarkTheme, dynamicColorOn,
-                paletteName, backgroundAnimated, backgroundEnvironment
+                paletteName
             )
             val colors = themeColors.scheme
             val onGradient = themeColors.ink
@@ -185,7 +185,8 @@ class MainActivity : ComponentActivity() {
                                 paletteColors = paletteColors,
                                 backdropColor = backdropColor,
                                 backgroundAnimated = appBackgroundAnimated,
-                                pureWhite = pureWhite
+                                pureWhite = pureWhite,
+                                paletteName = paletteName
                             )
                         } else {
                             Box(Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {

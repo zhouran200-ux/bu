@@ -17,6 +17,8 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import dev.chrisbanes.haze.ExperimentalHazeApi
+import dev.chrisbanes.haze.HazeInputScale
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.HazeTint
@@ -73,6 +75,7 @@ internal fun sheetContentHeightLimit(): Dp {
     return (screen * 0.55f).coerceIn(200.dp, 520.dp)
 }
 
+@OptIn(ExperimentalHazeApi::class)
 internal fun Modifier.foregroundGlass(cornerRadius: Dp = 20.dp, reading: Boolean = false): Modifier = composed {
     val shape = RoundedCornerShape(cornerRadius)
     val rim = foregroundRim()
@@ -89,6 +92,7 @@ internal fun Modifier.foregroundGlass(cornerRadius: Dp = 20.dp, reading: Boolean
     if (!liveGlass) {
         return@composed clip(shape)
             .background(tint.copy(alpha = spec.tintAlpha))
+            .background(Brush.verticalGradient(listOf(Color.White.copy(alpha = if (dark) 0.035f else 0.07f), Color.Transparent)))
             .border(0.75.dp, rim, shape)
     }
     val source = LocalGlassBackdrop.current
@@ -98,7 +102,9 @@ internal fun Modifier.foregroundGlass(cornerRadius: Dp = 20.dp, reading: Boolean
         blurRadius = spec.blur.dp,
         noiseFactor = 0.025f,
         fallbackTint = HazeTint(tint.copy(alpha = spec.fallbackAlpha))
-    )) else Modifier.background(tint.copy(alpha = spec.fallbackAlpha))
+    )) {
+        inputScale = HazeInputScale.Auto
+    } else Modifier.background(tint.copy(alpha = spec.fallbackAlpha))
     shadow(3.dp, shape, clip = false, ambientColor = Color.Black.copy(alpha = 0.035f),
         spotColor = Color.Black.copy(alpha = 0.06f))
         .clip(shape).then(material)

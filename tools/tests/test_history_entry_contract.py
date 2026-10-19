@@ -42,7 +42,11 @@ class HistoryEntryContractTest(unittest.TestCase):
         text = (UI / "ChatScrollRail.kt").read_text(encoding="utf-8")
         for old in ("onOpenHistory", "latestHistory", "detectTapGestures", "点按打开对话记录", "onClick {"):
             self.assertNotIn(old, text)
-        self.assertIn("detectVerticalDragGestures", text)
+        self.assertIn("detectChatRailDrag", text)
+        gesture = (UI / "ChatRailGesture.kt").read_text(encoding="utf-8")
+        self.assertIn("awaitVerticalTouchSlopOrCancellation", gesture)
+        self.assertIn("finally", gesture)
+        self.assertIn("onRelease()", gesture)
         self.assertIn("setProgress", text)
         self.assertIn("if (show || dragging || shown > 0.01f)", text)
         self.assertIn(".size(width = 28.dp, height = hitHeight)", text)

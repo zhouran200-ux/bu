@@ -140,7 +140,7 @@
 
 | 当前纯源码契约函数 | 结构护栏（实际断言） | 已有真实 Kotlin 行为覆盖 | 本轮新增行为覆盖 | 仍缺行为覆盖 / 判定 |
 |---|---|---|---|---|
-| `test_user_scroll_pauses_before_list_consumes_delta` | onPreScroll UserInput 先关闭 follow；nestedScroll 接线 | StreamFollowSchedulerTest.manualScrollWhileWaitingPreventsPendingFollow（手动改 allowed，不是真滑动） | 无 | 部分：调度防迟到 follow 已测；真实 pre-scroll 次序缺口 |
+| `test_user_scroll_pauses_before_list_consumes_delta` | onPreScroll UserInput 先关闭 follow；nestedScroll 接线 | 原字数驱动调度测试已随2026-10-20布局驱动跟随迁移，见ChatTailFollowTest及ChatScrollOwnershipTest（运行边界见当轮审计） | 无 | 部分：调度防迟到 follow 已测；真实 pre-scroll 次序缺口 |
 | `test_notebook_tab_container_is_centered_and_twenty_percent_narrower` | 容器居中宽80%、等权chat/source tab、玻璃 | NotebookDetailTabsTest.detailTabsKeepChatFirstSoSwipeOrderIsStable；detailTabIndexMatchesPagerPage（只测枚举/索引） | 无 | 部分：实际点击/布局宽度/居中/视觉缺口 |
 | `test_return_to_bottom_is_borderless_circle_with_clear_arrow` | 44dp无框圆按钮、箭头/阴影；点击恢复follow并animate | 无直接点击证据 | 无 | 缺口：真实按钮点击→列表到底且后续恢复跟随；视觉仍仅结构 |
 | `test_error_details_remain_below_summary` | API summary/details 先后、pretty body、copy raw接线 | 无直接 UI 证据 | 无 | 缺口：错误内容/折叠详情/复制原文 UI 行为与排列 |
@@ -201,7 +201,8 @@
 - [ForegroundMaterialTest.kt](<../../app/src/test/java/com/lucent/app/ui/ForegroundMaterialTest.kt>)
 - [HomeNavigationTest.kt](<../../app/src/test/java/com/lucent/app/ui/HomeNavigationTest.kt>)
 - [NotebookDetailTabsTest.kt](<../../app/src/test/java/com/lucent/app/ui/NotebookDetailTabsTest.kt>)
-- [StreamFollowSchedulerTest.kt](<../../app/src/test/java/com/lucent/app/ui/StreamFollowSchedulerTest.kt>)
+- [ChatTailLayoutTest.kt](<../../app/src/test/java/com/lucent/app/ui/ChatTailLayoutTest.kt>)
+- [ChatScrollOwnershipTest.kt](<../../app/src/test/java/com/lucent/app/ui/ChatScrollOwnershipTest.kt>)
 - [ApiProfileLogicTest.kt](<../../app/src/test/java/com/lucent/app/ui/settings/ApiProfileLogicTest.kt>)
 - [ApiProfileTest.kt](<../../app/src/test/java/com/lucent/app/data/ApiProfileTest.kt>)
 - [SettingsCacheSeedTest.kt](<../../app/src/test/java/com/lucent/app/data/SettingsCacheSeedTest.kt>)

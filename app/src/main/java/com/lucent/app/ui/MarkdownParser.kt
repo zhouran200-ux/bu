@@ -160,27 +160,30 @@ internal class IncrementalMarkdownParser {
     companion object {
         fun findSafeClosedSplit(text: String): Int {
             var inCodeFence = false
-            var lastSafeSplit = -1
+            var previousLineBlank = true
+            var lastSafeSplit = 0
+            var lineStart = 0
 
-            val lines = text.lines()
-            var currentOffset = 0
-            for (i in lines.indices) {
-                val line = lines[i]
-                val lineLenWithNewline = line.length + if (i < lines.size - 1) 1 else 0
+            while (lineStart < text.length) {
+                var lineEnd = lineStart
+                while (lineEnd < text.length && text[lineEnd] != '\n' && text[lineEnd] != '\r') lineEnd++
+                if (lineEnd == text.length || (text[lineEnd] == '\r' && lineEnd == text.lastIndex)) break
+                val nextLineStart = lineEnd + if (text[lineEnd] == '\r' && text.getOrNull(lineEnd + 1) == '\n') 2 else 1
+                val line = text.substring(lineStart, lineEnd)
+                val lineBlank = line.isBlank()
 
-                if (line.trimStart().startsWith("```")) {
+                if (line.trimStart().startsWith(FENCE)) {
                     inCodeFence = !inCodeFence
-                    if (!inCodeFence) {
-                        lastSafeSplit = currentOffset + lineLenWithNewline
-                    }
-                } else if (!inCodeFence && line.isBlank() && i > 0 && lines[i - 1].isNotBlank()) {
-                    lastSafeSplit = currentOffset + lineLenWithNewline
+                    if (!inCodeFence) lastSafeSplit = nextLineStart
+                } else if (!inCodeFence && lineBlank && !previousLineBlank) {
+                    lastSafeSplit = lineStart
                 }
 
-                currentOffset += lineLenWithNewline
+                previousLineBlank = lineBlank
+                lineStart = nextLineStart
             }
 
-            return lastSafeSplit.coerceAtLeast(0)
+            return lastSafeSplit
         }
     }
 }

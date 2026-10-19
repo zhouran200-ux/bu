@@ -43,6 +43,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -50,6 +51,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -69,6 +71,8 @@ internal fun ThinkingLane(
     val context = LocalContext.current.applicationContext
     val savedLane = remember(readingKey) { ReadingPositionMemory.read(context, readingKey) }
     var expanded by remember(readingKey) { mutableStateOf(savedLane?.itemKey?.let { it == "expanded" } ?: streaming) }
+    var retainLiveHeight by rememberSaveable(readingKey) { mutableStateOf(streaming && expanded) }
+    LaunchedEffect(streaming, expanded) { if (streaming && expanded) retainLiveHeight = true }
     val laneState = remember(readingKey) { androidx.compose.foundation.ScrollState(savedLane?.offset ?: 0) }
     val thought = liveThought?.value ?: storedThought
     LaunchedEffect(readingKey, laneState) {
@@ -89,12 +93,15 @@ internal fun ThinkingLane(
         else -> S.thinkingDone
     }
 
-    Column(modifier = Modifier.fillMaxWidth()) {
+    Column(modifier = Modifier.fillMaxWidth().testTag("thinking_lane")) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .clip(RoundedCornerShape(12.dp))
-                .clickable { expanded = !expanded }
+                .clickable {
+                    expanded = !expanded
+                    if (!expanded) retainLiveHeight = false
+                }
                 .padding(horizontal = 8.dp, vertical = 6.dp)
         ) {
             Text(
@@ -146,18 +153,20 @@ internal fun ThinkingLane(
                     fontSize = 13.sp,
                     fontFamily = FontFamily.Monospace,
                     lineHeight = 19.sp,
-                    modifier = if (streaming) {
-                        Modifier.fillMaxWidth()
+                    modifier = if (streaming || retainLiveHeight) {
+                        Modifier.fillMaxWidth().testTag("thinking_text")
                     } else {
                         Modifier
                             .fillMaxWidth()
+                            .testTag("thinking_text")
                             .heightIn(max = 220.dp)
                             .verticalScroll(laneState)
                     }
                 )
-                if (streaming) {
+                if (streaming || retainLiveHeight) {
                     Spacer(modifier = Modifier.height(6.dp))
-                    ThoughtPulse(color = accent)
+                    if (streaming) ThoughtPulse(color = accent)
+                    else Spacer(modifier = Modifier.size(6.dp))
                 }
             }
         }

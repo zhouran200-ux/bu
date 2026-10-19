@@ -48,7 +48,8 @@ fun MarkdownText(
     sourceNoteId: Long? = null,
     sourceRevision: String? = null,
     emphasized: Boolean = false,
-    citationsEnabled: Boolean = true
+    citationsEnabled: Boolean = true,
+    streaming: Boolean = false
 ) {
     val onGradient = LocalOnGradient.current
     val onGradientMuted = LocalOnGradientMuted.current
@@ -58,10 +59,11 @@ fun MarkdownText(
     var parsed by remember { mutableStateOf(MarkdownParseSnapshot(emptyList(), emptyList())) }
     val currentClick = rememberUpdatedState(onCitationClick)
     val click: (CitationRef) -> Unit = remember { { ref -> currentClick.value?.invoke(ref) } }
-    LaunchedEffect(text, citationsEnabled, emphasized, onGradient, onGradientMuted, accent, sourceNoteId, sourceRevision, onCitationClick != null) {
+    LaunchedEffect(text, streaming, citationsEnabled, emphasized, onGradient, onGradientMuted, accent, sourceNoteId, sourceRevision, onCitationClick != null) {
         parsed = withContext(Dispatchers.Default) {
             parserMutex.withLock {
-                val blocks = incrementalParser.parse(text)
+                val displayText = if (streaming && citationsEnabled) streamingMarkdownTail(text) else text
+                val blocks = incrementalParser.parse(displayText)
                 val cursor = CitationCursor()
                 val decor = CitationDecor(if (onCitationClick != null) click else null, sourceNoteId, sourceRevision, citationsEnabled, emphasized)
                 val annotated = blocks.map { block ->

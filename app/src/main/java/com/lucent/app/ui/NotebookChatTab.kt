@@ -48,7 +48,6 @@ import com.lucent.app.data.CitationRef
 import com.lucent.app.data.Note
 import com.lucent.app.data.SettingsCache
 import com.lucent.app.data.SettingsRepository
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.getValue
 import com.lucent.app.ui.chat.ChatActionsCoordinator
@@ -108,7 +107,6 @@ fun NotebookChatTab(
         ChatActionsCoordinator(
             context = context,
             session = session,
-            scope = scope,
             listState = listState,
             sourceNotes = sourceNotes,
             prefs = prefs,
@@ -119,6 +117,7 @@ fun NotebookChatTab(
         )
     }
     val viewportAnchor = remember(notebookId) { ChatViewportAnchor() }
+    val scrollOwnership = remember(notebookId) { ChatScrollOwnership() }
     LaunchedEffect(active) {
         if (!active) actions.followStream = false
     }
@@ -129,6 +128,7 @@ fun NotebookChatTab(
                 source: androidx.compose.ui.input.nestedscroll.NestedScrollSource
             ): androidx.compose.ui.geometry.Offset {
                 if (source == androidx.compose.ui.input.nestedscroll.NestedScrollSource.UserInput && available.y != 0f) {
+                    scrollOwnership.listScrolled()
                     actions.followStream = false
                     viewportAnchor.userScrolled()
                 }
@@ -139,11 +139,13 @@ fun NotebookChatTab(
                 consumed: androidx.compose.ui.unit.Velocity,
                 available: androidx.compose.ui.unit.Velocity
             ): androidx.compose.ui.unit.Velocity {
-                actions.followStream = ChatScrollMath.shouldFollowAfterScroll(
-                    wasFollowing = actions.followStream,
-                    atBottom = !listState.canScrollForward,
-                    userScrolling = true
-                )
+                if (scrollOwnership.finishListGesture()) {
+                    actions.followStream = ChatScrollMath.shouldFollowAfterScroll(
+                        wasFollowing = actions.followStream,
+                        atBottom = !listState.canScrollForward,
+                        userScrolling = true
+                    )
+                }
                 return androidx.compose.ui.unit.Velocity.Zero
             }
         }
@@ -195,28 +197,12 @@ fun NotebookChatTab(
     var reasoningButtonBounds by remember { mutableStateOf(androidx.compose.ui.geometry.Rect.Zero) }
     var chatCoordinates by remember { mutableStateOf<androidx.compose.ui.layout.LayoutCoordinates?>(null) }
     LaunchedEffect(active) { if (!active) showReasoningMenu = false }
-    val streamProgress by remember(session) {
-        derivedStateOf {
-            val id = session.streamingAnswerId ?: return@derivedStateOf 0
-            val body = messages.firstOrNull { it.id == id }?.content?.length ?: 0
-            body + streamingThought.value.length
-        }
-    }
-    LaunchedEffect(streamingAnswerId, active) {
-        if (!active || streamingAnswerId == null) return@LaunchedEffect
-        followStreamUpdates(
-            updates = androidx.compose.runtime.snapshotFlow { streamProgress },
-            canFollow = { actions.followStream && !listState.isScrollInProgress && !actions.streamReserveBlocksFollow() },
-            awaitLayout = {
-                delay(80)
-                androidx.compose.runtime.withFrameNanos { }
-            },
-            onFollow = {
-                listState.requestScrollToItem((listState.layoutInfo.totalItemsCount - 1).coerceAtLeast(0))
-            }
-        )
-    }
-
+    FollowChatTail(
+        listState = listState,
+        active = active,
+        following = actions.followStream,
+        canFollow = { actions.followStream && !actions.streamReserveBlocksFollow() }
+    )
 
     LaunchedEffect(listState, active, viewportAnchor) {
         if (!active) return@LaunchedEffect
@@ -253,10 +239,18 @@ fun NotebookChatTab(
                             .nestedScroll(readingScrollConnection)
                             .fillMaxSize()
                             .pointerInput(Unit) {
-                                detectTapGestures(onTap = {
-                                    focusManager.clearFocus()
-                                    keyboardController?.hide()
-                                })
+                                detectTapGestures(
+                                    onPress = {
+                                        actions.followStream = false
+                                        scrollOwnership.takeOver()
+                                        viewportAnchor.userScrolled()
+                                        tryAwaitRelease()
+                                    },
+                                    onTap = {
+                                        focusManager.clearFocus()
+                                        keyboardController?.hide()
+                                    }
+                                )
                             }
                             .padding(horizontal = 14.dp),
                         contentPadding = PaddingValues(bottom = bottomInset),
@@ -342,6 +336,7 @@ fun NotebookChatTab(
                     itemKeys = readingKeys,
                     enabled = active && !isImeVisible,
                     onDragStart = {
+                        scrollOwnership.takeOver()
                         actions.followStream = false
                         viewportAnchor.userScrolled()
                     },

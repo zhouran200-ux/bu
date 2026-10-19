@@ -139,6 +139,7 @@ internal fun AiMessageCard(
                     Column(modifier = Modifier.padding(16.dp)) {
                         MarkdownText(
                             text = message.content,
+                            streaming = streaming,
                             modifier = Modifier.fillMaxWidth(),
                             onCitationClick = onCitationClick,
                             sourceNoteId = message.sourceNoteId,

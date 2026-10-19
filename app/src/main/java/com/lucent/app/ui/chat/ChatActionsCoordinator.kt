@@ -21,14 +21,10 @@ import com.lucent.app.ui.buildChatHistory
 import com.lucent.app.ui.resolveChatEndpoint
 import com.lucent.app.ui.resolveChatReasoning
 import com.lucent.app.ui.startChatStream
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 internal class ChatActionsCoordinator(
     private val context: Context,
     internal val session: ChatSession,
-    private val scope: CoroutineScope,
     internal val listState: LazyListState,
     private val sourceNotes: List<Note>,
     internal val prefs: SharedPreferences,
@@ -156,12 +152,6 @@ internal class ChatActionsCoordinator(
         val answerId = userMsg.id + 1
         messages.add(UiChatMessage(id = answerId, role = "assistant", content = "", timestamp = answerId))
         followStream = true
-        scope.launch {
-            delay(100)
-            if (followStream && !listState.isScrollInProgress) {
-                listState.animateScrollToItem((messages.size - 1).coerceAtLeast(0))
-            }
-        }
         session.afterWrite(saved, onFailure = {
             messages.removeAll { it.id == answerId }
             LucentToast.show(context, S.chatQuestionNotSaved)

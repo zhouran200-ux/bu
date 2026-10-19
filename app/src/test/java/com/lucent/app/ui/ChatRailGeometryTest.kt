@@ -23,6 +23,23 @@ class ChatRailGeometryTest {
         assertEquals(0f, railDragFraction(0.6f, -9999f, 600f))
         assertEquals(1f, railDragFraction(0.6f, 9999f, 600f))
     }
+    @Test fun anchoredTargetPreservesPositionWhenEstimatedRangeClampsTheThumb() {
+        val geometry = ChatRailGeometry(List(10) { 100 }, 500, 0)
+        val anchor = ChatScrollTarget(8, 50)
+        assertEquals(1f, geometry.fraction(anchor.index, anchor.offset, true, true))
+        assertEquals(anchor, geometry.targetFrom(anchor, 0f))
+        assertEquals(ChatScrollTarget(8, 0), geometry.targetFrom(anchor, -0.1f))
+        assertEquals(ChatScrollTarget(9, 0), geometry.targetFrom(anchor, 0.1f))
+    }
+
+    @Test fun anchoredTargetRetainsLongItemOffsetAndSpacing() {
+        val geometry = ChatRailGeometry(listOf(100, 2000, 100), 500, 20)
+        assertEquals(ChatScrollTarget(1, 800), geometry.targetFrom(ChatScrollTarget(1, 800), 0f))
+        val moved = geometry.targetFrom(ChatScrollTarget(1, 800), 0.25f)
+        assertEquals(ChatScrollTarget(1, 1235), moved)
+        assertEquals(ChatScrollTarget(0, 0), geometry.targetFrom(ChatScrollTarget(1, 800), -1f))
+    }
+
     @Test fun emptyShortAndExtremeGeometryRemainSafe() {
         assertEquals(ChatScrollTarget(0, 0), ChatRailGeometry(emptyList(), 500, 0).target(1f))
         assertEquals(ChatScrollTarget(0, 0), ChatRailGeometry(listOf(10), 500, 0).target(1f))

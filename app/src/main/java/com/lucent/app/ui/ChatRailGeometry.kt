@@ -1,5 +1,7 @@
 package com.lucent.app.ui
 
+import kotlin.math.roundToLong
+
 internal class ChatRailGeometry(sizes: List<Int>, private val viewport: Int, private val spacing: Int) {
     private val heights = sizes.map { it.coerceAtLeast(1) }
     private val starts = LongArray(heights.size)
@@ -18,7 +20,18 @@ internal class ChatRailGeometry(sizes: List<Int>, private val viewport: Int, pri
 
     fun target(fraction: Float): ChatScrollTarget {
         if (starts.isEmpty()) return ChatScrollTarget(0, 0)
-        val distance = (fraction.coerceIn(0f, 1f) * maximum).toLong()
+        return targetAt((fraction.coerceIn(0f, 1f).toDouble() * maximum).roundToLong())
+    }
+
+    fun targetFrom(anchor: ChatScrollTarget, deltaFraction: Float): ChatScrollTarget {
+        if (deltaFraction == 0f) return anchor
+        val start = starts.getOrNull(anchor.index) ?: return target(0f)
+        val distance = start + anchor.offset + deltaFraction.toDouble() * maximum
+        return targetAt(distance.roundToLong().coerceAtLeast(0L))
+    }
+
+    private fun targetAt(distance: Long): ChatScrollTarget {
+        if (starts.isEmpty()) return ChatScrollTarget(0, 0)
         var low = 0
         var high = starts.lastIndex
         while (low < high) {

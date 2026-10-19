@@ -2,6 +2,7 @@ package com.lucent.app.ui
 
 import android.content.ClipboardManager
 import android.content.Context
+import androidx.activity.ComponentActivity
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.semantics.SemanticsActions
@@ -10,7 +11,7 @@ import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.click
-import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -21,18 +22,29 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.pressKey
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import androidx.test.platform.app.InstrumentationRegistry
 import com.lucent.app.chat.UiChatMessage
 import com.lucent.app.i18n.S
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class ChatMessageCardSelectionTest {
-    @get:Rule val rule = createComposeRule()
+    @get:Rule val rule = createAndroidComposeRule<ComponentActivity>()
+
+    @After
+    fun clearSystemClipboard() {
+        rule.runOnUiThread { clipboard.clearPrimaryClip() }
+    }
+
+    @Before
+    fun prepareSystemWindow() {
+        rule.prepareSystemInteraction(rule.activity)
+    }
 
     private val callbacks = mutableListOf<String>()
     private val word = "Selectable"
@@ -42,7 +54,7 @@ class ChatMessageCardSelectionTest {
         node.config.any { (key, _) -> key.name == "SelectionHandleInfo" }
     }
     private val clipboard: ClipboardManager
-        get() = InstrumentationRegistry.getInstrumentation().targetContext
+        get() = rule.activity
             .getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
 
     @Test fun userLongPressCopiesSelectedWordAndActionsRemainIndependent() {
@@ -85,6 +97,7 @@ class ChatMessageCardSelectionTest {
         val layouts = mutableListOf<TextLayoutResult>()
         rule.onNodeWithText(full).performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
         assertEquals(6, layouts.single().lineCount)
+        rule.awaitSystemWindowFocus(rule.activity.window.decorView)
         rule.runOnIdle { clipboard.clearPrimaryClip() }
         rule.onNodeWithContentDescription(S.msgCopyFull).performTouchInput { click() }
         waitForClipboard(full)
@@ -113,6 +126,7 @@ class ChatMessageCardSelectionTest {
             }
         }
         waitForText(if (ai) word else userBody)
+        rule.awaitSystemWindowFocus(rule.activity.window.decorView)
         rule.runOnIdle { clipboard.clearPrimaryClip() }
     }
 
@@ -123,6 +137,7 @@ class ChatMessageCardSelectionTest {
     }
 
     private fun selectWord(bodyNode: String) {
+        rule.awaitSystemWindowFocus(rule.onNodeWithText(bodyNode))
         val layouts = mutableListOf<TextLayoutResult>()
         val body = rule.onNodeWithText(bodyNode)
         body.performSemanticsAction(SemanticsActions.GetTextLayoutResult) { action ->
@@ -204,6 +219,7 @@ class ChatMessageCardSelectionTest {
         ?.getItemAt(0)?.text?.toString()
 
     private fun waitForClipboard(expected: String) {
+        rule.awaitSystemWindowFocus(rule.activity.window.decorView)
         rule.waitUntil(5_000) {
             rule.runOnIdle { clipboardText() == expected }
         }

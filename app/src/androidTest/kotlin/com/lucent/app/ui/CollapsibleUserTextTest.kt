@@ -2,6 +2,7 @@ package com.lucent.app.ui
 
 import android.content.ClipboardManager
 import android.content.Context
+import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
@@ -13,7 +14,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertHasClickAction
-import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
@@ -28,18 +29,29 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import androidx.test.platform.app.InstrumentationRegistry
 import com.lucent.app.i18n.S
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class CollapsibleUserTextTest {
-    @get:Rule val rule = createComposeRule()
+    @get:Rule val rule = createAndroidComposeRule<ComponentActivity>()
+
+    @After
+    fun clearSystemClipboard() {
+        rule.runOnUiThread { clipboard.clearPrimaryClip() }
+    }
+
+    @Before
+    fun prepareSystemWindow() {
+        rule.prepareSystemInteraction(rule.activity)
+    }
 
     private val text = mutableStateOf("Selectable " + "word ".repeat(18) + "Hiddenword")
     private val expanded = mutableStateOf(false)
@@ -50,7 +62,7 @@ class CollapsibleUserTextTest {
         node.config.any { (key, _) -> key.name == "SelectionHandleInfo" }
     }
     private val clipboard: ClipboardManager
-        get() = InstrumentationRegistry.getInstrumentation().targetContext
+        get() = rule.activity
             .getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
 
     @Test fun shortTextAndExactlySixLinesHaveNoToggle() {
@@ -154,6 +166,7 @@ class CollapsibleUserTextTest {
     @Test fun collapsedTextRemainsSelectableAndExpandedTailCanBeCopied() {
         render()
         waitForToggle(S.userMessageExpand)
+        rule.awaitSystemWindowFocus(rule.activity.window.decorView)
         rule.runOnIdle { clipboard.clearPrimaryClip() }
         selectAndCopy("Selectable")
         rule.runOnIdle { assertEquals(emptyList<Boolean>(), callbacks) }
@@ -209,6 +222,7 @@ class CollapsibleUserTextTest {
     }
 
     private fun selectAndCopy(word: String) {
+        rule.awaitSystemWindowFocus(rule.onNodeWithText(text.value))
         val position = layout().getBoundingBox(text.value.indexOf(word) + 3).center
         rule.onNodeWithText(text.value).performTouchInput { longClick(position) }
         rule.waitUntil(5_000) {
@@ -216,6 +230,7 @@ class CollapsibleUserTextTest {
                 .fetchSemanticsNodes().size == 2
         }
         rule.onNodeWithText(text.value).performKeyInput { pressKey(Key.Copy) }
+        rule.awaitSystemWindowFocus(rule.activity.window.decorView)
         rule.waitUntil(5_000) {
             rule.runOnIdle {
                 clipboard.primaryClip?.getItemAt(0)?.text?.toString() == word

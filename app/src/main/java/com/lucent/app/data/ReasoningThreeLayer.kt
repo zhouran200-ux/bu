@@ -40,6 +40,7 @@ enum class ReasoningControl {
     GEMINI_THINKING_BUDGET,
     DEEPSEEK_EFFORT,
     QWEN_EFFORT,
+    QWEN_BUDGET,
     ZHIPU_EFFORT,
     NONE
 }
@@ -49,7 +50,9 @@ data class ReasoningCapability(
     val supported: Boolean,
     val control: ReasoningControl,
     val isAdaptive: Boolean = true,
-    val levels: List<String> = emptyList()
+    val levels: List<String> = emptyList(),
+    val thinkingType: String? = null,
+    val thinkingBudgetMax: Int? = null
 ) {
     companion object {
         val NONE = ReasoningCapability(
@@ -98,13 +101,15 @@ data class ResolvedReasoningConfig(
     val geminiThinkingBudget: Int? = null,
     val claudeEffort: String? = null,
     val claudeBudgetTokens: Int? = null,
+    val claudeThinkingType: String? = null,
+    val qwenBudgetTokens: Int? = null,
     val displayTag: String = ""
 ) {
     companion object {
         val AUTO = ResolvedReasoningConfig(
             preset = ReasoningPreset.AUTO,
             isAuto = true,
-            displayTag = "原厂自适应"
+            displayTag = "模型默认（不覆盖）"
         )
     }
 }
@@ -140,6 +145,8 @@ class OpenAiReasoningMapper : ReasoningMapper {
 class AnthropicReasoningMapper : ReasoningMapper {
     override fun map(preset: ReasoningPreset, model: ModelDefinition): ResolvedReasoningConfig {
         if (preset == ReasoningPreset.AUTO) return ResolvedReasoningConfig.AUTO
+        val usesBudget = model.reasoning.control == ReasoningControl.ANTHROPIC_BUDGET || model.reasoning.thinkingType == "enabled"
+        if (usesBudget && (model.reasoning.thinkingBudgetMax ?: Int.MAX_VALUE) < 1024) return FallbackReasoningMapper().map(preset, model)
 
         return if (model.reasoning.control == ReasoningControl.ANTHROPIC_EFFORT) {
             val desired = when (preset) {
@@ -153,22 +160,25 @@ class AnthropicReasoningMapper : ReasoningMapper {
             ResolvedReasoningConfig(
                 preset = preset,
                 claudeEffort = effort,
-                displayTag = "Claude $effort (自适应)"
+                claudeThinkingType = model.reasoning.thinkingType,
+                claudeBudgetTokens = if (model.reasoning.thinkingType == "enabled") budget(preset).coerceAtMost(model.reasoning.thinkingBudgetMax ?: Int.MAX_VALUE) else null,
+                displayTag = "Claude $effort"
             )
         } else {
-            val budget = when (preset) {
-                ReasoningPreset.AUTO -> 2048
-                ReasoningPreset.FAST -> 2048
-                ReasoningPreset.BALANCED -> 8192
-                ReasoningPreset.DEEP -> 16384
-                ReasoningPreset.MAXIMUM -> 32768
-            }
+            val budget = budget(preset).coerceAtMost(model.reasoning.thinkingBudgetMax ?: Int.MAX_VALUE)
             ResolvedReasoningConfig(
                 preset = preset,
                 claudeBudgetTokens = budget,
+                claudeThinkingType = "enabled",
                 displayTag = "Claude ${budget}t 预算"
             )
         }
+    }
+    private fun budget(preset: ReasoningPreset): Int = when (preset) {
+        ReasoningPreset.AUTO, ReasoningPreset.FAST -> 2048
+        ReasoningPreset.BALANCED -> 8192
+        ReasoningPreset.DEEP -> 16384
+        ReasoningPreset.MAXIMUM -> 32768
     }
 }
 
@@ -202,8 +212,8 @@ class GeminiBudgetReasoningMapper : ReasoningMapper {
             ReasoningPreset.FAST -> 1024
             ReasoningPreset.BALANCED -> 8192
             ReasoningPreset.DEEP -> 16384
-            ReasoningPreset.MAXIMUM -> 24576
-        }
+            ReasoningPreset.MAXIMUM -> model.reasoning.thinkingBudgetMax ?: 24576
+        }.coerceAtMost(model.reasoning.thinkingBudgetMax ?: 24576)
         return ResolvedReasoningConfig(
             preset = preset,
             geminiThinkingBudget = budget,
@@ -237,6 +247,15 @@ class DeepSeekReasoningMapper : ReasoningMapper {
 class QwenReasoningMapper : ReasoningMapper {
     override fun map(preset: ReasoningPreset, model: ModelDefinition): ResolvedReasoningConfig {
         if (preset == ReasoningPreset.AUTO) return ResolvedReasoningConfig.AUTO
+        if (model.reasoning.control == ReasoningControl.QWEN_BUDGET) {
+            val budget = when (preset) {
+                ReasoningPreset.AUTO, ReasoningPreset.FAST -> 2048
+                ReasoningPreset.BALANCED -> 8192
+                ReasoningPreset.DEEP -> 16384
+                ReasoningPreset.MAXIMUM -> 32768
+            }.coerceAtMost(model.reasoning.thinkingBudgetMax ?: 32768)
+            return ResolvedReasoningConfig(preset, qwenBudgetTokens = budget, displayTag = "Qwen ${budget}t 预算")
+        }
 
         val desired = when (preset) {
             ReasoningPreset.AUTO -> "low"
@@ -299,25 +318,27 @@ object ReasoningResolver {
     fun resolve(
         preset: ReasoningPreset,
         provider: String,
-        model: String
+        model: String,
+        baseUrl: String = ""
     ): ResolvedReasoningConfig {
         if (preset == ReasoningPreset.AUTO) {
             return ResolvedReasoningConfig.AUTO
         }
 
         val modelDef = ModelCapabilityRegistry.findOrRegister(model, provider)
+        if (!modelDef.reasoning.supported) return fallbackMapper.map(preset, modelDef)
         val mapper: ReasoningMapper = when (modelDef.reasoning.control) {
             ReasoningControl.OPENAI_EFFORT -> openAiMapper
             ReasoningControl.ANTHROPIC_EFFORT, ReasoningControl.ANTHROPIC_BUDGET -> anthropicMapper
             ReasoningControl.GEMINI_THINKING_LEVEL -> geminiMapper
             ReasoningControl.GEMINI_THINKING_BUDGET -> geminiBudgetMapper
             ReasoningControl.DEEPSEEK_EFFORT -> deepSeekMapper
-            ReasoningControl.QWEN_EFFORT -> qwenMapper
+            ReasoningControl.QWEN_EFFORT, ReasoningControl.QWEN_BUDGET -> qwenMapper
             ReasoningControl.ZHIPU_EFFORT -> zhipuMapper
             ReasoningControl.NONE -> fallbackMapper
         }
 
-        return mapper.map(preset, modelDef)
+        return reasoningForEndpoint(mapper.map(preset, modelDef), provider, baseUrl)
     }
 }
 

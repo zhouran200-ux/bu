@@ -16,9 +16,9 @@ import com.lucent.app.data.ReasoningPlanBuilder
 import com.lucent.app.i18n.S
 
 @Composable
-internal fun ApiReasoningSummarySection(provider: String, model: String) {
+internal fun ApiReasoningSummarySection(provider: String, model: String, baseUrl: String) {
     if (model.isBlank()) return
-    val plan = remember(provider, model) { ReasoningPlanBuilder.build(provider, model) }
+    val plan = remember(provider, model, baseUrl) { ReasoningPlanBuilder.build(provider, model, baseUrl) }
 
     Spacer(modifier = Modifier.height(8.dp))
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -43,9 +43,10 @@ internal fun ApiReasoningSummarySection(provider: String, model: String) {
                 lineHeight = 15.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            if (plan.note.isNotBlank()) Text(plan.note, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         } else {
             Text(
-                text = S.apiReasoningUnsupported,
+                text = listOf(S.apiReasoningUnsupported, plan.note).filter { it.isNotBlank() }.joinToString("\n"),
                 fontSize = 11.sp,
                 lineHeight = 15.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant

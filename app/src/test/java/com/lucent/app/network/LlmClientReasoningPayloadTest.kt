@@ -84,14 +84,16 @@ class LlmClientReasoningPayloadTest {
 
     @Test(timeout = 15000)
     fun claudeViaOpenAiEndpointStillHonoursTheChosenEffort() = runBlocking {
-        val body = send(ReasoningPreset.DEEP, "claude-3-7-sonnet")
+        val body = send(ReasoningPreset.DEEP, "claude-sonnet-5-5")
         assertEquals("high", org.json.JSONObject(body).optString("reasoning_effort"))
     }
 
     @Test(timeout = 15000)
-    fun claudeBudgetModelSendsATokenBudgetNotAnEffort() = runBlocking {
-        val json = org.json.JSONObject(send(ReasoningPreset.DEEP, "claude-3-5-sonnet"))
-        assertEquals(7168, json.optInt("max_completion_tokens"))
+    fun claudeBudgetModelSendsThinkingRatherThanAnOutputCapDisguisedAsBudget() = runBlocking {
+        val json = org.json.JSONObject(send(ReasoningPreset.DEEP, "claude-sonnet-4-5"))
+        assertEquals(16384, json.getJSONObject("thinking").getInt("budget_tokens"))
+        assertEquals(17408, json.getInt("max_tokens"))
+        assertFalse(json.has("max_completion_tokens"))
         assertNull(json.opt("reasoning_effort"))
         assertNull(json.opt("reasoning"))
     }
@@ -118,18 +120,19 @@ class LlmClientReasoningPayloadTest {
     fun anthropicOutputCapsKeepEveryRequestLegal() {
         assertEquals(4096, anthropicOutputCap("claude-3-opus"))
         assertEquals(8192, anthropicOutputCap("claude-3-5-sonnet"))
-        assertEquals(8192, anthropicOutputCap("claude-3-7-sonnet"))
-        assertEquals(Int.MAX_VALUE, anthropicOutputCap("claude-opus-5-5"))
+        assertEquals(65536, anthropicOutputCap("claude-sonnet-4-5"))
+        assertEquals(131072, anthropicOutputCap("claude-sonnet-4-6"))
+        assertEquals(131072, anthropicOutputCap("claude-opus-5-5"))
     }
 
     @Test
     fun anthropicBudgetRequestNeverExceedsTheModelCap() {
-        val config = ReasoningResolver.resolve(ReasoningPreset.MAXIMUM, "anthropic", "claude-3-5-sonnet")
+        val config = ReasoningResolver.resolve(ReasoningPreset.MAXIMUM, "anthropic", "claude-sonnet-4-5")
         val request = StreamingRequestBuilder.build(
             baseUrl = "https://api.anthropic.com",
             spec = ApiSpec.ANTHROPIC,
             apiKey = "test-key",
-            model = "claude-3-5-sonnet",
+            model = "claude-sonnet-4-5",
             messages = listOf(ChatMessagePayload("user", "ping")),
             systemInstruction = "",
             reasoningConfig = config,
@@ -139,13 +142,14 @@ class LlmClientReasoningPayloadTest {
         val json = org.json.JSONObject(body)
         val maxTokens = json.optInt("max_tokens")
         val budget = json.optJSONObject("thinking")!!.optInt("budget_tokens")
-        assertEquals(8192, maxTokens)
-        assertTrue(budget in 1024..maxTokens)
+        assertEquals(33792, maxTokens)
+        assertEquals(32768, budget)
+        assertTrue(budget in 1024 until maxTokens)
     }
 
     @Test(timeout = 15000)
     fun deepSeekAndQwenKeepTheirOwnEffortValues() = runBlocking {
-        assertEquals("max", org.json.JSONObject(send(ReasoningPreset.MAXIMUM, "deepseek-r1")).optString("reasoning_effort"))
-        assertEquals("xhigh", org.json.JSONObject(send(ReasoningPreset.DEEP, "qwen-max")).optString("reasoning_effort"))
+        assertEquals("max", org.json.JSONObject(send(ReasoningPreset.MAXIMUM, "deepseek-v4-pro")).optString("reasoning_effort"))
+        assertEquals("xhigh", org.json.JSONObject(send(ReasoningPreset.DEEP, "qwen3.8-max")).optString("reasoning_effort"))
     }
 }

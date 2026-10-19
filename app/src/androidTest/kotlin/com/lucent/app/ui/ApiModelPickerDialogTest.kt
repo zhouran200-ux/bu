@@ -1,21 +1,21 @@
 package com.lucent.app.ui
 
-import android.view.KeyEvent
+import androidx.activity.ComponentActivity
 import androidx.compose.material3.Text
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import androidx.test.platform.app.InstrumentationRegistry
 import com.lucent.app.i18n.S
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -23,7 +23,12 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class ApiModelPickerDialogTest {
     @get:Rule
-    val rule = createComposeRule()
+    val rule = createAndroidComposeRule<ComponentActivity>()
+
+    @Before
+    fun prepareSystemWindow() {
+        rule.prepareSystemInteraction(rule.activity)
+    }
 
     private val names = listOf("模型甲", "模型乙")
 
@@ -118,7 +123,7 @@ class ApiModelPickerDialogTest {
         rule.onNodeWithText(S.clearAllSelection).performClick()
         rule.onNodeWithText("模型乙").performClick().assertIsOn()
         rule.waitForIdle()
-        InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
+        rule.pressSystemBack(rule.onNodeWithText(S.apiModelsTitle))
         rule.waitUntil(5_000) { dismissed.get() == 1 }
         rule.onNodeWithText(S.apiModelsTitle).assertDoesNotExist()
         rule.runOnIdle {

@@ -68,35 +68,35 @@ class ReasoningThreeLayerTest {
 
     @Test
     fun testGeminiReasoningResolution() {
-        val autoConfig = ReasoningResolver.resolve(ReasoningPreset.AUTO, "google", "gemini-3.5-flash")
+        val autoConfig = ReasoningResolver.resolve(ReasoningPreset.AUTO, "google", "gemini-3.8-flash")
         assertTrue(autoConfig.isAuto)
         assertNull(autoConfig.geminiThinkingLevel)
 
-        val fastConfig = ReasoningResolver.resolve(ReasoningPreset.FAST, "google", "gemini-3.5-flash")
+        val fastConfig = ReasoningResolver.resolve(ReasoningPreset.FAST, "google", "gemini-3.8-flash")
         assertEquals("LOW", fastConfig.geminiThinkingLevel)
 
-        val balancedConfig = ReasoningResolver.resolve(ReasoningPreset.BALANCED, "google", "gemini-3.5-flash")
+        val balancedConfig = ReasoningResolver.resolve(ReasoningPreset.BALANCED, "google", "gemini-3.8-flash")
         assertEquals("MEDIUM", balancedConfig.geminiThinkingLevel)
 
-        val deepConfig = ReasoningResolver.resolve(ReasoningPreset.DEEP, "google", "gemini-3.5-flash")
+        val deepConfig = ReasoningResolver.resolve(ReasoningPreset.DEEP, "google", "gemini-3.8-flash")
         assertEquals("HIGH", deepConfig.geminiThinkingLevel)
 
-        val maxConfig = ReasoningResolver.resolve(ReasoningPreset.MAXIMUM, "google", "gemini-3.5-flash")
+        val maxConfig = ReasoningResolver.resolve(ReasoningPreset.MAXIMUM, "google", "gemini-3.8-flash")
         assertEquals("HIGH", maxConfig.geminiThinkingLevel)
     }
 
     @Test
     fun testDeepSeekReasoningResolution() {
-        val autoConfig = ReasoningResolver.resolve(ReasoningPreset.AUTO, "deepseek", "deepseek-r1")
+        val autoConfig = ReasoningResolver.resolve(ReasoningPreset.AUTO, "deepseek", "deepseek-v4-pro")
         assertTrue(autoConfig.isAuto)
 
-        val fastConfig = ReasoningResolver.resolve(ReasoningPreset.FAST, "deepseek", "deepseek-r1")
+        val fastConfig = ReasoningResolver.resolve(ReasoningPreset.FAST, "deepseek", "deepseek-v4-pro")
         assertEquals("low", fastConfig.openAiEffort)
 
-        val balancedConfig = ReasoningResolver.resolve(ReasoningPreset.BALANCED, "deepseek", "deepseek-r1")
+        val balancedConfig = ReasoningResolver.resolve(ReasoningPreset.BALANCED, "deepseek", "deepseek-v4-pro")
         assertEquals("high", balancedConfig.openAiEffort)
 
-        val maxConfig = ReasoningResolver.resolve(ReasoningPreset.MAXIMUM, "deepseek", "deepseek-r1")
+        val maxConfig = ReasoningResolver.resolve(ReasoningPreset.MAXIMUM, "deepseek", "deepseek-v4-pro")
         assertEquals("max", maxConfig.openAiEffort)
     }
 
@@ -110,11 +110,13 @@ class ReasoningThreeLayerTest {
     @Test
     fun openAiCompatibleProxyResolvesOtherVendorsByModelName() {
         val claude35 = ReasoningResolver.resolve(ReasoningPreset.DEEP, "openai", "claude-3-5-sonnet")
-        assertTrue(claude35.claudeBudgetTokens != null)
+        assertTrue(claude35.isAuto)
+        assertNull(claude35.claudeBudgetTokens)
         assertNull(claude35.openAiEffort)
 
         val claude37 = ReasoningResolver.resolve(ReasoningPreset.DEEP, "openai", "claude-3-7-sonnet")
-        assertEquals("high", claude37.claudeEffort)
+        assertNull(claude37.claudeEffort)
+        assertEquals(16384, claude37.claudeBudgetTokens)
         assertNull(claude37.openAiEffort)
 
         val gemini = ReasoningResolver.resolve(ReasoningPreset.BALANCED, "openai", "gemini-2.5-flash")
@@ -125,11 +127,11 @@ class ReasoningThreeLayerTest {
         val gemini15 = ReasoningResolver.resolve(ReasoningPreset.BALANCED, "openai", "gemini-1.5-flash")
         assertTrue(gemini15.isAuto)
 
-        val r1 = ReasoningResolver.resolve(ReasoningPreset.FAST, "openai", "deepseek-r1")
+        val r1 = ReasoningResolver.resolve(ReasoningPreset.FAST, "openai", "deepseek-v4-pro")
         assertEquals("low", r1.openAiEffort)
         assertNull(r1.claudeEffort)
 
-        val qwen = ReasoningResolver.resolve(ReasoningPreset.DEEP, "openai", "qwen-max")
+        val qwen = ReasoningResolver.resolve(ReasoningPreset.DEEP, "openai", "qwen3.8-max")
         assertEquals("xhigh", qwen.openAiEffort)
     }
 
@@ -142,7 +144,8 @@ class ReasoningThreeLayerTest {
         assertEquals("max", gpt6.openAiEffort)
 
         val customReasoner = ReasoningResolver.resolve(ReasoningPreset.DEEP, "openai", "custom-reasoner-v1")
-        assertEquals("high", customReasoner.openAiEffort)
+        assertTrue(customReasoner.isAuto)
+        assertNull(customReasoner.openAiEffort)
     }
 
     @Test
@@ -181,8 +184,8 @@ class ReasoningThreeLayerTest {
         assertTrue(!deepseekV3.reasoning.supported)
 
         val dynamicModel = ModelCapabilityRegistry.findOrRegister("custom-reasoner-v1", "openai")
-        assertTrue(dynamicModel.reasoning.supported)
-        assertEquals(ReasoningControl.OPENAI_EFFORT, dynamicModel.reasoning.control)
+        assertTrue(!dynamicModel.reasoning.supported)
+        assertEquals(ReasoningControl.NONE, dynamicModel.reasoning.control)
 
         val all = ModelCapabilityRegistry.getAll()
         assertTrue(all.size >= 15)
@@ -217,12 +220,13 @@ class ReasoningThreeLayerTest {
     }
 
     @Test
-    fun datedClaudeSnapshotsStayOnTheBudgetControl() {
+    fun retiredClaudeSnapshotsDoNotInventThinkingControl() {
         val model = ModelCapabilityRegistry.findOrRegister("claude-3-5-sonnet-20241022", "openai")
-        assertEquals(ReasoningControl.ANTHROPIC_BUDGET, model.reasoning.control)
+        assertEquals(ReasoningControl.NONE, model.reasoning.control)
 
         val config = ReasoningResolver.resolve(ReasoningPreset.DEEP, "openai", "claude-3-5-sonnet-20241022")
-        assertEquals(16384, config.claudeBudgetTokens)
+        assertTrue(config.isAuto)
+        assertNull(config.claudeBudgetTokens)
         assertNull(config.claudeEffort)
 
         val newer = ReasoningResolver.resolve(ReasoningPreset.MAXIMUM, "openai", "claude-sonnet-5-5-20260101")
@@ -309,7 +313,7 @@ class ReasoningThreeLayerTest {
     fun everyPresetStaysInsideTheDeclaredLevels() {
         ModelCapabilityRegistry.getAll().forEach { model ->
             val levels = model.reasoning.levels
-            if (levels.isNotEmpty()) {
+            if (model.reasoning.supported && levels.isNotEmpty()) {
                 ReasoningPreset.entries.forEach { preset ->
                     if (preset != ReasoningPreset.AUTO) {
                         val config = ReasoningResolver.resolve(preset, "openai", model.id)

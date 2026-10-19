@@ -1,6 +1,6 @@
 package com.lucent.app.ui
 
-import android.view.KeyEvent
+import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.mutableStateOf
@@ -18,15 +18,15 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipe
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import androidx.test.platform.app.InstrumentationRegistry
 import com.lucent.app.data.ApiProfile
 import com.lucent.app.i18n.S
 import java.util.concurrent.atomic.AtomicInteger
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -34,7 +34,12 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class SharedDrawerInteractionTest {
     @get:Rule
-    val rule = createComposeRule()
+    val rule = createAndroidComposeRule<ComponentActivity>()
+
+    @Before
+    fun prepareSystemWindow() {
+        rule.prepareSystemInteraction(rule.activity)
+    }
 
     private enum class Picker { Profile, Api }
 
@@ -110,7 +115,7 @@ class SharedDrawerInteractionTest {
 
     private fun systemBack(picker: Picker) {
         show(picker)
-        InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
+        rule.pressSystemBack(handle())
         assertDismissed(picker)
     }
 

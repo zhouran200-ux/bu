@@ -125,13 +125,28 @@ class LlmClientFetchModelsTest {
     }
 
     @Test(timeout = 15000)
-    fun unknownControlStringsFallBackToTheEndpointProtocol() {
+    fun partialKnownClaudeMetadataPreservesThinkingEnablementAndLevels() {
+        val model = "claude-sonnet-4-6"
+        val previous = ModelCapabilityRegistry.findOrRegister(model, "anthropic")
+        try {
+            fetch(ApiSpec.ANTHROPIC,
+                """{"data":[{"id":"claude-sonnet-4-6","reasoning":{"supported":true,"control":"anthropic_effort"}}]}""").getOrThrow()
+            val updated = ModelCapabilityRegistry.find(model)!!.reasoning
+            assertEquals("adaptive", updated.thinkingType)
+            assertEquals(previous.reasoning.levels, updated.levels)
+        } finally {
+            ModelCapabilityRegistry.register(previous)
+        }
+    }
+
+    @Test(timeout = 15000)
+    fun unknownControlStringsDoNotInventAnEndpointControl() {
         fetch(
             ApiSpec.OPENAI,
             """{"data":[{"id":"ctrl-unknown-openai","reasoning":{"supported":true,"control":"mystery"}}]}"""
         ).getOrThrow()
         assertEquals(
-            ReasoningControl.OPENAI_EFFORT,
+            ReasoningControl.NONE,
             ModelCapabilityRegistry.find("ctrl-unknown-openai")?.reasoning?.control
         )
 
@@ -140,7 +155,7 @@ class LlmClientFetchModelsTest {
             """{"models":[{"name":"ctrl-unknown-google","reasoning":{"control":"mystery"}}]}"""
         ).getOrThrow()
         assertEquals(
-            ReasoningControl.GEMINI_THINKING_LEVEL,
+            ReasoningControl.NONE,
             ModelCapabilityRegistry.find("ctrl-unknown-google")?.reasoning?.control
         )
     }
@@ -148,7 +163,7 @@ class LlmClientFetchModelsTest {
     @Test(timeout = 15000)
     fun modelsWithoutReasoningMetadataStillResolveByNameAndProtocol() {
         fetch(ApiSpec.OPENAI, """{"data":[{"id":"deepseek-r1"},{"id":"plain-model"}]}""").getOrThrow()
-        assertEquals(ReasoningControl.DEEPSEEK_EFFORT, ModelCapabilityRegistry.find("deepseek-r1")?.reasoning?.control)
+        assertEquals(ReasoningControl.NONE, ModelCapabilityRegistry.find("deepseek-r1")?.reasoning?.control)
         assertEquals(
             ReasoningControl.NONE,
             ModelCapabilityRegistry.find("plain-model")?.reasoning?.control

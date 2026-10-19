@@ -48,6 +48,7 @@ internal object LlmClientFetch {
                     val reasoningObj = item?.optJSONObject("reasoning")
                         ?: item?.optJSONObject("capabilities")?.optJSONObject("reasoning")
                     if (reasoningObj != null) {
+                        val known = com.lucent.app.data.ModelCapabilityRegistry.findOrRegister(trimmedId, spec.name).reasoning
                         val supported = reasoningObj.optBoolean("supported", true)
                         val controlStr = reasoningObj.optString("control")
                         val control = when (controlStr.lowercase()) {
@@ -58,22 +59,28 @@ internal object LlmClientFetch {
                             "gemini_thinking_budget", "thinking_budget" -> com.lucent.app.data.ReasoningControl.GEMINI_THINKING_BUDGET
                             "deepseek_effort" -> com.lucent.app.data.ReasoningControl.DEEPSEEK_EFFORT
                             "qwen_effort" -> com.lucent.app.data.ReasoningControl.QWEN_EFFORT
+                            "qwen_budget" -> com.lucent.app.data.ReasoningControl.QWEN_BUDGET
                             "zhipu_effort", "glm_effort" -> com.lucent.app.data.ReasoningControl.ZHIPU_EFFORT
                             "none" -> com.lucent.app.data.ReasoningControl.NONE
-                            else -> if (spec == ApiSpec.GOOGLE) com.lucent.app.data.ReasoningControl.GEMINI_THINKING_LEVEL else com.lucent.app.data.ReasoningControl.OPENAI_EFFORT
+                            else -> com.lucent.app.data.ReasoningControl.NONE
                         }
                         val levelArray = reasoningObj.optJSONArray("levels")
-                        val levels = if (levelArray == null) emptyList<String>() else (0 until levelArray.length())
+                        val sameControl = known.takeIf { it.control == control }
+                        val levels = if (levelArray == null) sameControl?.levels.orEmpty() else (0 until levelArray.length())
                             .map { levelArray.optString(it) }
                             .filter { it.isNotBlank() }
                         com.lucent.app.data.ModelCapabilityRegistry.register(
                             com.lucent.app.data.ModelDefinition(
                                 id = trimmedId,
                                 reasoning = com.lucent.app.data.ReasoningCapability(
-                                    supported = supported,
-                                    control = control,
-                                    isAdaptive = reasoningObj.optBoolean("adaptive", true),
-                                    levels = levels
+                                    supported = supported && control != com.lucent.app.data.ReasoningControl.NONE,
+                                    control = if (supported) control else com.lucent.app.data.ReasoningControl.NONE,
+                                    isAdaptive = reasoningObj.optBoolean("adaptive", sameControl?.isAdaptive ?: true),
+                                    levels = levels,
+                                    thinkingType = reasoningObj.optString("thinking_type").takeIf { it == "enabled" || it == "adaptive" }
+                                        ?: sameControl?.thinkingType,
+                                    thinkingBudgetMax = reasoningObj.optInt("thinking_budget_max", 0).takeIf { it > 0 }
+                                        ?: sameControl?.thinkingBudgetMax
                                 )
                             )
                         )

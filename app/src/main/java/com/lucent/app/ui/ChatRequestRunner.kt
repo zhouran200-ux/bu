@@ -44,7 +44,8 @@ internal fun resolveChatReasoning(
 ): ResolvedReasoningConfig = ReasoningResolver.resolve(
     preset = preset,
     provider = profile?.spec?.lowercase().orEmpty(),
-    model = model
+    model = model,
+    baseUrl = profile?.baseUrl.orEmpty()
 )
 
 internal fun buildChatHistory(

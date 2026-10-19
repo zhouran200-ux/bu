@@ -11,7 +11,10 @@ internal fun anthropicOutputCap(model: String): Int = when {
     model.contains("claude-3-opus") || model.contains("claude-3-sonnet") || model.contains("claude-3-haiku") -> 4096
     model.contains("claude-2") -> 4096
     model.contains("claude-3-5") || model.contains("claude-3.5") || model.contains("claude35") -> 8192
-    model.contains("claude-3-7") || model.contains("claude-3.7") || model.contains("claude37") -> 8192
+    model.contains("claude-opus-4-5") || model.contains("claude-sonnet-4-5") || model.contains("claude-haiku-4-5") -> 65536
+    model.contains("claude-opus-4-6") || model.contains("claude-sonnet-4-6") || model.contains("claude-opus-4-7") ||
+        model.contains("claude-opus-4-8") || model.contains("claude-opus-5") || model.contains("claude-sonnet-5") ||
+        model.contains("claude-haiku-5-5") || model.contains("claude-fable-5") || model.contains("claude-mythos-5") -> 131072
     else -> Int.MAX_VALUE
 }
 
@@ -56,17 +59,7 @@ internal object StreamingRequestBuilder {
                         })
                     }
                     put("messages", messagesArray)
-                    if (reasoningConfig != null && !reasoningConfig.isAuto) {
-                        val wireEffort = reasoningConfig.openAiEffort ?: reasoningConfig.claudeEffort
-                        if (wireEffort != null) {
-                            put("reasoning_effort", wireEffort)
-                        }
-                        val budget = reasoningConfig.claudeBudgetTokens
-                        if (budget != null && budget > 0) {
-                            val cap = anthropicOutputCap(cleanModel)
-                            put("max_completion_tokens", minOf(budget, cap - 1024).coerceAtLeast(1024))
-                        }
-                    }
+                    applyCompatibleReasoning(this, reasoningConfig, cleanModel, url)
                 }
                 requestBuilder.url(url).post(payload.toString().toRequestBody(jsonMediaType))
             }
@@ -78,19 +71,7 @@ internal object StreamingRequestBuilder {
                 val payload = JSONObject().apply {
                     put("model", cleanModel)
                     put("stream", true)
-                    val requestedBudget = reasoningConfig?.takeIf { !it.isAuto && it.claudeEffort == null }?.claudeBudgetTokens ?: 0
-                    require(requestedBudget >= 0 && requestedBudget <= Int.MAX_VALUE - 1024) { "Invalid thinking budget" }
-                    val outputCap = anthropicOutputCap(cleanModel)
-                    val maxTokens = minOf(
-                        outputCap,
-                        maxOf(8192, requestedBudget + if (requestedBudget > 0) 1024 else 0)
-                    )
-                    val thinkingBudget = if (requestedBudget > 0) {
-                        minOf(requestedBudget, maxTokens - 1024).coerceAtLeast(1024)
-                    } else {
-                        0
-                    }
-                    put("max_tokens", maxTokens)
+                    applyAnthropicReasoning(this, reasoningConfig, cleanModel)
                     if (systemInstruction.isNotBlank()) {
                         put("system", systemInstruction)
                     }
@@ -102,18 +83,7 @@ internal object StreamingRequestBuilder {
                         })
                     }
                     put("messages", messagesArray)
-                    if (reasoningConfig != null && !reasoningConfig.isAuto) {
-                        if (reasoningConfig.claudeEffort != null) {
-                            put("output_config", JSONObject().apply {
-                                put("effort", reasoningConfig.claudeEffort)
-                            })
-                        } else if (reasoningConfig.claudeBudgetTokens != null) {
-                            put("thinking", JSONObject().apply {
-                                put("type", "enabled")
-                                put("budget_tokens", thinkingBudget)
-                            })
-                        }
-                    }
+
                 }
                 requestBuilder.url(url).post(payload.toString().toRequestBody(jsonMediaType))
             }
@@ -144,21 +114,8 @@ internal object StreamingRequestBuilder {
                         })
                     }
                     put("contents", contentsArray)
-                    val genConfig = JSONObject()
-                    if (reasoningConfig != null && !reasoningConfig.isAuto) {
-                        val thinkingConfig = JSONObject()
-                        if (reasoningConfig.geminiThinkingLevel != null) {
-                            thinkingConfig.put("thinkingLevel", reasoningConfig.geminiThinkingLevel)
-                        }
-                        if (reasoningConfig.geminiThinkingBudget != null) {
-                            thinkingConfig.put("thinkingBudget", reasoningConfig.geminiThinkingBudget)
-                        }
-                        if (thinkingConfig.length() > 0) {
-                            genConfig.put("thinkingConfig", thinkingConfig)
-                        }
-                    }
-                    if (genConfig.length() > 0) {
-                        put("generationConfig", genConfig)
+                    googleThinkingConfig(reasoningConfig, compatible = false)?.let { thinking ->
+                        put("generationConfig", JSONObject().put("thinkingConfig", thinking))
                     }
                 }
                 requestBuilder.url(url).post(payload.toString().toRequestBody(jsonMediaType))

@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -101,16 +102,19 @@ internal fun AiMessageCard(
     streaming: Boolean = false,
     liveThought: State<String>? = null,
     actionsEnabled: Boolean = true,
+    minHeightReservePx: Int? = null,
     onRegenerate: () -> Unit = {},
     onEditAnswer: () -> Unit = {},
     onDelete: () -> Unit = {},
     onCitationClick: ((CitationRef) -> Unit)? = null
 ) {
     val context = LocalContext.current
+    val reserveMin = minHeightReservePx?.let { px -> with(LocalDensity.current) { px.toDp() } }
     Column(
         modifier = modifier
             .fillMaxWidth()
             .padding(end = 12.dp)
+            .then(if (reserveMin != null) Modifier.heightIn(min = reserveMin) else Modifier)
     ) {
         if (streaming || liveThought != null || !message.reasoningText.isNullOrBlank()) {
             ThinkingLane(

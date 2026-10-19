@@ -210,7 +210,7 @@ fun NotebookChatTab(
         if (!active || streamingAnswerId == null) return@LaunchedEffect
         followStreamUpdates(
             updates = androidx.compose.runtime.snapshotFlow { streamProgress },
-            canFollow = { actions.followStream && !listState.isScrollInProgress },
+            canFollow = { actions.followStream && !listState.isScrollInProgress && !actions.streamReserveBlocksFollow() },
             awaitLayout = {
                 delay(80)
                 androidx.compose.runtime.withFrameNanos { }
@@ -307,6 +307,8 @@ fun NotebookChatTab(
                             streaming = msg.id == streamingAnswerId,
                             liveThought = if (msg.id == streamingAnswerId) streamingThought else null,
                             actionsEnabled = actionsEnabled,
+                            minHeightReservePx = actions.regenerateReserve
+                                ?.takeIf { it.first == msg.id && msg.id == streamingAnswerId }?.second,
                             onRegenerate = { actions.regenerateAnswer(msg.id) },
                             onEditAnswer = { answerToEdit = msg },
                             onDelete = { actions.deleteMessage(msg) },

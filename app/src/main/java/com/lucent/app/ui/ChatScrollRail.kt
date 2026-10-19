@@ -57,7 +57,10 @@ fun FloatingScrollCapsule(
     val latestDragStart by rememberUpdatedState(onDragStart)
     val totalCount by remember(listState) { derivedStateOf { listState.layoutInfo.totalItemsCount } }
     val viewport by remember(listState) {
-        derivedStateOf { listState.layoutInfo.viewportSize.height.coerceAtLeast(1) }
+        derivedStateOf {
+            val layout = listState.layoutInfo
+            (layout.viewportSize.height - layout.beforeContentPadding - layout.afterContentPadding).coerceAtLeast(1)
+        }
     }
     val spacing by remember(listState) { derivedStateOf { listState.layoutInfo.mainAxisItemSpacing } }
     val scrollable by remember(listState) {

@@ -9,6 +9,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,12 +17,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.isImeVisible
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -38,10 +36,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
@@ -225,7 +221,8 @@ fun NotebookChatTab(
     LaunchedEffect(listState, active, viewportAnchor) {
         if (!active) return@LaunchedEffect
         androidx.compose.runtime.snapshotFlow {
-            listState.layoutInfo.viewportSize.height to !listState.canScrollForward
+            val layout = listState.layoutInfo
+            (layout.viewportSize.height - layout.afterContentPadding) to !listState.canScrollForward
         }.collect { (height, bottom) ->
             if (viewportAnchor.update(height, bottom) && messages.isNotEmpty()) {
                 val footer = listState.layoutInfo.totalItemsCount - 1
@@ -246,138 +243,131 @@ fun NotebookChatTab(
             }
         }
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .imePadding()
-        ) {
-            Box(Modifier.weight(1f).fillMaxWidth()) {
-            CompositionLocalProvider(LocalLiveGlassEnabled provides false) {
-            LazyColumn(
-                state = listState,
-                modifier = Modifier
-                    .nestedScroll(readingScrollConnection)
-                    .fillMaxSize()
-                    .fillMaxWidth()
-                    .pointerInput(Unit) {
-                        detectTapGestures(onTap = {
-                            focusManager.clearFocus()
-                            keyboardController?.hide()
-                        })
-                    }
-                    .padding(horizontal = 14.dp)
-                    .clip(RoundedCornerShape(bottomStart = 18.dp, bottomEnd = 18.dp)),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                item(key = "header") {
-                    Column {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        if (session.pendingWriteCount > 0) {
-                            TextButton(onClick = { session.retryPendingWrites() }) {
-                                Text(S.chatPendingWritesRetry)
+        FloatingChatLayout(
+            modifier = Modifier.fillMaxSize().imePadding(),
+            messages = { bottomInset ->
+                CompositionLocalProvider(LocalLiveGlassEnabled provides false) {
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier
+                            .nestedScroll(readingScrollConnection)
+                            .fillMaxSize()
+                            .pointerInput(Unit) {
+                                detectTapGestures(onTap = {
+                                    focusManager.clearFocus()
+                                    keyboardController?.hide()
+                                })
+                            }
+                            .padding(horizontal = 14.dp),
+                        contentPadding = PaddingValues(bottom = bottomInset),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        item(key = "header") {
+                            Column {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                if (session.pendingWriteCount > 0) {
+                                    TextButton(onClick = { session.retryPendingWrites() }) {
+                                        Text(S.chatPendingWritesRetry)
+                                    }
+                                }
                             }
                         }
+
+                        itemsIndexed(messages, key = { _, msg -> "message:${msg.id}" }) { _, msg ->
+                            val actionsEnabled = session.ready && streamingAnswerId == null && session.pendingWriteCount == 0 && !session.hasPendingAction
+                            val itemModifier = if (msg.id == streamingAnswerId) {
+                                Modifier
+                            } else {
+                                Modifier.animateItem(
+                                    fadeInSpec = tween(200),
+                                    placementSpec = if (streamingAnswerId == null) tween(180) else null,
+                                    fadeOutSpec = tween(140)
+                                )
+                            }
+                            if (msg.role == "user") {
+                                UserMessageCard(
+                                    modifier = itemModifier,
+                                    message = msg,
+                                    actionsEnabled = actionsEnabled,
+                                    onEdit = { questionToEdit = msg },
+                                    onDelete = { actions.deleteMessage(msg) }
+                                )
+                            } else {
+                                AiMessageCard(
+                                    modifier = itemModifier,
+                                    message = msg,
+                                    readingKey = "chat:$notebookId:thought:${msg.id}",
+                                    streaming = msg.id == streamingAnswerId,
+                                    liveThought = if (msg.id == streamingAnswerId) streamingThought else null,
+                                    actionsEnabled = actionsEnabled,
+                                    minHeightReservePx = actions.regenerateReserve
+                                        ?.takeIf { it.first == msg.id && msg.id == streamingAnswerId }?.second,
+                                    onRegenerate = { actions.regenerateAnswer(msg.id) },
+                                    onEditAnswer = { answerToEdit = msg },
+                                    onDelete = { actions.deleteMessage(msg) },
+                                    onCitationClick = openCitation
+                                )
+                            }
+                        }
+
+                        item(key = "footer") { Spacer(modifier = Modifier.height(8.dp)) }
                     }
                 }
+            },
+            composer = {
+                BottomGlassComposer(
+                    modifier = Modifier.fillMaxWidth(),
+                    inputText = actions.inputText,
+                    onInputChange = { actions.inputText = it },
+                    showReasoningMenu = showReasoningMenu,
+                    onReasoningMenuChange = { showReasoningMenu = it },
+                    onReasoningButtonBounds = { reasoningButtonBounds = it },
+                    reasoningPreset = actions.reasoningPreset,
+                    onSelectReasoning = {
+                        actions.reasoningPreset = it
+                        saveReasoningSelection(prefs, notebookId, it)
+                    },
+                    onOpenHistory = { openHistorySheet() },
+                    onOpenDialogueSettings = { showDialogueSettingsDialog = true },
+                    selectedProfileName = resolvedSelection?.first?.name.orEmpty(),
+                    onOpenModelPicker = { showProfileModelPickerSheet = true },
+                    streaming = streamingAnswerId != null,
+                    onSend = actions.onSendMessage,
+                    onStop = { actions.stopStreaming() }
+                )
+            },
+            controls = { bottomInset ->
+                FloatingScrollCapsule(
+                    listState = listState,
+                    itemKeys = readingKeys,
+                    enabled = active && !isImeVisible,
+                    onDragStart = {
+                        actions.followStream = false
+                        viewportAnchor.userScrolled()
+                    },
+                    modifier = Modifier.align(Alignment.CenterEnd).padding(bottom = bottomInset)
+                )
+                ChatDeleteUndoLayer(
+                    pending = actions.pendingDelete,
+                    motionOn = barMotionOn,
+                    bottomInset = bottomInset,
+                    onUndo = { actions.undoDelete() },
+                    onDismiss = { actions.settlePendingDelete() }
+                )
 
-                itemsIndexed(messages, key = { _, msg -> "message:${msg.id}" }) { _, msg ->
-                    val actionsEnabled = session.ready && streamingAnswerId == null && session.pendingWriteCount == 0 && !session.hasPendingAction
-                    val itemModifier = if (msg.id == streamingAnswerId) {
-                        Modifier
-                    } else {
-                        Modifier.animateItem(
-                            fadeInSpec = tween(200),
-                            placementSpec = if (streamingAnswerId == null) tween(180) else null,
-                            fadeOutSpec = tween(140)
-                        )
+                ChatScrollToBottomButton(
+                    bottomInset = bottomInset,
+                    visible = !atBottom && !isImeVisible && messages.isNotEmpty(),
+                    motionOn = barMotionOn,
+                    onClick = {
+                        actions.followStream = true
+                        scope.launch {
+                            listState.animateScrollToItem(
+                                (listState.layoutInfo.totalItemsCount - 1).coerceAtLeast(0)
+                            )
+                        }
                     }
-                    if (msg.role == "user") {
-                        UserMessageCard(
-                            modifier = itemModifier,
-                            message = msg,
-                            actionsEnabled = actionsEnabled,
-                            onEdit = { questionToEdit = msg },
-                            onDelete = { actions.deleteMessage(msg) }
-                        )
-                    } else {
-                        AiMessageCard(
-                            modifier = itemModifier,
-                            message = msg,
-                            readingKey = "chat:$notebookId:thought:${msg.id}",
-                            streaming = msg.id == streamingAnswerId,
-                            liveThought = if (msg.id == streamingAnswerId) streamingThought else null,
-                            actionsEnabled = actionsEnabled,
-                            minHeightReservePx = actions.regenerateReserve
-                                ?.takeIf { it.first == msg.id && msg.id == streamingAnswerId }?.second,
-                            onRegenerate = { actions.regenerateAnswer(msg.id) },
-                            onEditAnswer = { answerToEdit = msg },
-                            onDelete = { actions.deleteMessage(msg) },
-                            onCitationClick = openCitation
-                        )
-                    }
-                }
-
-                item(key = "footer") { Spacer(modifier = Modifier.height(8.dp)) }
-            }
-            }
-            FloatingScrollCapsule(
-                listState = listState,
-                itemKeys = readingKeys,
-                enabled = active && !isImeVisible,
-                onDragStart = {
-                    actions.followStream = false
-                    viewportAnchor.userScrolled()
-                },
-                modifier = Modifier.align(Alignment.CenterEnd)
-            )
-            }
-
-            BottomGlassComposer(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 6.dp)
-                    .then(
-                        if (!isImeVisible) Modifier.navigationBarsPadding()
-                        else Modifier
-                    ),
-                inputText = actions.inputText,
-                onInputChange = { actions.inputText = it },
-                showReasoningMenu = showReasoningMenu,
-                onReasoningMenuChange = { showReasoningMenu = it },
-                onReasoningButtonBounds = { reasoningButtonBounds = it },
-                reasoningPreset = actions.reasoningPreset,
-                onSelectReasoning = {
-                    actions.reasoningPreset = it
-                    saveReasoningSelection(prefs, notebookId, it)
-                },
-                onOpenHistory = { openHistorySheet() },
-                onOpenDialogueSettings = { showDialogueSettingsDialog = true },
-                selectedProfileName = resolvedSelection?.first?.name.orEmpty(),
-                onOpenModelPicker = { showProfileModelPickerSheet = true },
-                streaming = streamingAnswerId != null,
-                onSend = actions.onSendMessage,
-                onStop = { actions.stopStreaming() }
-            )
-        }
-
-        ChatDeleteUndoLayer(
-            pending = actions.pendingDelete,
-            motionOn = barMotionOn,
-            imeVisible = isImeVisible,
-            onUndo = { actions.undoDelete() },
-            onDismiss = { actions.settlePendingDelete() }
-        )
-
-        ChatScrollToBottomButton(
-            visible = !atBottom && !isImeVisible && messages.isNotEmpty(),
-            motionOn = barMotionOn,
-            onClick = {
-                actions.followStream = true
-                scope.launch {
-                    listState.animateScrollToItem(
-                        (listState.layoutInfo.totalItemsCount - 1).coerceAtLeast(0)
-                    )
-                }
+                )
             }
         )
 

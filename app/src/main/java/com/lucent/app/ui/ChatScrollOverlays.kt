@@ -11,8 +11,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
-import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -25,13 +23,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 @Composable
 internal fun BoxScope.ChatDeleteUndoLayer(
     pending: PendingChatDelete?,
     motionOn: Boolean,
-    imeVisible: Boolean,
+    bottomInset: Dp,
     onUndo: () -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -39,9 +38,7 @@ internal fun BoxScope.ChatDeleteUndoLayer(
         visible = pending != null,
         modifier = Modifier
             .align(Alignment.BottomCenter)
-            .imePadding()
-            .then(if (!imeVisible) Modifier.navigationBarsPadding() else Modifier)
-            .padding(bottom = 112.dp),
+            .padding(bottom = bottomInset + 8.dp),
         enter = if (motionOn) slideInVertically(
             animationSpec = LucentMotion.toIntOffset(LucentMotion.Sheet)
         ) { it } + fadeIn(tween(180)) else fadeIn(tween(0)),
@@ -62,6 +59,7 @@ internal fun BoxScope.ChatDeleteUndoLayer(
 
 @Composable
 internal fun BoxScope.ChatScrollToBottomButton(
+    bottomInset: Dp,
     visible: Boolean,
     motionOn: Boolean,
     onClick: () -> Unit
@@ -70,8 +68,7 @@ internal fun BoxScope.ChatScrollToBottomButton(
         visible = visible,
         modifier = Modifier
             .align(Alignment.BottomEnd)
-            .navigationBarsPadding()
-            .padding(end = 16.dp, bottom = 118.dp),
+            .padding(end = 16.dp, bottom = bottomInset + 8.dp),
         enter = if (motionOn) fadeIn(tween(160)) + slideInVertically(tween(160)) { it } else fadeIn(tween(0)),
         exit = if (motionOn) fadeOut(tween(120)) + slideOutVertically(tween(120)) { it } else fadeOut(tween(0))
     ) {

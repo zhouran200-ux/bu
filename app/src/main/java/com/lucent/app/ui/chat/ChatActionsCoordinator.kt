@@ -195,7 +195,8 @@ internal class ChatActionsCoordinator(
         val itemIndex = idx + 1
         val layout = listState.layoutInfo
         val oldSize = layout.visibleItemsInfo.firstOrNull { it.key == "message:$answerId" }?.size
-        val reserve = oldSize?.let { minOf(it, layout.viewportSize.height) }
+        val readableHeight = (layout.viewportSize.height - layout.afterContentPadding).coerceAtLeast(1)
+        val reserve = oldSize?.let { minOf(it, readableHeight) }
         if (reserve != null) regenerateReserve = answerId to reserve
         val answerTopHidden = listState.firstVisibleItemIndex == itemIndex &&
             listState.firstVisibleItemScrollOffset > 0

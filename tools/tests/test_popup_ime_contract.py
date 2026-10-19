@@ -25,7 +25,7 @@ class PopupImeContractTest(unittest.TestCase):
         self.assertIn("onSelectReasoning(preset)", menu)
         self.assertIn("onReasoningMenuChange(false)", menu)
         self.assertNotIn("showReasoningMenu = true", menu)
-        observer = text.split(".pointerInput(showReasoningMenu)", 1)[1].split("Column(", 1)[0]
+        observer = text.split(".pointerInput(showReasoningMenu)", 1)[1].split("FloatingChatLayout(", 1)[0]
         self.assertIn("PointerEventPass.Initial", observer)
         self.assertIn("it.pressed && !it.previousPressed", observer)
         self.assertIn("localToWindow(down.position)", observer)

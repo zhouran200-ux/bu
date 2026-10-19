@@ -34,7 +34,9 @@ internal fun UserMessageCard(
     message: UiChatMessage,
     actionsEnabled: Boolean,
     onEdit: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    expanded: Boolean = false,
+    onExpandedChange: (Boolean) -> Unit = {}
 ) {
     val context = LocalContext.current
     val textColor = LocalOnGradient.current
@@ -51,16 +53,12 @@ internal fun UserMessageCard(
             modifier = Modifier
                 .frostedGlass(cornerRadius = 20.dp)
         ) {
-            SelectionContainer {
-                Column(modifier = Modifier.padding(14.dp)) {
-                    Text(
-                        text = message.content,
-                        color = textColor,
-                        fontSize = 15.sp,
-                        lineHeight = 22.sp
-                    )
-                }
-            }
+            CollapsibleUserText(
+                text = message.content,
+                expanded = expanded,
+                onExpandedChange = onExpandedChange,
+                modifier = Modifier.padding(14.dp)
+            )
         }
 
         Row(
@@ -101,6 +99,8 @@ internal fun AiMessageCard(
     readingKey: String,
     streaming: Boolean = false,
     liveThought: State<String>? = null,
+    thinkingState: ThinkingLaneState = rememberThinkingLaneState(readingKey, streaming),
+    onThinkingToggle: () -> Unit = {},
     actionsEnabled: Boolean = true,
     minHeightReservePx: Int? = null,
     onRegenerate: () -> Unit = {},
@@ -116,16 +116,16 @@ internal fun AiMessageCard(
             .padding(end = 12.dp)
             .then(if (reserveMin != null) Modifier.heightIn(min = reserveMin) else Modifier)
     ) {
-        if (streaming || liveThought != null || !message.reasoningText.isNullOrBlank()) {
-            ThinkingLane(
-                readingKey = readingKey,
-                liveThought = liveThought,
-                storedThought = message.reasoningText.orEmpty(),
-                tag = message.reasoningTag,
-                streaming = streaming,
-                answerSeconds = message.answerSeconds
-            )
-        }
+        ThinkingLane(
+            readingKey = readingKey,
+            liveThought = liveThought,
+            storedThought = message.reasoningText.orEmpty(),
+            tag = message.reasoningTag,
+            streaming = streaming,
+            answerSeconds = message.answerSeconds,
+            lane = thinkingState,
+            onToggle = onThinkingToggle
+        )
 
         if (message.content.isNotBlank()) {
             Surface(

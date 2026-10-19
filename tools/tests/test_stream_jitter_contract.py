@@ -37,9 +37,10 @@ class StreamJitterContractTest(unittest.TestCase):
 
     def test_live_thought_retains_height_until_explicit_collapse(self):
         lane = (UI / "ChatThinkingLane.kt").read_text(encoding="utf-8")
-        self.assertIn("rememberSaveable(readingKey)", lane)
-        self.assertIn("streaming || retainLiveHeight", lane)
-        self.assertIn("if (!expanded) retainLiveHeight = false", lane)
+        state = (UI / "ThinkingLaneState.kt").read_text(encoding="utf-8")
+        self.assertIn("streaming || lane.retainLiveHeight", lane)
+        self.assertIn("if (!expanded) retainLiveHeight = false", state)
+        self.assertIn("lane.retainStreamingHeight(streaming)", lane)
 
     def test_citation_buffer_is_display_only_and_finalization_invalidates_parse(self):
         markdown = (UI / "Markdown.kt").read_text(encoding="utf-8")

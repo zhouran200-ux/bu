@@ -15,36 +15,24 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.State
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -53,7 +41,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -64,60 +51,37 @@ internal fun ThinkingLane(
     storedThought: String,
     tag: String?,
     streaming: Boolean,
-    answerSeconds: Int
+    answerSeconds: Int,
+    lane: ThinkingLaneState = rememberThinkingLaneState(readingKey, streaming),
+    onToggle: () -> Unit = {}
 ) {
     val accent = MaterialTheme.colorScheme.primary
     val onGradientMuted = LocalOnGradientMuted.current
     val context = LocalContext.current.applicationContext
-    val savedLane = remember(readingKey) { ReadingPositionMemory.read(context, readingKey) }
-    var expanded by remember(readingKey) { mutableStateOf(savedLane?.itemKey?.let { it == "expanded" } ?: streaming) }
-    var retainLiveHeight by rememberSaveable(readingKey) { mutableStateOf(streaming && expanded) }
-    LaunchedEffect(streaming, expanded) { if (streaming && expanded) retainLiveHeight = true }
-    val laneState = remember(readingKey) { androidx.compose.foundation.ScrollState(savedLane?.offset ?: 0) }
     val thought = liveThought?.value ?: storedThought
-    LaunchedEffect(readingKey, laneState) {
-        androidx.compose.runtime.snapshotFlow { expanded to laneState.value }.conflate().collect {
+    val canExpand = streaming || thought.isNotBlank()
+    val latestCanExpand by rememberUpdatedState(canExpand)
+    val expanded = lane.expanded && canExpand
+    LaunchedEffect(streaming, lane.expanded) { lane.retainStreamingHeight(streaming) }
+    LaunchedEffect(readingKey, lane) {
+        androidx.compose.runtime.snapshotFlow { lane.readingPosition() to latestCanExpand }.conflate().collect {
             delay(250)
-            ReadingPositionMemory.write(context, readingKey, ReadingPosition(if (expanded) "expanded" else "collapsed", 0, laneState.value))
+            lane.positionToPersist(latestCanExpand)?.let { ReadingPositionMemory.write(context, readingKey, it) }
         }
     }
-    DisposableEffect(readingKey, laneState) {
+    DisposableEffect(readingKey, lane) {
         onDispose {
-            ReadingPositionMemory.write(context, readingKey, ReadingPosition(if (expanded) "expanded" else "collapsed", 0, laneState.value))
+            lane.positionToPersist(latestCanExpand)?.let { ReadingPositionMemory.write(context, readingKey, it) }
         }
-    }
-
-    val title = when {
-        streaming -> S.thinkingStreaming
-        answerSeconds > 0 -> S.thinkingDoneSeconds(answerSeconds)
-        else -> S.thinkingDone
     }
 
     Column(modifier = Modifier.fillMaxWidth().testTag("thinking_lane")) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier
-                .clip(RoundedCornerShape(12.dp))
-                .clickable {
-                    expanded = !expanded
-                    if (!expanded) retainLiveHeight = false
-                }
-                .padding(horizontal = 8.dp, vertical = 6.dp)
-        ) {
-            Text(
-                text = title,
-                color = accent,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Medium
-            )
-            Spacer(modifier = Modifier.width(4.dp))
-            Icon(
-                imageVector = if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                contentDescription = if (expanded) S.thinkingCollapse else S.thinkingExpand,
-                tint = accent,
-                modifier = Modifier.size(18.dp)
-            )
-        }
+        ThinkingHeader(
+            title = thinkingTitle(streaming, thought.isNotBlank(), answerSeconds),
+            expanded = expanded,
+            canExpand = canExpand,
+            onToggle = { onToggle(); lane.toggle() }
+        )
 
         AnimatedVisibility(
             visible = expanded,
@@ -153,17 +117,17 @@ internal fun ThinkingLane(
                     fontSize = 13.sp,
                     fontFamily = FontFamily.Monospace,
                     lineHeight = 19.sp,
-                    modifier = if (streaming || retainLiveHeight) {
+                    modifier = if (streaming || lane.retainLiveHeight) {
                         Modifier.fillMaxWidth().testTag("thinking_text")
                     } else {
                         Modifier
                             .fillMaxWidth()
                             .testTag("thinking_text")
                             .heightIn(max = 220.dp)
-                            .verticalScroll(laneState)
+                            .verticalScroll(lane.scroll)
                     }
                 )
-                if (streaming || retainLiveHeight) {
+                if (streaming || lane.retainLiveHeight) {
                     Spacer(modifier = Modifier.height(6.dp))
                     if (streaming) ThoughtPulse(color = accent)
                     else Spacer(modifier = Modifier.size(6.dp))

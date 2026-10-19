@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -64,6 +65,8 @@ fun NotebookDetailScreen(
     val context = LocalContext.current
     val repository = remember { NotebookRepository.from(context) }
 
+    val messageUiState = remember(notebookId) { NotebookMessageUiState() }
+    LaunchedEffect(active, messageUiState) { if (!active) messageUiState.resetUserMessages() }
     val tabs = NotebookDetailTab.entries
     val pagerState = rememberPagerState { tabs.size }
     val scope = rememberCoroutineScope()
@@ -134,39 +137,41 @@ fun NotebookDetailScreen(
                 }
             )
 
-            HorizontalPager(
-                state = pagerState,
-                beyondViewportPageCount = tabs.lastIndex,
-                key = { tabs[it] },
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-            ) { page ->
-                when (tabs[page]) {
-                    NotebookDetailTab.CHAT -> {
-                        NotebookChatTab(
-                            notebookId = notebookId,
-                            sourceNotes = sourceNotes,
-                            modifier = Modifier.fillMaxSize(),
-                            active = active && selectedTab == NotebookDetailTab.CHAT,
-                            onOpenSource = { noteId, sliceId, revision ->
-                                focusRequest += 1
-                                sourceFocus = SourceFocus(noteId, sliceId, focusRequest, revision)
-                                scope.launch {
-                                    pagerState.animateScrollToPage(tabs.indexOf(NotebookDetailTab.SOURCES))
+            CompositionLocalProvider(LocalNotebookMessageUiState provides messageUiState) {
+                HorizontalPager(
+                    state = pagerState,
+                    beyondViewportPageCount = tabs.lastIndex,
+                    key = { tabs[it] },
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                ) { page ->
+                    when (tabs[page]) {
+                        NotebookDetailTab.CHAT -> {
+                            NotebookChatTab(
+                                notebookId = notebookId,
+                                sourceNotes = sourceNotes,
+                                modifier = Modifier.fillMaxSize(),
+                                active = active && selectedTab == NotebookDetailTab.CHAT,
+                                onOpenSource = { noteId, sliceId, revision ->
+                                    focusRequest += 1
+                                    sourceFocus = SourceFocus(noteId, sliceId, focusRequest, revision)
+                                    scope.launch {
+                                        pagerState.animateScrollToPage(tabs.indexOf(NotebookDetailTab.SOURCES))
+                                    }
                                 }
-                            }
-                        )
-                    }
-                    NotebookDetailTab.SOURCES -> {
-                        NotebookSourcesTab(
-                            notebookId = notebookId,
-                            sourceNotes = sourceNotes,
-                            onReload = { reloadCount++ },
-                            modifier = Modifier.fillMaxSize(),
-                            focus = sourceFocus,
-                            active = active && selectedTab == NotebookDetailTab.SOURCES
-                        )
+                            )
+                        }
+                        NotebookDetailTab.SOURCES -> {
+                            NotebookSourcesTab(
+                                notebookId = notebookId,
+                                sourceNotes = sourceNotes,
+                                onReload = { reloadCount++ },
+                                modifier = Modifier.fillMaxSize(),
+                                focus = sourceFocus,
+                                active = active && selectedTab == NotebookDetailTab.SOURCES
+                            )
+                        }
                     }
                 }
             }

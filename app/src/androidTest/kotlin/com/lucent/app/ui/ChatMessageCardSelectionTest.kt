@@ -69,6 +69,27 @@ class ChatMessageCardSelectionTest {
         assertDisabledActions(ai = true, bodyNode = word)
     }
 
+    @Test fun collapsedLongUserMessageStillCopiesTheCompleteOriginalText() {
+        val full = (1..12).joinToString("\n") { "Line $it" }
+        rule.setContent {
+            MaterialTheme {
+                UserMessageCard(
+                    message = UiChatMessage(id = 11, role = "user", content = full),
+                    actionsEnabled = true,
+                    onEdit = {},
+                    onDelete = {}
+                )
+            }
+        }
+        waitForText(S.userMessageExpand)
+        val layouts = mutableListOf<TextLayoutResult>()
+        rule.onNodeWithText(full).performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
+        assertEquals(6, layouts.single().lineCount)
+        rule.runOnIdle { clipboard.clearPrimaryClip() }
+        rule.onNodeWithContentDescription(S.msgCopyFull).performTouchInput { click() }
+        waitForClipboard(full)
+    }
+
     private fun render(ai: Boolean, enabled: Boolean) {
         rule.setContent {
             MaterialTheme {

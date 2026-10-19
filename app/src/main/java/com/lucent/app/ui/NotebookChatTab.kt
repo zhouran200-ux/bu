@@ -89,6 +89,7 @@ fun NotebookChatTab(
     val prefs = remember(notebookId) {
         context.getSharedPreferences("lucent_notebook_chat_prefs", Context.MODE_PRIVATE)
     }
+    val messageUiState = LocalNotebookMessageUiState.current ?: remember(notebookId) { NotebookMessageUiState() }
     val messages = session.messages
     val readingKeys by remember(messages) {
         derivedStateOf(structuralEqualityPolicy()) {
@@ -284,13 +285,28 @@ fun NotebookChatTab(
                                     message = msg,
                                     actionsEnabled = actionsEnabled,
                                     onEdit = { questionToEdit = msg },
-                                    onDelete = { actions.deleteMessage(msg) }
+                                    onDelete = { actions.deleteMessage(msg) },
+                                    expanded = messageUiState.userExpanded(msg.id),
+                                    onExpandedChange = {
+                                        actions.followStream = false
+                                        scrollOwnership.takeOver()
+                                        viewportAnchor.userScrolled()
+                                        messageUiState.setUserExpanded(msg.id, it)
+                                    }
                                 )
                             } else {
                                 AiMessageCard(
                                     modifier = itemModifier,
                                     message = msg,
                                     readingKey = "chat:$notebookId:thought:${msg.id}",
+                                    thinkingState = rememberThinkingLaneState(
+                                        "chat:$notebookId:thought:${msg.id}", msg.id == streamingAnswerId, messageUiState
+                                    ),
+                                    onThinkingToggle = {
+                                        actions.followStream = false
+                                        scrollOwnership.takeOver()
+                                        viewportAnchor.userScrolled()
+                                    },
                                     streaming = msg.id == streamingAnswerId,
                                     liveThought = if (msg.id == streamingAnswerId) streamingThought else null,
                                     actionsEnabled = actionsEnabled,
@@ -331,6 +347,21 @@ fun NotebookChatTab(
                 )
             },
             controls = { bottomInset ->
+                StickyThinkingHeader(
+                    listState = listState,
+                    messages = messages,
+                    notebookId = notebookId,
+                    owner = messageUiState,
+                    streamingAnswerId = streamingAnswerId,
+                    liveThought = streamingThought,
+                    active = active,
+                    onToggle = {
+                        actions.followStream = false
+                        scrollOwnership.takeOver()
+                        viewportAnchor.userScrolled()
+                    },
+                    modifier = Modifier.align(Alignment.TopStart)
+                )
                 FloatingScrollCapsule(
                     listState = listState,
                     itemKeys = readingKeys,

@@ -14,7 +14,7 @@
 
 ## 映射规则
 
-应用五档“自动/极速/标准/深度/极致”是产品抽象，官方没有跨厂商统一的五档标准。AUTO 不发思考覆盖参数，显示“模型默认（不覆盖）”；默认可能是关闭、固定 high/max 或自适应。FAST 保持低思考而不是关闭，MAXIMUM 选模型已声明的最高有效强度；四个手动档映射成两个/三个有效强度时会明确展示重复值。
+应用五档“自动/极速/标准/深度/极致”是产品抽象，官方没有跨厂商统一的五档标准。AUTO 不发思考覆盖参数，显示“模型默认”；默认可能是关闭、固定 high/max 或自适应。FAST 保持低思考而不是关闭，MAXIMUM 选模型已声明的最高有效强度；四个手动档映射成两个/三个有效强度时会明确展示重复值。
 
 | 模型族 | FAST | BALANCED | DEEP | MAXIMUM | 主要字段/处理 |
 |---|---|---|---|---|---|
@@ -61,7 +61,7 @@ Gemini 3/3.6Flash与3.1/3.5Flash-Lite的MINIMAL/LOW/MEDIUM/HIGH能力保留，FA
 ## 协议与第三方边界
 
 - 原生Claude使用output_config.effort，按型号补enabled预算或adaptive；AUTO不覆盖。默认max_tokens=8192仍是保守产品策略，并非官方无限推理承诺。
-- 官方 api.anthropic.com 的 OpenAI兼容文档明确reasoning_effort被忽略。因此该host下effort-only选择显示需切换原生协议、不伪装成功；同时有预算（Opus4.5）时保留文档支持的thinking预算扩展。普通relay保留原有effort约定但标“兼容扩展，依赖服务端支持”，不宣称官方保证生效。
+- 官方 api.anthropic.com 的 OpenAI兼容文档明确reasoning_effort被忽略。因此该host下effort-only选择显示需切换原生协议、不伪装成功；同时有预算（Opus4.5）时保留文档支持的thinking预算扩展。普通relay保留原有effort约定，不额外附加说明后缀，也不宣称官方保证生效。
 - Google官方兼容端点的extra_body是HTTP字段，只有一层；Qwen的SDK extra_body只是参数包装，手工HTTP使用顶层enable_thinking/thinking_budget，不能混用。
 - 同名模型在百炼/原厂可能不同，当前registry的显式远端metadata仍为进程级model表；完整按host隔离、任意网关转换、Responses API pro mode、额外模型族不在本轮实现范围。未知少发字段，已知兼容风险明示，不伪称全平台支持。
 - Claude新版思维文本常默认omitted，Gemini includeThoughts返回的是摘要而非原始链；非AUTO显式请求摘要是一项展示策略。AUTO继续不添加thinking override，不能据“没有收到摘要”推导模型没有思考。

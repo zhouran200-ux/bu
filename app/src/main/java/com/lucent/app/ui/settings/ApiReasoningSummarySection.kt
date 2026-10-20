@@ -43,7 +43,6 @@ internal fun ApiReasoningSummarySection(provider: String, model: String, baseUrl
                 lineHeight = 15.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            if (plan.note.isNotBlank()) Text(plan.note, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         } else {
             Text(
                 text = listOf(S.apiReasoningUnsupported, plan.note).filter { it.isNotBlank() }.joinToString("\n"),

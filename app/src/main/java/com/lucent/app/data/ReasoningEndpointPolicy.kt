@@ -11,10 +11,8 @@ internal fun reasoningForEndpoint(config: ResolvedReasoningConfig, provider: Str
     val host = runCatching { java.net.URI(baseUrl).host?.lowercase() }.getOrNull()
     if (!nativeClaude && !nativeGoogle && config.claudeEffort != null && host == "api.anthropic.com") {
         if (config.claudeBudgetTokens != null) return config.copy(claudeEffort = null,
-            displayTag = "Claude ${config.claudeBudgetTokens}t 预算（兼容接口不支持 effort）")
+            displayTag = "Claude " + config.claudeBudgetTokens + "t 预算")
         return ResolvedReasoningConfig(config.preset, isAuto = true, displayTag = "Claude 兼容接口不支持 effort，请切换原生协议")
     }
-    val crossVendor = !nativeClaude && !nativeGoogle &&
-        (config.claudeEffort != null || config.claudeBudgetTokens != null || config.geminiThinkingLevel != null || config.geminiThinkingBudget != null)
-    return if (crossVendor) config.copy(displayTag = config.displayTag + "（兼容扩展，依赖服务端支持）") else config
+    return config
 }

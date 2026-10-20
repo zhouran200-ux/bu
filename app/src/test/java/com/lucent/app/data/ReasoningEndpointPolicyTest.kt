@@ -22,15 +22,17 @@ class ReasoningEndpointPolicyTest {
         assertEquals("Claude thinking budget", budgetOnly.controlLabel)
         assertTrue(budgetOnly.levels.isEmpty())
         assertEquals(listOf("2048t", "8192t", "16384t", "32768t"), budgetOnly.entries.map { it.second })
+        val budgetTag = ReasoningResolver.resolve(ReasoningPreset.DEEP, "openai", "claude-opus-4-5", url)
+        assertEquals("Claude 16384t 预算", budgetTag.displayTag)
     }
 
     @Test fun unknownRelayIsExplicitlyMarkedUnverifiedAndAutoRemainsNoOverride() {
         val relay = ReasoningResolver.resolve(ReasoningPreset.DEEP, "custom", "claude-opus-5-5", "https://relay.example/v1")
         assertEquals("high", relay.claudeEffort)
-        assertTrue(relay.displayTag.contains("依赖服务端支持"))
+        assertEquals("Claude high", relay.displayTag)
         val auto = ReasoningResolver.resolve(ReasoningPreset.AUTO, "google", "gemini-2.5-flash-lite")
         assertTrue(auto.isAuto)
-        assertEquals("模型默认（不覆盖）", auto.displayTag)
+        assertEquals("模型默认", auto.displayTag)
     }
 
     @Test fun everyBudgetPresetHonorsAnExplicitMaximum() {

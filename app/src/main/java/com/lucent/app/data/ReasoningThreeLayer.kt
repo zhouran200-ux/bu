@@ -109,7 +109,7 @@ data class ResolvedReasoningConfig(
         val AUTO = ResolvedReasoningConfig(
             preset = ReasoningPreset.AUTO,
             isAuto = true,
-            displayTag = "模型默认（不覆盖）"
+            displayTag = "模型默认"
         )
     }
 }

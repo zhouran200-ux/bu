@@ -46,6 +46,30 @@ class RelayModelNameTest {
     }
 
     @Test
+    fun decoratedRelayNamesWithTagsSuffixesAndReversedClaudeOrderStillResolve() {
+        val deepSeek = max("[满血]deepseek-v4-pro")
+        assertEquals("max", deepSeek.openAiEffort)
+
+        val claude = ReasoningResolver.resolve(
+            ReasoningPreset.MAXIMUM, "anthropic", "ws/claude-5.5opus:v2", "https://relay.example/v1"
+        )
+        assertEquals("max", claude.claudeEffort)
+        assertEquals("adaptive", claude.claudeThinkingType)
+
+        val gemini = ReasoningResolver.resolve(
+            ReasoningPreset.MAXIMUM, "google", "[鸢尾花]gemini-4-argon③", "https://relay.example/v1"
+        )
+        assertEquals("HIGH", gemini.geminiThinkingLevel)
+    }
+
+    @Test
+    fun unauditedVendorsStayUnmappedUntilTheirParametersAreVerified() {
+        val miniMax = ModelCapabilityRegistry.findOrRegister("MiniMax-M2.7-highspeed", "openai")
+        assertEquals(ReasoningControl.NONE, miniMax.reasoning.control)
+        assertTrue(max("MiniMax-M2.7-highspeed").isAuto)
+    }
+
+    @Test
     fun relayAffixesNeverInventCapabilitiesForUnknownModels() {
         for (name in listOf("my-own-glm-5.3", "[RP]totally-unknown", "relay-zzz-9", "[X]custom-thinker")) {
             val definition = ModelCapabilityRegistry.findOrRegister(name, "openai")

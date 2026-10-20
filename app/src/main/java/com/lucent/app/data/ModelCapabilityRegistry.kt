@@ -68,11 +68,22 @@ object ModelCapabilityRegistry {
         var current = clean
         var guard = 0
         while (guard++ < 4) {
+            stripRelaySuffix(current)?.let { if (it !in candidates) candidates += it }
             val stripped = stripRelayAffix(current) ?: break
-            candidates += stripped
+            if (stripped !in candidates) candidates += stripped
             current = stripped
         }
         return candidates
+    }
+
+    private fun stripRelaySuffix(value: String): String? {
+        var candidate = value
+        val colon = candidate.lastIndexOf(':')
+        if (colon in 1 until candidate.lastIndex) candidate = candidate.substring(0, colon)
+        candidate = candidate.trimEnd {
+            it !in 'a'..'z' && it !in 'A'..'Z' && it !in '0'..'9' && it != '-' && it != '.' && it != '_'
+        }
+        return candidate.takeIf { it.isNotEmpty() && it != value }
     }
 
     private fun stripRelayAffix(value: String): String? {

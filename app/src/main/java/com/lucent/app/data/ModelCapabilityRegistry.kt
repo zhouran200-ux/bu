@@ -40,24 +40,68 @@ object ModelCapabilityRegistry {
     fun getAll(): List<ModelDefinition> = registry.values.toList()
 
     @Synchronized
-    fun find(modelId: String): ModelDefinition? {
-        val clean = normalize(modelId)
-        return registry[clean] ?: packedRegistry[packed(clean)]
-    }
+    fun find(modelId: String): ModelDefinition? = registered(normalize(modelId))
 
     @Suppress("UNUSED_PARAMETER")
     @Synchronized
     fun findOrRegister(modelId: String, provider: String): ModelDefinition {
         val clean = normalize(modelId)
-        find(clean)?.let { return it }
-        val capability = snapshotCapability(clean) ?: ReasoningCapability.NONE
+        registered(clean)?.let { return it }
+        val capability = snapshotCapability(clean)
+            ?: relayCandidates(clean).firstNotNullOfOrNull { snapshotCapability(it) }
+            ?: ReasoningCapability.NONE
         return ModelDefinition(clean, capability).also(::register)
+    }
+
+    private fun registered(clean: String): ModelDefinition? {
+        registry[clean]?.let { return it }
+        packedRegistry[packed(clean)]?.let { return it }
+        relayCandidates(clean).forEach { candidate ->
+            registry[candidate]?.let { return it }
+            packedRegistry[packed(candidate)]?.let { return it }
+        }
+        return null
+    }
+
+    private fun relayCandidates(clean: String): List<String> {
+        val candidates = mutableListOf<String>()
+        var current = clean
+        var guard = 0
+        while (guard++ < 4) {
+            val stripped = stripRelayAffix(current) ?: break
+            candidates += stripped
+            current = stripped
+        }
+        return candidates
+    }
+
+    private fun stripRelayAffix(value: String): String? {
+        val tag = relayTag.find(value)
+        if (tag != null) {
+            val rest = value.substring(tag.range.last + 1).trimStart('-', '_', '.', ':', ' ')
+            if (rest.isNotEmpty()) return rest
+        }
+        relayPrefixes.forEach { prefix ->
+            if (value.startsWith(prefix)) {
+                val rest = value.substring(prefix.length).trimStart('-', '_', '.', ':', ' ')
+                if (rest.isNotEmpty() && rest != value) return rest
+            }
+        }
+        return null
     }
 
     private fun normalize(modelId: String): String =
         modelId.trim().lowercase().substringAfterLast('/').trim()
 
     private fun packed(value: String): String = value.filter { it.isLetterOrDigit() }
+
+    private val relayTag = Regex("^\\[[^\\]]{1,24}]")
+
+    private val relayPrefixes = listOf(
+        "zhiqu", "zhipu", "bigmodel", "zai-org", "zai", "z-ai", "deepseek-ai",
+        "openai", "azure-openai", "anthropic", "google", "vertex", "openrouter",
+        "siliconflow", "moonshot", "dashscope", "aliyun", "volcengine", "ark"
+    )
 
     private fun snapshotCapability(clean: String): ReasoningCapability? {
         val match = snapshotSuffix.find(clean) ?: return null

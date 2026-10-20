@@ -36,6 +36,12 @@
 | GLM5.3系列 | low | high | high | max | 原厂三档 |
 | GLM5.2 | high | high | high | max | 官方low/medium归high、xhigh归max，仅列有效强度 |
 
+### 中转站模型名的归一化
+
+中转站常返回带包装的名字。查找顺序：先按原样（小写、去掉 models/ 前缀、取最后一个 / 之后）精确匹配；再按“压缩键”匹配（忽略 - . _，所以 claude-opus-4.6 与注册的 claude-opus-4-6 等价）；仍不中时，逐步剥掉方括号标签（如 [RP]、[1m]）和受控前缀白名单（zhiqu、zhipu、bigmodel、zai-org、zai、deepseek-ai、openai、anthropic、google、openrouter 等），再要求精确命中已注册模型。
+
+剥前缀只用于“找到模型”，不用于猜能力：剥完仍无注册项就保持 no override。因此 zai-org/GLM-5.3-Flash、deepseek-ai/DeepSeek-V4.1-Flash、[RP]claude-opus-4.6、zhiqu-Glm-5.2 均按已核验条目映射，而 my-own-glm-5.3 仍视为未知。新增前缀需有真实中转发名依据，不按关键词放宽。
+
 Gemini 3/3.6Flash与3.1/3.5Flash-Lite的MINIMAL/LOW/MEDIUM/HIGH能力保留，FAST仍取LOW；3.8Flash与4Argon不能发送MINIMAL。仅已核验exact型号与其严格有效日期后缀继承能力，保留compact/前缀匹配。未知future、coder、chat-latest、image/live/audio及不明中转别名不靠家族关键词猜参数。NONE/no override表示“未确认可配置控制”，不等于模型没有推理能力。
 
 ## 本轮确证修复

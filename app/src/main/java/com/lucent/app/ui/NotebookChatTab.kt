@@ -67,7 +67,7 @@ fun NotebookChatTab(
     val context = LocalContext.current
     val citationScope = rememberCoroutineScope()
     val openCitation: (CitationRef) -> Unit = { ref ->
-        openCitationTarget(citationScope, context, sourceNotes, ref, onOpenSource)
+        openCitationTarget(citationScope, sourceNotes, ref, onOpenSource)
     }
     val session = remember(notebookId) { ChatSessions.forNotebook(context, notebookId) }
     DisposableEffect(session, notebookId) {
@@ -82,8 +82,7 @@ fun NotebookChatTab(
     }
     val notificationPermission = androidx.activity.compose.rememberLauncherForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        if (!granted) LucentToast.show(context, S.chatNotificationDenied)
+    ) {
     }
     val scope = rememberCoroutineScope()
     val prefs = remember(notebookId) {
@@ -179,9 +178,6 @@ fun NotebookChatTab(
     var questionToEdit by remember { mutableStateOf<UiChatMessage?>(null) }
     var answerToEdit by remember { mutableStateOf<UiChatMessage?>(null) }
     val streamingThought = session.thought
-    LaunchedEffect(session.storageError) {
-        session.storageError?.let { LucentToast.show(context, it) }
-    }
     fun openHistorySheet() {
         historyAnchorId = listState.layoutInfo.visibleItemsInfo
             .firstOrNull { it.index in 1..messages.size }

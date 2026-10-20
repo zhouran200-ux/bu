@@ -80,7 +80,6 @@ internal class ChatActionsCoordinator(
             if (slot >= 0) messages[slot] = msg else messages.add(msg)
         }
         if (targetModel.isBlank()) {
-            LucentToast.show(context, S.chatNoModelsForProfile)
             val blankIdx = messages.indexOfFirst { it.id == aiMsgId }
             if (blankIdx >= 0) {
                 messages[blankIdx] = messages[blankIdx].copy(content = S.chatNoModelsAnswer)
@@ -136,7 +135,6 @@ internal class ChatActionsCoordinator(
                     S.chatStartFailed(e.message ?: S.chatRetry), timestamp = answerStamp)
                 upsertAnswerSlot(failed)
                 session.saveMessage(failed)
-                LucentToast.show(context, S.chatStartFailedToast)
             }
         }
     }
@@ -154,28 +152,18 @@ internal class ChatActionsCoordinator(
         followStream = true
         session.afterWrite(saved, onFailure = {
             messages.removeAll { it.id == answerId }
-            LucentToast.show(context, S.chatQuestionNotSaved)
         }) { askModel(answerId) }
     }
 
     fun regenerateAnswer(answerId: Long) {
         if (!session.ready || session.pendingWriteCount > 0 || session.hasPendingAction) return
-        if (streamingAnswerId != null) {
-            LucentToast.show(context, S.chatStillAnswering)
-            return
-        }
+        if (streamingAnswerId != null) return
         val idx = messages.indexOfFirst { it.id == answerId }
         if (idx < 0) return
         val question = messages.take(idx).lastOrNull { it.role == "user" }?.content.orEmpty()
-        if (question.isBlank()) {
-            LucentToast.show(context, S.chatRegenerateTargetMissing)
-            return
-        }
+        if (question.isBlank()) return
         val selection = ApiProfiles.resolveSelection(savedProfiles, selectedProfileId, selectedProfileName, selectedModel)
-        if (selection == null || selection.second.isBlank() || selection.first.apiKey.isBlank()) {
-            LucentToast.show(context, S.chatNoModelOrKey)
-            return
-        }
+        if (selection == null || selection.second.isBlank() || selection.first.apiKey.isBlank()) return
         settlePendingDelete()
         val atBottom = !listState.canScrollForward
         followStream = ChatScrollMath.shouldFollowRegeneration(
@@ -224,7 +212,6 @@ internal class ChatActionsCoordinator(
         if (!session.ready || session.streamingAnswerId != null || session.pendingWriteCount > 0 || session.hasPendingAction) return
         val idx = messages.indexOfFirst { it.id == target.id }
         if (idx < 0) return
-        if (pendingDelete != null) LucentToast.show(context, S.chatPreviousDeleteApplied)
         settlePendingDelete()
         val firstIndex = listState.firstVisibleItemIndex
         val keys = listOf("header") + messages.map { "message:${it.id}" } + "footer"
@@ -259,14 +246,8 @@ internal class ChatActionsCoordinator(
     val onSendMessage: () -> Unit = send@{
         val text = inputText.trim()
         if (text.isEmpty()) return@send
-        if (!session.ready || session.pendingWriteCount > 0 || session.hasPendingAction) {
-            LucentToast.show(context, session.storageError ?: S.chatLoadingRetry)
-            return@send
-        }
-        if (streamingAnswerId != null) {
-            LucentToast.show(context, S.chatStreamingHint)
-            return@send
-        }
+        if (!session.ready || session.pendingWriteCount > 0 || session.hasPendingAction) return@send
+        if (streamingAnswerId != null) return@send
         inputText = ""
         Haptics.tick(context)
         focusManager.clearFocus()

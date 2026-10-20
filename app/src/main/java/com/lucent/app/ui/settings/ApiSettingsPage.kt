@@ -35,7 +35,6 @@ import com.lucent.app.network.ApiProbe
 import com.lucent.app.network.TestConnectionResult
 import com.lucent.app.ui.GlassButton
 import com.lucent.app.ui.Haptics
-import com.lucent.app.ui.LucentToast
 import com.lucent.app.ui.frostedGlass
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -292,7 +291,7 @@ internal fun ApiConfigSettingsPage(
         selectedModel = selectedModel,
         onModelsChange = onModelsChange,
         onSelectedModelChange = onSelectedModelChange,
-        onApplied = { LucentToast.show(context, S.apiModelsApplied) },
+        onApplied = {},
         onDismiss = { pickerOpen = false }
     )
 }

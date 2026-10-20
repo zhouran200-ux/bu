@@ -30,7 +30,6 @@ import com.lucent.app.ui.LocalOnGradient
 import com.lucent.app.ui.LocalOnGradientMuted
 import com.lucent.app.ui.LucentPalette
 import com.lucent.app.ui.LucentTitles
-import com.lucent.app.ui.LucentToast
 import com.lucent.app.ui.PALETTE_CYCLE
 import com.lucent.app.ui.PALETTE_RANDOM
 import com.lucent.app.ui.PaletteGroup
@@ -59,10 +58,7 @@ internal fun BackgroundSettingsPage(repo: SettingsRepository) {
     fun pickPalette(name: String) {
         if (locked) return
         val motionGated = !backgroundAnimationEnabled && (name == PALETTE_CYCLE || name == PALETTE_RANDOM)
-        if (motionGated) {
-            LucentToast.show(context, S.backgroundPaletteDisabledHint)
-            return
-        }
+        if (motionGated) return
         AppScope.setPalette(context, repo, name)
     }
 

@@ -116,7 +116,6 @@ fun NotebookSourcesTab(
         focus?.let {
             if (emphasizedFocus?.requestId != it.requestId) emphasizedFocus = null
             if (sourceNotes.any { note -> note.id == it.noteId }) selectedNoteId = it.noteId
-            else LucentToast.show(context, S.sourcesCitationMissing)
         }
     }
     LaunchedEffect(sourceNotes) {
@@ -262,7 +261,7 @@ private fun SourceReaderDocument(
         consumedRequest = target.requestId
         onEmphasize(null)
         when (val location = sourceFocusLocation(target, source.noteId, source.revision, items)) {
-            is SourceFocusLocation.Unavailable -> LucentToast.show(context, location.message)
+            is SourceFocusLocation.Unavailable -> Unit
             is SourceFocusLocation.Found -> {
                 onEmphasize(target)
                 withFrameNanos { }

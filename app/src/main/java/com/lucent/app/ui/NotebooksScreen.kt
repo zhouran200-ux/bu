@@ -138,8 +138,7 @@ fun NotebooksScreen(
                             LucentToast.show(context, com.lucent.app.i18n.S.notebookDeletedToast)
                         } catch (e: kotlinx.coroutines.CancellationException) {
                             throw e
-                        } catch (e: Exception) {
-                            LucentToast.show(context, e.message ?: S.notebookDeleteRolledBack)
+                        } catch (_: Exception) {
                         }
                     }
                 }) { Text(com.lucent.app.i18n.S.actionDelete) }
@@ -397,9 +396,7 @@ internal fun NotebookNameDialog(
     val keepEditing = rememberImeVisibleOnOpen()
     val inputFocus = remember { androidx.compose.ui.focus.FocusRequester() }
     fun submit() {
-        if (name.isBlank() && !allowBlankName) {
-            LucentToast.show(context, com.lucent.app.i18n.S.notebookNameRequired)
-        } else {
+        if (name.isNotBlank() || allowBlankName) {
             onConfirm(name)
             onDismiss()
         }

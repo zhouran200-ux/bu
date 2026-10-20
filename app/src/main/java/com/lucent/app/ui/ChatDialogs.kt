@@ -206,5 +206,4 @@ internal fun copyTextToClipboard(context: Context, text: String) {
     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
     val clip = ClipData.newPlainText("Copied Text", text)
     clipboard.setPrimaryClip(clip)
-    com.lucent.app.ui.LucentToast.show(context, S.copiedToClipboard)
 }

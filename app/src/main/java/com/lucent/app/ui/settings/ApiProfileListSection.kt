@@ -124,9 +124,8 @@ internal fun ApiProfileListSection(
         } else {
             drag = current.copy(held = -1)
             val pending = drag
-            liveReorder.value(current.order, current.selected) { outcome ->
+            liveReorder.value(current.order, current.selected) { _ ->
                 if (drag === pending) drag = null
-                if (outcome.isFailure) com.lucent.app.ui.LucentToast.show(context, S.orderSaveFailed)
             }
         }
     }

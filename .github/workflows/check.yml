@@ -116,6 +116,24 @@ jobs:
           SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
           yes | "$SDKMANAGER" --licenses > /dev/null 2>&1 || true
           "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0"
+      - name: Pre-install the emulator system image with retries
+        if: ${{ !cancelled() }}
+        run: |
+          set -u
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          IMAGE="system-images;android-${{ matrix.api-level }};google_apis;x86_64"
+          for attempt in 1 2 3; do
+            echo "Installing $IMAGE (attempt $attempt)"
+            if "$SDKMANAGER" --install "$IMAGE" --channel=0; then
+              echo "System image installed"
+              exit 0
+            fi
+            echo "::warning::System image install failed on attempt $attempt; clearing partial downloads"
+            rm -rf "$ANDROID_HOME/.temp" "$ANDROID_HOME/system-images/android-${{ matrix.api-level }}"
+            sleep 15
+          done
+          echo "::error::Could not install $IMAGE after 3 attempts"
+          exit 1
       - name: Record application and test serialization dependencies
         # dependencyInsight takes --configuration/--dependency per task, so the three
         # reports cannot share one invocation. Reuse the Gradle daemon instead of

@@ -15,7 +15,6 @@ internal class ThinkingLaneState(saved: ReadingPosition?, streaming: Boolean) {
         private set
     var retainLiveHeight by mutableStateOf(streaming && expanded)
         private set
-    // Measured thinking region only; excludes the answer body.
     var measuredHeightPx by mutableStateOf(0)
     val scroll = ScrollState(saved?.offset ?: 0)
     private var hasExpansionChoice = saved != null

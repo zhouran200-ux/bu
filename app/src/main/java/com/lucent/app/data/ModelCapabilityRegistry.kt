@@ -25,6 +25,8 @@ object ModelCapabilityRegistry {
         registerDeepSeekModels()
         registerQwenModels()
         registerZhipuModels()
+        registerMiniMaxModels()
+        registerKimiModels()
     }
 
     @Synchronized
@@ -60,8 +62,21 @@ object ModelCapabilityRegistry {
             registry[candidate]?.let { return it }
             packedRegistry[packed(candidate)]?.let { return it }
         }
+        decoratedCandidates(clean).forEach { candidate ->
+            registry[candidate]?.let { return it }
+            packedRegistry[packed(candidate)]?.let { return it }
+        }
         return null
     }
+
+    private fun decoratedCandidates(clean: String): List<String> =
+        aliasSuffixes.mapNotNull { suffix ->
+            clean.takeIf { it.endsWith(suffix) && it.length > suffix.length }?.dropLast(suffix.length)
+        }
+
+    private val aliasSuffixes = listOf("-nx", "-high", "-reasoning")
+
+    private val singleLetterPrefix = Regex("^[a-z]{1,2}-(?=[a-z0-9])")
 
     private fun relayCandidates(clean: String): List<String> {
         val candidates = mutableListOf<String>()
@@ -97,6 +112,10 @@ object ModelCapabilityRegistry {
                 val rest = value.substring(prefix.length).trimStart('-', '_', '.', ':', ' ')
                 if (rest.isNotEmpty() && rest != value) return rest
             }
+        }
+        singleLetterPrefix.find(value)?.let { match ->
+            val rest = value.substring(match.range.last + 1)
+            if (rest.isNotEmpty() && rest != value) return rest
         }
         return null
     }
@@ -180,6 +199,7 @@ object ModelCapabilityRegistry {
             effort(control, listOf("none") + extendedLevels)
         )
         addModels(listOf("gpt-6-astra", "gpt-6.1-sol"), effort(control, extendedLevels))
+        addModels(listOf("gpt-5.6-luna"), effort(control, listOf("none") + extendedLevels))
         addModels(listOf("o1", "o3", "o3-mini", "o4-mini"), effort(control, standardLevels))
         addModels(listOf("o1-mini", "o1-preview"), ReasoningCapability.NONE)
     }
@@ -234,6 +254,7 @@ object ModelCapabilityRegistry {
         }
         addModels(listOf("gemini-3-pro-preview"), effort(level, listOf("LOW", "HIGH")))
         addModels(listOf("gemini-3.1-flash-lite-image"), effort(level, listOf("MINIMAL", "HIGH")))
+        addModels(listOf("gemini-3.7-flash"), effort(level, geminiWithMinimal))
         addModels(
             listOf("gemini-2.5-pro"),
             budget(ReasoningControl.GEMINI_THINKING_BUDGET, 32768)
@@ -280,11 +301,26 @@ object ModelCapabilityRegistry {
         )
     }
 
+    private fun registerMiniMaxModels() {
+        addModels(
+            listOf("minimax-m3.1-flash"),
+            effort(ReasoningControl.OPENAI_EFFORT, extendedLevels)
+        )
+    }
+
+    private fun registerKimiModels() {
+        addModels(
+            listOf("kimi-k3"),
+            effort(ReasoningControl.OPENAI_EFFORT, listOf("low", "high", "max"))
+        )
+    }
+
     private fun registerZhipuModels() {
         addModels(
             listOf("glm-5.3", "glm-5.3-flash", "glm-5.3-flashx"),
             effort(ReasoningControl.ZHIPU_EFFORT, listOf("low", "high", "max"))
         )
         addModels(listOf("glm-5.2"), effort(ReasoningControl.ZHIPU_EFFORT, listOf("high", "max")))
+        addModels(listOf("glm-5.3-flash-pro"), effort(ReasoningControl.ZHIPU_EFFORT, listOf("low", "high", "max")))
     }
 }

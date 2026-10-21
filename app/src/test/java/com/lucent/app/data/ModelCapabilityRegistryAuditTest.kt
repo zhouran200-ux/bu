@@ -168,6 +168,38 @@ class ModelCapabilityRegistryAuditTest {
     }
 
     @Test
+    fun reportedRelayNamesResolveToTheirAuditedFamily() {
+        assertLevels(
+            ReasoningControl.GEMINI_THINKING_LEVEL, geminiMinimal,
+            "gemini-3.6-flash-nx", "gemini-3.7-flash"
+        )
+        assertLevels(ReasoningControl.GEMINI_THINKING_LEVEL, geminiStandard, "gemini-3.8-flash-high")
+        assertLevels(ReasoningControl.OPENAI_EFFORT, extended, "minimax-m3.1-flash")
+        assertLevels(ReasoningControl.OPENAI_EFFORT, listOf("low", "high", "max"), "kimi-k3")
+        assertLevels(ReasoningControl.OPENAI_EFFORT, listOf("none") + extended, "gpt-5.6-luna")
+        assertLevels(
+            ReasoningControl.OPENAI_EFFORT, listOf("none") + standard + "xhigh",
+            "gpt-5.5-reasoning"
+        )
+        assertLevels(
+            ReasoningControl.ZHIPU_EFFORT, listOf("low", "high", "max"),
+            "s-glm-5.3", "glm5.3-flash-pro"
+        )
+    }
+
+    @Test
+    fun capabilityNeutralDecorationsReuseAuditedSiblingsOnly() {
+        assertEquals(capability("gemini-3.6-flash"), capability("gemini-3.6-flash-nx"))
+        assertEquals(capability("gemini-3.8-flash"), capability("gemini-3.8-flash-high"))
+        assertEquals(capability("gpt-5.5"), capability("gpt-5.5-reasoning"))
+        assertEquals(capability("glm-5.3"), capability("s-glm-5.3"))
+        assertNoOverride(
+            "gemini-3.6-flash-experimental", "gemini-3.6-flash-ultra",
+            "gpt-5.5-unknown", "gpt-5.5-luna-max", "glm-5.3-flash-ultra"
+        )
+    }
+
+    @Test
     fun normalizedAliasesKeepExactModelBoundaries() {
         mapOf(
             " OPENAI/GPT_6_ASTRA " to "gpt-6-astra",

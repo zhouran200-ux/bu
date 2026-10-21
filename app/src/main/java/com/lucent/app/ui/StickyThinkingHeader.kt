@@ -75,7 +75,6 @@ internal fun StickyThinkingHeader(
             }
         }.single().measure(constraints.copy(minHeight = 0))
         layout(constraints.maxWidth, header.height) {
-            // Overlay only: hiding never changes list padding, item sizes, or scroll position.
             header.placeRelative(0, (thinkingRemaining - header.height).coerceAtMost(0))
         }
     }

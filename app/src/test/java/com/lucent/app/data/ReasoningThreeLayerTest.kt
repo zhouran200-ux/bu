@@ -253,6 +253,36 @@ class ReasoningThreeLayerTest {
     }
 
     @Test
+    fun documentedRelayFamiliesSendTheLevelsTheirVendorPublishes() {
+        val minimaxFast = ReasoningResolver.resolve(ReasoningPreset.FAST, "openai", "minimax-m3.1-flash")
+        assertEquals("low", minimaxFast.openAiEffort)
+        val minimaxMaximum = ReasoningResolver.resolve(ReasoningPreset.MAXIMUM, "openai", "minimax-m3.1-flash")
+        assertEquals("max", minimaxMaximum.openAiEffort)
+
+        val kimiFast = ReasoningResolver.resolve(ReasoningPreset.FAST, "openai", "kimi-k3")
+        assertEquals("low", kimiFast.openAiEffort)
+        val kimiDeep = ReasoningResolver.resolve(ReasoningPreset.DEEP, "openai", "kimi-k3")
+        assertEquals("high", kimiDeep.openAiEffort)
+        val kimiMaximum = ReasoningResolver.resolve(ReasoningPreset.MAXIMUM, "openai", "kimi-k3")
+        assertEquals("max", kimiMaximum.openAiEffort)
+
+        val decoratedGemini = ReasoningResolver.resolve(ReasoningPreset.DEEP, "google", "gemini-3.6-flash-nx")
+        assertEquals("HIGH", decoratedGemini.geminiThinkingLevel)
+        val decoratedHigh = ReasoningResolver.resolve(ReasoningPreset.BALANCED, "google", "gemini-3.8-flash-high")
+        assertEquals("MEDIUM", decoratedHigh.geminiThinkingLevel)
+
+        val decoratedGpt = ReasoningResolver.resolve(ReasoningPreset.MAXIMUM, "openai", "gpt-5.5-reasoning")
+        assertEquals("xhigh", decoratedGpt.openAiEffort)
+        val luna = ReasoningResolver.resolve(ReasoningPreset.MAXIMUM, "openai", "gpt-5.6-luna")
+        assertEquals("max", luna.openAiEffort)
+
+        val prefixedGlm = ReasoningResolver.resolve(ReasoningPreset.DEEP, "openai", "s-glm-5.3")
+        assertEquals("high", prefixedGlm.openAiEffort)
+        val proGlm = ReasoningResolver.resolve(ReasoningPreset.MAXIMUM, "openai", "glm5.3-flash-pro")
+        assertEquals("max", proGlm.openAiEffort)
+    }
+
+    @Test
     fun qwenThirtyEightKeepsItsDocumentedEffortValues() {
         val deep = ReasoningResolver.resolve(ReasoningPreset.DEEP, "openai", "qwen3.8-max")
         assertEquals("xhigh", deep.openAiEffort)

@@ -146,25 +146,37 @@ class StickyThinkingHeaderTest {
         val host = mount()
         scrollTo(host, 1)
         assertPinned(S.thinkingDoneSeconds(3))
+        val thinking11 = host.thinkingHeight(11).toInt()
+        assertTrue(thinking11 + 100 < MessageHeightPx)
 
-        scrollBy(host, host.thinkingHeight(11).toInt() - 1)
+        scrollBy(host, thinking11 - 1)
         assertPinned(S.thinkingDoneSeconds(3))
         scrollBy(host, 1)
         sticky().assertDoesNotExist()
 
-        scrollBy(host, 200)
+        scrollBy(host, 100)
+        assertTopKey(host, "message:11")
+        sticky().assertDoesNotExist()
+
+        scrollBy(host, MessageHeightPx - thinking11 - 100 + MessageSpacingPx / 2)
         assertGapHasNoOwner(host)
         sticky().assertDoesNotExist()
-        scrollBy(host, 8)
+        scrollBy(host, MessageSpacingPx / 2)
         assertTopKey(host, "message:12")
         sticky().assertDoesNotExist()
 
         scrollTo(host, 3)
         assertPinned(S.thinkingDoneSeconds(7))
-        scrollBy(host, -host.thinkingHeight(13).toInt())
+        val thinking13 = host.thinkingHeight(13).toInt()
+        assertTrue(thinking13 > MessageSpacingPx && thinking13 < MessageHeightPx)
+
+        scrollBy(host, -1)
+        assertPinned(S.thinkingDoneSeconds(7))
+        scrollBy(host, -(thinking13 - 1))
         sticky().assertDoesNotExist()
-        scrollBy(host, -8)
-        assertGapHasNoOwner(host)
+
+        scrollBy(host, -MessageSpacingPx / 2)
+        assertTopKey(host, "message:12")
         sticky().assertDoesNotExist()
 
         scrollTo(host, 1)
@@ -345,6 +357,11 @@ class StickyThinkingHeaderTest {
     )
 
     private fun sticky() = rule.onNodeWithTag("sticky_thinking_header")
+
+    private companion object {
+        const val MessageHeightPx = 420
+        const val MessageSpacingPx = 16
+    }
 
     private fun settleAnimation() {
         advanceFrames()

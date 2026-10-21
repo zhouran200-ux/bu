@@ -185,6 +185,24 @@ class ModelCapabilityRegistryAuditTest {
             ReasoningControl.ZHIPU_EFFORT, listOf("low", "high", "max"),
             "s-glm-5.3", "glm5.3-flash-pro"
         )
+        assertLevels(
+            ReasoningControl.OPENAI_EFFORT, listOf("low", "medium", "high", "xhigh"),
+            "grok-4.6", "grok-4.7", "muse-spark-1.3"
+        )
+        assertLevels(ReasoningControl.OPENAI_EFFORT, standard, "grok-4.5")
+        assertLevels(ReasoningControl.OPENAI_EFFORT, listOf("low", "high"), "grok-3-mini")
+        assertNoOverride("grok-4.20-reasoning", "grok-build", "grok-3", "muse-spark-9.9")
+    }
+
+    @Test
+    fun mimoExposesAThinkingToggleWithoutIntensityLevels() {
+        listOf("mimo-v2.6-flash", "mimo-v2.6-pro").forEach { id ->
+            val capability = capability(id)
+            assertTrue(id, capability.supported)
+            assertEquals(id, ReasoningControl.MIMO_THINKING_TOGGLE, capability.control)
+            assertTrue(id, capability.levels.isEmpty())
+        }
+        assertNoOverride("mimo-v2.5-pro", "mimo-v2.6-ultra")
     }
 
     @Test

@@ -40,6 +40,7 @@ object ReasoningPlanBuilder {
             ?: config.claudeBudgetTokens?.let { "${it}t" }
             ?: config.geminiThinkingBudget?.let { "${it}t" }
             ?: config.qwenBudgetTokens?.let { "${it}t" }
+            ?: config.openAiThinkingType?.let { "thinking $it" }
             ?: "-"
     }
 
@@ -54,6 +55,7 @@ object ReasoningPlanBuilder {
             ReasoningControl.QWEN_EFFORT -> "Qwen effort"
             ReasoningControl.QWEN_BUDGET -> "Qwen thinking budget"
             ReasoningControl.ZHIPU_EFFORT -> "GLM effort"
+            ReasoningControl.MIMO_THINKING_TOGGLE -> "MiMo thinking toggle"
             ReasoningControl.NONE -> "none"
         }
     }

@@ -11,6 +11,11 @@ internal fun applyCompatibleReasoning(payload: JSONObject, config: ResolvedReaso
         payload.put("extra_body", JSONObject().put("google", JSONObject().put("thinking_config", google)))
         return
     }
+    config.openAiThinkingType?.let { type ->
+        require(config.openAiEffort == null && config.claudeEffort == null) { "Conflicting reasoning controls" }
+        payload.put("thinking", JSONObject().put("type", type))
+        return
+    }
     config.qwenBudgetTokens?.let { budget ->
         require(budget > 0 && config.openAiEffort == null) { "Invalid Qwen thinking budget" }
         payload.put("enable_thinking", true)

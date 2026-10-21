@@ -27,6 +27,9 @@ object ModelCapabilityRegistry {
         registerZhipuModels()
         registerMiniMaxModels()
         registerKimiModels()
+        registerXaiModels()
+        registerMuseModels()
+        registerMimoModels()
     }
 
     @Synchronized
@@ -312,6 +315,29 @@ object ModelCapabilityRegistry {
         addModels(
             listOf("kimi-k3"),
             effort(ReasoningControl.OPENAI_EFFORT, listOf("low", "high", "max"))
+        )
+    }
+
+    private fun registerXaiModels() {
+        addModels(
+            listOf("grok-4.6", "grok-4.7"),
+            effort(ReasoningControl.OPENAI_EFFORT, listOf("low", "medium", "high", "xhigh"))
+        )
+        addModels(listOf("grok-4.5"), effort(ReasoningControl.OPENAI_EFFORT, standardLevels))
+        addModels(listOf("grok-3-mini"), effort(ReasoningControl.OPENAI_EFFORT, listOf("low", "high")))
+    }
+
+    private fun registerMimoModels() {
+        addModels(
+            listOf("mimo-v2.6-flash", "mimo-v2.6-pro"),
+            effort(ReasoningControl.MIMO_THINKING_TOGGLE, emptyList())
+        )
+    }
+
+    private fun registerMuseModels() {
+        addModels(
+            listOf("muse-spark-1.3"),
+            effort(ReasoningControl.OPENAI_EFFORT, listOf("low", "medium", "high", "xhigh"))
         )
     }
 

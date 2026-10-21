@@ -79,6 +79,14 @@ class ReasoningPayloadAuditTest {
         assertEquals(16384, budget.getJSONObject("thinking").getInt("budget_tokens"))
     }
 
+    @Test fun mimoSendsItsToggleInsteadOfAnEffortLevel() {
+        val deep = payload("mimo-v2.6-flash", ApiSpec.OPENAI)
+        assertEquals("enabled", deep.getJSONObject("thinking").getString("type"))
+        assertFalse(deep.has("reasoning_effort"))
+        val automatic = payload("mimo-v2.6-flash", ApiSpec.OPENAI, ReasoningPreset.AUTO)
+        assertFalse(automatic.has("thinking"))
+    }
+
     @Test fun automaticModeNeverAddsThinkingOverridesAcrossVendors() {
         for ((model, spec) in listOf("gpt-6-astra" to ApiSpec.OPENAI,
             "qwen-plus" to ApiSpec.OPENAI, "claude-opus-5-5" to ApiSpec.ANTHROPIC,

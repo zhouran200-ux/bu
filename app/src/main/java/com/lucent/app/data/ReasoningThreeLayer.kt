@@ -42,6 +42,7 @@ enum class ReasoningControl {
     QWEN_EFFORT,
     QWEN_BUDGET,
     ZHIPU_EFFORT,
+    MIMO_THINKING_TOGGLE,
     NONE
 }
 
@@ -103,6 +104,7 @@ data class ResolvedReasoningConfig(
     val claudeBudgetTokens: Int? = null,
     val claudeThinkingType: String? = null,
     val qwenBudgetTokens: Int? = null,
+    val openAiThinkingType: String? = null,
     val displayTag: String = ""
 ) {
     companion object {
@@ -294,6 +296,17 @@ class ZhipuReasoningMapper : ReasoningMapper {
 }
 
 
+class MimoReasoningMapper : ReasoningMapper {
+    override fun map(preset: ReasoningPreset, model: ModelDefinition): ResolvedReasoningConfig {
+        if (preset == ReasoningPreset.AUTO) return ResolvedReasoningConfig.AUTO
+        return ResolvedReasoningConfig(
+            preset = preset,
+            openAiThinkingType = "enabled",
+            displayTag = "MiMo 思考开启"
+        )
+    }
+}
+
 class FallbackReasoningMapper : ReasoningMapper {
     override fun map(preset: ReasoningPreset, model: ModelDefinition): ResolvedReasoningConfig {
         return ResolvedReasoningConfig(
@@ -313,6 +326,7 @@ object ReasoningResolver {
     private val deepSeekMapper = DeepSeekReasoningMapper()
     private val qwenMapper = QwenReasoningMapper()
     private val zhipuMapper = ZhipuReasoningMapper()
+    private val mimoMapper = MimoReasoningMapper()
     private val fallbackMapper = FallbackReasoningMapper()
 
     fun resolve(
@@ -335,6 +349,7 @@ object ReasoningResolver {
             ReasoningControl.DEEPSEEK_EFFORT -> deepSeekMapper
             ReasoningControl.QWEN_EFFORT, ReasoningControl.QWEN_BUDGET -> qwenMapper
             ReasoningControl.ZHIPU_EFFORT -> zhipuMapper
+            ReasoningControl.MIMO_THINKING_TOGGLE -> mimoMapper
             ReasoningControl.NONE -> fallbackMapper
         }
 

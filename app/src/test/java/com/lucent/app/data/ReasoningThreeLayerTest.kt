@@ -280,6 +280,22 @@ class ReasoningThreeLayerTest {
         assertEquals("high", prefixedGlm.openAiEffort)
         val proGlm = ReasoningResolver.resolve(ReasoningPreset.MAXIMUM, "openai", "glm5.3-flash-pro")
         assertEquals("max", proGlm.openAiEffort)
+
+        val grokDeep = ReasoningResolver.resolve(ReasoningPreset.DEEP, "openai", "grok-4.7")
+        assertEquals("high", grokDeep.openAiEffort)
+        val grokMaximum = ReasoningResolver.resolve(ReasoningPreset.MAXIMUM, "openai", "grok-4.6")
+        assertEquals("xhigh", grokMaximum.openAiEffort)
+        val museMaximum = ReasoningResolver.resolve(ReasoningPreset.MAXIMUM, "openai", "muse-spark-1.3")
+        assertEquals("xhigh", museMaximum.openAiEffort)
+
+        val unknownGrok = ReasoningResolver.resolve(ReasoningPreset.DEEP, "openai", "grok-4.20-reasoning")
+        assertTrue(unknownGrok.isAuto)
+        assertEquals("模型默认", unknownGrok.displayTag)
+
+        val mimo = ReasoningResolver.resolve(ReasoningPreset.DEEP, "openai", "mimo-v2.6-flash")
+        assertEquals("enabled", mimo.openAiThinkingType)
+        assertNull(mimo.openAiEffort)
+        assertTrue(!mimo.isAuto)
     }
 
     @Test

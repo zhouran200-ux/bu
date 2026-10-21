@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -33,8 +32,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -131,27 +128,19 @@ internal fun DialogueSettingsSheet(
                         .clip(RoundedCornerShape(18.dp))
                 ) {
                     Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
-                        BasicTextField(
+                        LucentMultilineField(
                             value = prompt,
                             onValueChange = { prompt = it },
+                            placeholder = S.dialoguePromptHint,
                             textStyle = TextStyle(fontSize = 15.sp, color = ink, lineHeight = 22.sp),
+                            placeholderColor = ink.copy(alpha = 0.40f),
+                            minLines = 4,
+                            maxLines = 8,
                             cursorBrush = SolidColor(accent),
+                            contentDescription = S.dialogueSystemPrompt,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .heightIn(min = 88.dp, max = 188.dp)
                                 .focusRequester(inputFocus)
-                                .semantics { contentDescription = S.dialogueSystemPrompt },
-                            decorationBox = { innerTextField ->
-                                if (prompt.isEmpty()) {
-                                    Text(
-                                        text = S.dialoguePromptHint,
-                                        color = ink.copy(alpha = 0.40f),
-                                        fontSize = 15.sp,
-                                        lineHeight = 22.sp
-                                    )
-                                }
-                                innerTextField()
-                            }
                         )
 
                         Spacer(modifier = Modifier.height(8.dp))

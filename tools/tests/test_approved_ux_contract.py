@@ -43,12 +43,29 @@ class ApprovedUxContractTest(unittest.TestCase):
     # Empty history visibility and absent jump actions now live in
     # ChatHistorySheetTest.emptyHistoryShowsExplanationWithoutJumpActionsOrCallbacks.
 
-    def test_dialogue_prompt_field_owns_its_vertical_scroll(self):
-        text = (UI / "ChatDialogueSettings.kt").read_text(encoding="utf-8")
-        field = text.split("BasicTextField(", 1)[1].split("decorationBox", 1)[0]
-        self.assertIn("heightIn(min = 88.dp, max = 188.dp)", field)
-        self.assertNotIn("verticalScroll", field)
-        self.assertNotIn("promptScroll", text)
+    def test_multiline_fields_share_bounded_line_scrolling(self):
+        component = (UI / "LucentMultilineField.kt").read_text(encoding="utf-8")
+        self.assertIn("BasicTextField(", component)
+        self.assertIn("minLines = minLines", component)
+        self.assertIn("maxLines = maxLines", component)
+        self.assertNotIn("verticalScroll", component)
+
+        settings = (UI / "ChatDialogueSettings.kt").read_text(encoding="utf-8")
+        self.assertIn("LucentMultilineField(", settings)
+        self.assertIn("minLines = 4", settings)
+        self.assertIn("maxLines = 8", settings)
+        self.assertNotIn("BasicTextField(", settings)
+
+        edit = (UI / "ChatDialogs.kt").read_text(encoding="utf-8")
+        self.assertIn("LucentMultilineField(", edit)
+        self.assertIn("minLines = 5", edit)
+        self.assertIn("maxLines = 10", edit)
+        self.assertNotIn("BasicTextField(", edit)
+
+        composer = (UI / "ChatOverlayComponents.kt").read_text(encoding="utf-8")
+        self.assertIn("LucentMultilineField(", composer)
+        self.assertIn("minLines = 2", composer)
+        self.assertIn("maxLines = 5", composer)
 
     def test_error_details_remain_below_summary(self):
         text = (UI / "settings/ApiConnectionDiagnosticsSection.kt").read_text(encoding="utf-8")

@@ -16,12 +16,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
@@ -172,21 +170,18 @@ internal fun EditMessageDialog(
                         .background(onGradient.copy(alpha = 0.06f))
                         .padding(horizontal = 12.dp, vertical = 10.dp)
                 ) {
-                    BasicTextField(
+                    LucentMultilineField(
                         value = text,
                         onValueChange = { text = it },
+                        placeholder = S.dialogInputPlaceholder,
                         textStyle = TextStyle(fontSize = 14.sp, color = onGradient, lineHeight = 21.sp),
+                        placeholderColor = onGradientMuted.copy(alpha = 0.6f),
+                        minLines = 5,
+                        maxLines = 10,
                         cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .heightIn(min = 96.dp, max = 220.dp)
-                            .focusRequester(inputFocus),
-                        decorationBox = { inner ->
-                            if (text.isEmpty()) {
-                                Text(S.dialogInputPlaceholder, color = onGradientMuted.copy(alpha = 0.6f), fontSize = 14.sp)
-                            }
-                            inner()
-                        }
+                            .focusRequester(inputFocus)
                     )
                 }
             }

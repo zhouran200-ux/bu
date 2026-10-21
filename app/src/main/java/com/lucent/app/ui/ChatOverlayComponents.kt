@@ -14,8 +14,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Check
@@ -41,7 +39,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.lucent.app.data.ReasoningPreset
@@ -79,29 +76,20 @@ internal fun BottomGlassComposer(
         modifier = modifier.testTag("bottom_glass_composer").chatComposerGlass()
     ) {
         Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
-            BasicTextField(
+            LucentMultilineField(
                 value = inputText,
                 onValueChange = onInputChange,
+                placeholder = S.composerPlaceholder,
                 textStyle = TextStyle(fontSize = 15.sp, lineHeight = 22.sp, color = onGradient),
-                cursorBrush = SolidColor(accent),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Default),
+                placeholderColor = onGradientMuted.copy(alpha = 0.65f),
                 minLines = 2,
                 maxLines = 5,
+                cursorBrush = SolidColor(accent),
                 modifier = Modifier
                     .testTag("bottom_glass_composer_input")
                     .weight(1f, fill = false)
                     .fillMaxWidth()
-                    .padding(horizontal = 4.dp, vertical = 4.dp),
-                decorationBox = { innerTextField ->
-                    if (inputText.isEmpty()) {
-                        Text(
-                            text = S.composerPlaceholder,
-                            color = onGradientMuted.copy(alpha = 0.65f),
-                            fontSize = 15.sp
-                        )
-                    }
-                    innerTextField()
-                }
+                    .padding(horizontal = 4.dp, vertical = 4.dp)
             )
 
             Spacer(modifier = Modifier.height(10.dp))

@@ -6,6 +6,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
@@ -19,6 +20,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Description
@@ -199,7 +201,7 @@ private data class SourceReaderContent(
 )
 
 @Composable
-private fun SourceReader(
+internal fun SourceReader(
     notebookId: Long,
     note: Note,
     focus: SourceFocus?,
@@ -244,9 +246,9 @@ private fun SourceReaderDocument(
     onEmphasize: (SourceFocus?) -> Unit,
     modifier: Modifier
 ) {
-    val context = LocalContext.current
     val source = content.source
     val items = content.items
+    var showIndexPreview by remember(source.noteId, source.revision) { mutableStateOf(false) }
     val motionEnabled = LocalBackgroundEnvironment.current.motionEnabled
     val readingKeys = remember(items) { items.map { it.key } + "footer" }
     val listState = rememberReadingListState("source:$notebookId:${source.noteId}:slices:${source.revision}", readingKeys)
@@ -273,23 +275,26 @@ private fun SourceReaderDocument(
             }
         }
     }
-    Box(modifier = modifier.background(lucentPanelBackground())) {
-        LazyColumn(
-            state = listState,
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(start = 18.dp, top = 60.dp, end = 18.dp, bottom = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            itemsIndexed(items, key = { _, item -> item.key }) { _, item ->
-                MarkdownText(
-                    text = item.text,
-                    emphasized = item.sliceId != null && emphasizedFocus?.noteId == source.noteId &&
-                        emphasizedFocus.revision == source.revision && emphasizedFocus.sliceId == item.sliceId,
-                    citationsEnabled = false,
-                    modifier = Modifier.fillMaxWidth()
-                )
+    BoxWithConstraints(modifier = modifier.background(lucentPanelBackground())) {
+        val titleMaxWidth = (maxWidth - 76.dp).coerceIn(120.dp, 280.dp)
+        SelectionContainer {
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(start = 18.dp, top = 60.dp, end = 18.dp, bottom = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                itemsIndexed(items, key = { _, item -> item.key }) { _, item ->
+                    MarkdownText(
+                        text = item.text,
+                        emphasized = item.sliceId != null && emphasizedFocus?.noteId == source.noteId &&
+                            emphasizedFocus.revision == source.revision && emphasizedFocus.sliceId == item.sliceId,
+                        citationsEnabled = false,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+                item(key = "footer") { Spacer(modifier = Modifier.height(48.dp)) }
             }
-            item(key = "footer") { Spacer(modifier = Modifier.height(48.dp)) }
         }
         FloatingScrollCapsule(
             listState = listState,
@@ -307,7 +312,7 @@ private fun SourceReaderDocument(
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .padding(12.dp)
-                .widthIn(max = 280.dp)
+                .widthIn(max = titleMaxWidth)
                 .foregroundGlass(12.dp, reading = true)
         ) {
             Text(
@@ -322,6 +327,18 @@ private fun SourceReaderDocument(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
             )
+        }
+
+        SourceIndexPreviewEntry(
+            enabled = source.tagged.text.isNotBlank(),
+            onClick = { showIndexPreview = true },
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(12.dp)
+        )
+
+        if (showIndexPreview) {
+            SourceIndexPreview(source) { showIndexPreview = false }
         }
     }
 }

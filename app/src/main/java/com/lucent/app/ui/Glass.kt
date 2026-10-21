@@ -164,13 +164,14 @@ fun Modifier.pressableGlass(
     onClick: () -> Unit,
     cornerRadius: Dp = 20.dp,
     enabled: Boolean = true,
-    emphasized: Boolean = false
+    emphasized: Boolean = false,
+    reading: Boolean = false
 ): Modifier {
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     val pressIndication = rememberScaleIndication()
     val shape = RoundedCornerShape(cornerRadius)
-    return this.foregroundGlass(cornerRadius)
+    return this.foregroundGlass(cornerRadius, reading)
         .background(if ((pressed && enabled) || emphasized) glassControlColor(true) else Color.Transparent, shape)
         .clickable(interactionSource = interaction, indication = pressIndication, enabled = enabled) { onClick() }
 }

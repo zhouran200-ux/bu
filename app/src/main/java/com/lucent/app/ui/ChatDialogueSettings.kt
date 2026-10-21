@@ -52,7 +52,6 @@ internal fun DialogueSettingsSheet(
     var historyRounds by remember { mutableIntStateOf(initialHistoryRounds) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val drawer = rememberModelPickerDrawer(sheetState, onDismiss = onDismiss)
-    val promptScroll = rememberScrollState()
     val keepEditing = rememberImeVisibleOnOpen()
     val inputFocus = remember { androidx.compose.ui.focus.FocusRequester() }
     val ink = LocalOnGradient.current
@@ -140,7 +139,6 @@ internal fun DialogueSettingsSheet(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .heightIn(min = 88.dp, max = 188.dp)
-                                .verticalScroll(promptScroll)
                                 .focusRequester(inputFocus)
                                 .semantics { contentDescription = S.dialogueSystemPrompt },
                             decorationBox = { innerTextField ->

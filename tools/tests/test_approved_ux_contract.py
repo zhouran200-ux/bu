@@ -43,6 +43,13 @@ class ApprovedUxContractTest(unittest.TestCase):
     # Empty history visibility and absent jump actions now live in
     # ChatHistorySheetTest.emptyHistoryShowsExplanationWithoutJumpActionsOrCallbacks.
 
+    def test_dialogue_prompt_field_owns_its_vertical_scroll(self):
+        text = (UI / "ChatDialogueSettings.kt").read_text(encoding="utf-8")
+        field = text.split("BasicTextField(", 1)[1].split("decorationBox", 1)[0]
+        self.assertIn("heightIn(min = 88.dp, max = 188.dp)", field)
+        self.assertNotIn("verticalScroll", field)
+        self.assertNotIn("promptScroll", text)
+
     def test_error_details_remain_below_summary(self):
         text = (UI / "settings/ApiConnectionDiagnosticsSection.kt").read_text(encoding="utf-8")
         self.assertLess(text.index("text = testStatusText"), text.index("lastTestResult?.let { res ->"))

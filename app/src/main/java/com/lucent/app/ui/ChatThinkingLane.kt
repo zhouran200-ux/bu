@@ -38,6 +38,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
@@ -75,7 +76,9 @@ internal fun ThinkingLane(
         }
     }
 
-    Column(modifier = Modifier.fillMaxWidth().testTag("thinking_lane")) {
+    Column(modifier = Modifier.fillMaxWidth()
+        .onSizeChanged { lane.measuredHeightPx = it.height }
+        .testTag("thinking_lane")) {
         ThinkingHeader(
             title = thinkingTitle(streaming, thought.isNotBlank(), answerSeconds),
             expanded = expanded,

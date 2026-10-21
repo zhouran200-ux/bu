@@ -57,11 +57,20 @@ class ThinkingHeaderTest {
     }
 
     @Test fun onlyTheItemActuallyCrossingViewportTopCanOwnStickyHeader() {
-        assertEquals(ThinkingTopItem("message:2", 2, 170), thinkingTopItem("message:2", 2, -30, 200, 0))
-        assertEquals(ThinkingTopItem("message:2", 2, 200), thinkingTopItem("message:2", 2, 0, 200, 0))
+        assertEquals(ThinkingTopItem("message:2", 2), thinkingTopItem("message:2", 2, -30, 200, 0))
+        assertEquals(ThinkingTopItem("message:2", 2), thinkingTopItem("message:2", 2, 0, 200, 0))
         assertNull(thinkingTopItem("message:2", 2, 1, 200, 0))
         assertNull(thinkingTopItem("message:2", 2, -200, 200, 0))
         assertNull(thinkingTopItem("message:2", 2, -250, 200, 0))
+    }
+
+    @Test fun stickyHeaderOnlyLivesWhileTheThinkingRegionIsStillOnScreen() {
+        assertEquals(150, thinkingRemainingHeight(0, 150, 0))
+        assertEquals(120, thinkingRemainingHeight(-30, 150, 0))
+        assertEquals(66, thinkingRemainingHeight(-10, 100, 24))
+        assertEquals(0, thinkingRemainingHeight(-150, 150, 0))
+        assertEquals(0, thinkingRemainingHeight(-400, 150, 0))
+        assertEquals(0, thinkingRemainingHeight(-30, 0, 0))
     }
 
     @Test fun topOwnershipDoesNotDependOnScrollDirectionOrEarlierAssistant() {

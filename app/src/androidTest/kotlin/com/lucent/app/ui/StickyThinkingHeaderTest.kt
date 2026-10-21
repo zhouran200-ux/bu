@@ -38,6 +38,7 @@ import com.lucent.app.i18n.S
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -73,6 +74,10 @@ class StickyThinkingHeaderTest {
         fun lane(id: Long): ThinkingLaneState = owner.thinking(readingKey(id)) {
             ThinkingLaneState(ReadingPosition("expanded", 0, 0), streaming = false)
         }
+
+        fun thinkingHeight(id: Long): Long = lane(id).measuredHeightPx.toLong()
+
+        fun visibleItem(key: String) = list.layoutInfo.visibleItemsInfo.firstOrNull { it.key == key }
     }
 
     private var mountedHost: Host? = null
@@ -88,50 +93,81 @@ class StickyThinkingHeaderTest {
         }
     }
 
-    @Test fun expandedAnswerPinsAtItsTopAndWhileItsBodyOwnsTheViewport() {
+    @Test fun expandedAnswerPinsAtItsTopUntilTheAnswerBodyReachesTheViewportTop() {
         val host = mount()
         sticky().assertDoesNotExist()
         scrollTo(host, 1)
         assertPinned(S.thinkingDoneSeconds(3))
         val pinnedTop = sticky().fetchSemanticsNode().boundsInRoot.top
 
-        scrollBy(host, 180)
+        scrollBy(host, 40)
 
         assertPinned(S.thinkingDoneSeconds(3))
         assertEquals(pinnedTop, sticky().fetchSemanticsNode().boundsInRoot.top, 1f)
         rule.runOnUiThread {
-            assertTrue(checkNotNull(host.bodyTops[11]) < pinnedTop)
-            val item = host.list.layoutInfo.visibleItemsInfo.first { it.key == "message:11" }
-            assertTrue(item.offset < host.list.layoutInfo.viewportStartOffset)
-            assertTrue(item.offset + item.size > host.list.layoutInfo.viewportStartOffset)
+            val item = host.visibleItem("message:11")
+            assertNotNull(item)
+            assertTrue("thinking region still covers the viewport top",
+                item!!.offset.toLong() + host.thinkingHeight(11) > host.list.layoutInfo.viewportStartOffset.toLong())
+            assertTrue("answer body is still below the viewport top", checkNotNull(host.bodyTops[11]) > pinnedTop)
+        }
+    }
+
+    @Test fun headerLeavesOnceTheBodyOwnsTheTopWithoutMovingTheList() {
+        val host = mount()
+        scrollTo(host, 1)
+        assertPinned(S.thinkingDoneSeconds(3))
+
+        val exit = host.thinkingHeight(11)
+        assertTrue(exit > 1)
+        scrollBy(host, (exit - 1).toInt())
+        val bodyTopBefore = rule.runOnUiThread { checkNotNull(host.bodyTops[11]) }
+        val scrollBefore = rule.runOnUiThread { host.list.firstVisibleItemIndex to host.list.firstVisibleItemScrollOffset }
+        rule.runOnUiThread {
+            val layout = host.list.layoutInfo
+            val item = checkNotNull(layout.visibleItemsInfo.firstOrNull { it.key == "message:11" })
+            assertTrue("thinking region must still cover the top", item.offset.toLong() + exit > layout.viewportStartOffset.toLong())
+        }
+
+        scrollBy(host, 1)
+
+        sticky().assertDoesNotExist()
+        rule.runOnUiThread {
+            val layout = host.list.layoutInfo
+            val item = checkNotNull(layout.visibleItemsInfo.firstOrNull { it.key == "message:11" })
+            assertTrue("body must now own the top", item.offset.toLong() + exit <= layout.viewportStartOffset.toLong())
+            assertEquals(scrollBefore.first, host.list.firstVisibleItemIndex)
+            assertEquals(scrollBefore.second + 1, host.list.firstVisibleItemScrollOffset)
+            assertEquals(bodyTopBefore - 1f, checkNotNull(host.bodyTops[11]), 1f)
         }
     }
 
     @Test fun userAndSpacingNeverPinAndAnswerOwnershipSwitchesInBothDirections() {
         val host = mount()
-        scrollTo(host, 1, 180)
+        scrollTo(host, 1)
         assertPinned(S.thinkingDoneSeconds(3))
-        scrollBy(host, 248)
+
+        scrollBy(host, host.thinkingHeight(11).toInt() - 1)
+        assertPinned(S.thinkingDoneSeconds(3))
+        scrollBy(host, 1)
+        sticky().assertDoesNotExist()
+
+        scrollBy(host, 200)
         assertGapHasNoOwner(host)
         sticky().assertDoesNotExist()
         scrollBy(host, 8)
         assertTopKey(host, "message:12")
         sticky().assertDoesNotExist()
-        scrollBy(host, 436)
-        assertTopKey(host, "message:13")
-        assertPinned(S.thinkingDoneSeconds(7))
 
+        scrollTo(host, 3)
+        assertPinned(S.thinkingDoneSeconds(7))
+        scrollBy(host, -host.thinkingHeight(13).toInt())
+        sticky().assertDoesNotExist()
         scrollBy(host, -8)
         assertGapHasNoOwner(host)
         sticky().assertDoesNotExist()
-        scrollBy(host, -428)
-        assertTopKey(host, "message:12")
-        sticky().assertDoesNotExist()
-        scrollBy(host, -256)
-        assertTopKey(host, "message:11")
-        assertPinned(S.thinkingDoneSeconds(3))
-        scrollBy(host, -180)
-        assertTopKey(host, "message:11")
+
+        scrollTo(host, 1)
         assertPinned(S.thinkingDoneSeconds(3))
     }
 
@@ -181,7 +217,8 @@ class StickyThinkingHeaderTest {
 
     @Test fun inactiveHeaderHidesWithoutChangingTheExpandedLane() {
         val host = mount()
-        scrollTo(host, 3, 180)
+        scrollTo(host, 3)
+        scrollBy(host, (host.thinkingHeight(13) - 1).toInt())
         assertPinned(S.thinkingDoneSeconds(7))
         rule.runOnUiThread { host.active.value = false }
         advanceFrames()

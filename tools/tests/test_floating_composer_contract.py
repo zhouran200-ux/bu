@@ -38,11 +38,15 @@ class FloatingComposerContractTest(unittest.TestCase):
 
     def test_editor_line_limits_exclude_the_fixed_controls_row(self):
         composer = (UI / "ChatOverlayComponents.kt").read_text(encoding="utf-8")
-        editor = composer.split("BasicTextField(", 1)[1].split(
+        editor = composer.split("LucentMultilineField(", 1)[1].split(
             "Spacer(modifier = Modifier.height(10.dp))", 1)[0]
         self.assertIn("minLines = 2", editor)
         self.assertIn("maxLines = 5", editor)
         self.assertNotIn("heightIn(", editor)
+        field = (UI / "LucentMultilineField.kt").read_text(encoding="utf-8")
+        self.assertIn("BasicTextField(", field)
+        self.assertIn("minLines = minLines", field)
+        self.assertIn("maxLines = maxLines", field)
         self.assertIn(".chatComposerGlass()", composer)
         for callback in ("onOpenHistory()", "onOpenDialogueSettings()", "onOpenModelPicker()",
                          "onSelectReasoning(preset)", "if (streaming) onStop() else onSend()"):

@@ -12,8 +12,6 @@ internal class ChatViewportAnchor {
 
     fun update(viewportHeight: Int, atBottom: Boolean, scrolling: Boolean = false): Boolean {
         if (viewportHeight <= 0) return false
-        // Never interrupt a drag/fling (or an explicit navigation animation) with
-        // requestScrollToItem. Adopt its geometry without retaining resize intent.
         if (scrolling) {
             height = viewportHeight
             userScrolled()

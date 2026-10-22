@@ -36,12 +36,9 @@ class StreamUiScheduler(
         if (!deltaThought.isNullOrEmpty()) {
             pendingReasoning.append(deltaThought)
             fullReasoning.append(deltaThought)
-            // Reasoning boundaries must not invalidate the message/content lane.
         }
 
         val now = clockMs()
-        // Bursts and structural boundaries may request publication, but cannot bypass
-        // this shared limit. All deltas remain buffered; forceFlush drains the tail.
         if (lastPublishTime?.let { now - it < minimumPublishIntervalMs } == true) return
 
         if (hasStructuralBoundary) {

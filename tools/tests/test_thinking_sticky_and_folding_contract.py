@@ -51,7 +51,11 @@ class ThinkingStickyAndFoldingContractTest(unittest.TestCase):
         self.assertIn("SelectionContainer", component)
         self.assertNotIn("text.take(", component)
         cards = (UI / "ChatMessageComponents.kt").read_text(encoding="utf-8")
-        self.assertIn("copyTextToClipboard(context, message.content)", cards)
+        self.assertIn("copyPlainTextWithToast(context, chatBodyForCopy(message.content))", cards)
+        self.assertNotIn("copyTextToClipboard", cards)
+        clipboard = (UI / "ClipboardText.kt").read_text(encoding="utf-8")
+        self.assertIn("fun copyPlainText(", clipboard)
+        self.assertIn("fun copyPlainTextWithToast(", clipboard)
 
 
 if __name__ == "__main__":

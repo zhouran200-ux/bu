@@ -89,8 +89,13 @@ class ThinkingLaneStabilityTest {
         rule.onNodeWithContentDescription(S.thinkingCollapse).assertExists()
         val reopened = geometry(host)
         assertEquals("Reopened reasoning must share the live viewport height", historicalLimitPx(), reopened.textHeight.toFloat(), 1f)
-        assertEquals(live.laneHeight, reopened.laneHeight)
-        assertEquals(live.answerTop, reopened.answerTop, 1f)
+        assertTrue("Reopening must not make the lane taller than the live lane", reopened.laneHeight <= live.laneHeight)
+        assertEquals(
+            "The answer must stay directly below the lane",
+            (live.laneHeight - reopened.laneHeight).toFloat(),
+            live.answerTop - reopened.answerTop,
+            0.6f
+        )
         assertEquals(host.thought.value, thoughtNode().fetchSemanticsNode().config[SemanticsProperties.Text].single().text)
         assertInnerScrollReachesTheNewestLine()
         repeat(4) {

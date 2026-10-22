@@ -44,8 +44,13 @@ class StreamJitterContractTest(unittest.TestCase):
 
     def test_citation_buffer_is_display_only_and_finalization_invalidates_parse(self):
         markdown = (UI / "Markdown.kt").read_text(encoding="utf-8")
-        self.assertIn("LaunchedEffect(text, streaming,", markdown)
-        self.assertIn("if (streaming && citationsEnabled) streamingMarkdownTail(text) else text", markdown)
+        self.assertIn("LaunchedEffect(renderer, style, streaming)", markdown)
+        self.assertIn("if (streaming && style.citationsEnabled) streamingMarkdownTail(target) else target", markdown)
+        self.assertIn("snapshotFlow { latestText.value }", markdown)
+        self.assertIn(".conflate()", markdown)
+        renderer = (UI / "MarkdownRender.kt").read_text(encoding="utf-8")
+        self.assertIn("internal class MarkdownRenderer", renderer)
+        self.assertIn("sameBlock(", renderer)
         card = (UI / "ChatMessageComponents.kt").read_text(encoding="utf-8")
         self.assertIn("streaming = streaming,", card.split("MarkdownText(", 1)[1])
 

@@ -205,9 +205,13 @@ fun NotebookChatTab(
         if (!active) return@LaunchedEffect
         androidx.compose.runtime.snapshotFlow {
             val layout = listState.layoutInfo
-            (layout.viewportSize.height - layout.afterContentPadding) to !listState.canScrollForward
-        }.collect { (height, bottom) ->
-            if (viewportAnchor.update(height, bottom) && messages.isNotEmpty()) {
+            Triple(
+                layout.viewportSize.height - layout.afterContentPadding,
+                !listState.canScrollForward,
+                listState.isScrollInProgress
+            )
+        }.collect { (height, bottom, scrolling) ->
+            if (viewportAnchor.update(height, bottom, scrolling) && messages.isNotEmpty()) {
                 val footer = listState.layoutInfo.totalItemsCount - 1
                 if (footer >= 0) listState.requestScrollToItem(footer)
             }

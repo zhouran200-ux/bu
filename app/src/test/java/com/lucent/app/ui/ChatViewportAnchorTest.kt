@@ -26,6 +26,21 @@ class ChatViewportAnchorTest {
         anchor.userScrolled()
         assertFalse(anchor.update(700, false))
     }
+    @Test fun resizeDuringFlingDoesNotStealScrollOwnership() {
+        val anchor = ChatViewportAnchor()
+        anchor.update(1000, true)
+        assertTrue(anchor.update(900, false))
+        assertFalse(anchor.update(800, true, scrolling = true))
+        assertFalse(anchor.update(700, false, scrolling = true))
+        assertFalse(anchor.update(600, false))
+    }
+    @Test fun settlingAtBottomAllowsFutureKeyboardResize() {
+        val anchor = ChatViewportAnchor()
+        anchor.update(1000, true)
+        assertFalse(anchor.update(900, true, scrolling = true))
+        assertFalse(anchor.update(900, true))
+        assertTrue(anchor.update(700, false))
+    }
     @Test fun initialAndExpandedViewportDoNotJump() {
         val anchor = ChatViewportAnchor()
         assertFalse(anchor.update(0, true))

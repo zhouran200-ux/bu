@@ -7,6 +7,8 @@ class StreamUiScheduler(
     private val thoughtWindowMs: Long = 16L,
     private val thoughtBurstThreshold: Int = 24,
     private val onThought: (reasoning: String) -> Unit = {},
+    private val clockMs: () -> Long = { System.nanoTime() / 1_000_000L },
+    private val minimumPublishIntervalMs: Long = 35L,
     private val onFlush: (content: String, reasoning: String?) -> Unit
 ) {
     private val pendingContent = StringBuilder()
@@ -15,8 +17,9 @@ class StreamUiScheduler(
     private val fullContent = StringBuilder()
     private val fullReasoning = StringBuilder()
 
-    private var lastFlushTime = System.currentTimeMillis()
-    private var lastThoughtFlushTime = System.currentTimeMillis()
+    private var lastFlushTime = clockMs()
+    private var lastThoughtFlushTime = lastFlushTime
+    private var lastPublishTime: Long? = null
     private var lastPushedReasoning = ""
 
     fun append(deltaText: String, deltaThought: String?) {
@@ -33,12 +36,13 @@ class StreamUiScheduler(
         if (!deltaThought.isNullOrEmpty()) {
             pendingReasoning.append(deltaThought)
             fullReasoning.append(deltaThought)
-            if (deltaThought.contains("\n\n")) {
-                hasStructuralBoundary = true
-            }
+            // Reasoning boundaries must not invalidate the message/content lane.
         }
 
-        val now = System.currentTimeMillis()
+        val now = clockMs()
+        // Bursts and structural boundaries may request publication, but cannot bypass
+        // this shared limit. All deltas remain buffered; forceFlush drains the tail.
+        if (lastPublishTime?.let { now - it < minimumPublishIntervalMs } == true) return
 
         if (hasStructuralBoundary) {
             flush(now)
@@ -60,10 +64,11 @@ class StreamUiScheduler(
     }
 
     fun forceFlush() {
-        flush(System.currentTimeMillis())
+        flush(clockMs())
     }
 
     private fun flush(timestamp: Long) {
+        lastPublishTime = timestamp
         lastFlushTime = timestamp
         lastThoughtFlushTime = timestamp
         pendingContent.clear()
@@ -74,6 +79,7 @@ class StreamUiScheduler(
     }
 
     private fun flushThought(timestamp: Long) {
+        lastPublishTime = timestamp
         lastThoughtFlushTime = timestamp
         pendingReasoning.clear()
         val reasoning = fullReasoning.toString()

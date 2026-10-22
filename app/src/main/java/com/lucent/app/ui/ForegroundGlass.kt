@@ -76,13 +76,18 @@ internal fun sheetContentHeightLimit(): Dp {
 }
 
 @OptIn(ExperimentalHazeApi::class)
-internal fun Modifier.foregroundGlass(cornerRadius: Dp = 20.dp, reading: Boolean = false): Modifier = composed {
+internal fun Modifier.foregroundGlass(
+    cornerRadius: Dp = 20.dp,
+    reading: Boolean = false,
+    borderWidth: Dp = 0.75.dp
+): Modifier = composed {
     val shape = RoundedCornerShape(cornerRadius)
     val rim = foregroundRim()
+    val outline = if (borderWidth > 0.dp) Modifier.border(borderWidth, rim, shape) else Modifier
     if (LocalPureWhite.current) {
         return@composed shadow(3.dp, shape, clip = false,
             ambientColor = LucentGlass.PureWhiteShadowAmbient, spotColor = LucentGlass.PureWhiteShadowSpot)
-            .clip(shape).background(LucentGlass.PureWhiteSurface).border(0.75.dp, rim, shape)
+            .clip(shape).background(LucentGlass.PureWhiteSurface).then(outline)
     }
     val dark = isDarkGlass()
     val spec = foregroundMaterialSpec(dark, reading)
@@ -93,7 +98,7 @@ internal fun Modifier.foregroundGlass(cornerRadius: Dp = 20.dp, reading: Boolean
         return@composed clip(shape)
             .background(tint.copy(alpha = spec.tintAlpha))
             .background(Brush.verticalGradient(listOf(Color.White.copy(alpha = if (dark) 0.035f else 0.07f), Color.Transparent)))
-            .border(0.75.dp, rim, shape)
+            .then(outline)
     }
     val source = LocalGlassBackdrop.current
     val material = if (source != null) Modifier.hazeEffect(source, style = HazeStyle(
@@ -109,5 +114,5 @@ internal fun Modifier.foregroundGlass(cornerRadius: Dp = 20.dp, reading: Boolean
         spotColor = Color.Black.copy(alpha = 0.06f))
         .clip(shape).then(material)
         .background(Brush.verticalGradient(listOf(Color.White.copy(alpha = if (dark) 0.035f else 0.07f), Color.Transparent)))
-        .border(0.75.dp, rim, shape)
+        .then(outline)
 }

@@ -10,8 +10,15 @@ internal class ChatViewportAnchor {
         wasAtBottom = false
     }
 
-    fun update(viewportHeight: Int, atBottom: Boolean): Boolean {
+    fun update(viewportHeight: Int, atBottom: Boolean, scrolling: Boolean = false): Boolean {
         if (viewportHeight <= 0) return false
+        // Never interrupt a drag/fling (or an explicit navigation animation) with
+        // requestScrollToItem. Adopt its geometry without retaining resize intent.
+        if (scrolling) {
+            height = viewportHeight
+            userScrolled()
+            return false
+        }
         val shrinking = height > 0 && viewportHeight < height
         val keepBottom = shrinking && (wasAtBottom || followingResize)
         if (viewportHeight > height) followingResize = false

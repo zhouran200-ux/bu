@@ -118,7 +118,7 @@ class StreamUiSchedulerAndParserTest {
     }
 
     @Test
-    fun testThoughtBoundaryFlushesBothLanesImmediately() {
+    fun testThoughtBoundaryDoesNotInvalidateContentLane() {
         var contentFlushes = 0
 
         val scheduler = StreamUiScheduler(
@@ -130,7 +130,7 @@ class StreamUiSchedulerAndParserTest {
         )
 
         scheduler.append("", "一段完整的思考\n\n")
-        assertEquals(1, contentFlushes)
+        assertEquals(0, contentFlushes)
         assertEquals("一段完整的思考\n\n", scheduler.getFinalReasoning())
     }
 }

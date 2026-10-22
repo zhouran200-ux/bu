@@ -51,7 +51,7 @@ internal fun UserMessageCard(
             shape = RoundedCornerShape(20.dp),
             color = Color.Transparent,
             modifier = Modifier
-                .frostedGlass(cornerRadius = 20.dp)
+                .foregroundGlass(cornerRadius = 20.dp, borderWidth = 0.dp)
         ) {
             CollapsibleUserText(
                 text = message.content,
@@ -133,7 +133,7 @@ internal fun AiMessageCard(
                 color = Color.Transparent,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .foregroundGlass(cornerRadius = 18.dp, reading = true)
+                    .foregroundGlass(cornerRadius = 18.dp, reading = true, borderWidth = 1.dp)
             ) {
                 SelectionContainer {
                     Column(modifier = Modifier.padding(16.dp)) {

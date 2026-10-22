@@ -30,6 +30,7 @@ internal fun rememberApiSettingsState(repo: SettingsRepository): ApiSettingsStat
             queue = ApiProfileCommandQueue.application,
             callbackScope = ApiSettingsCallbacks.scope,
             persist = { repo.mutateApiProfiles(it) },
+            persistAll = { profiles, index -> repo.saveApiProfiles(profiles, index) },
             notify = { LucentToast.show(app, it) },
             savedMessage = { S.apiSavedToast }
         )

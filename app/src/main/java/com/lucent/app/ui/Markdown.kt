@@ -20,6 +20,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.AnnotatedString
@@ -30,9 +31,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.lucent.app.data.CitationRef
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 
 internal data class MarkdownParseSnapshot(
     val blocks: List<MdBlock>,
@@ -54,41 +54,44 @@ fun MarkdownText(
     val onGradient = LocalOnGradient.current
     val onGradientMuted = LocalOnGradientMuted.current
     val accent = MaterialTheme.colorScheme.primary
-    val incrementalParser = remember { IncrementalMarkdownParser() }
-    val parserMutex = remember { Mutex() }
+    val clickable = onCitationClick != null
+    val style = remember(
+        onGradient, onGradientMuted, accent, citationsEnabled,
+        emphasized, sourceNoteId, sourceRevision, clickable
+    ) {
+        MarkdownStyle(
+            textColor = onGradient,
+            mutedColor = onGradientMuted,
+            accent = accent,
+            citationsEnabled = citationsEnabled,
+            emphasized = emphasized,
+            sourceNoteId = sourceNoteId,
+            sourceRevision = sourceRevision,
+            clickable = clickable
+        )
+    }
+    val renderer = remember { MarkdownRenderer() }
     var parsed by remember { mutableStateOf(MarkdownParseSnapshot(emptyList(), emptyList())) }
     val currentClick = rememberUpdatedState(onCitationClick)
-    val click: (CitationRef) -> Unit = remember { { ref -> currentClick.value?.invoke(ref) } }
-    LaunchedEffect(text, streaming, citationsEnabled, emphasized, onGradient, onGradientMuted, accent, sourceNoteId, sourceRevision, onCitationClick != null) {
-        parsed = withContext(Dispatchers.Default) {
-            parserMutex.withLock {
-                val displayText = if (streaming && citationsEnabled) streamingMarkdownTail(text) else text
-                val blocks = incrementalParser.parse(displayText)
-                val cursor = CitationCursor()
-                val decor = CitationDecor(if (onCitationClick != null) click else null, sourceNoteId, sourceRevision, citationsEnabled, emphasized)
-                val annotated = blocks.map { block ->
-                    val raw = when (block) {
-                        is MdBlock.Heading -> block.text
-                        is MdBlock.Paragraph -> block.text
-                        is MdBlock.Bullet -> block.text
-                        is MdBlock.Numbered -> block.text
-                        is MdBlock.Quote -> block.text
-                        is MdBlock.Code -> return@map AnnotatedString(block.lines.joinToString(10.toChar().toString()))
-                        else -> return@map AnnotatedString("")
-                    }
-                    inlineAnnotated(raw, if (block is MdBlock.Quote) onGradientMuted else onGradient, accent, decor, cursor)
-                }
-                MarkdownParseSnapshot(blocks, cursor.refs.toList(), annotated)
+    val click: (CitationRef) -> Unit = remember(clickable) { { ref -> currentClick.value?.invoke(ref) } }
+    val revealed = rememberRevealedText(text, streaming)
+    val latestText = rememberUpdatedState(revealed)
+    LaunchedEffect(renderer, style, streaming) {
+        snapshotFlow { latestText.value }
+            .conflate()
+            .collect { target ->
+                val display = if (streaming && style.citationsEnabled) streamingMarkdownTail(target) else target
+                parsed = withContext(Dispatchers.Default) { renderer.render(display, style, click) }
             }
-        }
     }
     val blocks = parsed.blocks
+    val annotated = parsed.annotated
     val fontWeight = if (emphasized) FontWeight.Bold else null
-    val badgeContents = remember(parsed.refs, accent, onCitationClick != null) {
+    val badgeContents = remember(parsed.refs, accent, clickable) {
         citationBadgeContents(
             refs = parsed.refs,
             accent = accent,
-            onClick = if (onCitationClick != null) click else null
+            onClick = if (clickable) click else null
         )
     }
 
@@ -98,7 +101,7 @@ fun MarkdownText(
                 is MdBlock.Heading -> {
                     if (index > 0) Spacer(modifier = Modifier.height(10.dp))
                     Text(
-                        parsed.annotated[index],
+                        annotated[index],
                         color = onGradient,
                         inlineContent = badgeContents,
                         fontSize = when (block.level) {
@@ -115,7 +118,7 @@ fun MarkdownText(
                 is MdBlock.Paragraph -> {
                     if (index > 0) Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                        parsed.annotated[index],
+                        annotated[index],
                         color = onGradient,
                         fontWeight = fontWeight,
                         inlineContent = badgeContents
@@ -127,7 +130,7 @@ fun MarkdownText(
                     Row(modifier = Modifier.fillMaxWidth()) {
                         Text("•", color = onGradientMuted, fontWeight = fontWeight, modifier = Modifier.padding(end = 8.dp))
                         Text(
-                            parsed.annotated[index],
+                            annotated[index],
                             color = onGradient,
                             fontWeight = fontWeight,
                             inlineContent = badgeContents,
@@ -141,7 +144,7 @@ fun MarkdownText(
                     Row(modifier = Modifier.fillMaxWidth()) {
                         Text("${block.marker}.", color = onGradientMuted, fontWeight = fontWeight, modifier = Modifier.padding(end = 8.dp))
                         Text(
-                            parsed.annotated[index],
+                            annotated[index],
                             color = onGradient,
                             fontWeight = fontWeight,
                             modifier = Modifier.weight(1f)
@@ -159,7 +162,7 @@ fun MarkdownText(
                                 .background(onGradientMuted)
                         )
                         Text(
-                            parsed.annotated[index],
+                            annotated[index],
                             color = onGradientMuted,
                             fontWeight = fontWeight,
                             fontStyle = FontStyle.Italic,
@@ -179,7 +182,7 @@ fun MarkdownText(
                             .padding(10.dp)
                     ) {
                         Text(
-                            parsed.annotated[index],
+                            annotated[index],
                             color = onGradient,
                             fontWeight = fontWeight,
                             fontFamily = FontFamily.Monospace,

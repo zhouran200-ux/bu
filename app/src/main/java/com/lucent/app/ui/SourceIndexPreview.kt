@@ -16,11 +16,13 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.DataObject
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -68,6 +70,12 @@ internal fun SourceIndexPreviewEntry(
 internal fun SourceIndexPreview(source: IndexedSource, onDismiss: () -> Unit) {
     val ink = LocalOnGradient.current
     val muted = LocalOnGradientMuted.current
+    val scrollState = rememberScrollState()
+    val context = LocalContext.current
+    DisposableEffect(Unit) {
+        BackgroundMotionHold.acquire()
+        onDispose { BackgroundMotionHold.release() }
+    }
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)
@@ -106,6 +114,13 @@ internal fun SourceIndexPreview(source: IndexedSource, onDismiss: () -> Unit) {
                         overflow = TextOverflow.Ellipsis
                     )
                 }
+                IconButton(onClick = { copyPlainTextWithToast(context, source.tagged.text) }) {
+                    Icon(
+                        imageVector = Icons.Rounded.ContentCopy,
+                        contentDescription = S.sourceIndexPreviewCopy,
+                        tint = ink
+                    )
+                }
             }
             Text(
                 text = S.sourceIndexPreviewMeta(
@@ -130,21 +145,29 @@ internal fun SourceIndexPreview(source: IndexedSource, onDismiss: () -> Unit) {
                     Text(text = S.sourceIndexPreviewEmpty, color = muted, fontSize = LucentTitles.ItemSize)
                 }
             } else {
-                SelectionContainer(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .verticalScroll(rememberScrollState())
-                            .padding(start = 18.dp, end = 18.dp, bottom = 24.dp)
-                    ) {
-                        Text(
-                            text = source.tagged.text,
-                            color = ink,
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 13.sp,
-                            lineHeight = 20.sp
-                        )
+                Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                    SelectionContainer(modifier = Modifier.fillMaxSize()) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .verticalScroll(scrollState)
+                                .padding(start = 18.dp, end = 18.dp, bottom = 24.dp)
+                        ) {
+                            Text(
+                                text = source.tagged.text,
+                                color = ink,
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 13.sp,
+                                lineHeight = 20.sp
+                            )
+                        }
                     }
+                    ScrollStateCapsule(
+                        scrollState = scrollState,
+                        enabled = true,
+                        label = S.sourceIndexPreviewFastScroll,
+                        modifier = Modifier.align(Alignment.CenterEnd)
+                    )
                 }
             }
         }

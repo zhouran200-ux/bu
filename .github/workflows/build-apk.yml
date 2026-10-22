@@ -119,57 +119,84 @@ jobs:
             "platform-tools" \
             "platforms;android-36" \
             "build-tools;36.0.0"
-
-      - name: Assemble signed APK
+      - name: Assemble signed APKs
         env:
           LUCENT_KEYSTORE_FILE: ${{ steps.resolve-key.outputs.store }}
           LUCENT_KEY_ALIAS: ${{ steps.resolve-key.outputs.alias }}
         run: |
-          set +e
-          ./gradlew assembleRelease --no-daemon --stacktrace \
-            -PversionCode=${{ steps.resolve-version.outputs.version_code }} \
-            -PversionName='${{ steps.resolve-version.outputs.version }}' 2>&1 | tee "$RUNNER_TEMP/gradle-release.log"
-          status=${PIPESTATUS[0]}
-          if [ "$status" != "0" ]; then
-            WHY=$(awk '/\* What went wrong/{f=1} f{print} /^\* Try/{exit}' "$RUNNER_TEMP/gradle-release.log" | head -n 30)
-            NET=$(grep -E "Could not (GET|resolve|download)|status code|Connection (refused|reset)|Read timed out|UnknownHost|SSL|Certificate" "$RUNNER_TEMP/gradle-release.log" | head -n 12)
-            if [ -n "$NET" ]; then
-              WHY="$WHY [repo/network] $NET"
+          set -u
+          mkdir -p dist
+          assemble() {
+            local out="$1"
+            shift
+            local log="$RUNNER_TEMP/gradle-release.log"
+            ./gradlew assembleRelease --no-daemon --stacktrace \
+              -PversionCode=${{ steps.resolve-version.outputs.version_code }} \
+              -PversionName='${{ steps.resolve-version.outputs.version }}' "$@" 2>&1 | tee "$log"
+            local status=${PIPESTATUS[0]}
+            if [ "$status" != "0" ]; then
+              WHY=$(awk '/\* What went wrong/{f=1} f{print} /^\* Try/{exit}' "$log" | head -n 30)
+              NET=$(grep -E "Could not (GET|resolve|download)|status code|Connection (refused|reset)|Read timed out|UnknownHost|SSL|Certificate" "$log" | head -n 12)
+              if [ -n "$NET" ]; then
+                WHY="$WHY [repo/network] $NET"
+              fi
+              if [ -z "$WHY" ]; then
+                WHY=$(grep -E "^e: |error:|FAILED" "$log" | head -n 30)
+              fi
+              if [ -z "$WHY" ]; then
+                WHY=$(tail -n 40 "$log")
+              fi
+              ONE=$(printf '%s' "$WHY" | sed 's/::/--/g' | tr -d '\r' | sed ':a;N;$!ba;s/\n/%0A/g')
+              echo "::error::assembleRelease 失败（退出码 $status）：%0A$ONE"
+              exit "$status"
             fi
-            if [ -z "$WHY" ]; then
-              WHY=$(grep -E "^e: |error:|FAILED" "$RUNNER_TEMP/gradle-release.log" | head -n 30)
-            fi
-            if [ -z "$WHY" ]; then
-              WHY=$(tail -n 40 "$RUNNER_TEMP/gradle-release.log")
-            fi
-            ONE=$(printf '%s' "$WHY" | sed 's/::/--/g' | tr -d '\r' | sed ':a;N;$!ba;s/\n/%0A/g')
-            echo "::error::assembleRelease 失败（退出码 $status）：%0A$ONE"
-            exit "$status"
-          fi
+            local apk
+            apk="$(find app/build/outputs/apk/release -name '*.apk' ! -name '*unsigned*' | head -n 1)"
+            [ -n "$apk" ] || { echo "::error::No signed APK found."; exit 1; }
+            cp "$apk" "$out"
+          }
+          assemble dist/main.apk
+          assemble dist/secondary.apk -PlucentSecondary=true
 
-      - name: Verify APK
+      - name: Verify APKs
         run: |
-          APK="$(find app/build/outputs/apk/release -name '*.apk' ! -name '*unsigned*' | head -n 1)"
-          [ -n "$APK" ] || { echo "::error::No signed APK found."; exit 1; }
+          set -eu
           APKSIGNER="$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort | tail -n 1)"
-          "$APKSIGNER" verify --print-certs "$APK"
-          echo "APK verified: $APK ($(stat -c%s "$APK") bytes)"
+          AAPT="$(ls "$ANDROID_HOME"/build-tools/*/aapt2 | sort | tail -n 1)"
+          pkg() { "$AAPT" dump badging "$1" | awk -F"'" '/^package: /{print $2; exit}'; }
+          for apk in dist/main.apk dist/secondary.apk; do
+            [ -f "$apk" ] || { echo "::error::Missing $apk"; exit 1; }
+            "$APKSIGNER" verify --print-certs "$apk" > /dev/null
+            echo "$apk applicationId=$(pkg "$apk") size=$(stat -c%s "$apk") bytes"
+          done
+          MAIN="$(pkg dist/main.apk)"
+          SECONDARY="$(pkg dist/secondary.apk)"
+          if [ "$MAIN" = "$SECONDARY" ]; then
+            echo "::error::Both APKs use $MAIN; they would overwrite each other on a device."
+            exit 1
+          fi
+          case "$SECONDARY" in
+            *.secondary) ;;
+            *) echo "::error::The secondary APK is not the .secondary package ($SECONDARY)"; exit 1 ;;
+          esac
 
-      - name: Rename APK
+      - name: Name APKs
         run: |
+          set -eu
           VER="${{ steps.resolve-version.outputs.version }}"
           SUFFIX=""
           if [ "${{ steps.resolve-key.outputs.mode }}" = "debug-signed" ]; then
             SUFFIX="-debugsigned"
           fi
-          APK=$(find app/build/outputs/apk/release -name '*.apk' ! -name '*unsigned*' | head -n 1)
-          mv "$APK" "app/build/outputs/apk/release/Lucent.for.Android-$VER$SUFFIX.apk"
+          mv dist/main.apk "dist/Lucent.for.Android-$VER$SUFFIX.apk"
+          mv dist/secondary.apk "dist/Lucent.Secondary.for.Android-$VER$SUFFIX.apk"
+          ls -l dist/
 
-      - name: Upload APK
+      - name: Upload APKs
         uses: actions/upload-artifact@v6
         with:
           name: lucent-release-apk
-          path: app/build/outputs/apk/release/*.apk
+          path: dist/*.apk
           if-no-files-found: error
 
       - name: Upload R8 mapping
@@ -219,8 +246,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -eu
-          APK=$(find apk -name '*.apk' | head -n 1)
-          [ -n "$APK" ] || { echo "::error::No APK found."; exit 1; }
+          mapfile -t APKS < <(find apk -name '*.apk' | sort)
+          [ "${#APKS[@]}" -eq 2 ] || { echo "::error::Expected the main and the secondary APK, found ${#APKS[@]}."; exit 1; }
+          printf '%s\n' "${APKS[@]}"
           if ! gh release view preview --repo "${{ github.repository }}" >/dev/null 2>&1; then
             gh release create preview --prerelease --title "Preview Build" --notes "Initial preview" --repo "${{ github.repository }}"
           fi
@@ -230,5 +258,7 @@ jobs:
           APK-Commit: ${{ github.sha }}
           APK-Version: ${{ needs.build-apk.outputs.version }}
           APK-Run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          gh release upload preview "$APK" --clobber --repo "${{ github.repository }}"
+          for APK in "${APKS[@]}"; do
+            gh release upload preview "$APK" --clobber --repo "${{ github.repository }}"
+          done
           gh release edit preview --notes "$NOTES" --repo "${{ github.repository }}"

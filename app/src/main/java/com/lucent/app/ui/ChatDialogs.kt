@@ -1,9 +1,6 @@
 package com.lucent.app.ui
 
 import com.lucent.app.i18n.S
-import android.content.ClipData
-import android.content.ClipboardManager
-import android.content.Context
 import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.Orientation
@@ -197,8 +194,3 @@ internal fun EditMessageDialog(
     )
 }
 
-internal fun copyTextToClipboard(context: Context, text: String) {
-    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-    val clip = ClipData.newPlainText("Copied Text", text)
-    clipboard.setPrimaryClip(clip)
-}

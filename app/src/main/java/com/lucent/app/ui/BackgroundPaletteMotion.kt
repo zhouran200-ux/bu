@@ -23,7 +23,8 @@ fun rememberCyclingPaletteColors(
     if (palettes.size == 1) return palettes.first()
 
     val inspection = LocalInspectionMode.current
-    val running = animated && environment.active && environment.motionEnabled && !inspection
+    val running = animated && environment.active && environment.motionEnabled && !inspection &&
+        !BackgroundMotionHold.suspended
     if (!running) return palettes.first()
 
     val n = palettes.size

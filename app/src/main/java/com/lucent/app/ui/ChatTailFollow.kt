@@ -7,7 +7,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
-import androidx.compose.runtime.withFrameNanos
 import kotlinx.coroutines.flow.conflate
 
 internal data class ChatTailLayout(
@@ -55,13 +54,9 @@ internal fun FollowChatTail(
         if (!active || !following) return@LaunchedEffect
         snapshotFlow { listState.chatTailLayout() to listState.isScrollInProgress }
             .conflate().collect { (layout, scrolling) ->
-                if (!scrolling && layout.forwardDistance() > 0f && latestCanFollow()) {
-                    withFrameNanos { }
-                    if (!listState.isScrollInProgress && latestCanFollow()) {
-                        val distance = listState.chatTailLayout().forwardDistance()
-                        if (distance > 0f) listState.scrollBy(distance)
-                    }
-                }
+                if (scrolling || !latestCanFollow()) return@collect
+                val distance = layout.forwardDistance()
+                if (distance > 0f) listState.scrollBy(distance)
             }
     }
 }

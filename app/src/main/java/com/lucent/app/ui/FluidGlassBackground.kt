@@ -12,7 +12,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -25,6 +27,20 @@ data class BackgroundEnvironment(val active: Boolean = true, val motionEnabled: 
 
 val LocalBackgroundEnvironment = staticCompositionLocalOf { BackgroundEnvironment() }
 
+internal object BackgroundMotionHold {
+    private var holders by mutableIntStateOf(0)
+
+    val suspended: Boolean get() = holders > 0
+
+    fun acquire() {
+        holders += 1
+    }
+
+    fun release() {
+        holders = (holders - 1).coerceAtLeast(0)
+    }
+}
+
 @Composable
 fun FluidGlassBackground(
     palette: List<Color>,
@@ -36,7 +52,8 @@ fun FluidGlassBackground(
 ) {
     val environment = LocalBackgroundEnvironment.current
     val inspection = LocalInspectionMode.current
-    val moving = animated && environment.motionEnabled && !inspection && !pureWhite
+    val suspended = BackgroundMotionHold.suspended
+    val moving = animated && environment.motionEnabled && !inspection && !pureWhite && !suspended
 
     if (pureWhite) {
         Canvas(modifier.fillMaxSize().background(backdropColor)) { }

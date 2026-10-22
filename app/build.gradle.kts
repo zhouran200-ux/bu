@@ -17,12 +17,16 @@ val ciVersionName = (project.findProperty("versionName") as String?)
     ?.takeIf { it.isNotEmpty() }
     ?: MARKETING_VERSION
 
+val secondaryBuild = (project.findProperty("lucentSecondary") as String?)?.toBoolean() == true
+val lucentApplicationId = "com.jiaying.yuan.lucentapp"
+
 android {
     namespace = "com.lucent.app"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.jiaying.yuan.lucentapp"
+        applicationId = if (secondaryBuild) "$lucentApplicationId.secondary" else lucentApplicationId
+        resValue("string", "app_name", if (secondaryBuild) "Lucent 副" else "Lucent")
         minSdk = 28
         targetSdk = 36
         versionCode = ciVersionCode
@@ -86,6 +90,7 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+        resValues = true
     }
 
     testOptions {

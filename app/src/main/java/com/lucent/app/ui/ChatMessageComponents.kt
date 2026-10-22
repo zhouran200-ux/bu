@@ -72,7 +72,7 @@ internal fun UserMessageCard(
                 icon = Icons.Rounded.ContentCopy,
                 label = S.msgCopyFull,
                 tint = textColor,
-                onClick = { copyTextToClipboard(context, message.content) }
+                onClick = { copyPlainTextWithToast(context, chatBodyForCopy(message.content)) }
             )
             BubbleAction(
                 icon = Icons.Rounded.Edit,
@@ -185,7 +185,7 @@ internal fun AiMessageCard(
                             icon = Icons.Rounded.ContentCopy,
                             label = S.msgCopy,
                             tint = LocalOnGradient.current,
-                            onClick = { copyTextToClipboard(context, message.content) }
+                            onClick = { copyPlainTextWithToast(context, chatBodyForCopy(message.content)) }
                         )
                         BubbleAction(
                             icon = Icons.Rounded.Refresh,

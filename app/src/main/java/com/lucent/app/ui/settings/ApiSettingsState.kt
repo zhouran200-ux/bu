@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.lucent.app.data.ApiProfile
 import com.lucent.app.data.ApiProfiles
+import com.lucent.app.data.ApiProfileImportPlan
 import com.lucent.app.data.ApiProfileMutation
 import com.lucent.app.i18n.S
 import com.lucent.app.data.ApiProfileSnapshot
@@ -16,6 +17,7 @@ internal class ApiSettingsState(
     private val queue: ApiProfileCommandQueue,
     private val callbackScope: CoroutineScope,
     private val persist: suspend (ApiProfileMutation) -> Unit,
+    private val persistAll: suspend (List<ApiProfile>, Int) -> Unit,
     private val notify: (String) -> Unit,
     private val savedMessage: () -> String
 ) {
@@ -67,6 +69,20 @@ internal class ApiSettingsState(
             return
         }
         submit(ApiProfileMutation.Reorder(order.map { it.id }, order.getOrNull(selected)?.id), complete)
+    }
+
+    fun importProfiles(plan: ApiProfileImportPlan) {
+        val index = plan.profiles.indexOfFirst { it.id == plan.selectedId }.coerceAtLeast(0)
+        queue.submit({ persistAll(plan.profiles, index) }, { outcome ->
+            callbackScope.launch {
+                if (outcome.isSuccess) {
+                    drafts.clear()
+                    notify(S.apiTransferApplied(plan.added, plan.updated, plan.dropped))
+                } else {
+                    notify(S.apiSaveFailed)
+                }
+            }
+        })
     }
 
     fun saveActiveProfile() {

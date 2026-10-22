@@ -56,24 +56,23 @@ class ThinkingLaneStabilityTest {
         }
     }
 
-    @Test fun completingTheSameThoughtKeepsExpandedTextAndAnswerGeometryAcrossFrames() {
+    @Test fun liveReasoningScrollsInsideItsViewportInsteadOfPushingTheAnswer() {
         val host = mount()
         val live = geometry(host)
         val expectedThought = host.thought.value
-        assertTrue("The live text must exceed the historical limit", live.textHeight > historicalLimitPx())
-        rule.onNodeWithContentDescription(S.thinkingCollapse).assertExists()
-        assertNoInnerScroll()
+        assertEquals("Live reasoning must stay inside its viewport", historicalLimitPx(), live.textHeight.toFloat(), 1f)
+        assertInnerScrollReachesTheNewestLine()
         complete(host)
         repeat(8) {
             advanceFrame()
             rule.onNodeWithContentDescription(S.thinkingCollapse).assertExists()
             assertEquals(expectedThought, thoughtNode().fetchSemanticsNode().config[SemanticsProperties.Text].single().text)
             assertStableGeometry(live, geometry(host))
-            assertNoInnerScroll()
+            assertInnerScrollReachesTheNewestLine()
         }
     }
 
-    @Test fun explicitlyCollapsingAndReopeningCompletedLiveLaneRestoresHistoricalHeightLimit() {
+    @Test fun explicitlyCollapsingAndReopeningRestoresTheSameViewportHeight() {
         val host = mount()
         val live = geometry(host)
         complete(host)
@@ -89,12 +88,11 @@ class ThinkingLaneStabilityTest {
         advanceAnimation()
         rule.onNodeWithContentDescription(S.thinkingCollapse).assertExists()
         val reopened = geometry(host)
-        assertEquals(historicalLimitPx(), reopened.textHeight.toFloat(), 1f)
-        assertTrue(reopened.laneHeight < live.laneHeight)
-        assertTrue(reopened.answerTop < live.answerTop)
+        assertEquals("Reopened reasoning must share the live viewport height", historicalLimitPx(), reopened.textHeight.toFloat(), 1f)
+        assertEquals(live.laneHeight, reopened.laneHeight)
+        assertEquals(live.answerTop, reopened.answerTop, 1f)
         assertEquals(host.thought.value, thoughtNode().fetchSemanticsNode().config[SemanticsProperties.Text].single().text)
-        val range = thoughtNode().fetchSemanticsNode().config[SemanticsProperties.VerticalScrollAxisRange]
-        rule.runOnUiThread { assertTrue("Historical reasoning must scroll within its 220dp viewport", range.maxValue() > 0f) }
+        assertInnerScrollReachesTheNewestLine()
         repeat(4) {
             advanceFrame()
             assertEquals(historicalLimitPx(), geometry(host).textHeight.toFloat(), 1f)
@@ -152,13 +150,17 @@ class ThinkingLaneStabilityTest {
     }
 
     private fun assertStableGeometry(expected: Geometry, actual: Geometry) {
-        assertEquals("Completion must not cap the expanded live text", expected.textHeight, actual.textHeight)
-        assertEquals("Completion must not shorten the entire reasoning lane", expected.laneHeight, actual.laneHeight)
+        assertEquals("Completion must not resize the reasoning viewport", expected.textHeight, actual.textHeight)
+        assertEquals("Completion must not resize the lane", expected.laneHeight, actual.laneHeight)
         assertEquals("The answer must not jump when thinking completes", expected.answerTop, actual.answerTop, 1f)
     }
 
-    private fun assertNoInnerScroll() {
-        assertFalse(thoughtNode().fetchSemanticsNode().config.contains(SemanticsProperties.VerticalScrollAxisRange))
+    private fun assertInnerScrollReachesTheNewestLine() {
+        val range = thoughtNode().fetchSemanticsNode().config[SemanticsProperties.VerticalScrollAxisRange]
+        rule.runOnUiThread {
+            assertTrue("Live reasoning must scroll inside its own viewport", range.maxValue() > 0f)
+            assertEquals("The live lane must follow the newest line", range.maxValue(), range.value())
+        }
     }
 
     private fun advanceAnimation() {
@@ -170,7 +172,7 @@ class ThinkingLaneStabilityTest {
         rule.waitForIdle()
     }
 
-    private fun historicalLimitPx(): Float = with(rule.density) { 220.dp.toPx() }
+    private fun historicalLimitPx(): Float = with(rule.density) { THINKING_LANE_MAX_HEIGHT.toPx() }
     private fun thoughtNode() = rule.onNodeWithTag("thinking_text", useUnmergedTree = true)
     private fun laneNode() = rule.onNodeWithTag("thinking_lane", useUnmergedTree = true)
 }

@@ -11,7 +11,13 @@ internal class ApiProfileDraftStore {
 
     fun removeAfterSuccessfulDelete(id: String) { drafts.remove(id) }
 
-    fun discardUnpersisted(id: String) { drafts.remove(id) }
+    fun discardUnpersisted(id: String) {
+        drafts.remove(id)
+    }
+
+    fun clear() {
+        drafts.clear()
+    }
 }
 
 internal class ApiProfileDraft(profile: ApiProfile?) {

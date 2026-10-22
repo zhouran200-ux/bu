@@ -1,6 +1,5 @@
 package com.lucent.app.ui.settings
 
-import android.content.ClipData
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -24,17 +23,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.platform.ClipEntry
-import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.lucent.app.data.ApiProfile
+import com.lucent.app.data.ApiProfileImportPlan
 import com.lucent.app.data.SettingsRepository
 import com.lucent.app.i18n.S
 import com.lucent.app.network.ApiProbe
 import com.lucent.app.network.TestConnectionResult
 import com.lucent.app.ui.GlassButton
 import com.lucent.app.ui.Haptics
+import com.lucent.app.ui.copyPlainText
+import com.lucent.app.ui.copyPlainTextWithToast
 import com.lucent.app.ui.frostedGlass
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -69,10 +69,10 @@ internal fun ApiConfigSettingsPage(
     onSelectProfile: (Int) -> Unit,
     onReorderProfiles: (List<ApiProfile>, Int, (Result<Unit>) -> Unit) -> Unit,
     onAddProfile: () -> Unit,
-    onSaveProfile: () -> Unit
+    onSaveProfile: () -> Unit,
+    onImportProfiles: (ApiProfileImportPlan) -> Unit
 ) {
     val context = LocalContext.current
-    val clipboard = LocalClipboard.current
     val scope = rememberCoroutineScope()
     val requestTarget = ApiRequestTarget(profiles.getOrNull(selectedProfileIdx)?.id, url.trim(), spec, key.trim(), active)
     val latestRequestTarget = rememberUpdatedState(requestTarget)
@@ -112,6 +112,15 @@ internal fun ApiConfigSettingsPage(
         active = active, scrollState = scrollState, viewportBounds = viewportBounds,
         onRequestDeleteProfile = onRequestDeleteProfile, onSelectProfile = onSelectProfile,
         onReorderProfiles = onReorderProfiles, onAddProfile = onAddProfile
+    )
+
+    Spacer(modifier = Modifier.height(8.dp))
+
+    ApiProfileTransferSection(
+        profiles = profiles,
+        selectedProfileId = profiles.getOrNull(selectedProfileIdx)?.id,
+        active = active,
+        onApply = onImportProfiles
     )
 
     Spacer(modifier = Modifier.height(8.dp))
@@ -209,7 +218,7 @@ internal fun ApiConfigSettingsPage(
             onSelectedModelChange = onSelectedModelChange,
             onCustomModelInputChange = { customModelInput = it },
             onCopyModel = { model ->
-                scope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("model", model))) }
+                copyPlainTextWithToast(context, model)
                 Haptics.tick(context)
             }
         )
@@ -226,7 +235,7 @@ internal fun ApiConfigSettingsPage(
 
         fun copyRawResponse(text: String) {
             if (text.isNotBlank()) {
-                scope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("response", text))) }
+                copyPlainText(context, text)
                 Haptics.tick(context)
                 copiedRawHint = true
                 scope.launch {

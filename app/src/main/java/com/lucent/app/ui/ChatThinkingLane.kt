@@ -33,6 +33,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.State
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -44,6 +45,8 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+
+internal val THINKING_LANE_MAX_HEIGHT = 220.dp
 
 @Composable
 internal fun ThinkingLane(
@@ -60,12 +63,20 @@ internal fun ThinkingLane(
     val onGradientMuted = LocalOnGradientMuted.current
     val context = LocalContext.current.applicationContext
     val thought = liveThought?.value ?: storedThought
+    val visibleThought = rememberRevealedText(thought, streaming)
     val canExpand = streaming || thought.isNotBlank()
     val latestCanExpand by rememberUpdatedState(canExpand)
     val expanded = lane.expanded && canExpand
     LaunchedEffect(streaming, lane.expanded) { lane.retainStreamingHeight(streaming) }
+    if (streaming) {
+        LaunchedEffect(lane.scroll) {
+            snapshotFlow { lane.scroll.maxValue }.conflate().collect { max ->
+                if (max > 0 && lane.scroll.value != max) lane.scroll.scrollTo(max)
+            }
+        }
+    }
     LaunchedEffect(readingKey, lane) {
-        androidx.compose.runtime.snapshotFlow { lane.readingPosition() to latestCanExpand }.conflate().collect {
+        snapshotFlow { lane.expanded to latestCanExpand }.conflate().collect {
             delay(250)
             lane.positionToPersist(latestCanExpand)?.let { ReadingPositionMemory.write(context, readingKey, it) }
         }
@@ -115,20 +126,20 @@ internal fun ThinkingLane(
                     )
                 }
                 Text(
-                    text = thought.ifBlank { S.thinkingWaiting },
-                    color = if (thought.isBlank()) onGradientMuted.copy(alpha = 0.7f) else onGradientMuted,
+                    text = visibleThought.ifBlank { S.thinkingWaiting },
+                    color = if (visibleThought.isBlank()) {
+                        onGradientMuted.copy(alpha = 0.7f)
+                    } else {
+                        onGradientMuted
+                    },
                     fontSize = 13.sp,
                     fontFamily = FontFamily.Monospace,
                     lineHeight = 19.sp,
-                    modifier = if (streaming || lane.retainLiveHeight) {
-                        Modifier.fillMaxWidth().testTag("thinking_text")
-                    } else {
-                        Modifier
-                            .fillMaxWidth()
-                            .testTag("thinking_text")
-                            .heightIn(max = 220.dp)
-                            .verticalScroll(lane.scroll)
-                    }
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("thinking_text")
+                        .heightIn(max = THINKING_LANE_MAX_HEIGHT)
+                        .verticalScroll(lane.scroll)
                 )
                 if (streaming || lane.retainLiveHeight) {
                     Spacer(modifier = Modifier.height(6.dp))

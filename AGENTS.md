@@ -13,6 +13,7 @@
 - 收尾记录提交 SHA 和仓库/Actions 入口，供下一轮子代理精确对应提交。
 - 推送前检查远端与工作流触发条件，不强制推送、不覆盖远端改动；若分支存在冲突或目标不明确，先确认。
 - 当前仓库 `zhouran200-ux/bu` 的 `main` 推送会触发 `check` 和 `Build APK only`，后者更新 Preview Release；正式 Release 工作流按需手动触发，不擅自发布正式版本。
+- APK 工作流每次产出主、副两个安装包：主版本包名 `com.jiaying.yuan.lucentapp`，副版本用 `-PlucentSecondary=true` 构建出 `com.jiaying.yuan.lucentapp.secondary`（应用名带「副」）。两者代码相同、数据互相独立、可同时安装；改动构建或发布脚本时两个包都要保留并校验包名不同，不要退化成只发一个。
 
 ## 源码结构与 UI 复杂度约束
 

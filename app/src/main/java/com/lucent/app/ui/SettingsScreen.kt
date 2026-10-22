@@ -163,7 +163,8 @@ fun SettingsScreen(active: Boolean = true) {
                     onSelectProfile = { apiState.selectProfile(it) },
                     onReorderProfiles = { order, selected, complete -> apiState.reorderProfiles(order, selected, complete) },
                     onAddProfile = { apiState.addProfile() },
-                    onSaveProfile = { apiState.saveActiveProfile() }
+                    onSaveProfile = { apiState.saveActiveProfile() },
+                    onImportProfiles = { apiState.importProfiles(it) }
                 )
             }
         }

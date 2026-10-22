@@ -128,17 +128,20 @@ jobs:
           gh run download "${{ github.run_id }}" -n lucent-release-apk -D ./artifacts/apk
           ls -lh ./artifacts/apk/
 
-      - name: Verify APK asset is present
+      - name: Verify the APK assets are present
         env:
           VERSION: ${{ needs.prepare.outputs.version }}
         run: |
           set -eu
-          APK_FILE="$(find ./artifacts/apk -name '*.apk' | head -n 1)"
-          [ -n "$APK_FILE" ] || { echo "::error::No APK was produced - no release is created."; exit 1; }
-          APK_BYTES="$(stat -c%s "$APK_FILE")"
-          echo "APK_FILE=$APK_FILE" >> "$GITHUB_ENV"
-          echo "APK_SIZE_MB=$(python3 -c "print(f'{$APK_BYTES/1048576:.2f}')")" >> "$GITHUB_ENV"
-          echo "APK is ready for version $VERSION."
+          mapfile -t APKS < <(find ./artifacts/apk -name '*.apk' | sort)
+          [ "${#APKS[@]}" -eq 2 ] || { echo "::error::Expected the main and the secondary APK, found ${#APKS[@]} - no release is created."; exit 1; }
+          {
+            echo "APK_FILES<<APK_EOF"
+            printf '%s\n' "${APKS[@]}"
+            echo "APK_EOF"
+          } >> "$GITHUB_ENV"
+          printf '%s\n' "${APKS[@]}"
+          echo "APKs are ready for version $VERSION."
 
       - name: Compose the release body
         env:
@@ -154,12 +157,15 @@ jobs:
           {
             printf '\n---\n\n'
             printf '**Build info**\n\n'
-            printf -- '- Android APK: %s MiB\n' "$APK_SIZE_MB"
+            while IFS= read -r apk; do
+              [ -n "$apk" ] || continue
+              printf -- '- %s (%s MiB)\n' "$(basename "$apk")" "$(python3 -c "print(f'{$(stat -c%s "$apk")/1048576:.2f}')")"
+            done <<< "$APK_FILES"
             printf -- '- Built from commit `%s`\n' "${{ github.sha }}"
             printf -- '- Build log: https://github.com/%s/actions/runs/%s\n' "${{ github.repository }}" "${{ github.run_id }}"
           } >> /tmp/notes.md
 
-      - name: Create the release and attach APK asset
+      - name: Create the release and attach both APKs
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ needs.prepare.outputs.tag }}
@@ -167,6 +173,8 @@ jobs:
           AS_DRAFT: ${{ inputs.draft }}
         run: |
           set -eu
+          mapfile -t APKS <<< "$APK_FILES"
+          [ "${#APKS[@]}" -eq 2 ] || { echo "::error::Expected two APKs, found ${#APKS[@]}."; exit 1; }
           TITLE="$RELEASE_NAME"
           if [ -z "$TITLE" ]; then
             TITLE="Lucent ${{ needs.prepare.outputs.version }}"
@@ -179,13 +187,15 @@ jobs:
           if [ -n "$EXISTING" ]; then
             echo "::notice::Release $TAG already exists - refreshing its notes and assets."
             gh release edit "$TAG" --title "$TITLE" --notes-file /tmp/notes.md
-            gh release upload "$TAG" "$APK_FILE" --clobber
+            for apk in "${APKS[@]}"; do
+              gh release upload "$TAG" "$apk" --clobber
+            done
           else
             gh release create "$TAG" \
               $DRAFT_FLAG \
               --target "${{ github.sha }}" \
               --title "$TITLE" \
               --notes-file /tmp/notes.md \
-              "$APK_FILE"
+              "${APKS[@]}"
           fi
           gh release view "$TAG" --json url,isDraft --jq '"Release " + .url + " (draft=" + (.isDraft|tostring) + ")"'

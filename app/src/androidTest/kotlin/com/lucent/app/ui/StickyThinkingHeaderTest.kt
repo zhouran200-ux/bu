@@ -171,7 +171,8 @@ class StickyThinkingHeaderTest {
         assertTrue(thinking13 > MessageSpacingPx && thinking13 < MessageHeightPx)
 
         scrollBy(host, -1)
-        assertPinned(S.thinkingDoneSeconds(7))
+        assertGapHasNoOwner(host)
+        sticky().assertDoesNotExist()
         scrollBy(host, -(thinking13 - 1))
         sticky().assertDoesNotExist()
 

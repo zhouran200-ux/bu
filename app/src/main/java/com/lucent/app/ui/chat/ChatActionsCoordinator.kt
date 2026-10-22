@@ -26,7 +26,7 @@ internal class ChatActionsCoordinator(
     private val context: Context,
     internal val session: ChatSession,
     internal val listState: LazyListState,
-    private val sourceNotes: List<Note>,
+    private val sourceNotes: () -> List<Note>,
     internal val prefs: SharedPreferences,
     private val notebookId: Long,
     private val notificationPermission: ManagedActivityResultLauncher<String, Boolean>,
@@ -92,11 +92,12 @@ internal class ChatActionsCoordinator(
         val resolvedReasoning = resolveChatReasoning(reasoningPreset, matchedProfile, targetModel)
         val effortLabel = resolvedReasoning.displayTag
 
-        if (sourceNotes.size > 1) {
+        val notes = sourceNotes()
+        if (notes.size > 1) {
             LucentToast.show(context, S.chatSourceBindingBroken)
             return
         }
-        val sourceNote = sourceNotes.singleOrNull()
+        val sourceNote = notes.singleOrNull()
         val customPrompt = systemPrompt
 
         val historyPayload = buildChatHistory(messages, aiMsgId, historyRounds)

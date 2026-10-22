@@ -34,6 +34,7 @@ import com.lucent.app.chat.ChatSessions
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -103,12 +104,13 @@ fun NotebookChatTab(
     }
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
+    val liveSourceNotes by rememberUpdatedState(sourceNotes)
     val actions = remember(session, notebookId) {
         ChatActionsCoordinator(
             context = context,
             session = session,
             listState = listState,
-            sourceNotes = sourceNotes,
+            sourceNotes = { liveSourceNotes },
             prefs = prefs,
             notebookId = notebookId,
             notificationPermission = notificationPermission,

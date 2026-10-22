@@ -251,6 +251,7 @@ private fun SourceReaderDocument(
     var showIndexPreview by remember(source.noteId, source.revision) { mutableStateOf(false) }
     val motionEnabled = LocalBackgroundEnvironment.current.motionEnabled
     val readingKeys = remember(items) { items.map { it.key } + "footer" }
+    val chapterIndices = remember(items) { items.indices.filter { items[it].sliceId == null } }
     val listState = rememberReadingListState("source:$notebookId:${source.noteId}:slices:${source.revision}", readingKeys)
     val currentSectionTitle by remember(items, source.title, listState) {
         derivedStateOf { sourceSectionTitle(items, listState.firstVisibleItemIndex, source.title) }
@@ -296,9 +297,10 @@ private fun SourceReaderDocument(
                 item(key = "footer") { Spacer(modifier = Modifier.height(48.dp)) }
             }
         }
-        FloatingScrollCapsule(
+        DocumentScrollCapsule(
             listState = listState,
             itemKeys = readingKeys,
+            chapterIndices = chapterIndices,
             enabled = active,
             label = S.sourcesFastScroll,
             modifier = Modifier.align(Alignment.CenterEnd)

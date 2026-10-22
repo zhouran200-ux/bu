@@ -52,8 +52,14 @@ class HistoryEntryContractTest(unittest.TestCase):
         self.assertIn(".size(width = 28.dp, height = hitHeight)", text)
         self.assertIn("localToRoot", text)
         source = (UI / "NotebookSourcesTab.kt").read_text(encoding="utf-8")
-        self.assertIn("FloatingScrollCapsule(", source)
+        self.assertIn("DocumentScrollCapsule(", source)
+        self.assertIn("chapterIndices = chapterIndices", source)
         self.assertIn("enabled = active", source)
+        document = (UI / "DocumentScrollCapsule.kt").read_text(encoding="utf-8")
+        self.assertIn("detectChatRailDrag", document)
+        self.assertIn("setProgress", document)
+        self.assertNotIn("localToRoot", document)
+        self.assertIn("DocumentRailPosition(itemKeys.size, chapterIndices)", document)
 
 
 if __name__ == "__main__":

@@ -135,6 +135,8 @@ class ThinkingLaneStabilityTest {
             }
         }
         repeat(4) { advanceFrame() }
+        rule.onNodeWithContentDescription(S.thinkingExpand).performClick()
+        advanceAnimation()
         thoughtNode().assertExists()
         return host
     }

@@ -16,12 +16,16 @@ class ThinkingHeaderTest {
         assertEquals(S.thinkingDone, thinkingTitle(false, true, 0))
     }
 
-    @Test fun firstStreamOpensAnUntouchedEmptySlotButRespectsExplicitChoices() {
+    @Test fun streamingKeepsUntouchedSlotsCollapsedAndOnlyManualChoicesExpand() {
         val untouched = ThinkingLaneState(null, streaming = false)
         assertFalse(untouched.expanded)
         untouched.retainStreamingHeight(true)
+        assertFalse(untouched.expanded)
+        assertFalse(untouched.retainLiveHeight)
+
+        untouched.toggle()
         assertTrue(untouched.expanded)
-        untouched.retainStreamingHeight(false)
+        untouched.retainStreamingHeight(true)
         assertTrue(untouched.retainLiveHeight)
         untouched.toggle()
         untouched.retainStreamingHeight(true)
@@ -31,23 +35,29 @@ class ThinkingHeaderTest {
         val savedClosed = ThinkingLaneState(ReadingPosition("collapsed", 0, 0), streaming = false)
         savedClosed.retainStreamingHeight(true)
         assertFalse(savedClosed.expanded)
+        assertFalse(savedClosed.retainLiveHeight)
+
+        val savedOpen = ThinkingLaneState(ReadingPosition("expanded", 0, 0), streaming = false)
+        assertTrue(savedOpen.expanded)
+        savedOpen.retainStreamingHeight(true)
+        assertTrue(savedOpen.retainLiveHeight)
     }
 
     @Test fun untouchedUnsupportedSlotDoesNotPersistAPhantomCollapseChoice() {
         val slot = ThinkingLaneState(null, false)
         assertNull(slot.positionToPersist(false))
         val reopened = ThinkingLaneState(slot.positionToPersist(false), true)
-        assertTrue(reopened.expanded)
+        assertFalse(reopened.expanded)
         val history = ThinkingLaneState(null, false)
         assertEquals("collapsed", history.positionToPersist(true)?.itemKey)
-        val manual = ThinkingLaneState(null, true)
+        val manual = ThinkingLaneState(ReadingPosition("expanded", 0, 0), true)
         manual.toggle()
         assertEquals("collapsed", manual.positionToPersist(false)?.itemKey)
     }
 
     @Test fun originalAndStickyUseTheSameStateForTheSameReadingKey() {
         val owner = NotebookMessageUiState()
-        val original = owner.thinking("chat:1:thought:2") { ThinkingLaneState(null, true) }
+        val original = owner.thinking("chat:1:thought:2") { ThinkingLaneState(ReadingPosition("expanded", 0, 0), true) }
         val sticky = owner.thinking("chat:1:thought:2") { error("Must reuse the existing lane") }
         org.junit.Assert.assertSame(original, sticky)
         sticky.toggle()

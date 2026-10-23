@@ -84,9 +84,9 @@ class UnsupportedThinkingHeaderTest {
         settleAnimation()
         laneNode().assertIsDisplayed()
         rule.onNodeWithText(S.thinkingStreaming).assertIsDisplayed()
-        rule.onNodeWithContentDescription(S.thinkingCollapse).assertExists()
-        thoughtNode().assertTextEquals(S.thinkingWaiting)
-        rule.runOnUiThread { assertTrue(host.lane.expanded) }
+        rule.onNodeWithContentDescription(S.thinkingExpand).assertExists()
+        thoughtNode().assertDoesNotExist()
+        rule.runOnUiThread { assertFalse(host.lane.expanded) }
 
         rule.runOnUiThread {
             host.message.value = host.message.value.copy(content = "Completed answer", reasoningText = "")
@@ -101,7 +101,7 @@ class UnsupportedThinkingHeaderTest {
             advanceFrames()
         }
         rule.runOnUiThread {
-            assertTrue(host.lane.expanded)
+            assertFalse(host.lane.expanded)
             assertTrue(host.expandedBeforeToggle.isEmpty())
         }
     }
@@ -151,7 +151,7 @@ class UnsupportedThinkingHeaderTest {
         }
     }
 
-    @Test fun emptySlotStartsReasoningExpandedAndKeepsTheSameThoughtAfterCompletion() {
+    @Test fun liveReasoningExpandsOnlyAfterTheHeaderIsTapped() {
         val host = mount()
         assertUnsupported()
         val reasoning = "A short live reasoning trace"
@@ -162,9 +162,18 @@ class UnsupportedThinkingHeaderTest {
         }
         settleAnimation()
         rule.onNodeWithText(S.thinkingStreaming).assertIsDisplayed()
+        thoughtNode().assertDoesNotExist()
+        rule.runOnUiThread { assertFalse(host.lane.expanded) }
+
+        rule.onNodeWithContentDescription(S.thinkingExpand).performClick()
+        settleAnimation()
         thoughtNode().assertTextEquals(reasoning)
         rule.onNodeWithText(S.thinkingWaiting).assertDoesNotExist()
-        rule.runOnUiThread { assertTrue(host.lane.expanded) }
+        rule.runOnUiThread {
+            assertTrue(host.lane.expanded)
+            assertFalse(host.following)
+            assertEquals(listOf(false), host.expandedBeforeToggle)
+        }
 
         rule.runOnUiThread {
             host.message.value = host.message.value.copy(content = "Final answer", reasoningText = reasoning)

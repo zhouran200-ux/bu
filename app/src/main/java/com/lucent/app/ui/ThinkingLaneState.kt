@@ -11,26 +11,21 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 
 internal class ThinkingLaneState(saved: ReadingPosition?, streaming: Boolean) {
-    var expanded by mutableStateOf(saved?.itemKey?.let { it == "expanded" } ?: streaming)
+    var expanded by mutableStateOf(saved?.itemKey == "expanded")
         private set
     var retainLiveHeight by mutableStateOf(streaming && expanded)
         private set
     var measuredHeightPx by mutableStateOf(0)
     val scroll = ScrollState(saved?.offset ?: 0)
-    private var hasExpansionChoice = saved != null
     private var persistEligible = saved != null || streaming
-    private var wasStreaming = streaming
 
     fun retainStreamingHeight(streaming: Boolean) {
         if (streaming) persistEligible = true
-        if (streaming && !wasStreaming && !hasExpansionChoice) expanded = true
         if (streaming && expanded) retainLiveHeight = true
-        wasStreaming = streaming
     }
 
     fun toggle() {
         persistEligible = true
-        hasExpansionChoice = true
         expanded = !expanded
         if (!expanded) retainLiveHeight = false
     }

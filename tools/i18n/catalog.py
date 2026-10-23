@@ -73,7 +73,7 @@ ENTRIES = [
     ("sourceIndexPreviewTitle", "模型看到的资料"),
     ("sourceIndexPreviewSubtitle", "以下为注入模型的带标签原文（不含系统规则与自定义提示词），仅供核对。"),
     ("sourceIndexPreviewMeta(chapters: Int, slices: Int, chars: Int)", "{chapters} 个章节 · {slices} 个切片 · {chars} 字符"),
-    ("sourceIndexPreviewClose", "关闭模型原文预览"),
+    ("sourceIndexPreviewBack", "返回文档"),
     ("sourceIndexPreviewEmpty", "当前文档没有可显示的标签内容"),
     ("sourceIndexPreviewFastScroll", "原文快速滚动"),
     ("sourceIndexPreviewCopy", "复制原文"),

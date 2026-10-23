@@ -6,21 +6,14 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Description
@@ -31,10 +24,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -42,9 +33,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.lucent.app.AppScope
 import com.lucent.app.data.NotebookRepository
 import com.lucent.app.data.MarkdownDocumentParser
@@ -55,7 +44,6 @@ import com.lucent.app.i18n.S
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlin.math.abs
 import kotlinx.coroutines.launch
 
 data class SourceFocus(
@@ -198,9 +186,10 @@ fun NotebookSourcesTab(
     }
 }
 
-private data class SourceReaderContent(
+internal data class SourceReaderContent(
     val source: IndexedSource,
-    val items: List<SourceReadingItem>
+    val items: List<SourceReadingItem>,
+    val previewRows: List<SourcePreviewRow>
 )
 
 @Composable
@@ -213,13 +202,17 @@ internal fun SourceReader(
     onEmphasize: (SourceFocus?) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var content by remember(note.id, note.body, note.title) { mutableStateOf<SourceReaderContent?>(null) }
-    var error by remember(note.id, note.body, note.title) { mutableStateOf<String?>(null) }
-    LaunchedEffect(note.id, note.body, note.title) {
+    var content by remember(notebookId, note.id, note.body, note.title) { mutableStateOf<SourceReaderContent?>(null) }
+    var error by remember(notebookId, note.id, note.body, note.title) { mutableStateOf<String?>(null) }
+    LaunchedEffect(notebookId, note.id, note.body, note.title) {
         try {
             content = withContext(Dispatchers.Default) {
                 val source = NovelSourceIndex.get(note)
-                SourceReaderContent(source, sourceReadingItems(source.body, source.tagged))
+                SourceReaderContent(
+                    source,
+                    sourceReadingItems(source.body, source.tagged),
+                    sourcePreviewRows(source.body, source.tagged)
+                )
             }
         } catch (cancelled: CancellationException) {
             throw cancelled
@@ -234,128 +227,8 @@ internal fun SourceReader(
         }
         return
     }
-    key(loaded.source.noteId, loaded.source.revision) {
+    key(notebookId, loaded.source.noteId, loaded.source.revision) {
         SourceReaderDocument(notebookId, loaded, focus, active, emphasizedFocus, onEmphasize, modifier)
-    }
-}
-
-@Composable
-private fun SourceReaderDocument(
-    notebookId: Long,
-    content: SourceReaderContent,
-    focus: SourceFocus?,
-    active: Boolean,
-    emphasizedFocus: SourceFocus?,
-    onEmphasize: (SourceFocus?) -> Unit,
-    modifier: Modifier
-) {
-    val source = content.source
-    val items = content.items
-    var showIndexPreview by remember(source.noteId, source.revision) { mutableStateOf(false) }
-    var previewStart by remember(source.noteId, source.revision) { mutableStateOf<ReadingPosition?>(null) }
-    val motionEnabled = LocalBackgroundEnvironment.current.motionEnabled
-    val readerKeys = remember(items) { items.map { it.key } }
-    val readingKeys = remember(readerKeys) { readerKeys + "footer" }
-    val chapterIndices = remember(items) { items.indices.filter { items[it].sliceId == null } }
-    val listState = rememberReadingListState("source:$notebookId:${source.noteId}:slices:${source.revision}", readingKeys)
-    val currentSectionTitle by remember(items, source.title, listState) {
-        derivedStateOf { sourceSectionTitle(items, listState.firstVisibleItemIndex, source.title) }
-    }
-    var consumedRequest by remember { mutableStateOf<Long?>(null) }
-    LaunchedEffect(active, focus, source.noteId, source.revision) {
-        if (!active) return@LaunchedEffect
-        val target = focus ?: return@LaunchedEffect
-        if (consumedRequest == target.requestId) return@LaunchedEffect
-        consumedRequest = target.requestId
-        onEmphasize(null)
-        when (val location = sourceFocusLocation(target, source.noteId, source.revision, items)) {
-            is SourceFocusLocation.Unavailable -> Unit
-            is SourceFocusLocation.Found -> {
-                onEmphasize(target)
-                withFrameNanos { }
-                if (motionEnabled && abs(listState.firstVisibleItemIndex - location.index) <= 3) {
-                    listState.animateScrollToItem(location.index)
-                } else {
-                    listState.scrollToItem(location.index)
-                }
-            }
-        }
-    }
-    BoxWithConstraints(modifier = modifier.background(lucentPanelBackground())) {
-        val titleMaxWidth = (maxWidth - 76.dp).coerceIn(120.dp, 280.dp)
-        SelectionContainer {
-            LazyColumn(
-                state = listState,
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(start = 18.dp, top = 60.dp, end = 18.dp, bottom = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                itemsIndexed(items, key = { _, item -> item.key }) { _, item ->
-                    MarkdownText(
-                        text = item.text,
-                        emphasized = item.sliceId != null && emphasizedFocus?.noteId == source.noteId &&
-                            emphasizedFocus.revision == source.revision && emphasizedFocus.sliceId == item.sliceId,
-                        citationsEnabled = false,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-                item(key = "footer") { Spacer(modifier = Modifier.height(48.dp)) }
-            }
-        }
-        DocumentScrollCapsule(
-            listState = listState,
-            itemKeys = readingKeys,
-            chapterIndices = chapterIndices,
-            enabled = active,
-            label = S.sourcesFastScroll,
-            modifier = Modifier.align(Alignment.CenterEnd)
-        )
-
-        Surface(
-            shape = RoundedCornerShape(12.dp),
-            color = androidx.compose.ui.graphics.Color.Transparent,
-            contentColor = LocalOnGradient.current,
-            shadowElevation = 0.dp,
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .padding(12.dp)
-                .widthIn(max = titleMaxWidth)
-                .foregroundGlass(12.dp, reading = true)
-        ) {
-            Text(
-                text = currentSectionTitle,
-                style = MaterialTheme.typography.labelMedium.copy(
-                    fontSize = 13.sp,
-                    lineHeight = 18.sp,
-                    letterSpacing = 0.sp
-                ),
-                fontWeight = LucentTitles.SectionWeight,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
-            )
-        }
-
-        SourceIndexPreviewEntry(
-            enabled = source.tagged.text.isNotBlank(),
-            onClick = {
-                previewStart = listState.readingPosition()
-                showIndexPreview = true
-            },
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(12.dp)
-        )
-
-        if (showIndexPreview) {
-            SourceIndexPreview(source, previewStart) { position ->
-                showIndexPreview = false
-                if (position != null && readerKeys.isNotEmpty()) {
-                    val resumed = position.resolve(readerKeys)
-                    listState.requestScrollToItem(resumed.index, resumed.offset)
-                }
-            }
-        }
     }
 }
 

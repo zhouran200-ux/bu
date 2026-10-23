@@ -51,7 +51,7 @@ class HistoryEntryContractTest(unittest.TestCase):
         self.assertIn("if (show || dragging || shown > 0.01f)", text)
         self.assertIn(".size(width = 28.dp, height = hitHeight)", text)
         self.assertIn("localToRoot", text)
-        source = (UI / "NotebookSourcesTab.kt").read_text(encoding="utf-8")
+        source = (UI / "SourceReaderDocument.kt").read_text(encoding="utf-8")
         self.assertIn("DocumentScrollCapsule(", source)
         self.assertIn("chapterIndices = chapterIndices", source)
         self.assertIn("enabled = active", source)

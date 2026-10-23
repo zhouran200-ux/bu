@@ -22,7 +22,7 @@ internal object LlmClientConnection {
         var resolvedUrl = ""
         var usedUa: String? = null
         try {
-            val trimmed = baseUrl.trim().trimEnd('/')
+            val trimmed = baseUrl.trim()
             if (trimmed.isBlank()) {
                 return@withContext Result.failure(IllegalArgumentException("基础 URL 不能为空"))
             }
@@ -35,19 +35,19 @@ internal object LlmClientConnection {
             if (isModelSpecified) {
                 when (spec) {
                     ApiSpec.OPENAI -> {
-                        url = if (rawEndpoint || trimmed.endsWith("/chat/completions")) trimmed else "$trimmed/chat/completions"
+                        url = EndpointUrls.generation(trimmed, spec, apiKey, model, rawEndpoint, stream = false).toString()
                         val payload = JSONObject().apply {
                             put("model", model.trim())
                             put("messages", JSONArray().put(JSONObject().apply {
                                 put("role", "user")
                                 put("content", "ping")
                             }))
-                            put("max_tokens", 1)
+                            applyOpenAiProbeCap(this, model)
                         }
                         requestBuilder.url(url).post(payload.toString().toRequestBody(jsonMediaType))
                     }
                     ApiSpec.ANTHROPIC -> {
-                        url = if (trimmed.endsWith("/messages")) trimmed else if (trimmed.endsWith("/v1")) "$trimmed/messages" else "$trimmed/v1/messages"
+                        url = EndpointUrls.generation(trimmed, spec, apiKey, model, rawEndpoint, stream = false).toString()
                         val payload = JSONObject().apply {
                             put("model", model.trim())
                             put("max_tokens", 1)
@@ -59,12 +59,7 @@ internal object LlmClientConnection {
                         requestBuilder.url(url).post(payload.toString().toRequestBody(jsonMediaType))
                     }
                     ApiSpec.GOOGLE -> {
-                        val cleanModel = model.trim().removePrefix("models/")
-                        val base = if (trimmed.endsWith("/models")) trimmed.removeSuffix("/models") else trimmed
-                        val endpoint = "$base/models/$cleanModel:generateContent"
-                        url = if (apiKey.isNotBlank() && !endpoint.contains("key=")) {
-                            if (endpoint.contains("?")) "$endpoint&key=${queryValue(apiKey)}" else "$endpoint?key=${queryValue(apiKey)}"
-                        } else endpoint
+                        url = EndpointUrls.generation(trimmed, spec, apiKey, model, rawEndpoint, stream = false).toString()
 
                         val payload = JSONObject().apply {
                             put("contents", JSONArray().put(JSONObject().apply {
@@ -77,17 +72,7 @@ internal object LlmClientConnection {
                     }
                 }
             } else {
-                url = if (rawEndpoint) trimmed else when (spec) {
-                    ApiSpec.GOOGLE -> {
-                        val base = if (trimmed.endsWith("/models")) trimmed else "$trimmed/models"
-                        if (apiKey.isNotBlank() && !base.contains("key=")) {
-                            if (base.contains("?")) "$base&key=${queryValue(apiKey)}" else "$base?key=${queryValue(apiKey)}"
-                        } else base
-                    }
-                    ApiSpec.ANTHROPIC, ApiSpec.OPENAI -> {
-                        if (trimmed.endsWith("/models")) trimmed else "$trimmed/models"
-                    }
-                }
+                url = EndpointUrls.models(trimmed, spec, apiKey, rawEndpoint).toString()
                 requestBuilder.url(url).get()
             }
             resolvedUrl = url

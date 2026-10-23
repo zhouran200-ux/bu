@@ -38,6 +38,16 @@ class ChatMessageMergeTest {
     }
 
     @Test
+    fun rejectsExistingIdOwnedByAnotherConversation() {
+        val stored = ChatMessage(id = 7, conversationId = 3, role = "user", content = "keep")
+        kotlin.test.assertFailsWith<IllegalStateException> {
+            mergeChatMessage(stored, UiChatMessage(7, "assistant", "overwrite"), 4)
+        }
+        assertEquals("keep", stored.content)
+        kotlin.test.assertFailsWith<IllegalStateException> { requireChatOwnership(stored, 4) }
+    }
+
+    @Test
     fun newMessagesStartWithoutLegacyPayload() {
         val merged = mergeChatMessage(null, UiChatMessage(9, "user", "hello", timestamp = 5), 3)
         assertEquals(9, merged.id)

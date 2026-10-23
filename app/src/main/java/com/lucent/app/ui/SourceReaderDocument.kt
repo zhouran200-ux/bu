@@ -40,9 +40,23 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.SemanticsPropertyKey
+import androidx.compose.ui.semantics.semantics
+
+internal val SourceReadingPositionKey = SemanticsPropertyKey<String>("SourceReadingPosition")
+
+internal fun Modifier.sourceReadingPosition(state: LazyListState, keys: List<String>): Modifier =
+    semantics { this[SourceReadingPositionKey] = state.sourcePosition(keys).encode() }
+
+private fun LazyListState.sourcePosition(keys: List<String>): ReadingPosition =
+    ReadingPosition(
+        keys.getOrElse(firstVisibleItemIndex) { "" },
+        firstVisibleItemIndex,
+        firstVisibleItemScrollOffset
+    )
 
 @Composable
 internal fun SourceReaderDocument(
@@ -58,12 +72,21 @@ internal fun SourceReaderDocument(
     val items = content.items
     var showIndexPreview by remember(source.noteId, source.revision) { mutableStateOf(false) }
     val previewKeys = remember(content.previewRows) { content.previewRows.map { it.key } }
-    val previewListState = rememberLazyListState()
+    var previewListState by remember { mutableStateOf(LazyListState()) }
     val motionEnabled = LocalBackgroundEnvironment.current.motionEnabled
     val readerKeys = remember(items) { items.map { it.key } }
     val readingKeys = remember(readerKeys) { readerKeys + "footer" }
     val chapterIndices = remember(items) { items.indices.filter { items[it].sliceId == null } }
-    val listState = rememberReadingListState("source:$notebookId:${source.noteId}:slices:${source.revision}", readingKeys)
+    val memoryKey = "source:$notebookId:${source.noteId}:slices:${source.revision}"
+    val initialReaderState = rememberReadingListState(memoryKey, readingKeys, persist = false)
+    var listState by remember(initialReaderState) { mutableStateOf(initialReaderState) }
+    RememberReadingPosition(memoryKey) {
+        if (showIndexPreview) {
+            previewListState.sourcePosition(previewKeys).forSourceLayout(readerKeys)
+        } else {
+            listState.sourcePosition(readingKeys)
+        }
+    }
     val currentSectionTitle by remember(items, source.title, listState) {
         derivedStateOf { sourceSectionTitle(items, listState.firstVisibleItemIndex, source.title) }
     }
@@ -77,11 +100,16 @@ internal fun SourceReaderDocument(
         showIndexPreview = false
         onEmphasize(null)
         when (val location = sourceFocusLocation(target, source.noteId, source.revision, items)) {
-            is SourceFocusLocation.Unavailable -> Unit
+            is SourceFocusLocation.Unavailable -> {
+                if (leavingPreview) {
+                    val position = previewListState.sourcePosition(previewKeys).forSourceLayout(readerKeys)
+                    listState = LazyListState(position.index, position.offset)
+                }
+            }
             is SourceFocusLocation.Found -> {
                 onEmphasize(target)
                 if (leavingPreview) {
-                    listState.requestScrollToItem(location.index)
+                    listState = LazyListState(location.index)
                     return@LaunchedEffect
                 }
                 withFrameNanos { }
@@ -94,9 +122,8 @@ internal fun SourceReaderDocument(
         }
     }
     val returnToDocument: () -> Unit = {
-        previewListState.readingPosition()?.resolve(readerKeys)?.let { position ->
-            listState.requestScrollToItem(position.index, position.offset)
-        }
+        val position = previewListState.sourcePosition(previewKeys).forSourceLayout(readerKeys)
+        listState = LazyListState(position.index, position.offset)
         showIndexPreview = false
     }
     BackHandler(enabled = active && showIndexPreview, onBack = returnToDocument)
@@ -124,7 +151,8 @@ internal fun SourceReaderDocument(
                 SelectionContainer {
                     LazyColumn(
                         state = listState,
-                        modifier = Modifier.fillMaxSize().testTag("source_reader_list"),
+                        modifier = Modifier.fillMaxSize().testTag("source_reader_list")
+                            .sourceReadingPosition(listState, readingKeys),
                         contentPadding = PaddingValues(start = 18.dp, top = 60.dp, end = 18.dp, bottom = 16.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
@@ -177,9 +205,8 @@ internal fun SourceReaderDocument(
                 SourceIndexPreviewEntry(
                     enabled = active && !showIndexPreview && source.tagged.text.isNotBlank(),
                     onClick = {
-                        listState.readingPosition()?.resolve(previewKeys)?.let { position ->
-                            previewListState.requestScrollToItem(position.index, position.offset)
-                        }
+                        val position = listState.sourcePosition(readingKeys).forSourceLayout(previewKeys)
+                        previewListState = LazyListState(position.index, position.offset)
                         showIndexPreview = true
                     },
                     modifier = Modifier

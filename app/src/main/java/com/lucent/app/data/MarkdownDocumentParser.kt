@@ -100,7 +100,8 @@ object MarkdownDocumentParser {
                     }
                 }
                 "tbl" -> {
-                    val tblMd = parseTable(element)
+                    val separatorLength = if (out.isNotEmpty() && !out.endsWith("\n\n")) 2 else 0
+                    val tblMd = parseTable(element, DocumentInputLimits.MAX_INPUT_BYTES - out.length - separatorLength)
                     if (tblMd.isNotBlank()) {
                         if (out.isNotEmpty() && !out.endsWith("\n\n")) {
                             out.append("\n\n")
@@ -150,13 +151,8 @@ object MarkdownDocumentParser {
             prefixApplied = true
         }
 
-        val runs = pElement.childNodes
-        for (j in 0 until runs.length) {
-            val rNode = runs.item(j)
-            if (rNode.nodeType != Node.ELEMENT_NODE) continue
-            val rElement = rNode as Element
-            val localName = rElement.localName ?: rElement.tagName.substringAfterLast(':')
-            if (localName == "r") {
+        for (rElement in visibleRuns(pElement)) {
+            run {
                 val rPr = findChildByLocalName(rElement, "rPr")
                 val bold = rPr != null && (findChildByLocalName(rPr, "b") != null || findChildByLocalName(rPr, "bCs") != null)
                 val italic = rPr != null && (findChildByLocalName(rPr, "i") != null || findChildByLocalName(rPr, "iCs") != null)
@@ -204,7 +200,19 @@ object MarkdownDocumentParser {
         return textBuilder.toString().trimEnd()
     }
 
-    private fun parseTable(tblElement: Element): String {
+    private fun visibleRuns(parent: Element): Sequence<Element> = sequence {
+        val children = parent.childNodes
+        for (index in 0 until children.length) {
+            val child = children.item(index) as? Element ?: continue
+            when (child.localName ?: child.tagName.substringAfterLast(':')) {
+                "r" -> yield(child)
+                "hyperlink", "ins", "moveTo", "smartTag", "fldSimple", "sdtContent" -> yieldAll(visibleRuns(child))
+                "sdt" -> findChildByLocalName(child, "sdtContent")?.let { yieldAll(visibleRuns(it)) }
+            }
+        }
+    }
+
+    private fun parseTable(tblElement: Element, remainingCharacters: Int): String {
         val rows = mutableListOf<List<String>>()
         val tblChildren = tblElement.childNodes
         for (i in 0 until tblChildren.length) {
@@ -242,6 +250,12 @@ object MarkdownDocumentParser {
 
         if (rows.isEmpty()) return ""
         val maxCols = rows.maxOf { it.size }
+        var renderedLength = 6L * maxCols + 2L
+        for (row in rows) {
+            renderedLength += 4L * maxCols + 2L
+            renderedLength += row.sumOf { it.length.toLong() - 1L }
+            require(renderedLength - 1L <= remainingCharacters.toLong()) { "转换后的正文超过大小限制" }
+        }
         val sb = StringBuilder()
         rows.forEachIndexed { index, row ->
             val padded = (0 until maxCols).map { c -> row.getOrNull(c)?.ifBlank { " " } ?: " " }

@@ -54,15 +54,36 @@ class ChatSession(
         storageError = failure?.let { S.chatSaveFailed(it.message ?: "") }
     }
 
-    init {
-        scope.launch {
+    private var loadingJob: Job? = null
+    private var loadVersion = 0L
+    var loading by mutableStateOf(false)
+        private set
+    private var loadedBeforeDelete = false
+    private val actions = mutableSetOf<Job>()
+
+    init { retryLoad() }
+
+    fun retryLoad(): Job? {
+        if (unavailable || ready || loading) return loadingJob
+        val version = ++loadVersion
+        loading = true
+        storageError = null
+        return scope.launch(start = CoroutineStart.LAZY) {
             try {
-                messages.addAll(load())
-                ready = !unavailable
+                val loaded = load()
+                if (!unavailable && version == loadVersion) {
+                    messages.clear()
+                    messages.addAll(loaded)
+                    ready = true
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
             } catch (e: Exception) {
-                storageError = S.chatLoadFailed(e.message ?: "")
+                if (!unavailable && version == loadVersion) storageError = S.chatLoadFailed(e.message ?: "")
+            } finally {
+                if (version == loadVersion) loading = false
             }
-        }
+        }.also { loadingJob = it; it.start() }
     }
 
     fun write(block: suspend () -> Unit): Deferred<Result<Unit>> =
@@ -80,14 +101,27 @@ class ChatSession(
         onSuccess: () -> Unit
     ): Job {
         pendingActions++
-        return scope.launch {
-            if (result.await().isSuccess) {
-                if (ready && !unavailable) onSuccess()
-            } else {
-                onFailure()
+        val action = scope.launch(start = CoroutineStart.LAZY) {
+            if (result.await().isFailure) onFailure()
+            if (!writes.awaitCommitted(result)) return@launch
+            writes.awaitDrained()
+            if (ready && !unavailable) {
+                try {
+                    onSuccess()
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (failure: Exception) {
+                    storageError = S.chatStartFailed(failure.message ?: S.chatRetry)
+                }
             }
-        }.also { action -> action.invokeOnCompletion { pendingActions-- } }
+        }
+        actions.add(action)
+        action.invokeOnCompletion { actions.remove(action); pendingActions-- }
+        action.start()
+        return action
     }
+
+    private fun cancelPendingActions() { actions.toList().forEach { it.cancel() } }
 
     private fun notWritable(): Deferred<Result<Unit>> =
         CompletableDeferred(Result.failure(IllegalStateException(S.chatNotebookNotWritable)))
@@ -215,8 +249,13 @@ class ChatSession(
         check(streamingAnswerId == null) { S.chatStopBeforeDelete }
         val previousReady = ready
         val previousError = storageError
+        loadedBeforeDelete = ready
         unavailable = true
         ready = false
+        cancelPendingActions()
+        loadVersion++
+        loadingJob?.cancel()
+        loading = false
         storageError = S.notebookDeleting
         try {
             writes.awaitIdle()
@@ -230,11 +269,11 @@ class ChatSession(
 
     fun deletionFailed() {
         unavailable = false
-        ready = true
+        ready = loadedBeforeDelete
         storageError = S.chatDeleteFailed
     }
 
-    internal fun canRelease(): Boolean = ready && !unavailable && storageError == null &&
+    internal fun canRelease(): Boolean = !loading && !unavailable && (ready || storageError != null) &&
         streamingAnswerId == null && pendingActions == 0 && writes.isIdle && generation?.isCompleted != false
 
     internal fun releaseIfIdle(): Boolean {
@@ -248,6 +287,7 @@ class ChatSession(
     }
 
     fun stop() {
+        cancelPendingActions()
         handle?.cancel()
         generation?.cancel()
     }

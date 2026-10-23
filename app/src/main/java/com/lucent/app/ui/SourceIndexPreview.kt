@@ -149,7 +149,8 @@ internal fun SourceIndexPreview(
                 SelectionContainer(modifier = Modifier.fillMaxSize()) {
                     LazyColumn(
                         state = listState,
-                        modifier = Modifier.fillMaxSize().testTag("source_model_list"),
+                        modifier = Modifier.fillMaxSize().testTag("source_model_list")
+                            .sourceReadingPosition(listState, rowKeys),
                         contentPadding = PaddingValues(start = 18.dp, end = 18.dp, bottom = 24.dp),
                         verticalArrangement = Arrangement.spacedBy(20.dp)
                     ) {

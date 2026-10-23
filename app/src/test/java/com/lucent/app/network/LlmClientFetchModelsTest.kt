@@ -1,7 +1,6 @@
 package com.lucent.app.network
 
 import com.lucent.app.data.ModelCapabilityRegistry
-import com.lucent.app.data.ReasoningControl
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -113,65 +112,11 @@ class LlmClientFetchModelsTest {
     }
 
     @Test(timeout = 15000)
-    fun advertisedReasoningCapabilityIsRegisteredForThePicker() {
-        val ids = fetch(
-            ApiSpec.GOOGLE,
-            """{"models":[{"name":"models/future-budget-model","reasoning":{"supported":true,"control":"anthropic_budget","adaptive":false}}]}"""
-        ).getOrThrow()
-        assertEquals(listOf("future-budget-model"), ids)
-        val definition = ModelCapabilityRegistry.find("future-budget-model")
-        assertEquals(ReasoningControl.ANTHROPIC_BUDGET, definition?.reasoning?.control)
-        assertEquals(false, definition?.reasoning?.isAdaptive)
-    }
-
-    @Test(timeout = 15000)
-    fun partialKnownClaudeMetadataPreservesThinkingEnablementAndLevels() {
-        val model = "claude-sonnet-4-6"
-        val previous = ModelCapabilityRegistry.findOrRegister(model, "anthropic")
-        try {
-            fetch(ApiSpec.ANTHROPIC,
-                """{"data":[{"id":"claude-sonnet-4-6","reasoning":{"supported":true,"control":"anthropic_effort"}}]}""").getOrThrow()
-            val updated = ModelCapabilityRegistry.find(model)!!.reasoning
-            assertEquals("adaptive", updated.thinkingType)
-            assertEquals(previous.reasoning.levels, updated.levels)
-        } finally {
-            ModelCapabilityRegistry.register(previous)
-        }
-    }
-
-    @Test(timeout = 15000)
-    fun unknownControlStringsDoNotInventAnEndpointControl() {
-        fetch(
-            ApiSpec.OPENAI,
-            """{"data":[{"id":"ctrl-unknown-openai","reasoning":{"supported":true,"control":"mystery"}}]}"""
-        ).getOrThrow()
-        assertEquals(
-            ReasoningControl.NONE,
-            ModelCapabilityRegistry.find("ctrl-unknown-openai")?.reasoning?.control
-        )
-
-        fetch(
-            ApiSpec.GOOGLE,
-            """{"models":[{"name":"ctrl-unknown-google","reasoning":{"control":"mystery"}}]}"""
-        ).getOrThrow()
-        assertEquals(
-            ReasoningControl.NONE,
-            ModelCapabilityRegistry.find("ctrl-unknown-google")?.reasoning?.control
-        )
-    }
-
-    @Test(timeout = 15000)
-    fun modelsWithoutReasoningMetadataStillResolveByNameAndProtocol() {
-        fetch(ApiSpec.OPENAI, """{"data":[{"id":"deepseek-r1"},{"id":"plain-model"}]}""").getOrThrow()
-        assertEquals(ReasoningControl.NONE, ModelCapabilityRegistry.find("deepseek-r1")?.reasoning?.control)
-        assertEquals(
-            ReasoningControl.NONE,
-            ModelCapabilityRegistry.find("plain-model")?.reasoning?.control
-        )
-        assertEquals(
-            ReasoningControl.NONE,
-            ModelCapabilityRegistry.findOrRegister("unknown-on-plain-endpoint", "custom").reasoning.control
-        )
+    fun untrustedMetadataDoesNotChangeGlobalBuiltins() {
+        val previous = ModelCapabilityRegistry.findOrRegister("o3", "openai")
+        fetch(ApiSpec.OPENAI, """{"data":[{"id":"o3","reasoning":{"control":"none","supported":false}}]}""").getOrThrow()
+        assertEquals(previous, ModelCapabilityRegistry.findOrRegister("o3", "openai"))
+        assertNull(ModelCapabilityRegistry.find("future-budget-model"))
     }
 
     @Test(timeout = 15000)

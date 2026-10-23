@@ -339,7 +339,7 @@ object ReasoningResolver {
             return ResolvedReasoningConfig.AUTO
         }
 
-        val modelDef = ModelCapabilityRegistry.findOrRegister(model, provider)
+        val modelDef = ModelCapabilityRegistry.findOrRegister(model, provider, baseUrl)
         if (!modelDef.reasoning.supported) return fallbackMapper.map(preset, modelDef)
         val mapper: ReasoningMapper = when (modelDef.reasoning.control) {
             ReasoningControl.OPENAI_EFFORT -> openAiMapper

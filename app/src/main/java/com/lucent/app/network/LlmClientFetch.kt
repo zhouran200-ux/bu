@@ -1,5 +1,7 @@
 package com.lucent.app.network
 
+import com.lucent.app.data.ModelCapabilityRegistry
+import com.lucent.app.data.ModelDefinition
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
@@ -9,6 +11,8 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 internal object LlmClientFetch {
+    private const val MAX_PAGES = 100
+
     suspend fun fetchModels(
         baseUrl: String,
         spec: ApiSpec,
@@ -16,80 +20,49 @@ internal object LlmClientFetch {
         rawEndpoint: Boolean = false
     ): Result<List<String>> = withContext(Dispatchers.IO) {
         try {
-            val trimmed = baseUrl.trim().trimEnd('/')
-            val url = if (rawEndpoint) trimmed else when (spec) {
-                ApiSpec.GOOGLE -> {
-                    val base = if (trimmed.endsWith("/models")) trimmed else "$trimmed/models"
-                    if (apiKey.isNotBlank() && !base.contains("key=")) {
-                        if (base.contains("?")) "$base&key=${queryValue(apiKey)}" else "$base?key=${queryValue(apiKey)}"
-                    } else base
-                }
-                ApiSpec.ANTHROPIC, ApiSpec.OPENAI -> {
-                    if (trimmed.endsWith("/models")) trimmed else "$trimmed/models"
-                }
-            }
-
-            val requestBuilder = Request.Builder().url(url).get()
-            applyHeaders(requestBuilder, spec, apiKey)
-
-            val response = BufferedTransport.executeBuffered(LlmHttpClients.client, requestBuilder.build())
-            val bodyStr = response.body
-            if (!response.isSuccessful) return@withContext Result.failure(Exception("HTTP ${response.code}: ${DiagnosticRedaction.text(bodyStr, apiKey)}"))
-            val json = JSONObject(bodyStr)
-            val dataArray = json.optJSONArray("data") ?: json.optJSONArray("models") ?: JSONArray()
-            val ids = mutableListOf<String>()
-            for (i in 0 until dataArray.length()) {
-                val item = dataArray.optJSONObject(i)
-                var id = item?.optString("id", item.optString("name", "")) ?: dataArray.optString(i)
-                if (spec == ApiSpec.GOOGLE) id = id.removePrefix("models/")
-                if (id.isNotBlank()) {
-                    val trimmedId = id.trim()
-                    ids.add(trimmedId)
-                    val reasoningObj = item?.optJSONObject("reasoning")
+            val initialUrl = EndpointUrls.models(baseUrl, spec, apiKey, rawEndpoint)
+            var url = initialUrl
+            val ids = linkedSetOf<String>()
+            val definitions = linkedMapOf<String, ModelDefinition>()
+            val seenTokens = mutableSetOf<String>()
+            var pages = 0
+            while (true) {
+                coroutineContext.ensureActive()
+                check(pages++ < MAX_PAGES) { "Model pagination exceeded $MAX_PAGES pages" }
+                val request = Request.Builder().url(url).get()
+                applyHeaders(request, spec, apiKey)
+                val response = BufferedTransport.executeBuffered(LlmHttpClients.client, request.build())
+                if (!response.isSuccessful) return@withContext Result.failure(Exception(
+                    "HTTP "+response.code+": "+DiagnosticRedaction.text(response.body, apiKey)))
+                val json = JSONObject(response.body)
+                val array = json.optJSONArray("data") ?: json.optJSONArray("models") ?: JSONArray()
+                for (i in 0 until array.length()) {
+                    coroutineContext.ensureActive()
+                    val item = array.optJSONObject(i)
+                    var id = ((item?.opt("id") as? String) ?: (item?.opt("name") as? String)
+                        ?: (array.opt(i) as? String)).orEmpty().trim()
+                    if (spec == ApiSpec.GOOGLE) id = id.removePrefix("models/")
+                    if (id.isBlank()) continue
+                    ids.add(id)
+                    val metadata = item?.optJSONObject("reasoning")
                         ?: item?.optJSONObject("capabilities")?.optJSONObject("reasoning")
-                    if (reasoningObj != null) {
-                        val known = com.lucent.app.data.ModelCapabilityRegistry.findOrRegister(trimmedId, spec.name).reasoning
-                        val supported = reasoningObj.optBoolean("supported", true)
-                        val controlStr = reasoningObj.optString("control")
-                        val control = when (controlStr.lowercase()) {
-                            "openai_effort", "effort" -> com.lucent.app.data.ReasoningControl.OPENAI_EFFORT
-                            "anthropic_effort" -> com.lucent.app.data.ReasoningControl.ANTHROPIC_EFFORT
-                            "anthropic_budget" -> com.lucent.app.data.ReasoningControl.ANTHROPIC_BUDGET
-                            "gemini_thinking_level", "thinking_level" -> com.lucent.app.data.ReasoningControl.GEMINI_THINKING_LEVEL
-                            "gemini_thinking_budget", "thinking_budget" -> com.lucent.app.data.ReasoningControl.GEMINI_THINKING_BUDGET
-                            "deepseek_effort" -> com.lucent.app.data.ReasoningControl.DEEPSEEK_EFFORT
-                            "qwen_effort" -> com.lucent.app.data.ReasoningControl.QWEN_EFFORT
-                            "qwen_budget" -> com.lucent.app.data.ReasoningControl.QWEN_BUDGET
-                            "zhipu_effort", "glm_effort" -> com.lucent.app.data.ReasoningControl.ZHIPU_EFFORT
-                            "none" -> com.lucent.app.data.ReasoningControl.NONE
-                            else -> com.lucent.app.data.ReasoningControl.NONE
-                        }
-                        val levelArray = reasoningObj.optJSONArray("levels")
-                        val sameControl = known.takeIf { it.control == control }
-                        val levels = if (levelArray == null) sameControl?.levels.orEmpty() else (0 until levelArray.length())
-                            .map { levelArray.optString(it) }
-                            .filter { it.isNotBlank() }
-                        com.lucent.app.data.ModelCapabilityRegistry.register(
-                            com.lucent.app.data.ModelDefinition(
-                                id = trimmedId,
-                                reasoning = com.lucent.app.data.ReasoningCapability(
-                                    supported = supported && control != com.lucent.app.data.ReasoningControl.NONE,
-                                    control = if (supported) control else com.lucent.app.data.ReasoningControl.NONE,
-                                    isAdaptive = reasoningObj.optBoolean("adaptive", sameControl?.isAdaptive ?: true),
-                                    levels = levels,
-                                    thinkingType = reasoningObj.optString("thinking_type").takeIf { it == "enabled" || it == "adaptive" }
-                                        ?: sameControl?.thinkingType,
-                                    thinkingBudgetMax = reasoningObj.optInt("thinking_budget_max", 0).takeIf { it > 0 }
-                                        ?: sameControl?.thinkingBudgetMax
-                                )
-                            )
-                        )
-                    } else {
-                        com.lucent.app.data.ModelCapabilityRegistry.findOrRegister(trimmedId, spec.name)
-                    }
+                    if (metadata != null) discoveredReasoning(id, spec, metadata)?.let { definitions[id] = it }
                 }
+                val token = when (spec) {
+                    ApiSpec.GOOGLE -> (json.opt("nextPageToken") as? String)?.takeIf { it.isNotBlank() }
+                    ApiSpec.ANTHROPIC -> if (json.optBoolean("has_more", false)) {
+                        (json.opt("last_id") as? String)?.takeIf { it.isNotBlank() }
+                            ?: error("Model pagination missing last_id")
+                    } else null
+                    ApiSpec.OPENAI -> null
+                } ?: break
+                check(seenTokens.add(token)) { "Model pagination repeated continuation token" }
+                url = initialUrl.newBuilder().setQueryParameter(
+                    if (spec == ApiSpec.GOOGLE) "pageToken" else "after_id", token).build()
             }
-            Result.success(ids.distinct())
+            coroutineContext.ensureActive()
+            definitions.values.forEach { ModelCapabilityRegistry.registerDiscovered(it, spec.name, baseUrl) }
+            Result.success(ids.toList())
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (e: Exception) {

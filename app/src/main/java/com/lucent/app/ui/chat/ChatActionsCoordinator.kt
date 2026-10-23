@@ -116,8 +116,11 @@ internal class ChatActionsCoordinator(
                 androidx.core.content.ContextCompat.checkSelfPermission(context,
                     android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED
             ) {
-                prefs.edit().putBoolean("generation_notification_asked", true).apply()
-                notificationPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                try {
+                    notificationPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                    prefs.edit().putBoolean("generation_notification_asked", true).apply()
+                } catch (_: IllegalStateException) {
+                }
             }
             try {
                 startChatStream(
@@ -140,20 +143,28 @@ internal class ChatActionsCoordinator(
         }
     }
 
-    fun startAnswer(promptText: String) {
+    private fun reserveIds(count: Int): List<Long>? = try {
+        com.lucent.app.chat.ChatSessions.reserveMessageIds(context, count)
+    } catch (e: Exception) {
+        LucentToast.show(context, S.chatSaveFailed(e.message ?: ""))
+        null
+    }
+
+    fun startAnswer(promptText: String): Boolean {
+        val ids = reserveIds(2) ?: return false
+        settlePendingDelete()
         val userMsg = UiChatMessage(
-            id = System.currentTimeMillis(),
+            id = ids[0],
             role = "user",
             content = promptText
         )
         messages.add(userMsg)
         val saved = session.saveMessage(userMsg)
-        val answerId = userMsg.id + 1
-        messages.add(UiChatMessage(id = answerId, role = "assistant", content = "", timestamp = answerId))
+        val answerId = ids[1]
+        messages.add(UiChatMessage(id = answerId, role = "assistant", content = ""))
         followStream = true
-        session.afterWrite(saved, onFailure = {
-            messages.removeAll { it.id == answerId }
-        }) { askModel(answerId) }
+        session.afterWrite(saved) { askModel(answerId) }
+        return true
     }
 
     fun regenerateAnswer(answerId: Long) {
@@ -189,14 +200,14 @@ internal class ChatActionsCoordinator(
         if (!session.ready || session.streamingAnswerId != null || session.pendingWriteCount > 0 || session.hasPendingAction) return
         val idx = messages.indexOfFirst { it.id == questionId }
         if (idx < 0) return
+        val answerId = reserveIds(1)?.single() ?: return
         settlePendingDelete()
         val followingIds = messages.drop(idx + 1).map { it.id }
         while (messages.size > idx + 1) messages.removeAt(messages.size - 1)
         messages[idx] = messages[idx].copy(content = newText)
         val saved = session.replaceQuestionAndDropFollowing(questionId, newText, followingIds)
         session.afterWrite(saved) {
-            val answerId = System.currentTimeMillis() + 1
-            messages.add(UiChatMessage(id = answerId, role = "assistant", content = "", timestamp = answerId))
+            messages.add(UiChatMessage(id = answerId, role = "assistant", content = ""))
             askModel(answerId)
         }
     }
@@ -249,10 +260,10 @@ internal class ChatActionsCoordinator(
         if (text.isEmpty()) return@send
         if (!session.ready || session.pendingWriteCount > 0 || session.hasPendingAction) return@send
         if (streamingAnswerId != null) return@send
+        if (!startAnswer(text)) return@send
         inputText = ""
         Haptics.tick(context)
         focusManager.clearFocus()
         keyboardController?.hide()
-        startAnswer(text)
     }
 }

@@ -180,6 +180,180 @@ class ChatSessionTest {
         assertEquals(listOf(message), session.messages.toList())
     }
 
+    @Test fun failedSendAndEditedResendContinueExactlyOnceAfterSuccessfulRetry() {
+        for (edit in listOf(false, true)) {
+            val d = QueueDispatcher()
+            var failWrite = true
+            var generated = 0
+            val session = ChatSession(d, { emptyList() }, { if (failWrite) error("disk") },
+                replaceQuestion = { _, _, _ -> if (failWrite) error("disk") })
+            d.drain()
+            val receipt = if (edit) session.replaceQuestionAndDropFollowing(1, "edited", listOf(2))
+                else session.saveMessage(UiChatMessage(1, "user", "question"))
+            session.afterWrite(receipt) { generated++ }
+            d.drain()
+            assertEquals(0, generated)
+            assertTrue(session.hasPendingAction)
+            session.retryPendingWrites()
+            d.drain()
+            assertEquals(0, generated)
+            failWrite = false
+            session.retryPendingWrites()
+            session.retryPendingWrites()
+            d.drain()
+            assertEquals(1, generated)
+            assertFalse(session.hasPendingAction)
+            session.retryPendingWrites()
+            d.drain()
+            assertEquals(1, generated)
+        }
+    }
+
+    @Test fun generationWaitsForDeleteQueuedBehindUserSave() {
+        val d = QueueDispatcher()
+        val saveGate = CompletableDeferred<Unit>()
+        val deleteGate = CompletableDeferred<Unit>()
+        val events = mutableListOf<String>()
+        val session = ChatSession(d, { emptyList() }, { saveGate.await(); events += "save" },
+            deleteMessagesByIds = { deleteGate.await(); events += "delete" })
+        d.drain()
+        session.afterWrite(session.saveMessage(UiChatMessage(1, "user", "question"))) {
+            assertEquals(0, session.pendingWriteCount)
+            events += "generate"
+        }
+        session.deleteMessages(listOf(2))
+        d.drain()
+        saveGate.complete(Unit)
+        d.drain()
+        assertEquals(listOf("save"), events)
+        deleteGate.complete(Unit)
+        d.drain()
+        assertEquals(listOf("save", "delete", "generate"), events)
+    }
+
+    @Test fun stoppedOrDeletedFailedIntentNeverResurrectsOnRetry() {
+        for (delete in listOf(false, true)) {
+            val d = QueueDispatcher()
+            var failWrite = true
+            var generated = false
+            val session = ChatSession(d, { emptyList() }, { if (failWrite) error("disk") })
+            d.drain()
+            session.afterWrite(session.saveMessage(UiChatMessage(1, "user", "question"))) { generated = true }
+            d.drain()
+            if (delete) {
+                CoroutineScope(Job() + d).launch { session.prepareDelete() }
+                d.drain()
+                session.deletionFailed()
+            } else session.stop()
+            failWrite = false
+            session.retryPendingWrites()
+            d.drain()
+            assertFalse(generated)
+            assertFalse(session.hasPendingAction)
+        }
+    }
+
+    @Test fun failedLoadRetriesOnceAndDeduplicatesConcurrentRequests() {
+        val d = QueueDispatcher()
+        val gate = CompletableDeferred<Unit>()
+        var attempts = 0
+        val session = ChatSession(d, {
+            attempts++
+            if (attempts == 1) error("load failed")
+            gate.await()
+            listOf(UiChatMessage(1, "user", "loaded"))
+        }, {})
+        d.drain()
+        assertFalse(session.ready)
+        assertTrue(session.canRelease())
+        val retry = session.retryLoad()
+        assertSame(retry, session.retryLoad())
+        d.drain()
+        assertEquals(2, attempts)
+        assertFalse(session.canRelease())
+        gate.complete(Unit)
+        d.drain()
+        assertTrue(session.ready)
+        assertNull(session.storageError)
+        assertEquals(1, session.messages.size)
+        session.retryLoad()
+        d.drain()
+        assertEquals(2, attempts)
+    }
+
+    @Test fun rejectedWriteContinuationFinishesWithoutGenerationOrScopeFailure() {
+        val d = QueueDispatcher()
+        val session = ChatSession(d, { emptyList() }, {})
+        d.drain()
+        CoroutineScope(Job() + d).launch { session.prepareDelete() }
+        d.drain()
+        var generated = false
+        val action = session.afterWrite(session.saveMessage(UiChatMessage(1, "user", "rejected"))) { generated = true }
+        d.drain()
+        assertTrue(action.isCompleted)
+        assertFalse(action.isCancelled)
+        assertFalse(generated)
+        assertFalse(session.hasPendingAction)
+    }
+
+    @Test fun staleLoadFinallyCannotClearNewRetryLoadingState() {
+        val d = QueueDispatcher()
+        val oldGate = CompletableDeferred<Unit>()
+        val newGate = CompletableDeferred<Unit>()
+        var attempts = 0
+        val session = ChatSession(d, {
+            attempts++
+            if (attempts == 1) kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) {
+                oldGate.await()
+            } else newGate.await()
+            listOf(UiChatMessage(attempts.toLong(), "user", "loaded"))
+        }, {})
+        d.drain()
+        CoroutineScope(Job() + d).launch { session.prepareDelete() }
+        d.drain()
+        session.deletionFailed()
+        val retry = session.retryLoad()
+        d.drain()
+        oldGate.complete(Unit)
+        d.drain()
+        assertTrue(session.loading)
+        assertFalse(session.ready)
+        assertSame(retry, session.retryLoad())
+        newGate.complete(Unit)
+        d.drain()
+        assertTrue(session.ready)
+        assertFalse(session.loading)
+        assertEquals(1, session.messages.size)
+    }
+
+    @Test fun failedLoadCanBeEvictedWithoutWaitingForSuccessfulRetry() {
+        val d = QueueDispatcher()
+        val session = ChatSession(d, { error("load failed") }, {})
+        d.drain()
+        assertTrue(session.releaseIfIdle())
+        assertNull(session.retryLoad()?.takeUnless { it.isCompleted })
+        assertFalse(session.ready)
+    }
+
+    @Test fun deletingDuringRetryLoadCannotPublishMessagesOrRestartLoading() {
+        val d = QueueDispatcher()
+        val gate = CompletableDeferred<Unit>()
+        val session = ChatSession(d, { gate.await(); listOf(UiChatMessage(1, "user", "late")) }, {})
+        d.drain()
+        CoroutineScope(Job() + d).launch { session.prepareDelete() }
+        d.drain()
+        gate.complete(Unit)
+        session.retryLoad()
+        d.drain()
+        assertFalse(session.ready)
+        assertTrue(session.messages.isEmpty())
+        session.deletionFailed()
+        assertFalse(session.ready)
+        session.retryLoad()
+        d.drain()
+        assertTrue(session.ready)
+    }
+
     private class QueueDispatcher : CoroutineDispatcher() {
         private val work = ArrayDeque<Runnable>()
         override fun dispatch(context: CoroutineContext, block: Runnable) { work.addLast(block) }
@@ -437,6 +611,19 @@ class ChatSessionTest {
         d.drain()
         assertEquals("v2-bound", session.messages.single().sourceRevision)
         assertEquals(42L, saved.last().sourceNoteId)
+    }
+
+    @Test fun continuationFailureIsReportedWithoutCrashingSessionScope() {
+        val d = QueueDispatcher()
+        val session = ChatSession(d, { emptyList() }, {})
+        d.drain()
+        session.afterWrite(session.saveMessage(UiChatMessage(1, "user", "question"))) {
+            error("launcher no longer registered")
+        }
+        d.drain()
+        assertFalse(session.hasPendingAction)
+        assertTrue(session.storageError!!.contains("launcher no longer registered"))
+        assertTrue(session.ready)
     }
 
     @Test fun serviceStartFailureLeavesSessionIdle() {

@@ -47,15 +47,34 @@ object ModelCapabilityRegistry {
     @Synchronized
     fun find(modelId: String): ModelDefinition? = registered(normalize(modelId))
 
-    @Suppress("UNUSED_PARAMETER")
+    private data class DiscoveryKey(val endpoint: String, val protocol: String, val id: String)
+    private val discovered = mutableMapOf<DiscoveryKey, ModelDefinition>()
+
+    private fun discoveryKey(modelId: String, provider: String, baseUrl: String): DiscoveryKey? {
+        if (baseUrl.isBlank()) return null
+        val protocol = when {
+            provider.contains("anthropic", true) || provider.contains("claude", true) -> "ANTHROPIC"
+            provider.contains("google", true) || provider.contains("gemini", true) -> "GOOGLE"
+            else -> "OPENAI"
+        }
+        return DiscoveryKey(baseUrl.trim(), protocol, modelId.trim())
+    }
+
     @Synchronized
-    fun findOrRegister(modelId: String, provider: String): ModelDefinition {
+    fun registerDiscovered(definition: ModelDefinition, provider: String, baseUrl: String) {
+        val key = discoveryKey(definition.id, provider, baseUrl) ?: return
+        discovered[key] = definition
+    }
+
+    @Synchronized
+    fun findOrRegister(modelId: String, provider: String, baseUrl: String = ""): ModelDefinition {
+        discoveryKey(modelId, provider, baseUrl)?.let { discovered[it] }?.let { return it }
         val clean = normalize(modelId)
         registered(clean)?.let { return it }
         val capability = snapshotCapability(clean)
             ?: relayCandidates(clean).firstNotNullOfOrNull { snapshotCapability(it) }
             ?: ReasoningCapability.NONE
-        return ModelDefinition(clean, capability).also(::register)
+        return ModelDefinition(clean, capability)
     }
 
     private fun registered(clean: String): ModelDefinition? {

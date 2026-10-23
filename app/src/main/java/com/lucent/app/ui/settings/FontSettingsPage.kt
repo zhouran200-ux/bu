@@ -132,6 +132,7 @@ internal fun FontSettingsPage(
     FontTypographySection(
         fontKey = fontKey,
         fontScale = activeFontScale,
+        appliedFontScale = savedFontScale,
         lineSpacing = activeLineSpacing,
         letterSpacing = activeLetterSpacing,
         onFontScaleChange = { activeFontScale = it },

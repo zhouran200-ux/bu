@@ -23,6 +23,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -45,6 +48,7 @@ import kotlin.math.roundToInt
 internal fun FontTypographySection(
     fontKey: String,
     fontScale: Float,
+    appliedFontScale: Float,
     lineSpacing: Float,
     letterSpacing: Float,
     onFontScaleChange: (Float) -> Unit,
@@ -118,22 +122,26 @@ internal fun FontTypographySection(
         Spacer(modifier = Modifier.height(10.dp))
 
         val previewFamily = rememberLucentFont(fontKey)
-        val previewFontSize = (14.sp.value * fontScale).sp
+        val previewFontSize = 14.sp
+        val density = LocalDensity.current
+        val previewDensity = Density(density.density, previewFontScale(density.fontScale, appliedFontScale, fontScale))
         val previewLineHeight = (previewFontSize.value * 1.35f * lineSpacing).sp
         val previewLetterSpacing = letterSpacing.sp
 
-        Text(
-            text = S.typographyPreviewSample,
-            style = MaterialTheme.typography.bodyMedium.copy(
-                fontFamily = previewFamily,
-                fontSize = previewFontSize,
-                lineHeight = previewLineHeight,
-                letterSpacing = previewLetterSpacing
-            ),
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            color = onGradient
-        )
+        CompositionLocalProvider(LocalDensity provides previewDensity) {
+            Text(
+                text = S.typographyPreviewSample,
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    fontFamily = previewFamily,
+                    fontSize = previewFontSize,
+                    lineHeight = previewLineHeight,
+                    letterSpacing = previewLetterSpacing
+                ),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                color = onGradient
+            )
+        }
     }
     Spacer(modifier = Modifier.height(12.dp))
 

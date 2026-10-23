@@ -51,6 +51,52 @@ class DocTextExtractorTest {
         assertTrue("DOCX 不能被当成 DOC 解析", failure != null)
     }
 
+    @Test
+    fun mainStorySkipsMultipleTrailingPiecesAndClipsCrossingPiece() {
+        val document = "ABCDE".toByteArray(Charsets.UTF_16LE)
+        val plc = pieceTable(intArrayOf(0, 2, 7, 10, 14), intArrayOf(0, 4, Int.MAX_VALUE, Int.MAX_VALUE))
+        assertEquals("ABCDE", DocTextExtractor.extractMainStory(document, plc, 5))
+    }
+
+    @Test
+    fun mainStorySkipsPiecesStartingExactlyAtItsEnd() {
+        val document = "ABCDE".toByteArray(Charsets.US_ASCII)
+        val plc = pieceTable(intArrayOf(0, 5, 8, 12), intArrayOf(0x40000000, Int.MAX_VALUE, Int.MAX_VALUE))
+        assertEquals("ABCDE", DocTextExtractor.extractMainStory(document, plc, 5))
+    }
+
+    @Test
+    fun mainStoryRejectsRawCpDisorderEvenInTrailingStories() {
+        for (cps in listOf(intArrayOf(0, 5, 10, 9), intArrayOf(-1, 5), intArrayOf(0, 7, 6))) {
+            val plc = pieceTable(cps, IntArray(cps.size - 1))
+            val failure = runCatching {
+                DocTextExtractor.extractMainStory("ABCDE".toByteArray(Charsets.UTF_16LE), plc, 5)
+            }.exceptionOrNull()
+            assertTrue(failure is IllegalArgumentException)
+            assertEquals("DOC正文字符范围越界", failure?.message)
+        }
+    }
+
+    @Test
+    fun truncatedCompressedMainStoryIsRejectedInsteadOfSilentlyShortened() {
+        val plc = pieceTable(intArrayOf(0, 6), intArrayOf(0x40000000))
+        val failure = runCatching {
+            DocTextExtractor.extractMainStory("ABCDE".toByteArray(Charsets.US_ASCII), plc, 6)
+        }.exceptionOrNull()
+        assertTrue(failure is IllegalArgumentException)
+        assertEquals("DOC正文偏移越界", failure?.message)
+    }
+
+    private fun pieceTable(cps: IntArray, offsets: IntArray): ByteArray {
+        val plc = ByteArray(4 + 12 * offsets.size)
+        fun putInt(at: Int, value: Int) {
+            repeat(4) { byte -> plc[at + byte] = (value ushr (8 * byte)).toByte() }
+        }
+        cps.forEachIndexed { index, cp -> putInt(4 * index, cp) }
+        offsets.forEachIndexed { index, fc -> putInt(4 * cps.size + 8 * index + 2, fc) }
+        return plc
+    }
+
     companion object {
         private const val SAMPLE_TEXT = "第一章 拥抱\n她终于明白，有些事情只能自己走完。"
     }

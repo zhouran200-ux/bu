@@ -77,7 +77,14 @@ fun NotebookChatTab(
     }
     if (!session.ready) {
         Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text(session.storageError ?: S.chatLoadingConversation, color = LocalOnGradient.current)
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(session.storageError ?: S.chatLoadingConversation, color = LocalOnGradient.current)
+                if (session.storageError != null) {
+                    TextButton(onClick = { session.retryLoad() }, enabled = !session.loading) {
+                        Text(S.chatRetry)
+                    }
+                }
+            }
         }
         return
     }

@@ -12,7 +12,11 @@ internal class ChatWriteQueue(
     private val scope: CoroutineScope,
     private val onChanged: (Int, Exception?) -> Unit
 ) {
-    private class Entry(val messageId: Long?, var write: suspend () -> Unit)
+    private class Entry(val messageId: Long?, var write: suspend () -> Unit) {
+        val committed = CompletableDeferred<Unit>()
+    }
+    private val commitments = java.util.WeakHashMap<Deferred<Result<Unit>>, Deferred<Unit>>()
+    private var drained = CompletableDeferred(Unit)
 
     private val pending = ArrayDeque<Entry>()
     private var active: Entry? = null
@@ -28,16 +32,28 @@ internal class ChatWriteQueue(
         } else {
             Entry(messageId, block).also { pending.addLast(it) }
         }
+        if (drained.isCompleted) drained = CompletableDeferred()
         changed()
-        return schedule { drainThrough(entry) }
+        return schedule { drainThrough(entry) }.also { commitments[it] = entry.committed }
     }
 
     fun retry(): Deferred<Result<Unit>> {
         val last = pending.lastOrNull() ?: return CompletableDeferred(Result.success(Unit))
-        return schedule { drainThrough(last) }
+        return schedule { drainThrough(last) }.also { commitments[it] = last.committed }
     }
 
     suspend fun awaitIdle() { tail?.join() }
+
+    suspend fun awaitCommitted(receipt: Deferred<Result<Unit>>): Boolean {
+        val commitment = commitments[receipt]
+        if (commitment == null) return receipt.await().isSuccess
+        commitment.await()
+        return true
+    }
+
+    suspend fun awaitDrained() {
+        while (pending.isNotEmpty()) drained.await()
+    }
 
     private fun schedule(block: suspend () -> Result<Unit>): Deferred<Result<Unit>> {
         val previous = tail
@@ -63,8 +79,10 @@ internal class ChatWriteQueue(
                 entry.write()
             } catch (cancelled: CancellationException) {
                 pending.removeFirst()
+                entry.committed.cancel(cancelled)
                 if (pending.isEmpty()) failure = null
                 changed()
+                if (pending.isEmpty()) drained.complete(Unit)
                 throw cancelled
             } catch (error: Exception) {
                 failure = error
@@ -76,6 +94,8 @@ internal class ChatWriteQueue(
             pending.removeFirst()
             if (pending.isEmpty()) failure = null
             changed()
+            entry.committed.complete(Unit)
+            if (pending.isEmpty()) drained.complete(Unit)
             if (entry === target) break
         }
         return Result.success(Unit)

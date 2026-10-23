@@ -6,6 +6,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.delay
@@ -63,20 +64,34 @@ internal fun LazyListState.readingPosition(): ReadingPosition? {
 }
 
 @Composable
-internal fun rememberReadingListState(key: String, itemKeys: List<String>): LazyListState {
+internal fun rememberReadingListState(
+    key: String,
+    itemKeys: List<String>,
+    persist: Boolean = true
+): LazyListState {
     val context = LocalContext.current.applicationContext
     val state = remember(key) {
         val position = ReadingPositionMemory.read(context, key)?.resolve(itemKeys)
         LazyListState(position?.index ?: 0, position?.offset ?: 0)
     }
-    LaunchedEffect(state, key) {
-        snapshotFlow { state.readingPosition() }.conflate().collect {
-            delay(250)
-            state.readingPosition()?.let { position -> ReadingPositionMemory.write(context, key, position) }
-        }
-    }
-    DisposableEffect(state, key) {
-        onDispose { state.readingPosition()?.let { ReadingPositionMemory.write(context, key, it) } }
-    }
+    if (persist) RememberReadingPosition(key) { state.readingPosition() }
     return state
 }
+
+@Composable
+internal fun RememberReadingPosition(key: String, position: () -> ReadingPosition?) {
+    val context = LocalContext.current.applicationContext
+    val currentPosition = rememberUpdatedState(position)
+    LaunchedEffect(key) {
+        snapshotFlow { currentPosition.value() }.conflate().collect {
+            delay(250)
+            currentPosition.value()?.let { ReadingPositionMemory.write(context, key, it) }
+        }
+    }
+    DisposableEffect(key) {
+        onDispose { currentPosition.value()?.let { ReadingPositionMemory.write(context, key, it) } }
+    }
+}
+
+internal fun ReadingPosition.forSourceLayout(itemKeys: List<String>): ReadingPosition =
+    resolve(itemKeys).copy(offset = 0)

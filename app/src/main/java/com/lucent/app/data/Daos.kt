@@ -35,6 +35,9 @@ interface NoteDao {
 
 @Dao
 interface ChatDao {
+    @Query("SELECT MAX(id) FROM chat_messages")
+    suspend fun maxId(): Long?
+
     @Query("SELECT * FROM chat_messages WHERE conversationId = :conversationId ORDER BY timestamp ASC")
     suspend fun getForConversationOnce(conversationId: Long): List<ChatMessage>
 

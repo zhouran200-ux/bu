@@ -19,6 +19,16 @@ import kotlinx.coroutines.withContext
 
 object ChatSessions {
     private val sessions = java.util.concurrent.ConcurrentHashMap<Long, Pair<ChatSession, Long>>()
+    private var messageIds: ChatMessageIds? = null
+
+    @Synchronized private fun ids(context: Context): ChatMessageIds = messageIds ?: run {
+        val prefs = context.getSharedPreferences("lucent_chat_ids", Context.MODE_PRIVATE)
+        ChatMessageIds({ prefs.getLong("high_water", 0L) },
+            { prefs.edit().putLong("high_water", it).commit() }).also { messageIds = it }
+    }
+
+    fun reserveMessageIds(context: Context, count: Int): List<Long> = ids(context).reserve(count)
+
     private val accessClock = java.util.concurrent.atomic.AtomicLong()
     private val pageOwners = java.util.concurrent.ConcurrentHashMap<Long, Int>()
     private val deletedNotebooks = java.util.Collections.newSetFromMap(java.util.concurrent.ConcurrentHashMap<Long, Boolean>())
@@ -68,12 +78,14 @@ object ChatSessions {
     }
 
     private fun createSession(app: Context, notebookId: Long): ChatSession {
-        val dao = AppDatabase.getInstance(app).chatDao()
+        val database = AppDatabase.getInstance(app)
+        val dao = database.chatDao()
         val conversationId = ChatScope.forNotebook(notebookId)
         return ChatSession(
             dispatcher = Dispatchers.Main.immediate,
             load = {
                 check(notebookId !in deletedNotebooks) { S.notebookDeleting }
+                ids(app).seed(dao.maxId() ?: 0L)
                 val messages = dao.getForConversationOnce(conversationId)
                 withContext(Dispatchers.Default) {
                     messages.map { message ->
@@ -87,12 +99,25 @@ object ChatSessions {
                 }
             },
             save = { message ->
-                dao.upsert(mergeChatMessage(dao.getById(message.id), message, conversationId))
+                database.withTransaction {
+                    dao.upsert(mergeChatMessage(dao.getById(message.id), message, conversationId))
+                }
             },
-            updateContent = { id, content -> dao.updateContent(id, content) },
-            deleteMessagesByIds = { ids -> dao.deleteByIds(ids) },
+            updateContent = { id, content ->
+                database.withTransaction {
+                    requireChatOwnership(dao.getById(id), conversationId)
+                    dao.updateContent(id, content)
+                }
+            },
+            deleteMessagesByIds = { ids ->
+                database.withTransaction {
+                    ids.forEach { requireChatOwnership(dao.getById(it), conversationId) }
+                    dao.deleteByIds(ids)
+                }
+            },
             replaceQuestion = { questionId, text, following ->
-                AppDatabase.getInstance(app).withTransaction {
+                database.withTransaction {
+                    (following + questionId).forEach { requireChatOwnership(dao.getById(it), conversationId) }
                     dao.updateContent(questionId, text)
                     if (following.isNotEmpty()) dao.deleteByIds(following)
                 }
@@ -142,11 +167,16 @@ object ChatSessions {
     }
 }
 
+internal fun requireChatOwnership(existing: ChatMessage?, conversationId: Long) {
+    check(existing == null || existing.conversationId == conversationId) { "Chat message belongs to another conversation" }
+}
+
 internal fun mergeChatMessage(
     existing: ChatMessage?,
     message: UiChatMessage,
     conversationId: Long
 ): ChatMessage {
+    requireChatOwnership(existing, conversationId)
     val base = existing ?: ChatMessage(
         id = message.id,
         role = message.role,

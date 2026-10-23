@@ -31,16 +31,23 @@ object DocTextExtractor {
         val plc = pieceTable(table, clxStart, clxStart + clxLength)
             ?: error("无法解析这份文档的正文片段表")
 
+        return normalizeWordText(extractMainStory(document, plc, textLength))
+    }
+
+    internal fun extractMainStory(document: ByteArray, plc: ByteArray, textLength: Int): String {
+        require(textLength >= 0 && plc.size >= 16 && (plc.size - 4) % 12 == 0) { "DOC片段表格式无效" }
         val out = StringBuilder()
         val pieces = (plc.size - 4) / 12
         for (index in 0 until pieces) {
             val startCp = readLe32(plc, 4 * index)
-            val endCp = readLe32(plc, 4 * (index + 1)).coerceAtMost(textLength)
+            val rawEndCp = readLe32(plc, 4 * (index + 1))
+            require(startCp >= 0 && rawEndCp >= startCp) { "DOC正文字符范围越界" }
+            if (startCp >= textLength || rawEndCp == startCp) continue
+            val endCp = minOf(rawEndCp, textLength)
             val fc = readLe32(plc, 4 * (pieces + 1) + 8 * index + 2)
             appendPiece(out, document, startCp, endCp, fc)
         }
-
-        return normalizeWordText(out.toString())
+        return out.toString()
     }
 
     private fun pieceTable(table: ByteArray, from: Int, until: Int): ByteArray? {
@@ -67,9 +74,9 @@ object DocTextExtractor {
 
         if (fc and COMPRESSED_FLAG != 0) {
             val from = located / 2
+            require(from.toLong() + chars <= document.size.toLong()) { "DOC正文偏移越界" }
             for (step in 0 until chars) {
                 val at = from + step
-                if (at !in document.indices) return
                 out.append((document[at].toInt() and 0xFF).toChar())
             }
         } else {

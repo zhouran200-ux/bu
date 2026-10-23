@@ -155,6 +155,50 @@ class MarkdownDocumentParserTest {
     }
 
     @Test
+    fun docxVisibleInlineWrappersPreserveTextInOrderAndExcludeDeletedText() {
+        val xml = """
+            <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+              <w:body><w:p>
+                <w:r><w:t>Before </w:t></w:r>
+                <w:hyperlink w:anchor="target"><w:r><w:rPr><w:b/></w:rPr><w:t>link</w:t></w:r></w:hyperlink>
+                <w:sdt><w:sdtPr><w:r><w:t>metadata</w:t></w:r></w:sdtPr><w:sdtContent>
+                  <w:ins><w:r><w:t> inserted</w:t></w:r></w:ins>
+                </w:sdtContent></w:sdt>
+                <w:del><w:r><w:delText>deleted</w:delText></w:r></w:del>
+                <w:moveFrom><w:r><w:t>old location</w:t></w:r></w:moveFrom>
+                <w:moveTo><w:r><w:t> moved</w:t></w:r></w:moveTo>
+                <w:fldSimple><w:r><w:t> field</w:t></w:r></w:fldSimple>
+                <w:r><w:t> after</w:t></w:r>
+              </w:p><w:p><w:hyperlink w:anchor="target"><w:r><w:t>Only link</w:t></w:r></w:hyperlink></w:p></w:body>
+            </w:document>
+        """.trimIndent()
+        assertEquals("Before **link** inserted moved field after\n\nOnly link", MarkdownDocumentParser.parseDocxToMarkdown(docxWith(xml)))
+    }
+
+    @Test
+    fun docxRaggedTableRejectsRectangularExpansionBeforeRendering() {
+        val cell = "<w:tc><w:p/></w:tc>"
+        val xml = "<w:document xmlns:w='http://schemas.openxmlformats.org/wordprocessingml/2006/main'><w:body><w:tbl>" +
+            "<w:tr>" + cell.repeat(3000) + "</w:tr>" +
+            ("<w:tr>" + cell + "</w:tr>").repeat(3000) +
+            "</w:tbl></w:body></w:document>"
+        val failure = runCatching { MarkdownDocumentParser.parseDocxToMarkdown(docxWith(xml)) }.exceptionOrNull()
+        assertTrue(failure is IllegalArgumentException)
+        assertEquals("转换后的正文超过大小限制", failure.message)
+    }
+
+    @Test
+    fun docxSmallRaggedTableStillPadsMissingCells() {
+        val xml = """
+            <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:tbl>
+              <w:tr><w:tc><w:p><w:r><w:t>A</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>B</w:t></w:r></w:p></w:tc></w:tr>
+              <w:tr><w:tc><w:p><w:hyperlink w:anchor="target"><w:r><w:t>C</w:t></w:r></w:hyperlink></w:p></w:tc></w:tr>
+            </w:tbl></w:body></w:document>
+        """.trimIndent()
+        assertEquals("| A | B |\n| --- | --- |\n| C |   |", MarkdownDocumentParser.parseDocxToMarkdown(docxWith(xml)))
+    }
+
+    @Test
     fun testParseDocxToMarkdown() {
         val docXml = """
             <?xml version="1.0" encoding="UTF-8" standalone="yes"?>

@@ -14,7 +14,7 @@ object ReasoningPlanBuilder {
         val clean = model.trim()
         if (clean.isEmpty()) return ReasoningPlan("", emptyList(), emptyList(), false)
 
-        val definition = ModelCapabilityRegistry.findOrRegister(clean, provider)
+        val definition = ModelCapabilityRegistry.findOrRegister(clean, provider, baseUrl)
         val representative = ReasoningResolver.resolve(ReasoningPreset.DEEP, provider, clean, baseUrl)
         val effectiveControl = if (definition.reasoning.control == ReasoningControl.ANTHROPIC_EFFORT &&
             representative.claudeEffort == null && representative.claudeBudgetTokens != null) ReasoningControl.ANTHROPIC_BUDGET

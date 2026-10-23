@@ -24,7 +24,7 @@ internal object StreamingRequestBuilder {
         messages: List<ChatMessagePayload>, systemInstruction: String,
         reasoningConfig: ResolvedReasoningConfig?, rawEndpoint: Boolean
     ): Request.Builder {
-        val trimmed = baseUrl.trim().trimEnd('/')
+        val trimmed = baseUrl.trim()
         val jsonMediaType = "application/json; charset=utf-8".toMediaType()
         val requestBuilder = Request.Builder()
         val cleanModel = model.trim().ifBlank {
@@ -38,7 +38,7 @@ internal object StreamingRequestBuilder {
         when (spec) {
             ApiSpec.OPENAI -> {
                 val defaultUrl = if (trimmed.isBlank()) "https://api.openai.com/v1" else trimmed
-                val url = if (rawEndpoint || defaultUrl.endsWith("/chat/completions")) defaultUrl else "$defaultUrl/chat/completions"
+                val url = EndpointUrls.generation(defaultUrl, spec, apiKey, cleanModel, rawEndpoint, stream = true).toString()
                 val payload = JSONObject().apply {
                     put("model", cleanModel)
                     put("stream", true)
@@ -65,9 +65,7 @@ internal object StreamingRequestBuilder {
             }
             ApiSpec.ANTHROPIC -> {
                 val defaultUrl = if (trimmed.isBlank()) "https://api.anthropic.com/v1" else trimmed
-                val url = if (defaultUrl.endsWith("/messages")) defaultUrl
-                else if (defaultUrl.endsWith("/v1")) "$defaultUrl/messages"
-                else "$defaultUrl/v1/messages"
+                val url = EndpointUrls.generation(defaultUrl, spec, apiKey, cleanModel, rawEndpoint, stream = true).toString()
                 val payload = JSONObject().apply {
                     put("model", cleanModel)
                     put("stream", true)
@@ -89,12 +87,7 @@ internal object StreamingRequestBuilder {
             }
             ApiSpec.GOOGLE -> {
                 val defaultUrl = if (trimmed.isBlank()) "https://generativelanguage.googleapis.com/v1beta" else trimmed
-                val base = if (defaultUrl.endsWith("/models")) defaultUrl.removeSuffix("/models") else defaultUrl
-                val targetModel = cleanModel.removePrefix("models/")
-                val endpoint = "$base/models/$targetModel:streamGenerateContent?alt=sse"
-                val url = if (apiKey.isNotBlank() && !endpoint.contains("key=")) {
-                    if (endpoint.contains("?")) "$endpoint&key=${queryValue(apiKey)}" else "$endpoint?key=${queryValue(apiKey)}"
-                } else endpoint
+                val url = EndpointUrls.generation(defaultUrl, spec, apiKey, cleanModel, rawEndpoint, stream = true).toString()
 
                 val payload = JSONObject().apply {
                     if (systemInstruction.isNotBlank()) {

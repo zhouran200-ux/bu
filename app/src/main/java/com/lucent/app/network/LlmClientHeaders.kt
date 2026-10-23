@@ -8,6 +8,8 @@ import java.util.concurrent.TimeUnit
 internal object LlmHttpClients {
     val client: OkHttpClient by lazy {
         OkHttpClient.Builder()
+            .followRedirects(false)
+            .followSslRedirects(false)
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(20, TimeUnit.SECONDS)
             .build()
@@ -15,6 +17,8 @@ internal object LlmHttpClients {
 
     val streamClient: OkHttpClient by lazy {
         OkHttpClient.Builder()
+            .followRedirects(false)
+            .followSslRedirects(false)
             .connectTimeout(20, TimeUnit.SECONDS)
             .readTimeout(40, TimeUnit.SECONDS)
             .callTimeout(0, TimeUnit.SECONDS)

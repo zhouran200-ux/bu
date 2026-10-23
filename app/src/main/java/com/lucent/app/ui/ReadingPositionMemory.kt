@@ -53,6 +53,15 @@ internal object ReadingPositionMemory {
     }
 }
 
+internal fun LazyListState.readingPosition(): ReadingPosition? {
+    val layout = layoutInfo
+    if (layout.viewportSize.height <= 0) return null
+    val index = firstVisibleItemIndex
+    val item = layout.visibleItemsInfo.firstOrNull { it.index == index } ?: return null
+    val itemKey = item.key as? String ?: return null
+    return ReadingPosition(itemKey, index, firstVisibleItemScrollOffset)
+}
+
 @Composable
 internal fun rememberReadingListState(key: String, itemKeys: List<String>): LazyListState {
     val context = LocalContext.current.applicationContext
@@ -60,22 +69,14 @@ internal fun rememberReadingListState(key: String, itemKeys: List<String>): Lazy
         val position = ReadingPositionMemory.read(context, key)?.resolve(itemKeys)
         LazyListState(position?.index ?: 0, position?.offset ?: 0)
     }
-    fun capture(): ReadingPosition? {
-        val layout = state.layoutInfo
-        if (layout.viewportSize.height <= 0) return null
-        val index = state.firstVisibleItemIndex
-        val item = layout.visibleItemsInfo.firstOrNull { it.index == index } ?: return null
-        val itemKey = item.key as? String ?: return null
-        return ReadingPosition(itemKey, index, state.firstVisibleItemScrollOffset)
-    }
     LaunchedEffect(state, key) {
-        snapshotFlow { capture() }.conflate().collect {
+        snapshotFlow { state.readingPosition() }.conflate().collect {
             delay(250)
-            capture()?.let { position -> ReadingPositionMemory.write(context, key, position) }
+            state.readingPosition()?.let { position -> ReadingPositionMemory.write(context, key, position) }
         }
     }
     DisposableEffect(state, key) {
-        onDispose { capture()?.let { ReadingPositionMemory.write(context, key, it) } }
+        onDispose { state.readingPosition()?.let { ReadingPositionMemory.write(context, key, it) } }
     }
     return state
 }

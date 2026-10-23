@@ -1,8 +1,10 @@
 package com.lucent.app.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -11,9 +13,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.ContentCopy
@@ -23,6 +26,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -67,17 +71,26 @@ internal fun SourceIndexPreviewEntry(
 }
 
 @Composable
-internal fun SourceIndexPreview(source: IndexedSource, onDismiss: () -> Unit) {
+internal fun SourceIndexPreview(
+    source: IndexedSource,
+    initialPosition: ReadingPosition? = null,
+    onDismiss: (ReadingPosition?) -> Unit
+) {
     val ink = LocalOnGradient.current
     val muted = LocalOnGradientMuted.current
-    val scrollState = rememberScrollState()
     val context = LocalContext.current
+    val rows = remember(source) { sourcePreviewRows(source.tagged) }
+    val rowKeys = remember(rows) { rows.map { it.key } }
+    val chapterIndices = remember(rows) { rows.indices.filter { rows[it].isChapter } }
+    val start = remember(initialPosition, rowKeys) { initialPosition?.resolve(rowKeys) }
+    val listState = rememberLazyListState(start?.index ?: 0, start?.offset ?: 0)
+    val dismiss: () -> Unit = { onDismiss(listState.readingPosition()) }
     DisposableEffect(Unit) {
         BackgroundMotionHold.acquire()
         onDispose { BackgroundMotionHold.release() }
     }
     Dialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = dismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)
     ) {
         Column(
@@ -92,7 +105,7 @@ internal fun SourceIndexPreview(source: IndexedSource, onDismiss: () -> Unit) {
                     .padding(start = 6.dp, end = 12.dp, top = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = onDismiss) {
+                IconButton(onClick = dismiss) {
                     Icon(
                         imageVector = Icons.Rounded.Close,
                         contentDescription = S.sourceIndexPreviewClose,
@@ -140,30 +153,34 @@ internal fun SourceIndexPreview(source: IndexedSource, onDismiss: () -> Unit) {
                 modifier = Modifier.padding(horizontal = 18.dp, vertical = 4.dp)
             )
             Spacer(modifier = Modifier.height(8.dp))
-            if (source.tagged.text.isBlank()) {
+            if (rows.isEmpty()) {
                 Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                     Text(text = S.sourceIndexPreviewEmpty, color = muted, fontSize = LucentTitles.ItemSize)
                 }
             } else {
                 Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                     SelectionContainer(modifier = Modifier.fillMaxSize()) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .verticalScroll(scrollState)
-                                .padding(start = 18.dp, end = 18.dp, bottom = 24.dp)
+                        LazyColumn(
+                            state = listState,
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(start = 18.dp, end = 18.dp, bottom = 24.dp),
+                            verticalArrangement = Arrangement.spacedBy(20.dp)
                         ) {
-                            Text(
-                                text = source.tagged.text,
-                                color = ink,
-                                fontFamily = FontFamily.Monospace,
-                                fontSize = 13.sp,
-                                lineHeight = 20.sp
-                            )
+                            items(rows, key = { it.key }) { row ->
+                                Text(
+                                    text = row.text,
+                                    color = ink,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 13.sp,
+                                    lineHeight = 20.sp
+                                )
+                            }
                         }
                     }
-                    ScrollStateCapsule(
-                        scrollState = scrollState,
+                    DocumentScrollCapsule(
+                        listState = listState,
+                        itemKeys = rowKeys,
+                        chapterIndices = chapterIndices,
                         enabled = true,
                         label = S.sourceIndexPreviewFastScroll,
                         modifier = Modifier.align(Alignment.CenterEnd)

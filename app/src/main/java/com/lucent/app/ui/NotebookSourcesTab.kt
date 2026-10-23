@@ -252,8 +252,10 @@ private fun SourceReaderDocument(
     val source = content.source
     val items = content.items
     var showIndexPreview by remember(source.noteId, source.revision) { mutableStateOf(false) }
+    var previewStart by remember(source.noteId, source.revision) { mutableStateOf<ReadingPosition?>(null) }
     val motionEnabled = LocalBackgroundEnvironment.current.motionEnabled
-    val readingKeys = remember(items) { items.map { it.key } + "footer" }
+    val readerKeys = remember(items) { items.map { it.key } }
+    val readingKeys = remember(readerKeys) { readerKeys + "footer" }
     val chapterIndices = remember(items) { items.indices.filter { items[it].sliceId == null } }
     val listState = rememberReadingListState("source:$notebookId:${source.noteId}:slices:${source.revision}", readingKeys)
     val currentSectionTitle by remember(items, source.title, listState) {
@@ -336,14 +338,23 @@ private fun SourceReaderDocument(
 
         SourceIndexPreviewEntry(
             enabled = source.tagged.text.isNotBlank(),
-            onClick = { showIndexPreview = true },
+            onClick = {
+                previewStart = listState.readingPosition()
+                showIndexPreview = true
+            },
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .padding(12.dp)
         )
 
         if (showIndexPreview) {
-            SourceIndexPreview(source) { showIndexPreview = false }
+            SourceIndexPreview(source, previewStart) { position ->
+                showIndexPreview = false
+                if (position != null && readerKeys.isNotEmpty()) {
+                    val resumed = position.resolve(readerKeys)
+                    listState.requestScrollToItem(resumed.index, resumed.offset)
+                }
+            }
         }
     }
 }

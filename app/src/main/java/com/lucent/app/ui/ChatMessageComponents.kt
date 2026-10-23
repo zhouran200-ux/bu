@@ -97,6 +97,7 @@ internal fun AiMessageCard(
     modifier: Modifier = Modifier,
     message: UiChatMessage,
     readingKey: String,
+    initialMarkdown: MarkdownParseSnapshot? = null,
     streaming: Boolean = false,
     liveThought: State<String>? = null,
     thinkingState: ThinkingLaneState = rememberThinkingLaneState(readingKey, streaming),
@@ -139,6 +140,7 @@ internal fun AiMessageCard(
                     Column(modifier = Modifier.padding(16.dp)) {
                         MarkdownText(
                             text = message.content,
+                            initialSnapshot = initialMarkdown,
                             streaming = streaming,
                             modifier = Modifier.fillMaxWidth(),
                             onCitationClick = onCitationClick,

@@ -25,7 +25,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.structuralEqualityPolicy
 import androidx.compose.runtime.DisposableEffect
@@ -85,6 +85,13 @@ fun NotebookChatTab(
                     }
                 }
             }
+        }
+        return
+    }
+    val initialMarkdown by rememberInitialChatMarkdown(session)
+    if (initialMarkdown == null) {
+        Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text(S.chatLoadingConversation, color = LocalOnGradient.current)
         }
         return
     }
@@ -164,11 +171,14 @@ fun NotebookChatTab(
     var historyAnchorId by remember { mutableStateOf<Long?>(null) }
 
     val settingsRepo = remember { SettingsRepository(context) }
-    val profilesJson by settingsRepo.apiProfilesJson.collectAsState(initial = SettingsCache.apiProfilesJson)
-    actions.profilesJson = profilesJson
+    val loadedProfilesJson by produceState<String?>(initialValue = null, key1 = settingsRepo) {
+        settingsRepo.apiProfilesJson.collect { value = it }
+    }
+    actions.profilesJson = loadedProfilesJson ?: SettingsCache.apiProfilesJson
     val savedProfiles = remember(actions.profilesJson) { actions.savedProfiles }
     val resolvedSelection = ApiProfiles.resolveSelection(savedProfiles, actions.selectedProfileId, actions.selectedProfileName, actions.selectedModel)
-    LaunchedEffect(notebookId, resolvedSelection) {
+    LaunchedEffect(notebookId, loadedProfilesJson, resolvedSelection) {
+        if (loadedProfilesJson == null) return@LaunchedEffect
         val (profile, model) = resolvedSelection ?: return@LaunchedEffect
         if (profile.id != actions.selectedProfileId || profile.name != actions.selectedProfileName || model != actions.selectedModel) {
             actions.selectedProfileId = profile.id
@@ -307,6 +317,7 @@ fun NotebookChatTab(
                                 AiMessageCard(
                                     modifier = itemModifier,
                                     message = msg,
+                                    initialMarkdown = initialMarkdown?.get(msg.id)?.takeIf { it.text == msg.content }?.snapshot,
                                     readingKey = "chat:$notebookId:thought:${msg.id}",
                                     thinkingState = rememberThinkingLaneState(
                                         "chat:$notebookId:thought:${msg.id}", msg.id == streamingAnswerId, messageUiState

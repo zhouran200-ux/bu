@@ -199,11 +199,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    override fun onDestroy() {
-        if (isFinishing) com.lucent.app.chat.ChatSessions.stopAll()
-        super.onDestroy()
-    }
-
     private fun applySystemBarStyle(dark: Boolean) {
         val style = if (dark) {
             SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)

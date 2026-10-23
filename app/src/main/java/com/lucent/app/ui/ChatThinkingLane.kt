@@ -2,7 +2,6 @@ package com.lucent.app.ui
 
 import com.lucent.app.i18n.S
 import kotlinx.coroutines.flow.conflate
-import kotlinx.coroutines.delay
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -28,11 +27,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.State
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -40,7 +37,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
@@ -61,11 +57,9 @@ internal fun ThinkingLane(
 ) {
     val accent = MaterialTheme.colorScheme.primary
     val onGradientMuted = LocalOnGradientMuted.current
-    val context = LocalContext.current.applicationContext
     val thought = liveThought?.value ?: storedThought
     val visibleThought = rememberRevealedText(thought, streaming)
     val canExpand = streaming || thought.isNotBlank()
-    val latestCanExpand by rememberUpdatedState(canExpand)
     val expanded = lane.expanded && canExpand
     LaunchedEffect(streaming, lane.expanded) { lane.retainStreamingHeight(streaming) }
     if (streaming) {
@@ -73,17 +67,6 @@ internal fun ThinkingLane(
             snapshotFlow { lane.scroll.maxValue }.conflate().collect { max ->
                 if (max > 0 && lane.scroll.value != max) lane.scroll.scrollTo(max)
             }
-        }
-    }
-    LaunchedEffect(readingKey, lane) {
-        snapshotFlow { lane.expanded to latestCanExpand }.conflate().collect {
-            delay(250)
-            lane.positionToPersist(latestCanExpand)?.let { ReadingPositionMemory.write(context, readingKey, it) }
-        }
-    }
-    DisposableEffect(readingKey, lane) {
-        onDispose {
-            lane.positionToPersist(latestCanExpand)?.let { ReadingPositionMemory.write(context, readingKey, it) }
         }
     }
 

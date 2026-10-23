@@ -189,7 +189,8 @@ fun NotebookSourcesTab(
 internal data class SourceReaderContent(
     val source: IndexedSource,
     val items: List<SourceReadingItem>,
-    val previewRows: List<SourcePreviewRow>
+    val previewRows: List<SourcePreviewRow>,
+    val markdown: Map<String, MarkdownParseSnapshot>
 )
 
 @Composable
@@ -202,16 +203,22 @@ internal fun SourceReader(
     onEmphasize: (SourceFocus?) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val sourceStyle = MarkdownStyle(
+        LocalOnGradient.current, LocalOnGradientMuted.current, MaterialTheme.colorScheme.primary,
+        citationsEnabled = false, emphasized = false, sourceNoteId = null, sourceRevision = null, clickable = false
+    )
     var content by remember(notebookId, note.id, note.body, note.title) { mutableStateOf<SourceReaderContent?>(null) }
     var error by remember(notebookId, note.id, note.body, note.title) { mutableStateOf<String?>(null) }
-    LaunchedEffect(notebookId, note.id, note.body, note.title) {
+    LaunchedEffect(notebookId, note.id, note.body, note.title, sourceStyle) {
         try {
             content = withContext(Dispatchers.Default) {
                 val source = NovelSourceIndex.get(note)
+                val items = sourceReadingItems(source.body, source.tagged)
                 SourceReaderContent(
                     source,
-                    sourceReadingItems(source.body, source.tagged),
-                    sourcePreviewRows(source.body, source.tagged)
+                    items,
+                    sourcePreviewRows(source.body, source.tagged),
+                    items.associate { it.key to MarkdownRenderer().render(it.text, sourceStyle, null) }
                 )
             }
         } catch (cancelled: CancellationException) {

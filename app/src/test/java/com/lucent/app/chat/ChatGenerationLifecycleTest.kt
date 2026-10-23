@@ -90,6 +90,31 @@ class ChatGenerationLifecycleTest {
         sessions.forEach { assertTrue(it.releaseIfIdle()) }
     }
 
+    @Test fun releasingUiOwnershipDoesNotCancelActiveGeneration() {
+        val dispatcher = QueueDispatcher()
+        val runningChanges = mutableListOf<Boolean>()
+        val session = ChatSession(
+            dispatcher = dispatcher,
+            load = { listOf(UiChatMessage(1, "assistant", "")) },
+            save = {},
+            onRunningChanged = { runningChanges += it }
+        )
+        dispatcher.drain()
+        val response = CompletableDeferred<Result<ChatCompletionResult>>()
+        assertTrue(session.start(1, null) { _, _ -> response.await() })
+        dispatcher.drain()
+
+        assertFalse(session.releaseIfIdle())
+        dispatcher.drain()
+        assertNotNull(session.streamingAnswerId)
+        assertEquals(listOf(true), runningChanges)
+
+        session.stop()
+        dispatcher.drain()
+        assertEquals(listOf(true, false), runningChanges)
+        assertTrue(session.releaseIfIdle())
+    }
+
     private class QueueDispatcher : CoroutineDispatcher() {
         private val queue = ArrayDeque<Runnable>()
         override fun dispatch(context: CoroutineContext, block: Runnable) {

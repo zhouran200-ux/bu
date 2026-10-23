@@ -104,16 +104,6 @@ class NotebookMessageUiStateComposeTest {
         assertEquals(6, lineCount())
     }
 
-    @Test fun explicitNotebookExitResetCollapsesTheVisibleMessage() {
-        render()
-        expand()
-        rule.runOnIdle { owner.resetUserMessages() }
-
-        waitForToggle(S.userMessageExpand)
-        rule.runOnIdle { assertFalse(owner.userExpanded(42)) }
-        assertEquals(6, lineCount())
-    }
-
     private fun render() {
         rule.setContent {
             MaterialTheme {

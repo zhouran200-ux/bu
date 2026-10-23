@@ -6,7 +6,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.snapshotFlow
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.delay
@@ -45,6 +45,26 @@ internal object ReadingPositionMemory {
         if (prefs.getString(key, null) != encoded) prefs.edit().putString(key, encoded).apply()
     }
 
+    fun readSourceDocument(context: Context, keys: SourceReadingMemoryKeys): ReadingPosition? {
+        val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val saved = ReadingPosition.decode(prefs.getString(keys.document, null))
+        val legacy = ReadingPosition.decode(prefs.getString(keys.legacy, null))
+        if (prefs.contains(keys.legacy)) {
+            val editor = prefs.edit().remove(keys.legacy)
+            if (saved == null && legacy != null) editor.putString(keys.document, legacy.encode())
+            editor.apply()
+        }
+        return saved ?: legacy
+    }
+
+    fun readSourcePage(context: Context, keys: SourceReadingMemoryKeys): Boolean =
+        context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(keys.page, false)
+
+    fun writeSourcePage(context: Context, keys: SourceReadingMemoryKeys, model: Boolean) {
+        val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        if (prefs.getBoolean(keys.page, false) != model) prefs.edit().putBoolean(keys.page, model).apply()
+    }
+
     fun clearNotebook(context: Context, notebookId: Long) {
         val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val editor = prefs.edit()
@@ -81,7 +101,8 @@ internal fun rememberReadingListState(
 @Composable
 internal fun RememberReadingPosition(key: String, position: () -> ReadingPosition?) {
     val context = LocalContext.current.applicationContext
-    val currentPosition = rememberUpdatedState(position)
+    val currentPosition = remember(key) { mutableStateOf(position) }
+    currentPosition.value = position
     LaunchedEffect(key) {
         snapshotFlow { currentPosition.value() }.conflate().collect {
             delay(250)
@@ -91,6 +112,13 @@ internal fun RememberReadingPosition(key: String, position: () -> ReadingPositio
     DisposableEffect(key) {
         onDispose { currentPosition.value()?.let { ReadingPositionMemory.write(context, key, it) } }
     }
+}
+
+internal data class SourceReadingMemoryKeys(val notebookId: Long, val sourceId: Long, val revision: String) {
+    val legacy = "source:$notebookId:$sourceId:slices:$revision"
+    val document = "$legacy:document"
+    val model = "$legacy:model"
+    val page = "$legacy:page"
 }
 
 internal fun ReadingPosition.forSourceLayout(itemKeys: List<String>): ReadingPosition =

@@ -72,7 +72,7 @@ class StickyThinkingHeaderTest {
         fun readingKey(id: Long) = "chat:$notebookId:thought:$id"
 
         fun lane(id: Long): ThinkingLaneState = owner.thinking(readingKey(id)) {
-            ThinkingLaneState(ReadingPosition("expanded", 0, 0), streaming = false)
+            ThinkingLaneState().apply { toggle() }
         }
 
         fun thinkingHeight(id: Long): Long = lane(id).measuredHeightPx.toLong()

@@ -36,6 +36,7 @@ class ThinkingLaneStabilityTest {
         val notebookId = -System.nanoTime()
         val readingKey = "chat:$notebookId:thinking-stability"
         val mounted = mutableStateOf(true)
+        val owner = mutableStateOf(NotebookMessageUiState())
         val streaming = mutableStateOf(true)
         val thought = mutableStateOf((1..32).joinToString("\n") { "Reasoning line $it" })
         val storedThought = mutableStateOf("")
@@ -104,8 +105,48 @@ class ThinkingLaneStabilityTest {
         }
     }
 
-    private fun mount(): Host {
+    @Test fun legacyExpandedPreferenceIsIgnoredAndOnlyANewVisitResetsManualChoice() {
+        val host = mount(seedLegacyExpanded = true)
+        complete(host)
+        repeat(4) { advanceFrame() }
+        val lane = host.owner.value.thinking(host.readingKey) { error("Existing visit lane") }
+        val scrollBefore = lane.scroll.value
+        rule.runOnUiThread { host.mounted.value = false }
+        advanceFrame()
+        rule.runOnUiThread { host.mounted.value = true }
+        advanceAnimation()
+        rule.onNodeWithContentDescription(S.thinkingCollapse).assertExists()
+        rule.runOnUiThread {
+            assertTrue(lane.expanded)
+            assertEquals(scrollBefore, lane.scroll.value)
+        }
+        rule.runOnUiThread { host.mounted.value = false }
+        advanceFrame()
+        rule.runOnUiThread {
+            host.owner.value = NotebookMessageUiState()
+            host.mounted.value = true
+        }
+        advanceAnimation()
+        thoughtNode().assertDoesNotExist()
+        rule.onNodeWithContentDescription(S.thinkingExpand).assertExists()
+        rule.runOnUiThread {
+            val fresh = host.owner.value.thinking(host.readingKey) { error("New visit lane") }
+            assertFalse(fresh.expanded)
+            assertEquals(0, fresh.scroll.value)
+            assertEquals(ReadingPosition("expanded", 0, 87), ReadingPositionMemory.read(
+                InstrumentationRegistry.getInstrumentation().targetContext, host.readingKey
+            ))
+        }
+    }
+
+    private fun mount(seedLegacyExpanded: Boolean = false): Host {
         val host = Host()
+        if (seedLegacyExpanded) {
+            ReadingPositionMemory.write(
+                InstrumentationRegistry.getInstrumentation().targetContext,
+                host.readingKey, ReadingPosition("expanded", 0, 87)
+            )
+        }
         mountedHost = host
         rule.mainClock.autoAdvance = false
         rule.setContent {
@@ -120,7 +161,8 @@ class ThinkingLaneStabilityTest {
                                     storedThought = host.storedThought.value,
                                     tag = null,
                                     streaming = host.streaming.value,
-                                    answerSeconds = if (host.streaming.value) 0 else 3
+                                    answerSeconds = if (host.streaming.value) 0 else 3,
+                                    lane = rememberThinkingLaneState(host.readingKey, host.streaming.value, host.owner.value)
                                 )
                                 BasicText(
                                     "Answer body stays below the reasoning lane",
@@ -135,6 +177,7 @@ class ThinkingLaneStabilityTest {
             }
         }
         repeat(4) { advanceFrame() }
+        thoughtNode().assertDoesNotExist()
         rule.onNodeWithContentDescription(S.thinkingExpand).performClick()
         advanceAnimation()
         thoughtNode().assertExists()

@@ -39,7 +39,7 @@ import org.junit.runner.RunWith
 class UnsupportedThinkingHeaderTest {
     @get:Rule val rule = createComposeRule()
 
-    private class Host(reasoning: String? = null, savedExpanded: Boolean? = null) {
+    private class Host(reasoning: String? = null, manuallyExpanded: Boolean = false) {
         val notebookId = -System.nanoTime()
         val readingKey = "chat:$notebookId:thought:31"
         val mounted = mutableStateOf(true)
@@ -50,10 +50,7 @@ class UnsupportedThinkingHeaderTest {
         )
         val owner = NotebookMessageUiState()
         val lane = owner.thinking(readingKey) {
-            val saved = savedExpanded?.let {
-                ReadingPosition(if (it) "expanded" else "collapsed", 0, 0)
-            }
-            ThinkingLaneState(saved, streaming = false)
+            ThinkingLaneState().apply { if (manuallyExpanded) toggle() }
         }
         var following = true
         val expandedBeforeToggle = mutableListOf<Boolean>()
@@ -107,7 +104,7 @@ class UnsupportedThinkingHeaderTest {
     }
 
     @Test fun historicalNullEmptyAndWhitespaceReasoningShowOnlyTheUnsupportedTitle() {
-        val host = mount(Host(savedExpanded = true).apply {
+        val host = mount(Host(manuallyExpanded = true).apply {
             message.value = message.value.copy(content = "Historical answer")
         })
         for (reasoning in listOf(null, "", "  \n\t ")) {

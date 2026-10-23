@@ -8,34 +8,24 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.LocalContext
 
-internal class ThinkingLaneState(saved: ReadingPosition?, streaming: Boolean) {
-    var expanded by mutableStateOf(saved?.itemKey == "expanded")
+internal class ThinkingLaneState {
+    var expanded by mutableStateOf(false)
         private set
-    var retainLiveHeight by mutableStateOf(streaming && expanded)
+    var retainLiveHeight by mutableStateOf(false)
         private set
     var measuredHeightPx by mutableStateOf(0)
-    val scroll = ScrollState(saved?.offset ?: 0)
-    private var persistEligible = saved != null || streaming
+    val scroll = ScrollState(0)
 
     fun retainStreamingHeight(streaming: Boolean) {
-        if (streaming) persistEligible = true
         if (streaming && expanded) retainLiveHeight = true
     }
 
     fun toggle() {
-        persistEligible = true
         expanded = !expanded
         if (!expanded) retainLiveHeight = false
     }
 
-    fun readingPosition() = ReadingPosition(if (expanded) "expanded" else "collapsed", 0, scroll.value)
-
-    fun positionToPersist(canExpand: Boolean): ReadingPosition? {
-        if (canExpand) persistEligible = true
-        return if (persistEligible) readingPosition() else null
-    }
 }
 
 internal val LocalNotebookMessageUiState = compositionLocalOf<NotebookMessageUiState?> { null }
@@ -52,8 +42,6 @@ internal class NotebookMessageUiState {
     fun setUserExpanded(id: Long, expanded: Boolean) {
         if (expanded) expandedUsers[id] = true else expandedUsers.remove(id)
     }
-
-    fun resetUserMessages() { expandedUsers.clear() }
 }
 
 @Composable
@@ -62,9 +50,8 @@ internal fun rememberThinkingLaneState(
     streaming: Boolean,
     owner: NotebookMessageUiState? = null
 ): ThinkingLaneState {
-    val context = LocalContext.current.applicationContext
     return remember(readingKey, owner) {
-        val create = { ThinkingLaneState(ReadingPositionMemory.read(context, readingKey), streaming) }
+        val create = { ThinkingLaneState().apply { retainStreamingHeight(streaming) } }
         owner?.thinking(readingKey, create) ?: create()
     }
 }

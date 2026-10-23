@@ -28,7 +28,7 @@ class NotebookMessageUiStateTest {
         assertFalse(second.userExpanded(42))
 
         second.setUserExpanded(42, true)
-        first.resetUserMessages()
+        first.setUserExpanded(42, false)
         assertFalse(first.userExpanded(42))
         assertTrue(second.userExpanded(42))
     }
@@ -42,12 +42,11 @@ class NotebookMessageUiStateTest {
         assertFalse(newVisit.userExpanded(42))
     }
 
-    @Test fun resetClearsEveryUserExpansionAndAllowsNewChanges() {
-        val owner = NotebookMessageUiState()
+    @Test fun newVisitClearsEveryUserExpansionAndAllowsNewChanges() {
+        var owner = NotebookMessageUiState()
         owner.setUserExpanded(1, true)
         owner.setUserExpanded(2, true)
-        owner.resetUserMessages()
-        owner.resetUserMessages()
+        owner = NotebookMessageUiState()
         assertFalse(owner.userExpanded(1))
         assertFalse(owner.userExpanded(2))
 

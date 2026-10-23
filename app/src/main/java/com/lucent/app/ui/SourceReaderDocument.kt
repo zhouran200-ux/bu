@@ -19,6 +19,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.withFrameNanos
@@ -70,42 +72,62 @@ internal fun SourceReaderDocument(
 ) {
     val source = content.source
     val items = content.items
-    var showIndexPreview by remember(source.noteId, source.revision) { mutableStateOf(false) }
+    val context = LocalContext.current.applicationContext
+    val memoryKeys = SourceReadingMemoryKeys(notebookId, source.noteId, source.revision)
+    val pageState = remember(memoryKeys) { mutableStateOf(ReadingPositionMemory.readSourcePage(context, memoryKeys)) }
+    var showIndexPreview by pageState
+    LaunchedEffect(memoryKeys, showIndexPreview) {
+        ReadingPositionMemory.writeSourcePage(context, memoryKeys, showIndexPreview)
+    }
+    DisposableEffect(memoryKeys) {
+        onDispose { ReadingPositionMemory.writeSourcePage(context, memoryKeys, pageState.value) }
+    }
     val previewKeys = remember(content.previewRows) { content.previewRows.map { it.key } }
-    var previewListState by remember { mutableStateOf(LazyListState()) }
     val motionEnabled = LocalBackgroundEnvironment.current.motionEnabled
     val readerKeys = remember(items) { items.map { it.key } }
     val readingKeys = remember(readerKeys) { readerKeys + "footer" }
     val chapterIndices = remember(items) { items.indices.filter { items[it].sliceId == null } }
-    val memoryKey = "source:$notebookId:${source.noteId}:slices:${source.revision}"
-    val initialReaderState = rememberReadingListState(memoryKey, readingKeys, persist = false)
-    var listState by remember(initialReaderState) { mutableStateOf(initialReaderState) }
-    RememberReadingPosition(memoryKey) {
-        if (showIndexPreview) {
-            previewListState.sourcePosition(previewKeys).forSourceLayout(readerKeys)
-        } else {
-            listState.sourcePosition(readingKeys)
+    val savedDocument = remember(memoryKeys) { ReadingPositionMemory.readSourceDocument(context, memoryKeys) }
+    val savedModel = remember(memoryKeys) { ReadingPositionMemory.read(context, memoryKeys.model) }
+    var documentVisited by remember(memoryKeys) { mutableStateOf(savedDocument != null || !showIndexPreview) }
+    var modelVisited by remember(memoryKeys) { mutableStateOf(savedModel != null || showIndexPreview) }
+    var listState by remember(memoryKeys) {
+        val position = savedDocument?.resolve(readingKeys)
+            ?: savedModel?.forSourceLayout(readingKeys)
+        mutableStateOf(LazyListState(position?.index ?: 0, position?.offset ?: 0))
+    }
+    var previewListState by remember(memoryKeys) {
+        val position = savedModel?.resolve(previewKeys) ?: savedDocument?.forSourceLayout(previewKeys)
+        mutableStateOf(LazyListState(position?.index ?: 0, position?.offset ?: 0))
+    }
+    RememberReadingPosition(memoryKeys.document) {
+        if (documentVisited) listState.sourcePosition(readingKeys) else null
+    }
+    RememberReadingPosition(memoryKeys.model) {
+        if (modelVisited) previewListState.sourcePosition(previewKeys) else null
+    }
+    val returnToDocument: () -> Unit = {
+        if (!documentVisited) {
+            val position = previewListState.sourcePosition(previewKeys).forSourceLayout(readingKeys)
+            listState = LazyListState(position.index, position.offset)
+            documentVisited = true
         }
+        showIndexPreview = false
     }
     val currentSectionTitle by remember(items, source.title, listState) {
         derivedStateOf { sourceSectionTitle(items, listState.firstVisibleItemIndex, source.title) }
     }
-    var consumedRequest by remember { mutableStateOf<Long?>(null) }
-    LaunchedEffect(active, focus, source.noteId, source.revision) {
+    var consumedRequest by remember(memoryKeys) { mutableStateOf<Long?>(null) }
+    LaunchedEffect(active, focus, memoryKeys) {
         if (!active) return@LaunchedEffect
         val target = focus ?: return@LaunchedEffect
         if (consumedRequest == target.requestId) return@LaunchedEffect
         consumedRequest = target.requestId
         val leavingPreview = showIndexPreview
-        showIndexPreview = false
+        returnToDocument()
         onEmphasize(null)
         when (val location = sourceFocusLocation(target, source.noteId, source.revision, items)) {
-            is SourceFocusLocation.Unavailable -> {
-                if (leavingPreview) {
-                    val position = previewListState.sourcePosition(previewKeys).forSourceLayout(readerKeys)
-                    listState = LazyListState(position.index, position.offset)
-                }
-            }
+            is SourceFocusLocation.Unavailable -> Unit
             is SourceFocusLocation.Found -> {
                 onEmphasize(target)
                 if (leavingPreview) {
@@ -120,11 +142,6 @@ internal fun SourceReaderDocument(
                 }
             }
         }
-    }
-    val returnToDocument: () -> Unit = {
-        val position = previewListState.sourcePosition(previewKeys).forSourceLayout(readerKeys)
-        listState = LazyListState(position.index, position.offset)
-        showIndexPreview = false
     }
     BackHandler(enabled = active && showIndexPreview, onBack = returnToDocument)
     AnimatedContent(
@@ -159,6 +176,7 @@ internal fun SourceReaderDocument(
                         itemsIndexed(items, key = { _, item -> item.key }) { _, item ->
                             MarkdownText(
                                 text = item.text,
+                                initialSnapshot = content.markdown.getValue(item.key),
                                 emphasized = item.sliceId != null && emphasizedFocus?.noteId == source.noteId &&
                                     emphasizedFocus.revision == source.revision && emphasizedFocus.sliceId == item.sliceId,
                                 citationsEnabled = false,
@@ -205,8 +223,11 @@ internal fun SourceReaderDocument(
                 SourceIndexPreviewEntry(
                     enabled = active && !showIndexPreview && source.tagged.text.isNotBlank(),
                     onClick = {
-                        val position = listState.sourcePosition(readingKeys).forSourceLayout(previewKeys)
-                        previewListState = LazyListState(position.index, position.offset)
+                        if (!modelVisited) {
+                            val position = listState.sourcePosition(readingKeys).forSourceLayout(previewKeys)
+                            previewListState = LazyListState(position.index, position.offset)
+                            modelVisited = true
+                        }
                         showIndexPreview = true
                     },
                     modifier = Modifier

@@ -25,6 +25,7 @@
         </activity>
         <service
             android:name=".chat.ChatGenerationService"
+            android:stopWithTask="false"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
 

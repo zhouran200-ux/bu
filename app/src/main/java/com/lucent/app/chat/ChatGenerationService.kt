@@ -27,10 +27,14 @@ import kotlinx.coroutines.launch
 class ChatGenerationService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var observation: Job? = null
+    private var latestStartId = 0
+    private var shutdownHandled = false
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        latestStartId = startId
+        shutdownHandled = false
         try {
             createNotificationChannel()
             val notification = buildNotification(ChatSessions.activeCount.value)
@@ -43,7 +47,7 @@ class ChatGenerationService : Service() {
             android.util.Log.e(TAG, "Unable to protect chat generation in foreground", error)
             Toast.makeText(this, S.serviceStartFailed(error.message.orEmpty()), Toast.LENGTH_LONG).show()
             ChatSessions.stopAll()
-            stopSelf()
+            stopProtection()
             return START_NOT_STICKY
         }
 
@@ -55,7 +59,7 @@ class ChatGenerationService : Service() {
         observation = serviceScope.launch {
             ChatSessions.activeCount.collect { count ->
                 if (count == 0) {
-                    stopProtection()
+                    stopProtectionIfIdle()
                 } else {
                     getSystemService(NotificationManager::class.java)
                         .notify(NOTIFICATION_ID, buildNotification(count))
@@ -65,10 +69,6 @@ class ChatGenerationService : Service() {
         return START_NOT_STICKY
     }
 
-    override fun onTaskRemoved(rootIntent: Intent?) {
-        ChatSessions.stopAll()
-        super.onTaskRemoved(rootIntent)
-    }
 
     override fun onTimeout(startId: Int, fgsType: Int) {
         Toast.makeText(this, S.serviceTimeout, Toast.LENGTH_LONG).show()
@@ -78,13 +78,23 @@ class ChatGenerationService : Service() {
 
     override fun onDestroy() {
         serviceScope.cancel()
+        if (!shutdownHandled) ChatSessions.stopAll()
         super.onDestroy()
     }
 
-    private fun stopProtection() {
+    private fun stopProtectionIfIdle() {
+        if (ChatSessions.activeCount.value != 0) return
+        if (!stopSelfResult(latestStartId)) return
+        shutdownHandled = true
         observation?.cancel()
         stopForeground(STOP_FOREGROUND_REMOVE)
-        stopSelf()
+    }
+
+    private fun stopProtection() {
+        shutdownHandled = true
+        observation?.cancel()
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        stopSelf(latestStartId)
     }
 
     private fun createNotificationChannel() {
@@ -123,6 +133,7 @@ class ChatGenerationService : Service() {
 
         fun ensureRunning(context: Context) {
             check(Looper.myLooper() == Looper.getMainLooper()) { "Start chat generation on the main thread" }
+            check(ChatSessions.activeCount.value > 0) { "Foreground protection requires active generation" }
             ContextCompat.startForegroundService(
                 context.applicationContext,
                 Intent(context.applicationContext, ChatGenerationService::class.java)

@@ -46,6 +46,9 @@ enum class NotebookDetailTab {
     SOURCES
 }
 
+internal fun notebookDetailTab(saved: String?): NotebookDetailTab =
+    NotebookDetailTab.entries.firstOrNull { it.name == saved } ?: NotebookDetailTab.CHAT
+
 internal fun notebookBackTarget(
     currentTab: NotebookDetailTab,
     settledTab: NotebookDetailTab = currentTab,
@@ -66,9 +69,15 @@ fun NotebookDetailScreen(
     val repository = remember { NotebookRepository.from(context) }
 
     val messageUiState = remember(notebookId) { NotebookMessageUiState() }
-    LaunchedEffect(active, messageUiState) { if (!active) messageUiState.resetUserMessages() }
     val tabs = NotebookDetailTab.entries
-    val pagerState = rememberPagerState { tabs.size }
+    val tabKey = "chat:$notebookId:detail-tab"
+    val initialTab = remember(notebookId) {
+        notebookDetailTab(ReadingPositionMemory.read(context, tabKey)?.itemKey)
+    }
+    val pagerState = rememberPagerState(initialPage = tabs.indexOf(initialTab)) { tabs.size }
+    RememberReadingPosition(tabKey) {
+        ReadingPosition(tabs[pagerState.settledPage].name, pagerState.settledPage, 0)
+    }
     val scope = rememberCoroutineScope()
     val selectedTab = tabs[pagerState.currentPage]
     val focusManager = LocalFocusManager.current

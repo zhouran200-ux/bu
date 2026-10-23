@@ -4,6 +4,12 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class NotebookDetailTabsTest {
+    @Test fun savedTabRestoresByNameAndInvalidValuesFallBackToChat() {
+        assertEquals(NotebookDetailTab.SOURCES, notebookDetailTab("SOURCES"))
+        assertEquals(NotebookDetailTab.CHAT, notebookDetailTab("CHAT"))
+        assertEquals(NotebookDetailTab.CHAT, notebookDetailTab(null))
+        assertEquals(NotebookDetailTab.CHAT, notebookDetailTab("removed-tab"))
+    }
 
     @Test
     fun detailTabsKeepChatFirstSoSwipeOrderIsStable() {

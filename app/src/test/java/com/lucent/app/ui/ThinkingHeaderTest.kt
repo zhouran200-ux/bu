@@ -16,54 +16,41 @@ class ThinkingHeaderTest {
         assertEquals(S.thinkingDone, thinkingTitle(false, true, 0))
     }
 
-    @Test fun streamingKeepsUntouchedSlotsCollapsedAndOnlyManualChoicesExpand() {
-        val untouched = ThinkingLaneState(null, streaming = false)
-        assertFalse(untouched.expanded)
-        untouched.retainStreamingHeight(true)
-        assertFalse(untouched.expanded)
-        assertFalse(untouched.retainLiveHeight)
-
-        untouched.toggle()
-        assertTrue(untouched.expanded)
-        untouched.retainStreamingHeight(true)
-        assertTrue(untouched.retainLiveHeight)
-        untouched.toggle()
-        untouched.retainStreamingHeight(true)
-        assertFalse(untouched.expanded)
-        assertFalse(untouched.retainLiveHeight)
-
-        val savedClosed = ThinkingLaneState(ReadingPosition("collapsed", 0, 0), streaming = false)
-        savedClosed.retainStreamingHeight(true)
-        assertFalse(savedClosed.expanded)
-        assertFalse(savedClosed.retainLiveHeight)
-
-        val savedOpen = ThinkingLaneState(ReadingPosition("expanded", 0, 0), streaming = false)
-        assertTrue(savedOpen.expanded)
-        savedOpen.retainStreamingHeight(true)
-        assertTrue(savedOpen.retainLiveHeight)
+    @Test fun eachVisitStartsCollapsedAndCompletionDoesNotUndoManualExpansion() {
+        val lane = ThinkingLaneState()
+        assertFalse(lane.expanded)
+        assertEquals(0, lane.scroll.value)
+        lane.retainStreamingHeight(true)
+        assertFalse(lane.expanded)
+        lane.toggle()
+        lane.retainStreamingHeight(true)
+        assertTrue(lane.retainLiveHeight)
+        lane.retainStreamingHeight(false)
+        assertTrue(lane.expanded)
+        assertTrue(lane.retainLiveHeight)
+        lane.toggle()
+        assertFalse(lane.expanded)
+        assertFalse(lane.retainLiveHeight)
     }
 
-    @Test fun untouchedUnsupportedSlotDoesNotPersistAPhantomCollapseChoice() {
-        val slot = ThinkingLaneState(null, false)
-        assertNull(slot.positionToPersist(false))
-        val reopened = ThinkingLaneState(slot.positionToPersist(false), true)
-        assertFalse(reopened.expanded)
-        val history = ThinkingLaneState(null, false)
-        assertEquals("collapsed", history.positionToPersist(true)?.itemKey)
-        val manual = ThinkingLaneState(ReadingPosition("expanded", 0, 0), true)
-        manual.toggle()
-        assertEquals("collapsed", manual.positionToPersist(false)?.itemKey)
-    }
-
-    @Test fun originalAndStickyUseTheSameStateForTheSameReadingKey() {
+    @Test fun lazyItemAndStickyRemountReuseVisitStateButNextVisitDoesNot() {
         val owner = NotebookMessageUiState()
-        val original = owner.thinking("chat:1:thought:2") { ThinkingLaneState(ReadingPosition("expanded", 0, 0), true) }
-        val sticky = owner.thinking("chat:1:thought:2") { error("Must reuse the existing lane") }
-        org.junit.Assert.assertSame(original, sticky)
-        sticky.toggle()
+        val original = owner.thinking("chat:1:thought:2") { ThinkingLaneState() }
+        original.toggle()
+        original.scroll.dispatchRawDelta(37f)
+        val remounted = owner.thinking("chat:1:thought:2") { error("Must reuse the visit lane") }
+        org.junit.Assert.assertSame(original, remounted)
+        assertTrue(remounted.expanded)
+        assertEquals(37, remounted.scroll.value)
+        remounted.toggle()
         assertFalse(original.expanded)
         original.toggle()
-        assertTrue(sticky.expanded)
+        assertTrue(remounted.expanded)
+        val nextVisit = NotebookMessageUiState().thinking("chat:1:thought:2") { ThinkingLaneState() }
+        assertFalse(nextVisit.expanded)
+        assertEquals(0, nextVisit.scroll.value)
+        val otherNotebook = NotebookMessageUiState().thinking("chat:2:thought:2") { ThinkingLaneState() }
+        assertFalse(otherNotebook.expanded)
     }
 
     @Test fun onlyTheItemActuallyCrossingViewportTopCanOwnStickyHeader() {

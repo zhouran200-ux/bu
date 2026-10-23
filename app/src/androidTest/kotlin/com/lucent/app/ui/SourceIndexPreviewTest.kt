@@ -79,9 +79,11 @@ class SourceIndexPreviewTest {
             rule.onAllNodesWithContentDescription(S.sourceIndexPreviewOpen).fetchSemanticsNodes().isNotEmpty()
         }
         rule.waitForIdle()
+        val source = com.lucent.app.data.NovelSourceIndex.get(Note(id = 7L, title = "Document", body = documentBody))
+        assertEquals(80, sourceReadingItems(source.body, source.tagged).size)
     }
 
-    @Test fun differentTextHeightsKeepTheSameAnchorWithoutReusingPixelOffsets() {
+    @Test fun firstModelEntrySharesAnchorThenBothPagesKeepTheirOwnPixelOffsets() {
         render()
         rule.onNodeWithTag("source_reader_list").performScrollToIndex(21)
         rule.onNodeWithTag("source_reader_list").performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, 120f) }
@@ -102,29 +104,53 @@ class SourceIndexPreviewTest {
         assertTrue(rawPosition.offset > 0)
         InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
         rule.waitForIdle()
-        assertPosition("source_reader_list", 21, "slice:S11-1")
-        rule.onNodeWithText(paragraph(11), substring = true).assertIsDisplayed()
+        assertEquals(readerPosition, position("source_reader_list"))
+        rule.onNodeWithContentDescription(S.sourceIndexPreviewOpen).performClick()
+        rule.waitForIdle()
+        assertEquals(rawPosition, position("source_model_list"))
     }
 
-    @Test fun rawProgressIsSavedWhenReaderLeavesComposition() {
+    private fun position(tag: String): ReadingPosition = ReadingPosition.decode(
+        rule.onNodeWithTag(tag).fetchSemanticsNode().config[SourceReadingPositionKey]
+    )!!
+
+    @Test fun bothExactPositionsAndModelPageAreSavedOnUnmountAndReopen() {
         render()
+        rule.onNodeWithTag("source_reader_list").performScrollToIndex(21)
+        rule.onNodeWithTag("source_reader_list").performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, 120f) }
+        rule.waitForIdle()
+        val document = position("source_reader_list")
         rule.onNodeWithContentDescription(S.sourceIndexPreviewOpen).performClick()
         rule.onNodeWithTag("source_model_list").performScrollToIndex(41)
-        assertPosition("source_model_list", 41, "slice:S21-1")
+        rule.onNodeWithTag("source_model_list").performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, 160f) }
+        rule.waitForIdle()
+        val model = position("source_model_list")
+        assertTrue(document.offset > 0)
+        assertTrue(model.offset > 0)
         rule.runOnIdle { visible.value = false }
         rule.runOnIdle {
-            val saved = ReadingPositionMemory.read(
-                InstrumentationRegistry.getInstrumentation().targetContext,
-                "source:$notebookId:7:slices:$revision"
-            )
-            assertEquals(ReadingPosition("slice:S21-1", 41, 0), saved)
+            val context = InstrumentationRegistry.getInstrumentation().targetContext
+            val keys = SourceReadingMemoryKeys(notebookId, 7L, revision)
+            assertEquals(document, ReadingPositionMemory.read(context, keys.document))
+            assertEquals(model, ReadingPositionMemory.read(context, keys.model))
+            assertTrue(ReadingPositionMemory.readSourcePage(context, keys))
             visible.value = true
         }
         rule.waitUntil(5_000) {
+            rule.onAllNodesWithContentDescription(S.sourceIndexPreviewBack).fetchSemanticsNodes().isNotEmpty()
+        }
+        rule.waitForIdle()
+        assertEquals(model, position("source_model_list"))
+        rule.onNodeWithContentDescription(S.sourceIndexPreviewBack).performClick()
+        rule.waitForIdle()
+        assertEquals(document, position("source_reader_list"))
+        rule.runOnIdle { visible.value = false }
+        rule.runOnIdle { visible.value = true }
+        rule.waitUntil(5_000) {
             rule.onAllNodesWithContentDescription(S.sourceIndexPreviewOpen).fetchSemanticsNodes().isNotEmpty()
         }
-        assertPosition("source_reader_list", 41, "slice:S21-1")
-        rule.onNodeWithText(paragraph(21), substring = true).assertIsDisplayed()
+        rule.waitForIdle()
+        assertEquals(document, position("source_reader_list"))
     }
 
     @Test fun citationFromRawPageOverridesRawProgress() {
@@ -138,8 +164,23 @@ class SourceIndexPreviewTest {
         rule.onNodeWithTag("source_model_page").assertDoesNotExist()
         rule.onNodeWithContentDescription(S.sourceIndexPreviewOpen).performClick()
         rule.waitForIdle()
-        assertPosition("source_model_list", 21, "slice:S11-1")
-        rule.onNodeWithText("〔S：11-1〕", substring = true).assertIsDisplayed()
+        assertPosition("source_model_list", 41, "slice:S21-1")
+        rule.onNodeWithText("〔S：21-1〕", substring = true).assertIsDisplayed()
+    }
+
+    @Test fun coldDocumentRestoreHasPreparedGeometryBeforeFirstScroll() {
+        val saved = ReadingPosition("slice:S31-1", 61, 173)
+        ReadingPositionMemory.write(
+            InstrumentationRegistry.getInstrumentation().targetContext,
+            SourceReadingMemoryKeys(notebookId, 7L, revision).document,
+            saved
+        )
+        render()
+        assertEquals(saved, position("source_reader_list"))
+        rule.onNodeWithText(paragraph(31), substring = true).assertIsDisplayed()
+        rule.onNodeWithTag("source_reader_list").performScrollToIndex(21)
+        rule.waitForIdle()
+        assertPosition("source_reader_list", 21, "slice:S11-1")
     }
 
     @Test fun entrySlidesToInlineTaggedPageAndReturnsToReader() {
@@ -167,7 +208,7 @@ class SourceIndexPreviewTest {
         rule.onNodeWithTag("source_model_page").assertDoesNotExist()
     }
 
-    @Test fun pageSwitchesCarryReadingProgressInBothDirections() {
+    @Test fun pageSwitchesRetainIndependentReadingProgress() {
         render()
         rule.onNodeWithTag("source_reader_list").performScrollToIndex(21)
         assertPosition("source_reader_list", 21, "slice:S11-1")
@@ -178,8 +219,8 @@ class SourceIndexPreviewTest {
         rule.onNodeWithTag("source_model_list").performScrollToIndex(41)
         rule.onNodeWithContentDescription(S.sourceIndexPreviewBack).performClick()
         rule.waitForIdle()
-        assertPosition("source_reader_list", 41, "slice:S21-1")
-        rule.onNodeWithText(paragraph(21), substring = true).assertIsDisplayed()
+        assertPosition("source_reader_list", 21, "slice:S11-1")
+        rule.onNodeWithText(paragraph(11), substring = true).assertIsDisplayed()
         rule.onNodeWithContentDescription(S.sourceIndexPreviewOpen).performClick()
         rule.waitForIdle()
         rule.onNodeWithText("〔S：21-1〕", substring = true).assertIsDisplayed()

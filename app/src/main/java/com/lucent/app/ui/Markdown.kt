@@ -41,7 +41,7 @@ internal data class MarkdownParseSnapshot(
 )
 
 @Composable
-fun MarkdownText(
+internal fun MarkdownText(
     text: String,
     modifier: Modifier = Modifier,
     onCitationClick: ((CitationRef) -> Unit)? = null,
@@ -49,7 +49,8 @@ fun MarkdownText(
     sourceRevision: String? = null,
     emphasized: Boolean = false,
     citationsEnabled: Boolean = true,
-    streaming: Boolean = false
+    streaming: Boolean = false,
+    initialSnapshot: MarkdownParseSnapshot? = null
 ) {
     val onGradient = LocalOnGradient.current
     val onGradientMuted = LocalOnGradientMuted.current
@@ -71,7 +72,7 @@ fun MarkdownText(
         )
     }
     val renderer = remember { MarkdownRenderer() }
-    var parsed by remember { mutableStateOf(MarkdownParseSnapshot(emptyList(), emptyList())) }
+    var parsed by remember(initialSnapshot) { mutableStateOf(initialSnapshot ?: MarkdownParseSnapshot(emptyList(), emptyList())) }
     val currentClick = rememberUpdatedState(onCitationClick)
     val click: (CitationRef) -> Unit = remember(clickable) { { ref -> currentClick.value?.invoke(ref) } }
     val revealed = rememberRevealedText(text, streaming)

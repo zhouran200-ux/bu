@@ -3,6 +3,7 @@ package com.lucent.app
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -37,6 +38,7 @@ import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.lucent.app.ui.LocalBackgroundEnvironment
 import com.lucent.app.ui.LocalOnGradient
 import com.lucent.app.ui.LocalOnGradientMuted
 import com.lucent.app.ui.NotebooksScreen
@@ -85,15 +87,16 @@ internal fun CapsuleNavItem(
     val context = LocalContext.current
     val onGradient = LocalOnGradient.current
     val onGradientMuted = LocalOnGradientMuted.current
+    val motionOn = LocalBackgroundEnvironment.current.motionEnabled
 
     val animTint by animateColorAsState(
         targetValue = if (selected) onGradient else onGradientMuted,
-        animationSpec = tween(220, easing = FastOutSlowInEasing),
+        animationSpec = if (motionOn) tween(220, easing = FastOutSlowInEasing) else snap(),
         label = "tabTint"
     )
     val animBgAlpha by animateFloatAsState(
         targetValue = if (selected) 0.14f else 0f,
-        animationSpec = tween(220, easing = FastOutSlowInEasing),
+        animationSpec = if (motionOn) tween(220, easing = FastOutSlowInEasing) else snap(),
         label = "tabBgAlpha"
     )
     Column(
@@ -136,11 +139,16 @@ fun iconFor(tab: HomeTab): ImageVector = when (tab) {
 internal fun KeepAliveTabs(active: Screen, pagerState: PagerState, modifier: Modifier = Modifier) {
     val tabs = HomeTab.entries
     val activeTab = HomeTab.of(active)
+    val motionOn = LocalBackgroundEnvironment.current.motionEnabled
 
-    LaunchedEffect(activeTab) {
+    LaunchedEffect(activeTab, motionOn) {
         val targetPage = tabs.indexOf(activeTab)
         if (pagerState.currentPage != targetPage) {
-            pagerState.animateScrollToPage(targetPage, animationSpec = tween(280, easing = FastOutSlowInEasing))
+            if (motionOn) {
+                pagerState.animateScrollToPage(targetPage, animationSpec = tween(280, easing = FastOutSlowInEasing))
+            } else {
+                pagerState.scrollToPage(targetPage)
+            }
         }
     }
 

@@ -16,9 +16,9 @@ import androidx.compose.ui.Alignment
 
 import android.net.Uri
 import android.provider.OpenableColumns
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -32,11 +32,14 @@ import com.lucent.app.data.FontStore
 import com.lucent.app.data.SettingsCache
 import com.lucent.app.data.SettingsRepository
 import com.lucent.app.i18n.S
+import com.lucent.app.ui.Haptics
 import com.lucent.app.ui.LocalOnGradient
 import com.lucent.app.ui.LocalOnGradientMuted
 import com.lucent.app.ui.LucentFontResolver
 import com.lucent.app.ui.LucentTitles
+import com.lucent.app.ui.LucentToast
 import com.lucent.app.ui.SYSTEM_FONT_KEY
+import com.lucent.app.ui.foregroundRim
 import com.lucent.app.ui.glassPanelColor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -63,7 +66,7 @@ internal fun FontSettingsPage(
     var activeLineSpacing by remember(savedLineSpacing) { mutableFloatStateOf(savedLineSpacing) }
     var activeLetterSpacing by remember(savedLetterSpacing) { mutableFloatStateOf(savedLetterSpacing) }
 
-    var fontRefreshIndex by remember { mutableStateOf(0) }
+    var fontRefreshIndex by remember { mutableIntStateOf(0) }
     var importedFonts by remember { mutableStateOf<List<FontStore.FontSlot>>(emptyList()) }
     LaunchedEffect(fontRefreshIndex) {
         importedFonts = FontLibrary.slots(context)
@@ -112,7 +115,7 @@ internal fun FontSettingsPage(
                 val slot = FontLibrary.import(context, uri, name)
                 fontRefreshIndex++
                 AppScope.setFont(context, repo, slot.id)
-                Toast.makeText(context, S.fontImportedToast, Toast.LENGTH_SHORT).show()
+                LucentToast.show(context, S.fontImportedToast)
             } catch (e: FontStore.NotFontException) {
                 fontError = S.fontImportFailedNotFont
             } catch (e: FontStore.TooManyFontsException) {
@@ -138,19 +141,21 @@ internal fun FontSettingsPage(
         onFontScaleChange = { activeFontScale = it },
         onFontScaleCommit = {
             AppScope.setFontScale(context, repo, activeFontScale)
-            activeFontScale = savedFontScale
         },
         onLineSpacingChange = { activeLineSpacing = it },
         onLineSpacingCommit = {
             AppScope.setLineSpacing(context, repo, activeLineSpacing)
-            activeLineSpacing = savedLineSpacing
         },
         onLetterSpacingChange = { activeLetterSpacing = it },
         onLetterSpacingCommit = {
             AppScope.setLetterSpacing(context, repo, activeLetterSpacing)
-            activeLetterSpacing = savedLetterSpacing
         },
-        onResetDefaults = { AppScope.resetTypographyDefaults(context, repo) }
+        onResetDefaults = {
+            activeFontScale = 1.0f
+            activeLineSpacing = 1.0f
+            activeLetterSpacing = 0.0f
+            AppScope.resetTypographyDefaults(context, repo)
+        }
     )
 
     Spacer(modifier = Modifier.height(12.dp))
@@ -211,9 +216,13 @@ internal fun FontSettingsPage(
                     horizontalArrangement = Arrangement.End,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    TextButton(onClick = { pendingImportUri = null }) { Text(S.actionCancel) }
+                    TextButton(onClick = {
+                        Haptics.tick(context)
+                        pendingImportUri = null
+                    }) { Text(S.actionCancel) }
                     Spacer(modifier = Modifier.width(8.dp))
                     TextButton(onClick = {
+                        Haptics.tick(context)
                         startImportFont(uri, importFontNameDraft.ifBlank { "Custom Font" })
                     }) { Text(S.fontImport) }
                 }
@@ -223,6 +232,7 @@ internal fun FontSettingsPage(
 
     fontPendingDelete?.let { slot ->
         AlertDialog(
+            modifier = Modifier.border(0.75.dp, foregroundRim(), RoundedCornerShape(24.dp)),
             containerColor = glassPanelColor(),
             tonalElevation = 0.dp,
             onDismissRequest = { fontPendingDelete = null },
@@ -232,6 +242,7 @@ internal fun FontSettingsPage(
             confirmButton = {
                 TextButton(
                     onClick = {
+                        Haptics.tick(context)
                         val idToDelete = slot.id
                         fontPendingDelete = null
                         scope.launch {
@@ -252,7 +263,10 @@ internal fun FontSettingsPage(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { fontPendingDelete = null }) {
+                TextButton(onClick = {
+                    Haptics.tick(context)
+                    fontPendingDelete = null
+                }) {
                     Text(S.actionCancel)
                 }
             }

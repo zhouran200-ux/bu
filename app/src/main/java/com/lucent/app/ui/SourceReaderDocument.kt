@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -68,7 +69,9 @@ internal fun SourceReaderDocument(
     active: Boolean,
     emphasizedFocus: SourceFocus?,
     onEmphasize: (SourceFocus?) -> Unit,
-    modifier: Modifier
+    modifier: Modifier,
+    onReplaceDocument: (() -> Unit)? = null,
+    onRemoveDocument: (() -> Unit)? = null
 ) {
     val source = content.source
     val items = content.items
@@ -164,7 +167,8 @@ internal fun SourceReaderDocument(
             )
         } else {
             BoxWithConstraints(modifier = Modifier.fillMaxSize().background(lucentPanelBackground()).testTag("source_reader_page")) {
-                val titleMaxWidth = (maxWidth - 76.dp).coerceIn(120.dp, 280.dp)
+                val hasManageActions = onReplaceDocument != null || onRemoveDocument != null
+                val titleMaxWidth = (maxWidth - if (hasManageActions) 128.dp else 76.dp).coerceIn(120.dp, 280.dp)
                 SelectionContainer {
                     LazyColumn(
                         state = listState,
@@ -220,20 +224,32 @@ internal fun SourceReaderDocument(
                     )
                 }
 
-                SourceIndexPreviewEntry(
-                    enabled = active && !showIndexPreview && source.tagged.text.isNotBlank(),
-                    onClick = {
-                        if (!modelVisited) {
-                            val position = listState.sourcePosition(readingKeys).forSourceLayout(previewKeys)
-                            previewListState = LazyListState(position.index, position.offset)
-                            modelVisited = true
-                        }
-                        showIndexPreview = true
-                    },
+                Row(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
-                        .padding(12.dp)
-                )
+                        .padding(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (hasManageActions) {
+                        SourceManageEntry(
+                            enabled = active && !showIndexPreview,
+                            onReplace = onReplaceDocument,
+                            onRemove = onRemoveDocument
+                        )
+                    }
+                    SourceIndexPreviewEntry(
+                        enabled = active && !showIndexPreview && source.tagged.text.isNotBlank(),
+                        onClick = {
+                            if (!modelVisited) {
+                                val position = listState.sourcePosition(readingKeys).forSourceLayout(previewKeys)
+                                previewListState = LazyListState(position.index, position.offset)
+                                modelVisited = true
+                            }
+                            showIndexPreview = true
+                        }
+                    )
+                }
 
             }
         }

@@ -9,6 +9,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -16,6 +18,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
@@ -107,20 +110,24 @@ fun StepperSlider(
     }
 
     Column(modifier = modifier.fillMaxWidth()) {
-        Text(
-            text = title,
-            color = ink,
-            fontSize = LucentTitles.ItemSize,
-            fontWeight = LucentTitles.ItemWeight
-        )
-        Spacer(modifier = Modifier.height(if (compact) 0.dp else 2.dp))
-        Box(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = if (compact) 0.dp else 2.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = title,
+                color = ink,
+                fontSize = LucentTitles.ItemSize,
+                fontWeight = LucentTitles.ItemWeight
+            )
             Text(
                 text = valueLabel,
                 color = ink.copy(alpha = 0.72f),
                 fontSize = 13.sp,
-                fontWeight = FontWeight.Medium,
-                modifier = Modifier.align(Alignment.Center)
+                fontWeight = FontWeight.Medium
             )
         }
         Spacer(modifier = Modifier.height(if (compact) 2.dp else 4.dp))
@@ -215,10 +222,16 @@ private fun SliderEdgeButton(
     onClick: () -> Unit
 ) {
     val ink = LocalOnGradient.current
+    val interaction = remember { MutableInteractionSource() }
     Box(
         modifier = Modifier
             .size(width = 30.dp, height = 36.dp)
-            .clickable(enabled = enabled, onClick = onClick),
+            .clickable(
+                interactionSource = interaction,
+                indication = rememberScaleIndication(),
+                enabled = enabled,
+                onClick = onClick
+            ),
         contentAlignment = Alignment.Center
     ) {
         Box(

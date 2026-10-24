@@ -11,8 +11,13 @@ internal object SettingsNav {
     var handler: ((SettingsRoute) -> Unit)? = null
 
     fun go(route: SettingsRoute) {
-        AppNavigation.rememberSettingsRoute(route)
-        handler?.invoke(route)
+        val currentHandler = handler
+        if (currentHandler != null && AppNavigation.settingsRoute == SettingsRoute.Api && route != SettingsRoute.Api) {
+            currentHandler.invoke(route)
+        } else {
+            AppNavigation.rememberSettingsRoute(route)
+            currentHandler?.invoke(route)
+        }
     }
 }
 

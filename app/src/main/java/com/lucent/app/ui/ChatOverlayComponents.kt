@@ -37,7 +37,6 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -80,7 +79,7 @@ internal fun BottomGlassComposer(
                 value = inputText,
                 onValueChange = onInputChange,
                 placeholder = S.composerPlaceholder,
-                textStyle = TextStyle(fontSize = 15.sp, lineHeight = 22.sp, color = onGradient),
+                textStyle = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp, lineHeight = 22.sp, color = onGradient),
                 placeholderColor = onGradientMuted.copy(alpha = 0.65f),
                 minLines = 2,
                 maxLines = 5,
@@ -94,6 +93,7 @@ internal fun BottomGlassComposer(
 
             Spacer(modifier = Modifier.height(10.dp))
 
+            val controlRowHeight = (44f * 2f / 3f).dp
             Row(
                 modifier = Modifier.fillMaxWidth().testTag("bottom_glass_composer_controls"),
                 verticalAlignment = Alignment.CenterVertically,
@@ -122,22 +122,32 @@ internal fun BottomGlassComposer(
                             onGradientMuted
                         }
 
-                        Surface(
-                            shape = CircleShape,
-                            color = thinkingBg,
+                        Box(
+                            contentAlignment = Alignment.Center,
                             modifier = Modifier
-                                .size(width = 36.dp, height = 24.dp)
+                                .height(controlRowHeight)
                                 .clip(CircleShape)
                                 .onGloballyPositioned { onReasoningButtonBounds(it.boundsInWindow()) }
-                                .clickable { onReasoningMenuChange(!showReasoningMenu) }
+                                .clickable {
+                                    Haptics.tick(context)
+                                    onReasoningMenuChange(!showReasoningMenu)
+                                }
                         ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    LucentIcons.presetIcon(reasoningPreset),
-                                    contentDescription = S.composerReasoning,
-                                    tint = thinkingTint,
-                                    modifier = Modifier.size(18.dp)
-                                )
+                            Surface(
+                                shape = CircleShape,
+                                color = thinkingBg,
+                                modifier = Modifier
+                                    .size(width = 36.dp, height = 24.dp)
+                                    .clip(CircleShape)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        LucentIcons.presetIcon(reasoningPreset),
+                                        contentDescription = S.composerReasoning,
+                                        tint = thinkingTint,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
                             }
                         }
 
@@ -193,6 +203,7 @@ internal fun BottomGlassComposer(
                                         }
                                     },
                                     onClick = {
+                                        Haptics.tick(context)
                                         onSelectReasoning(preset)
                                         onReasoningMenuChange(false)
                                     }
@@ -201,88 +212,116 @@ internal fun BottomGlassComposer(
                         }
                     }
 
-                    Surface(
-                        shape = CircleShape,
-                        color = glassControlColor(),
+                    Box(
+                        contentAlignment = Alignment.Center,
                         modifier = Modifier
-                            .size(width = 36.dp, height = 24.dp)
+                            .height(controlRowHeight)
                             .clip(CircleShape)
                             .clickable {
                                 Haptics.tick(context)
                                 onOpenHistory()
                             }
                     ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                Icons.Rounded.History,
-                                contentDescription = S.composerHistory,
-                                tint = onGradient,
-                                modifier = Modifier.size(19.dp)
-                            )
+                        Surface(
+                            shape = CircleShape,
+                            color = glassControlColor(),
+                            modifier = Modifier
+                                .size(width = 36.dp, height = 24.dp)
+                                .clip(CircleShape)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    Icons.Rounded.History,
+                                    contentDescription = S.composerHistory,
+                                    tint = onGradient,
+                                    modifier = Modifier.size(19.dp)
+                                )
+                            }
                         }
                     }
 
-                    Surface(
-                        shape = CircleShape,
-                        color = glassControlColor(),
+                    Box(
+                        contentAlignment = Alignment.Center,
                         modifier = Modifier
-                            .size(width = 36.dp, height = 24.dp)
+                            .height(controlRowHeight)
                             .clip(CircleShape)
-                            .clickable { onOpenDialogueSettings() }
+                            .clickable {
+                                Haptics.tick(context)
+                                onOpenDialogueSettings()
+                            }
                     ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                Icons.Default.Tune,
-                                contentDescription = S.composerSettings,
-                                tint = onGradient,
-                                modifier = Modifier.size(19.dp)
-                            )
+                        Surface(
+                            shape = CircleShape,
+                            color = glassControlColor(),
+                            modifier = Modifier
+                                .size(width = 36.dp, height = 24.dp)
+                                .clip(CircleShape)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    Icons.Default.Tune,
+                                    contentDescription = S.composerSettings,
+                                    tint = onGradient,
+                                    modifier = Modifier.size(19.dp)
+                                )
+                            }
                         }
                     }
 
-                    Surface(
-                        shape = RoundedCornerShape(18.dp),
-                        color = glassControlColor(selected = true),
+                    Box(
+                        contentAlignment = Alignment.Center,
                         modifier = Modifier
                             .weight(1f)
+                            .height(controlRowHeight)
                             .clip(RoundedCornerShape(18.dp))
-                            .clickable { onOpenModelPicker() }
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp)
-                        ) {
-                            Surface(
-                                shape = CircleShape,
-                                color = accent,
-                                modifier = Modifier.size(18.dp)
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        LucentIcons.Model,
-                                        contentDescription = null,
-                                        tint = onAccent,
-                                        modifier = Modifier.size(13.dp)
-                                    )
-                                }
+                            .clickable {
+                                Haptics.tick(context)
+                                onOpenModelPicker()
                             }
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = selectedProfileName.ifBlank { S.composerPickProfile },
-                                modifier = Modifier.weight(1f),
-                                maxLines = 1,
-                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                                color = accent,
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            Spacer(modifier = Modifier.width(3.dp))
-                            Icon(
-                                Icons.Default.KeyboardArrowUp,
-                                contentDescription = S.composerExpandModels,
-                                tint = accent,
-                                modifier = Modifier.size(15.dp)
-                            )
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(18.dp),
+                            color = glassControlColor(selected = true),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(18.dp))
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp)
+                            ) {
+                                Surface(
+                                    shape = CircleShape,
+                                    color = accent,
+                                    modifier = Modifier.size(18.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            LucentIcons.Model,
+                                            contentDescription = null,
+                                            tint = onAccent,
+                                            modifier = Modifier.size(13.dp)
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = selectedProfileName.ifBlank { S.composerPickProfile },
+                                    modifier = Modifier.weight(1f),
+                                    maxLines = 1,
+                                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                                    color = accent,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                Spacer(modifier = Modifier.width(3.dp))
+                                Icon(
+                                    Icons.Default.KeyboardArrowUp,
+                                    contentDescription = S.composerExpandModels,
+                                    tint = accent,
+                                    modifier = Modifier.size(15.dp)
+                                )
+                            }
                         }
                     }
                 }
@@ -297,6 +336,7 @@ internal fun BottomGlassComposer(
                         .size(width = 44.dp, height = (44f * 2f / 3f).dp)
                         .clip(CircleShape)
                         .clickable(enabled = streaming || inputText.isNotBlank()) {
+                            Haptics.tick(context)
                             if (streaming) onStop() else onSend()
                         }
                 ) {

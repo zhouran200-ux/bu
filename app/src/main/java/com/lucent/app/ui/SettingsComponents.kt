@@ -221,6 +221,7 @@ internal fun ApiModelPickerDialog(
     onDone: (Set<String>) -> Unit,
     onDismiss: () -> Unit
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var draft by remember(names) { mutableStateOf(selected) }
     val drawer = rememberModelPickerDrawer(sheetState, onDismiss = onDismiss)
@@ -286,7 +287,10 @@ internal fun ApiModelPickerDialog(
                     modifier = Modifier
                         .clip(RoundedCornerShape(6.dp))
                         .background(glassControlColor())
-                        .clickable { draft = draft + names }
+                        .clickable {
+                            Haptics.tick(context)
+                            draft = draft + names
+                        }
                         .padding(horizontal = 8.dp, vertical = 2.dp)
                 ) {
                     Text(
@@ -301,7 +305,10 @@ internal fun ApiModelPickerDialog(
                     modifier = Modifier
                         .clip(RoundedCornerShape(6.dp))
                         .background(glassControlColor())
-                        .clickable { draft = emptySet() }
+                        .clickable {
+                            Haptics.tick(context)
+                            draft = emptySet()
+                        }
                         .padding(horizontal = 8.dp, vertical = 2.dp)
                 ) {
                     Text(
@@ -356,6 +363,7 @@ internal fun ApiModelPickerDialog(
                                         else Modifier
                                     )
                                     .toggleable(value = checked, role = Role.Checkbox) { selected ->
+                                        Haptics.tick(context)
                                         draft = if (selected) draft + name else draft - name
                                     }
                                     .padding(horizontal = 10.dp, vertical = 3.dp)
@@ -387,7 +395,10 @@ internal fun ApiModelPickerDialog(
             Spacer(modifier = Modifier.height(12.dp))
 
             Button(
-                onClick = { drawer.close { onDone(draft) } },
+                onClick = {
+                    Haptics.tick(context)
+                    drawer.close { onDone(draft) }
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(36.dp),

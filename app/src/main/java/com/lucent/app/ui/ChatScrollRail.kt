@@ -194,9 +194,17 @@ fun FloatingScrollCapsule(
                     },
                 contentAlignment = Alignment.CenterEnd
             ) {
-                Box(Modifier.padding(end = 3.dp)
-                    .size(width = 22.dp, height = 46.dp.coerceAtMost(hitHeight))
-                    .border(2.dp, ink.copy(alpha = if (dragging) 0.98f else 0.85f), RoundedCornerShape(50)))
+                Box(
+                    Modifier
+                        .padding(end = 3.dp)
+                        .size(width = 22.dp, height = 46.dp.coerceAtMost(hitHeight))
+                        .foregroundGlass(cornerRadius = 23.dp, reading = true, borderWidth = 0.dp)
+                        .border(
+                            width = 1.2.dp,
+                            color = ink.copy(alpha = if (dragging) 0.88f else 0.55f),
+                            shape = RoundedCornerShape(50)
+                        )
+                )
             }
         }
     }

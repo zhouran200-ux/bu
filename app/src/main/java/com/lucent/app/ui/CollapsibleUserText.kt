@@ -8,6 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.SubcomposeLayout
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.constrainHeight
@@ -29,6 +30,7 @@ internal fun CollapsibleUserText(
     onExpandedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val textLayout = remember(text) { UserMessageTextLayout() }
     val textColor = LocalOnGradient.current
 
@@ -54,7 +56,10 @@ internal fun CollapsibleUserText(
         } == true
         val toggle = if (canCollapse) {
             subcompose("toggle") {
-                TextButton(onClick = { onExpandedChange(!expanded) }) {
+                TextButton(onClick = {
+                    Haptics.tick(context)
+                    onExpandedChange(!expanded)
+                }) {
                     Text(if (expanded) S.userMessageCollapse else S.userMessageExpand)
                 }
             }.single().measure(childConstraints.offset(vertical = -body.height))

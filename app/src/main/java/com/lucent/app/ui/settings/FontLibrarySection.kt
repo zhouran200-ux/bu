@@ -30,12 +30,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.lucent.app.data.FontStore
 import com.lucent.app.i18n.S
+import com.lucent.app.ui.Haptics
 import com.lucent.app.ui.LocalOnGradient
 import com.lucent.app.ui.LocalOnGradientMuted
 import com.lucent.app.ui.LucentTitles
@@ -57,6 +59,7 @@ internal fun FontLibrarySection(
     onRequestDelete: (FontStore.FontSlot) -> Unit,
     onImportClick: () -> Unit
 ): Unit {
+    val context = LocalContext.current
     val onGradient = LocalOnGradient.current
     val onGradientMuted = LocalOnGradientMuted.current
     Spacer(modifier = Modifier.height(12.dp))
@@ -119,7 +122,10 @@ internal fun FontLibrarySection(
                     else onGradient.copy(alpha = 0.12f),
                     RoundedCornerShape(12.dp)
                 )
-                .clickable { onSelectSystem() }
+                .clickable {
+                    Haptics.tick(context)
+                    onSelectSystem()
+                }
                 .padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -177,7 +183,10 @@ internal fun FontLibrarySection(
                         else onGradient.copy(alpha = 0.12f),
                         RoundedCornerShape(12.dp)
                     )
-                    .clickable { onSelectFont(slot.id) }
+                    .clickable {
+                        Haptics.tick(context)
+                        onSelectFont(slot.id)
+                    }
                     .padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -225,7 +234,10 @@ internal fun FontLibrarySection(
                 }
 
                 IconButton(
-                    onClick = { onRequestDelete(slot) },
+                    onClick = {
+                        Haptics.tick(context)
+                        onRequestDelete(slot)
+                    },
                     modifier = Modifier.size(28.dp)
                 ) {
                     Icon(
@@ -248,6 +260,7 @@ internal fun FontLibrarySection(
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(12.dp))
                 .clickable(enabled = canImportMore && !importing) {
+                    Haptics.tick(context)
                     onImportClick()
                 }
         ) {

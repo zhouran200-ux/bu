@@ -60,6 +60,7 @@ import com.lucent.app.ui.LocalOnGradientMuted
 import com.lucent.app.ui.LucentTitles
 import com.lucent.app.ui.edgeScrollVelocity
 import com.lucent.app.ui.frostedGlass
+import com.lucent.app.ui.rememberScaleIndication
 import com.lucent.app.ui.selectedCard
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
@@ -307,9 +308,12 @@ internal fun ApiProfileListSection(
                                 .weight(1f)
                                 .clickable(
                                     interactionSource = remember { MutableInteractionSource() },
-                                    indication = null,
+                                    indication = rememberScaleIndication(),
                                     enabled = settled,
-                                    onClick = { onSelectProfile(idx) }
+                                    onClick = {
+                                        Haptics.tick(context)
+                                        onSelectProfile(idx)
+                                    }
                                 )
                         ) {
                             Text(

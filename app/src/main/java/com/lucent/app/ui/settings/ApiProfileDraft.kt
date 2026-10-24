@@ -27,4 +27,5 @@ internal class ApiProfileDraft(profile: ApiProfile?) {
     val key = mutableStateOf(profile?.apiKey.orEmpty())
     val selectedModel = mutableStateOf(profile?.model.orEmpty())
     val models = mutableStateOf(profile?.selectedModels ?: emptyList())
+    val customModelInput = mutableStateOf("")
 }

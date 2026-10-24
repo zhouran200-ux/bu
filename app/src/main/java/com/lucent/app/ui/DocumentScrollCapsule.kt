@@ -112,34 +112,34 @@ internal fun DocumentScrollCapsule(
         val usable = with(density) { (maxHeight - hitHeight).toPx().coerceAtLeast(1f) }
         val currentUsable by rememberUpdatedState(usable)
         val currentHitPixels by rememberUpdatedState(hitPixels)
-        val visible by rememberUpdatedState(show || dragging || shown > 0.01f)
-        Box(Modifier.width(28.dp).fillMaxHeight().pointerInput(listState, model, enabled) {
-            detectChatRailDrag(
-                onPress = { point ->
-                    val top = currentDisplayed * currentUsable
-                    if (!currentEnabled || !visible || point.y !in top..(top + currentHitPixels)) {
-                        false
-                    } else {
-                        session = DocumentRailDragSession(model, currentDisplayed, currentUsable)
-                        scope.launch(start = CoroutineStart.UNDISPATCHED) {
-                            listState.stopScroll(MutatePriority.UserInput)
+        val visible by rememberUpdatedState(show || dragging)
+        if (show || dragging || shown > 0.01f) {
+            Box(Modifier.width(28.dp).fillMaxHeight().pointerInput(listState, model, enabled) {
+                detectChatRailDrag(
+                    onPress = { point ->
+                        val top = currentDisplayed * currentUsable
+                        if (!currentEnabled || !visible || point.y !in top..(top + currentHitPixels)) {
+                            false
+                        } else {
+                            session = DocumentRailDragSession(model, currentDisplayed, currentUsable)
+                            scope.launch(start = CoroutineStart.UNDISPATCHED) {
+                                listState.stopScroll(MutatePriority.UserInput)
+                            }
+                            true
                         }
-                        true
-                    }
-                },
-                onDragStart = { point -> session = session?.start(point.y) },
-                onDrag = { point ->
-                    val previous = session
-                    if (currentEnabled && previous != null) {
-                        val next = previous.move(point.y)
-                        session = next
-                        if (next.fraction != previous.fraction) pending = next.fraction
-                    }
-                },
-                onRelease = { session = null }
-            )
-        }) {
-            if (show || dragging || shown > 0.01f) {
+                    },
+                    onDragStart = { point -> session = session?.start(point.y) },
+                    onDrag = { point ->
+                        val previous = session
+                        if (currentEnabled && previous != null) {
+                            val next = previous.move(point.y)
+                            session = next
+                            if (next.fraction != previous.fraction) pending = next.fraction
+                        }
+                    },
+                    onRelease = { session = null }
+                )
+            }) {
                 Box(
                     modifier = Modifier.offset { IntOffset(0, (displayed * usable).roundToInt()) }
                         .size(28.dp, hitHeight)

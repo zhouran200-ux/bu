@@ -84,13 +84,13 @@ private fun CitationBadge(
     shape: Shape,
     onClick: () -> Unit
 ) {
+    val dark = isDarkGlass()
     Box(
         modifier = Modifier
             .fillMaxSize()
             .clip(shape)
-            .background(Color.White.copy(alpha = 0.40f))
-            .background(accent.copy(alpha = 0.12f))
-            .border(0.8.dp, accent.copy(alpha = 0.30f), shape)
+            .background(accent.copy(alpha = if (dark) 0.22f else 0.14f))
+            .border(0.8.dp, accent.copy(alpha = if (dark) 0.40f else 0.30f), shape)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {

@@ -4,8 +4,14 @@ import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
 
 internal object EndpointUrls {
-    fun models(base: String, spec: ApiSpec, key: String, raw: Boolean): HttpUrl =
-        build(base, spec, key, raw, "models")
+    fun models(base: String, spec: ApiSpec, key: String, raw: Boolean): HttpUrl {
+        val url = base.trim().toHttpUrl()
+        val suffix = if (spec == ApiSpec.ANTHROPIC &&
+            !url.encodedPath.trimEnd('/').endsWith("/v1") &&
+            !url.encodedPath.trimEnd('/').endsWith("/models")
+        ) "v1/models" else "models"
+        return build(base, spec, key, raw, suffix)
+    }
 
     fun generation(base: String, spec: ApiSpec, key: String, model: String, raw: Boolean, stream: Boolean): HttpUrl {
         val url = base.trim().toHttpUrl()

@@ -5,8 +5,10 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.delay
@@ -71,6 +73,11 @@ internal object ReadingPositionMemory {
         prefs.all.keys.filter { it == "chat:$notebookId" || it.startsWith("chat:$notebookId:") || it.startsWith("source:$notebookId:") }
             .forEach { editor.remove(it) }
         editor.apply()
+        val chatPrefs = context.applicationContext.getSharedPreferences("lucent_notebook_chat_prefs", Context.MODE_PRIVATE)
+        val chatEditor = chatPrefs.edit()
+        val suffix = "_$notebookId"
+        chatPrefs.all.keys.filter { it.endsWith(suffix) }.forEach { chatEditor.remove(it) }
+        chatEditor.apply()
     }
 }
 
@@ -79,7 +86,11 @@ internal fun LazyListState.readingPosition(): ReadingPosition? {
     if (layout.viewportSize.height <= 0) return null
     val index = firstVisibleItemIndex
     val item = layout.visibleItemsInfo.firstOrNull { it.index == index } ?: return null
-    val itemKey = item.key as? String ?: return null
+    val itemKey = when (val rawKey = item.key) {
+        is String -> rawKey
+        is Long -> "notebook:$rawKey"
+        else -> return null
+    }
     return ReadingPosition(itemKey, index, firstVisibleItemScrollOffset)
 }
 
@@ -90,11 +101,20 @@ internal fun rememberReadingListState(
     persist: Boolean = true
 ): LazyListState {
     val context = LocalContext.current.applicationContext
+    val savedPosition = remember(key) { ReadingPositionMemory.read(context, key) }
+    var restored by remember(key) { mutableStateOf(itemKeys.isNotEmpty() || savedPosition == null) }
     val state = remember(key) {
-        val position = ReadingPositionMemory.read(context, key)?.resolve(itemKeys)
+        val position = savedPosition?.resolve(itemKeys)
         LazyListState(position?.index ?: 0, position?.offset ?: 0)
     }
-    if (persist) RememberReadingPosition(key) { state.readingPosition() }
+    LaunchedEffect(key, itemKeys.isNotEmpty()) {
+        if (!restored && itemKeys.isNotEmpty() && savedPosition != null) {
+            val resolved = savedPosition.resolve(itemKeys)
+            restored = true
+            state.scrollToItem(resolved.index, resolved.offset)
+        }
+    }
+    if (persist) RememberReadingPosition(key) { if (restored) state.readingPosition() else null }
     return state
 }
 

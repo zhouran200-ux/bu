@@ -37,7 +37,7 @@ import org.junit.runner.RunWith
 class SourceIndexPreviewTest {
     @get:Rule val rule = createComposeRule()
     private val notebookId = -System.nanoTime()
-    private fun paragraph(chapter: Int) = "Paragraph $chapter. " + "Reading text. ".repeat(100)
+    private fun paragraph(chapter: Int) = ("Paragraph $chapter. " + "Reading text. ".repeat(100)).trimEnd()
     private val documentBody = (1..40).joinToString("\n\n") { "# Chapter $it\n\n" + paragraph(it) }
 
     @After fun clearProgress() {

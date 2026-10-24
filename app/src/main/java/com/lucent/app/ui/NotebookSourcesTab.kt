@@ -4,6 +4,7 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,10 +18,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -82,7 +86,7 @@ fun NotebookSourcesTab(
             try {
                 val parsed = MarkdownDocumentParser.parseUri(context, uri).getOrThrow()
                 val document = Note(title = parsed.title, body = parsed.markdown)
-                val noteId = repository.importDocument(notebookId, document)
+                val noteId = repository.replaceDocument(notebookId, document)
                 withContext(Dispatchers.Default) { NovelSourceIndex.get(document.copy(id = noteId)) }
                 withContext(Dispatchers.Main) {
                     onReload()
@@ -102,6 +106,7 @@ fun NotebookSourcesTab(
 
     var selectedNoteId by remember(notebookId) { mutableStateOf<Long?>(null) }
     var emphasizedFocus by remember(notebookId) { mutableStateOf<SourceFocus?>(null) }
+    var confirmingRemove by remember(notebookId) { mutableStateOf(false) }
     LaunchedEffect(notebookId, active, focus, sourceNotes) {
         if (!active) return@LaunchedEffect
         focus?.let {
@@ -113,6 +118,56 @@ fun NotebookSourcesTab(
         if (sourceNotes.none { it.id == selectedNoteId }) selectedNoteId = sourceNotes.firstOrNull()?.id
     }
     val current = sourceNotes.firstOrNull { it.id == selectedNoteId } ?: sourceNotes.firstOrNull()
+    if (confirmingRemove && current != null) {
+        AlertDialog(
+            modifier = Modifier.border(0.75.dp, foregroundRim(), RoundedCornerShape(24.dp)),
+            shape = RoundedCornerShape(24.dp),
+            containerColor = glassPanelColor(),
+            tonalElevation = 0.dp,
+            onDismissRequest = { confirmingRemove = false },
+            title = {
+                KeepKeyboardForNonEditingDialog()
+                Text(S.sourcesRemove, fontSize = LucentTitles.EntrySize, fontWeight = LucentTitles.EntryWeight)
+            },
+            text = { Text(S.sourcesRemoveConfirmBody(current.title.ifBlank { S.sourcesRemove })) },
+            confirmButton = {
+                TextButton(onClick = {
+                    Haptics.tick(context)
+                    confirmingRemove = false
+                    if (!importing) {
+                        importing = true
+                        AppScope.io.launch {
+                            try {
+                                repository.removeDocument(notebookId)
+                                withContext(Dispatchers.Main) {
+                                    onReload()
+                                    LucentToast.show(context, S.sourcesRemoved)
+                                }
+                            } catch (cancelled: CancellationException) {
+                                throw cancelled
+                            } catch (failure: Exception) {
+                                withContext(Dispatchers.Main) {
+                                    LucentToast.show(context, failure.message ?: S.chatDeleteFailed)
+                                }
+                            } finally {
+                                withContext(kotlinx.coroutines.NonCancellable + Dispatchers.Main) { importing = false }
+                            }
+                        }
+                    }
+                }) {
+                    Text(S.sourcesRemove, color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    Haptics.tick(context)
+                    confirmingRemove = false
+                }) {
+                    Text(S.actionCancel)
+                }
+            }
+        )
+    }
     Box(modifier = modifier.fillMaxSize()) {
         if (current == null) {
             Column(
@@ -157,15 +212,32 @@ fun NotebookSourcesTab(
                     .navigationBarsPadding()
                     .size(58.dp)
                     .clip(RoundedCornerShape(20.dp))
-                    .pressableGlass(onClick = { if (!importing) openDocumentLauncher.launch(documentMimeTypes) }, cornerRadius = 20.dp)
+                    .pressableGlass(
+                        onClick = {
+                            if (!importing) {
+                                Haptics.tick(context)
+                                openDocumentLauncher.launch(documentMimeTypes)
+                            }
+                        },
+                        cornerRadius = 20.dp,
+                        enabled = !importing
+                    )
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        Icons.Default.Add,
-                        contentDescription = S.sourcesUpload,
-                        tint = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.size(30.dp)
-                    )
+                    if (importing) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(26.dp),
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            strokeWidth = 2.5.dp
+                        )
+                    } else {
+                        Icon(
+                            Icons.Default.Add,
+                            contentDescription = S.sourcesUpload,
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.size(30.dp)
+                        )
+                    }
                 }
             }
         } else {
@@ -178,6 +250,8 @@ fun NotebookSourcesTab(
                         active = active,
                         emphasizedFocus = emphasizedFocus,
                         onEmphasize = { emphasizedFocus = it },
+                        onReplaceDocument = { if (!importing) openDocumentLauncher.launch(documentMimeTypes) },
+                        onRemoveDocument = { if (!importing) confirmingRemove = true },
                         modifier = Modifier.fillMaxSize()
                     )
                 }
@@ -201,7 +275,9 @@ internal fun SourceReader(
     active: Boolean,
     emphasizedFocus: SourceFocus?,
     onEmphasize: (SourceFocus?) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onReplaceDocument: (() -> Unit)? = null,
+    onRemoveDocument: (() -> Unit)? = null
 ) {
     val sourceStyle = MarkdownStyle(
         LocalOnGradient.current, LocalOnGradientMuted.current, MaterialTheme.colorScheme.primary,
@@ -235,7 +311,17 @@ internal fun SourceReader(
         return
     }
     key(notebookId, loaded.source.noteId, loaded.source.revision) {
-        SourceReaderDocument(notebookId, loaded, focus, active, emphasizedFocus, onEmphasize, modifier)
+        SourceReaderDocument(
+            notebookId = notebookId,
+            content = loaded,
+            focus = focus,
+            active = active,
+            emphasizedFocus = emphasizedFocus,
+            onEmphasize = onEmphasize,
+            modifier = modifier,
+            onReplaceDocument = onReplaceDocument,
+            onRemoveDocument = onRemoveDocument
+        )
     }
 }
 

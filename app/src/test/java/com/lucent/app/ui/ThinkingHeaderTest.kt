@@ -19,17 +19,29 @@ class ThinkingHeaderTest {
     @Test fun eachVisitStartsCollapsedAndCompletionDoesNotUndoManualExpansion() {
         val lane = ThinkingLaneState()
         assertFalse(lane.expanded)
+        assertFalse(lane.fullExpanded)
         assertEquals(0, lane.scroll.value)
+        lane.toggleFullExpanded()
+        assertFalse(lane.fullExpanded)
         lane.retainStreamingHeight(true)
         assertFalse(lane.expanded)
         lane.toggle()
+        assertFalse(lane.fullExpanded)
+        lane.toggleFullExpanded()
+        assertTrue(lane.fullExpanded)
+        lane.toggleFullExpanded()
+        assertFalse(lane.fullExpanded)
+        lane.toggleFullExpanded()
+        assertTrue(lane.fullExpanded)
         lane.retainStreamingHeight(true)
         assertTrue(lane.retainLiveHeight)
         lane.retainStreamingHeight(false)
         assertTrue(lane.expanded)
+        assertTrue(lane.fullExpanded)
         assertTrue(lane.retainLiveHeight)
         lane.toggle()
         assertFalse(lane.expanded)
+        assertFalse(lane.fullExpanded)
         assertFalse(lane.retainLiveHeight)
     }
 
@@ -37,20 +49,27 @@ class ThinkingHeaderTest {
         val owner = NotebookMessageUiState()
         val original = owner.thinking("chat:1:thought:2") { ThinkingLaneState() }
         original.toggle()
+        original.toggleFullExpanded()
         original.scroll.dispatchRawDelta(37f)
         val remounted = owner.thinking("chat:1:thought:2") { error("Must reuse the visit lane") }
         org.junit.Assert.assertSame(original, remounted)
         assertTrue(remounted.expanded)
+        assertTrue(remounted.fullExpanded)
         assertEquals(37, remounted.scroll.value)
+        remounted.toggleFullExpanded()
+        assertFalse(original.fullExpanded)
         remounted.toggle()
         assertFalse(original.expanded)
         original.toggle()
         assertTrue(remounted.expanded)
+        assertFalse(remounted.fullExpanded)
         val nextVisit = NotebookMessageUiState().thinking("chat:1:thought:2") { ThinkingLaneState() }
         assertFalse(nextVisit.expanded)
+        assertFalse(nextVisit.fullExpanded)
         assertEquals(0, nextVisit.scroll.value)
         val otherNotebook = NotebookMessageUiState().thinking("chat:2:thought:2") { ThinkingLaneState() }
         assertFalse(otherNotebook.expanded)
+        assertFalse(otherNotebook.fullExpanded)
     }
 
     @Test fun onlyTheItemActuallyCrossingViewportTopCanOwnStickyHeader() {

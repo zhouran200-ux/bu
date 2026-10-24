@@ -22,6 +22,7 @@ import com.lucent.app.AppScope
 import com.lucent.app.data.SettingsCache
 import com.lucent.app.data.SettingsRepository
 import com.lucent.app.i18n.S
+import com.lucent.app.ui.Haptics
 import com.lucent.app.ui.LockNote
 import com.lucent.app.ui.LocalOnGradient
 import com.lucent.app.ui.LocalOnGradientMuted
@@ -58,6 +59,7 @@ internal fun ThemeSettingsPage(repo: SettingsRepository) {
             Spacer(modifier = Modifier.height(8.dp))
             offered.filter { it.section == section }.forEach { mode ->
                 ThemeModeRow(mode, savedTheme, locked) {
+                    Haptics.tick(context)
                     AppScope.setThemeMode(context, repo, mode.key)
                 }
             }

@@ -426,9 +426,7 @@ fun NotebookChatTab(
                     historyAnchorId = id
                     actions.followStream = false
                     val target = messages.indexOfFirst { it.id == id }
-                    if (target >= 0) {
-                        scope.launch { listState.animateScrollToItem(target + 1) }
-                    }
+                    if (target >= 0) scope.launch { listState.animateScrollToItem(target + 1) }
                 },
                 onTop = {
                     historyAnchorId = messages.firstOrNull()?.id
@@ -438,11 +436,10 @@ fun NotebookChatTab(
                 onBottom = {
                     historyAnchorId = messages.lastOrNull()?.id
                     actions.followStream = true
-                    scope.launch {
-                        listState.animateScrollToItem((listState.layoutInfo.totalItemsCount - 1).coerceAtLeast(0))
-                    }
+                    scope.launch { listState.animateScrollToItem((listState.layoutInfo.totalItemsCount - 1).coerceAtLeast(0)) }
                 },
-                onDismiss = { showHistorySheet = false }
+                onDismiss = { showHistorySheet = false },
+                closeOnAction = true
             )
         }
 
@@ -456,7 +453,8 @@ fun NotebookChatTab(
                     saveDialogueSettings(prefs, notebookId, p, r)
                     LucentToast.show(context, S.chatSettingsSaved)
                 },
-                onDismiss = { showDialogueSettingsDialog = false }
+                onDismiss = { showDialogueSettingsDialog = false },
+                closeOnSave = true
             )
         }
 

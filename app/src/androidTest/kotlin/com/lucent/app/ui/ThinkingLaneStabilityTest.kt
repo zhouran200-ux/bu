@@ -12,6 +12,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -139,6 +140,39 @@ class ThinkingLaneStabilityTest {
         }
     }
 
+    @Test fun fullExpandButtonSwitchesBetweenFullHeightAndSmallWindowWhileHeaderClosesAll() {
+        val host = mount()
+        complete(host)
+        repeat(4) { advanceFrame() }
+        val smallWindowHeight = thoughtNode().fetchSemanticsNode().size.height
+        assertEquals(historicalLimitPx(), smallWindowHeight.toFloat(), 1f)
+        fullExpandNode().assertTextEquals(S.thinkingFullExpand)
+
+        fullExpandNode().performClick()
+        advanceAnimation()
+        fullExpandNode().assertTextEquals(S.thinkingReturnWindow)
+        val fullHeight = thoughtNode().fetchSemanticsNode().size.height
+        assertTrue("Full expand must show more than the bounded inner window", fullHeight > smallWindowHeight)
+
+        fullExpandNode().performClick()
+        advanceAnimation()
+        fullExpandNode().assertTextEquals(S.thinkingFullExpand)
+        assertEquals(smallWindowHeight, thoughtNode().fetchSemanticsNode().size.height)
+
+        fullExpandNode().performClick()
+        advanceAnimation()
+        assertTrue(thoughtNode().fetchSemanticsNode().size.height > smallWindowHeight)
+        rule.onNodeWithContentDescription(S.thinkingCollapse).performClick()
+        advanceAnimation()
+        thoughtNode().assertDoesNotExist()
+        fullExpandNode().assertDoesNotExist()
+
+        rule.onNodeWithContentDescription(S.thinkingExpand).performClick()
+        advanceAnimation()
+        fullExpandNode().assertTextEquals(S.thinkingFullExpand)
+        assertEquals(smallWindowHeight, thoughtNode().fetchSemanticsNode().size.height)
+    }
+
     private fun mount(seedLegacyExpanded: Boolean = false): Host {
         val host = Host()
         if (seedLegacyExpanded) {
@@ -225,4 +259,5 @@ class ThinkingLaneStabilityTest {
     private fun historicalLimitPx(): Float = with(rule.density) { THINKING_LANE_MAX_HEIGHT.toPx() }
     private fun thoughtNode() = rule.onNodeWithTag("thinking_text", useUnmergedTree = true)
     private fun laneNode() = rule.onNodeWithTag("thinking_lane", useUnmergedTree = true)
+    private fun fullExpandNode() = rule.onNodeWithTag("thinking_full_expand_toggle")
 }

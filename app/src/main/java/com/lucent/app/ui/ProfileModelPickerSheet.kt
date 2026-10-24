@@ -31,6 +31,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -67,6 +68,11 @@ internal fun ProfileModelPickerSheet(
         modelPickerPosition(profiles, currentProfileId, currentModel)
     }
     var expandedProfileId by remember { mutableStateOf(initialPosition.expandedProfileId) }
+    LaunchedEffect(profiles, currentProfileId, currentModel) {
+        if (expandedProfileId == null || profiles.none { it.id == expandedProfileId && ApiProfiles.availableModels(it).isNotEmpty() }) {
+            expandedProfileId = modelPickerPosition(profiles, currentProfileId, currentModel).expandedProfileId
+        }
+    }
     val listState = remember { LazyListState(initialPosition.firstVisibleItemIndex, 0) }
     val latestDismiss by rememberUpdatedState(onDismiss)
     val drawer = rememberModelPickerDrawer(sheetState, onDismiss = { latestDismiss() })
@@ -125,6 +131,7 @@ internal fun ProfileModelPickerSheet(
                         Row(
                             modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
                                 .clickable(enabled = models.isNotEmpty(), role = Role.Button) {
+                                    Haptics.tick(context)
                                     expandedProfileId = if (expanded) null else profile.id
                                 }.heightIn(min = 40.dp).padding(horizontal = 6.dp, vertical = 4.dp),
                             verticalAlignment = Alignment.CenterVertically
@@ -189,7 +196,10 @@ internal fun ProfileModelPickerSheet(
             Row(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)
                     .clip(RoundedCornerShape(12.dp)).background(glassControlColor())
-                    .clickable(role = Role.Button, onClick = onManageApi)
+                    .clickable(role = Role.Button) {
+                        Haptics.tick(context)
+                        onManageApi()
+                    }
                     .heightIn(min = 44.dp).padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {

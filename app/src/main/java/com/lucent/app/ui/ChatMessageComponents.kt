@@ -3,7 +3,9 @@ package com.lucent.app.ui
 import com.lucent.app.i18n.S
 import com.lucent.app.chat.UiChatMessage
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -51,7 +53,10 @@ internal fun UserMessageCard(
             shape = RoundedCornerShape(20.dp),
             color = Color.Transparent,
             modifier = Modifier
-                .foregroundGlass(cornerRadius = 20.dp, borderWidth = 0.dp)
+                .foregroundGlass(cornerRadius = 20.dp, borderWidth = 0.75.dp)
+                .animateContentSize(
+                    animationSpec = if (LocalBackgroundEnvironment.current.motionEnabled) LucentMotion.toIntSize(LucentMotion.Settle) else snap()
+                )
         ) {
             CollapsibleUserText(
                 text = message.content,

@@ -128,11 +128,12 @@ internal fun rememberModelPickerDrawer(
                     }),
                 contentAlignment = Alignment.Center
             ) {
+                val handleColor = if (isDarkGlass()) Color.White else LocalOnGradient.current.copy(alpha = 0.28f)
                 Box(
                     Modifier.fillMaxWidth(0.4f).height(5.dp)
                         .graphicsLayer { scaleY = handleScale }
                         .shadow(2.dp, CircleShape)
-                        .background(Color.White, CircleShape)
+                        .background(handleColor, CircleShape)
                 )
             }
         },

@@ -49,7 +49,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
@@ -183,7 +182,7 @@ internal fun CompactField(
                 onValueChange = onValueChange,
                 singleLine = true,
                 readOnly = readOnly,
-                textStyle = TextStyle(
+                textStyle = MaterialTheme.typography.bodySmall.copy(
                     fontSize = 13.sp,
                     lineHeight = 17.sp,
                     color = if (readOnly) onGradientMuted else onGradient
@@ -251,6 +250,7 @@ internal fun ChipRow(
     selectedKey: String,
     onSelect: (String) -> Unit
 ) {
+    val context = LocalContext.current
     val onGradientMuted = LocalOnGradientMuted.current
     val accent = MaterialTheme.colorScheme.primary
     Row(
@@ -270,7 +270,10 @@ internal fun ChipRow(
                         if (selected) accent else onGradientMuted.copy(alpha = 0.3f),
                         shape
                     )
-                    .clickable { onSelect(key) }
+                    .clickable {
+                        Haptics.tick(context)
+                        onSelect(key)
+                    }
                     .padding(vertical = 6.dp, horizontal = 2.dp),
                 contentAlignment = Alignment.Center
             ) {
@@ -292,6 +295,7 @@ internal fun FloatingCopyButton(
     copied: Boolean,
     onClick: () -> Unit
 ) {
+    val context = LocalContext.current
     val accent = MaterialTheme.colorScheme.primary
     val shape = RoundedCornerShape(percent = 50)
     Row(
@@ -299,7 +303,10 @@ internal fun FloatingCopyButton(
             .clip(shape)
             .background(accent.copy(alpha = if (copied) 0.22f else 0.12f))
             .border(1.dp, accent.copy(alpha = if (copied) 0.7f else 0.42f), shape)
-            .clickable { onClick() }
+            .clickable {
+                Haptics.tick(context)
+                onClick()
+            }
             .padding(horizontal = 9.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

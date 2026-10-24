@@ -47,7 +47,7 @@ class PickerContractTest(unittest.TestCase):
         self.assertIn("shouldDismissOnBackPress = true", drawer)
         self.assertIn("shouldDismissOnClickOutside = true", drawer)
         self.assertIn("Modifier.fillMaxWidth(0.4f).height(5.dp)", drawer)
-        self.assertIn(".background(Color.White, CircleShape)", drawer)
+        self.assertIn(".background(handleColor, CircleShape)", drawer)
         self.assertNotIn("HandleOnlyDrawerProperties", drawer)
         self.assertNotIn("BottomSheetDefaults", drawer)
         for name in ("ChatHistorySheet.kt", "ProfileModelPickerSheet.kt", "SettingsComponents.kt", "ChatDialogueSettings.kt"):
@@ -102,7 +102,7 @@ class PickerContractTest(unittest.TestCase):
         self.assertIn("translationY = travel", drawer)
         self.assertIn("val dragModifier = Modifier.draggable(", drawer)
         self.assertIn(".then(dragModifier)", drawer)
-        self.assertIn(".background(Color.White, CircleShape)", drawer)
+        self.assertIn(".background(handleColor, CircleShape)", drawer)
         self.assertIn("handlePressed || dragged", drawer)
         self.assertNotIn("DragHandle(height =", drawer)
         # ApiModelPickerDialogTest checks confirmation callback order, draft contents,

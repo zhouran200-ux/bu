@@ -32,7 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -43,8 +43,10 @@ internal fun DialogueSettingsSheet(
     initialPrompt: String,
     initialHistoryRounds: Int,
     onSave: (prompt: String, historyRounds: Int) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    closeOnSave: Boolean = false
 ) {
+    val context = LocalContext.current
     var prompt by remember { mutableStateOf(initialPrompt) }
     var historyRounds by remember { mutableIntStateOf(initialHistoryRounds) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -93,7 +95,11 @@ internal fun DialogueSettingsSheet(
                     maxLines = 1
                 )
                 TextButton(
-                    onClick = { onSave(prompt.trim(), historyRounds) },
+                    onClick = {
+                        Haptics.tick(context)
+                        onSave(prompt.trim(), historyRounds)
+                        if (closeOnSave) drawer.close {}
+                    },
                     modifier = Modifier.width(64.dp)
                 ) {
                     Text(
@@ -132,7 +138,7 @@ internal fun DialogueSettingsSheet(
                             value = prompt,
                             onValueChange = { prompt = it },
                             placeholder = S.dialoguePromptHint,
-                            textStyle = TextStyle(fontSize = 15.sp, color = ink, lineHeight = 22.sp),
+                            textStyle = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp, color = ink, lineHeight = 22.sp),
                             placeholderColor = ink.copy(alpha = 0.40f),
                             minLines = 4,
                             maxLines = 8,
@@ -190,6 +196,7 @@ internal fun DialogueSettingsSheet(
                 ) {
                     TextButton(
                         onClick = {
+                            Haptics.tick(context)
                             prompt = ""
                             historyRounds = 10
                         }

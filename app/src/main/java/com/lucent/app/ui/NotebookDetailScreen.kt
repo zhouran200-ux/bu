@@ -1,6 +1,7 @@
 package com.lucent.app.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.snap
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -79,6 +80,7 @@ fun NotebookDetailScreen(
         ReadingPosition(tabs[pagerState.settledPage].name, pagerState.settledPage, 0)
     }
     val scope = rememberCoroutineScope()
+    val motionOn = LocalBackgroundEnvironment.current.motionEnabled
     val selectedTab = tabs[pagerState.currentPage]
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -105,7 +107,13 @@ fun NotebookDetailScreen(
         if (target == null) {
             onBack()
         } else {
-            scope.launch { pagerState.scrollToPage(tabs.indexOf(target)) }
+            scope.launch {
+                if (motionOn) {
+                    pagerState.animateScrollToPage(tabs.indexOf(target))
+                } else {
+                    pagerState.scrollToPage(tabs.indexOf(target))
+                }
+            }
         }
     }
     BackHandler(enabled = active, onBack = navigateBack)
@@ -142,7 +150,13 @@ fun NotebookDetailScreen(
                 selectedTab = selectedTab,
                 sourceCount = sourceNotes.size,
                 onSelectTab = { tab ->
-                    scope.launch { pagerState.animateScrollToPage(tabs.indexOf(tab)) }
+                    scope.launch {
+                        if (motionOn) {
+                            pagerState.animateScrollToPage(tabs.indexOf(tab))
+                        } else {
+                            pagerState.scrollToPage(tabs.indexOf(tab))
+                        }
+                    }
                 }
             )
 
@@ -166,7 +180,11 @@ fun NotebookDetailScreen(
                                     focusRequest += 1
                                     sourceFocus = SourceFocus(noteId, sliceId, focusRequest, revision)
                                     scope.launch {
-                                        pagerState.animateScrollToPage(tabs.indexOf(NotebookDetailTab.SOURCES))
+                                        if (motionOn) {
+                                            pagerState.animateScrollToPage(tabs.indexOf(NotebookDetailTab.SOURCES))
+                                        } else {
+                                            pagerState.scrollToPage(tabs.indexOf(NotebookDetailTab.SOURCES))
+                                        }
                                     }
                                 }
                             )
@@ -253,16 +271,18 @@ private fun TabPill(
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
+    val motionOn = LocalBackgroundEnvironment.current.motionEnabled
     val bg by androidx.compose.animation.animateColorAsState(
         targetValue = if (selected) selectedBg else Color.Transparent,
-        animationSpec = LucentMotion.toColor(LucentMotion.Settle),
+        animationSpec = if (motionOn) LucentMotion.toColor(LucentMotion.Settle) else snap(),
         label = "tabPillBg"
     )
     val textColor by androidx.compose.animation.animateColorAsState(
         targetValue = if (selected) accent else mutedColor,
-        animationSpec = LucentMotion.toColor(LucentMotion.Settle),
+        animationSpec = if (motionOn) LucentMotion.toColor(LucentMotion.Settle) else snap(),
         label = "tabPillText"
     )
+    val context = LocalContext.current
     val interaction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
     Box(
         contentAlignment = Alignment.Center,
@@ -272,9 +292,12 @@ private fun TabPill(
             .selectable(
                 selected = selected,
                 interactionSource = interaction,
-                indication = null,
+                indication = rememberScaleIndication(),
                 role = Role.Tab,
-                onClick = onClick
+                onClick = {
+                    Haptics.tick(context)
+                    onClick()
+                }
             )
             .padding(vertical = 8.dp)
     ) {

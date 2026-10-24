@@ -69,7 +69,10 @@ internal class ChatActionsCoordinator(
     }
 
     fun askModel(answerId: Long) {
-        if (!session.ready || session.pendingWriteCount > 0) return
+        if (!session.ready || session.pendingWriteCount > 0) {
+            messages.removeAll { it.id == answerId && it.content.isEmpty() }
+            return
+        }
         val selection = ApiProfiles.resolveSelection(savedProfiles, selectedProfileId, selectedProfileName, selectedModel)
         val matchedProfile = selection?.first
         val targetModel = selection?.second.orEmpty()
@@ -94,6 +97,7 @@ internal class ChatActionsCoordinator(
 
         val notes = sourceNotes()
         if (notes.size > 1) {
+            messages.removeAll { it.id == aiMsgId && it.content.isEmpty() }
             LucentToast.show(context, S.chatSourceBindingBroken)
             return
         }
@@ -163,7 +167,10 @@ internal class ChatActionsCoordinator(
         val answerId = ids[1]
         messages.add(UiChatMessage(id = answerId, role = "assistant", content = ""))
         followStream = true
-        session.afterWrite(saved) { askModel(answerId) }
+        session.afterWrite(
+            saved,
+            onFailure = { messages.removeAll { it.id == answerId && it.content.isEmpty() } }
+        ) { askModel(answerId) }
         return true
     }
 

@@ -1,6 +1,7 @@
 package com.lucent.app.ui
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -132,5 +133,22 @@ class StreamUiSchedulerAndParserTest {
         scheduler.append("", "一段完整的思考\n\n")
         assertEquals(0, contentFlushes)
         assertEquals("一段完整的思考\n\n", scheduler.getFinalReasoning())
+    }
+
+    @Test
+    fun testFlushPendingFlushesStrandedBuffer() {
+        var flushedContent = ""
+        val scheduler = StreamUiScheduler(
+            timeWindowMs = 5000L,
+            charBurstThreshold = 500
+        ) { content, _ -> flushedContent = content }
+
+        scheduler.append("stranded chunk", null)
+        assertTrue(scheduler.hasPending())
+        assertEquals("", flushedContent)
+
+        scheduler.flushPending()
+        assertFalse(scheduler.hasPending())
+        assertEquals("stranded chunk", flushedContent)
     }
 }

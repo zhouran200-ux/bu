@@ -2,7 +2,8 @@
 
 ## 状态契约
 
-- 思考面板展开/内部滚动只属于本次笔记本访问；进入全部收起。手动展开跨列表重挂载、来源切页、生成结束保留；退出丢弃。旧 thinking preferences 不读不写，不会自动恢复展开。
+- 思考面板展开/内部滚动与完全展开状态只属于本次笔记本访问；进入全部收起。点击「思考中 / 已深度思考」旁按钮打开或总关闭面板，打开时默认固定在 `220.dp` 内部小窗滚动展示；展开状态下可通过右侧「完全展开 / 回到小窗」按钮在完整高度与内部小窗间切换，总关闭重置为小窗。手动展开跨列表重挂载、来源切页、生成结束保留；退出丢弃。旧 thinking preferences 不读不写，不会自动恢复展开。
+- 流式打字机动画采用动态耗尽时钟引擎（StreamPacer），根据积压字符量在 30~180 字/秒平滑自适应追平，避免逐 chunk 打断重启造成的抖动；网络调度器配合 40ms 尾随定时刷新，防止暂停时字符滞留缓冲。
 - 思考强度、对话设定、历史轮数、API 档案与模型按 notebookId 保存；冷启动等待实际配置加载后才更新模型回退，避免缓存默认值覆盖选择。
 - 聊天列表按消息 key/offset 恢复。所有思考面板重新收起会改变气泡高度，因此不承诺在展开状态变为收起后仍逐像素呈现相同画面。
 - 来源文档与模型原文分别保存 key/offset，首次进入未访问子页才沿用另一页的章节/切片锚点；之后各自恢复。记住来源子页及对话/来源标签。旧共享位置迁移到文档页。
@@ -16,10 +17,10 @@ Android/OEM 可结束进程、限制前台启动与服务时长。进程死亡�
 
 ## 本轮验证
 
-Debug 编译、Android 测试代码编译、Debug Lint 通过；97 个测试类/622 个 JVM 测试全通过；Python 138 项（6 项条件跳过）其余通过；quick 静态门禁全通过。Lint 保留32 warnings/5 hints，未扩大 baseline。未本地打包或执行设备测试。
+Debug 编译、Android 测试代码编译、全量 `:app:testDebugUnitTest`（包括 StreamRevealTextTest、StreamUiSchedulerAndParserTest、ChatSessionTest 等）、Python 138 项（6 项条件跳过）及 quick 静态门禁全通过。未本地打包或执行设备测试。
 
-上轮 2c4b407 API33/35 的来源进度测试仍失败并阻止 Preview 发布。本轮新增独立记忆和预解析修复，以及冷恢复、双页偏移、旧键迁移、思考访问期的设备用例；结果仍需下一轮云端复核，不将测试编译等同设备通过。
+上轮 `a0719d2d`（Actions Run `39962457500`）中 source-hygiene、android-jvm-check、build-apk 及思考面板相关设备测试均通过；API33/35 仅 `SourceIndexPreviewTest` 3 个用例因测试辅助函数 `paragraph()` 末尾空格被 `MarkdownParser.parseBlocks` 的 `trimEnd()` 裁剪而无法匹配，本轮已对齐去除末尾空格并新增思考面板「完全展开 / 回到小窗」设备与单测用例；结果仍需下一轮云端复核，不将测试编译等同设备通过。
 
 ## 结构与残留审查
 
-去除思考面板持久化读写、active=false 误重置、Activity/task-removal 停止生成路径，旧共享来源键迁移后清理。没有增加依赖、改变主副包名或正式发布行为。NotebookChatTab 509 行仍为聊天入口/布局协调；新增预解析准备已独立到 ChatInitialMarkdown，暂不为行数搬迁其他区域。
+去除思考面板持久化读写、active=false 误重置、Activity/task-removal 停止生成路径，旧共享来源键迁移后清理；重构流式显示逻辑去除旧 Animatable 频繁重启。没有增加依赖、改变主副包名或正式发布行为。NotebookChatTab 507 行仍为聊天入口/布局协调；新增预解析准备已独立到 ChatInitialMarkdown，暂不为行数搬迁其他区域。

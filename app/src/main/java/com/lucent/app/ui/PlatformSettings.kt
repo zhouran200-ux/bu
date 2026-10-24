@@ -52,6 +52,7 @@ fun DynamicColorRow(repo: SettingsRepository) {
                 checked = dynamicColorOn && !pureWhiteOn,
                 enabled = dynamicColorSupported && !pureWhiteOn,
                 onCheckedChange = { on ->
+                    Haptics.tick(context)
                     AppScope.setDynamicColorEnabled(context, repo, on)
                 }
             )
@@ -75,6 +76,7 @@ fun DynamicColorRow(repo: SettingsRepository) {
                 checked = pureWhiteOn,
                 enabled = !(dynamicColorOn && dynamicColorSupported),
                 onCheckedChange = { on ->
+                    Haptics.tick(context)
                     val next = if (on) LucentThemeMode.PURE_WHITE.key else LucentThemeMode.SYSTEM.key
                     AppScope.setThemeMode(context, repo, next)
                 }

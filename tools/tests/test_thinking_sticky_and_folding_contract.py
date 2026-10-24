@@ -45,9 +45,15 @@ class ThinkingStickyAndFoldingContractTest(unittest.TestCase):
     def test_thinking_expansion_and_inner_scroll_never_use_persisted_preferences(self):
         state = (UI / "ThinkingLaneState.kt").read_text(encoding="utf-8")
         lane = (UI / "ChatThinkingLane.kt").read_text(encoding="utf-8")
+        header = (UI / "ThinkingHeader.kt").read_text(encoding="utf-8")
         self.assertIn("var expanded by mutableStateOf(false)", state)
+        self.assertIn("var fullExpanded by mutableStateOf(false)", state)
+        self.assertIn("fun toggleFullExpanded()", state)
         self.assertIn("val scroll = ScrollState(0)", state)
         self.assertIn("thinking.getOrPut(key, create)", state)
+        self.assertIn("ThinkingFullExpandButton(", lane)
+        self.assertIn("if (lane.fullExpanded)", lane)
+        self.assertIn("S.thinkingReturnWindow else S.thinkingFullExpand", header)
         for forbidden in ("ReadingPositionMemory", "positionToPersist", "persistEligible", "rememberSaveable"):
             self.assertNotIn(forbidden, state + lane)
 

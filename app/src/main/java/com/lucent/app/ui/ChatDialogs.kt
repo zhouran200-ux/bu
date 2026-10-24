@@ -3,6 +3,7 @@ package com.lucent.app.ui
 import com.lucent.app.i18n.S
 import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
@@ -39,7 +40,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -143,6 +143,7 @@ internal fun EditMessageDialog(
     onConfirm: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
+    val context = LocalContext.current
     val onGradient = LocalOnGradient.current
     val onGradientMuted = LocalOnGradientMuted.current
     var text by remember { mutableStateOf(initial) }
@@ -150,6 +151,7 @@ internal fun EditMessageDialog(
     val inputFocus = remember { androidx.compose.ui.focus.FocusRequester() }
 
     AlertDialog(
+        modifier = Modifier.border(0.75.dp, foregroundRim(), RoundedCornerShape(24.dp)),
         shape = RoundedCornerShape(24.dp),
         containerColor = glassPanelColor(),
         tonalElevation = 0.dp,
@@ -171,7 +173,7 @@ internal fun EditMessageDialog(
                         value = text,
                         onValueChange = { text = it },
                         placeholder = S.dialogInputPlaceholder,
-                        textStyle = TextStyle(fontSize = 14.sp, color = onGradient, lineHeight = 21.sp),
+                        textStyle = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp, color = onGradient, lineHeight = 21.sp),
                         placeholderColor = onGradientMuted.copy(alpha = 0.6f),
                         minLines = 5,
                         maxLines = 10,
@@ -184,12 +186,20 @@ internal fun EditMessageDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = { if (text.isNotBlank()) onConfirm(text.trim()) }) {
+            TextButton(onClick = {
+                if (text.isNotBlank()) {
+                    Haptics.tick(context)
+                    onConfirm(text.trim())
+                }
+            }) {
                 Text(confirmLabel, color = MaterialTheme.colorScheme.primary)
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(S.actionCancel) }
+            TextButton(onClick = {
+                Haptics.tick(context)
+                onDismiss()
+            }) { Text(S.actionCancel) }
         }
     )
 }

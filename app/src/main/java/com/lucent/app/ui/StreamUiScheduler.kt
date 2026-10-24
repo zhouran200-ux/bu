@@ -60,6 +60,19 @@ class StreamUiScheduler(
         }
     }
 
+    fun hasPending(): Boolean = pendingContent.isNotEmpty() || pendingReasoning.isNotEmpty()
+
+    fun flushPending() {
+        if (hasPending()) {
+            val now = clockMs()
+            if (pendingContent.isNotEmpty()) {
+                flush(now)
+            } else if (pendingReasoning.isNotEmpty()) {
+                flushThought(now)
+            }
+        }
+    }
+
     fun forceFlush() {
         flush(clockMs())
     }

@@ -17,6 +17,7 @@ import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.Deferred
@@ -168,6 +169,7 @@ class ChatSession(
                     thought.value = reasoning.orEmpty()
                 }
             )
+            var trailingFlushJob: Job? = null
             var result: ChatCompletionResult? = null
             var failure: Throwable? = null
             var initialPersistenceFailed = false
@@ -186,6 +188,15 @@ class ChatSession(
                             firstTokenMillis = ((arrivedAt - startedAt!!) / 1_000_000L).coerceAtLeast(0L)
                         }
                         scheduler.append(text, reasoning)
+                        trailingFlushJob?.cancel()
+                        if (scheduler.hasPending()) {
+                            trailingFlushJob = scope.launch {
+                                delay(40L)
+                                withContext(dispatcher) {
+                                    scheduler.flushPending()
+                                }
+                            }
+                        }
                     }
                 }
                 result = response.getOrNull()
@@ -197,6 +208,8 @@ class ChatSession(
             } finally {
                 val elapsedMillis = startedAt?.let { ((monotonicNanos() - it) / 1_000_000L).coerceAtLeast(0L) }
                 withContext(NonCancellable) {
+                    trailingFlushJob?.cancel()
+                    trailingFlushJob = null
                     if (initialPersistenceFailed && !callHandle.isCancelled) {
                         try {
                             update(previousMessage)

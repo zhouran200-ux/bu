@@ -33,6 +33,24 @@ object NotebookPurge {
         noteId
     }
 
+    suspend fun replaceDocument(db: AppDatabase, notebookId: Long, note: Note): Long = db.withTransaction {
+        check(db.notebookDao().exists(notebookId)) { "笔记本已删除，无法导入" }
+        removeDocument(db, notebookId)
+        val noteId = db.noteDao().insert(note)
+        linkNote(db, notebookId, noteId)
+        noteId
+    }
+
+    suspend fun removeDocument(db: AppDatabase, notebookId: Long) = db.withTransaction {
+        val doomed = db.notebookDao().exclusiveItemIds(notebookId, NotebookItem.KIND_NOTE)
+        doomed.forEach { noteId ->
+            db.noteDao().getByIdOnce(noteId)?.let { TrashCleanup.purgeNote(db, it) }
+        }
+        db.notebookDao().getItemsOnce(notebookId)
+            .filter { it.itemKind == NotebookItem.KIND_NOTE }
+            .forEach { db.notebookDao().removeItem(notebookId, NotebookItem.KIND_NOTE, it.itemId) }
+    }
+
     suspend fun purge(db: AppDatabase, notebookId: Long) {
         com.lucent.app.chat.guardedNotebookDeletion(
             dispatcher = kotlinx.coroutines.Dispatchers.Main.immediate,

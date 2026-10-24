@@ -40,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.semantics.selected
@@ -58,8 +59,10 @@ internal fun ChatHistorySheet(
     onMessageClick: (Long) -> Unit,
     onTop: () -> Unit,
     onBottom: () -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    closeOnAction: Boolean = false
 ) {
+    val context = LocalContext.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val drawer = rememberModelPickerDrawer(sheetState, onDismiss = onDismiss)
     val ink = LocalOnGradient.current
@@ -137,7 +140,11 @@ internal fun ChatHistorySheet(
                         hint = S.historyJumpTopHint,
                         enabled = true,
                         modifier = Modifier.weight(1f),
-                        onClick = onTop
+                        onClick = {
+                            Haptics.tick(context)
+                            onTop()
+                            if (closeOnAction) drawer.close {}
+                        }
                     )
                     JumpChip(
                         icon = Icons.Default.KeyboardArrowDown,
@@ -145,7 +152,11 @@ internal fun ChatHistorySheet(
                         hint = S.historyJumpBottomHint,
                         enabled = true,
                         modifier = Modifier.weight(1f),
-                        onClick = onBottom
+                        onClick = {
+                            Haptics.tick(context)
+                            onBottom()
+                            if (closeOnAction) drawer.close {}
+                        }
                     )
                 }
                 Spacer(modifier = Modifier.size(8.dp))
@@ -202,7 +213,11 @@ internal fun ChatHistorySheet(
                             accent = accent,
                             ink = ink,
                             muted = muted,
-                            onClick = { onMessageClick(m.id) }
+                            onClick = {
+                                Haptics.tick(context)
+                                onMessageClick(m.id)
+                                if (closeOnAction) drawer.close {}
+                            }
                         )
                     }
                 }

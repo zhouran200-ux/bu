@@ -61,6 +61,8 @@ internal fun ApiConfigSettingsPage(
     onSelectedModelChange: (String) -> Unit,
     models: List<String>,
     onModelsChange: (List<String>) -> Unit,
+    customModelInput: String,
+    onCustomModelInputChange: (String) -> Unit,
     loading: Boolean,
     onLoadingChange: (Boolean) -> Unit,
     errorText: String,
@@ -94,11 +96,33 @@ internal fun ApiConfigSettingsPage(
     var lastTestResult by remember(requestTarget.profileId) { mutableStateOf<TestConnectionResult?>(null) }
     var fetchModelsError by remember(requestTarget.profileId) { mutableStateOf("") }
     var copiedRawHint by remember(requestTarget.profileId) { mutableStateOf(false) }
-    var customModelInput by remember(requestTarget.profileId) { mutableStateOf("") }
     val choices = remember(fetchedModels, models) { modelChoices(fetchedModels, models) }
     val dragState = remember { mutableStateOf<ProfileDrag?>(null) }
+    val currentTestTarget = if (selectedModel.isNotBlank()) {
+        selectedModel
+    } else {
+        customModelInput.trim()
+    }
+    val latestTestModel = rememberUpdatedState(currentTestTarget)
 
-    LaunchedEffect(requestTarget, selectedModel, customModelInput) {
+    fun commitAndSaveProfile() {
+        val input = customModelInput.trim()
+        val finalModels = if (input.isNotBlank() && input !in models) {
+            models + input
+        } else {
+            models
+        }
+        if (selectedModel.isBlank() && input.isNotBlank()) {
+            onSelectedModelChange(input)
+        }
+        if (input.isNotBlank()) {
+            onCustomModelInputChange("")
+        }
+        onModelsChange(finalModels)
+        onSaveProfile()
+    }
+
+    LaunchedEffect(requestTarget, currentTestTarget) {
         testRequests.cancel()
         lastTestResult = null
         testStatusText = ""
@@ -191,22 +215,7 @@ internal fun ApiConfigSettingsPage(
 
             ApiProfileSaveButton(
                 dragState = dragState,
-                onClick = {
-                    val input = customModelInput.trim()
-                    val finalModels = if (input.isNotBlank() && input !in models) {
-                        models + input
-                    } else {
-                        models
-                    }
-                    if (selectedModel.isBlank() && input.isNotBlank()) {
-                        onSelectedModelChange(input)
-                    }
-                    if (input.isNotBlank()) {
-                        customModelInput = ""
-                    }
-                    onModelsChange(finalModels)
-                    onSaveProfile()
-                }
+                onClick = { commitAndSaveProfile() }
             )
         }
 
@@ -216,7 +225,7 @@ internal fun ApiConfigSettingsPage(
             customModelInput = customModelInput,
             onModelsChange = onModelsChange,
             onSelectedModelChange = onSelectedModelChange,
-            onCustomModelInputChange = { customModelInput = it },
+            onCustomModelInputChange = onCustomModelInputChange,
             onCopyModel = { model ->
                 copyPlainTextWithToast(context, model)
                 Haptics.tick(context)
@@ -226,12 +235,6 @@ internal fun ApiConfigSettingsPage(
         ApiReasoningSummarySection(provider = spec, model = selectedModel.ifBlank { customModelInput.trim() }, baseUrl = url)
 
         Spacer(modifier = Modifier.height(10.dp))
-        val currentTestTarget = if (selectedModel.isNotBlank()) {
-            selectedModel
-        } else {
-            customModelInput.trim()
-        }
-        val latestTestModel = rememberUpdatedState(currentTestTarget)
 
         fun copyRawResponse(text: String) {
             if (text.isNotBlank()) {
@@ -278,6 +281,9 @@ internal fun ApiConfigSettingsPage(
                         lastTestResult = res
                         testSuccess = res.success
                         testStatusText = res.formatDisplayMessage()
+                        if (res.success) {
+                            commitAndSaveProfile()
+                        }
                     }.onFailure { err ->
                         testSuccess = false
                         val msg = (err.message ?: "").trim().ifBlank { S.apiConnectionFailed }.take(180)

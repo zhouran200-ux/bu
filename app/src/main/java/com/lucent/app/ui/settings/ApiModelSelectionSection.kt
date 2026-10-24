@@ -32,6 +32,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
@@ -40,6 +41,7 @@ import androidx.compose.ui.unit.sp
 import com.lucent.app.collapseExcessBlankLines
 import com.lucent.app.i18n.S
 import com.lucent.app.ui.ApiModelPickerDialog
+import com.lucent.app.ui.Haptics
 import com.lucent.app.ui.LucentIcons
 import com.lucent.app.ui.LocalOnGradient
 import com.lucent.app.ui.LocalOnGradientMuted
@@ -57,6 +59,7 @@ internal fun ApiModelSelectionSection(
     onCustomModelInputChange: (String) -> Unit,
     onCopyModel: (String) -> Unit
 ) {
+    val context = LocalContext.current
     val onGradient = LocalOnGradient.current
     val onGradientMuted = LocalOnGradientMuted.current
     Spacer(modifier = Modifier.height(10.dp))
@@ -111,7 +114,12 @@ internal fun ApiModelSelectionSection(
                             .border(1.dp, cardBorder, cardShape)
                             .selectedCard(isSelected, 10.dp)
                             .combinedClickable(
-                                onClick = { onSelectedModelChange(if (isSelected) "" else m) },
+                                onClick = {
+                                    if (!isSelected) {
+                                        Haptics.tick(context)
+                                        onSelectedModelChange(m)
+                                    }
+                                },
                                 onLongClick = {
                                     onCopyModel(m)
                                 }

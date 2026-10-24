@@ -1,15 +1,19 @@
 package com.lucent.app.ui
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.layout.SubcomposeLayout
@@ -63,14 +67,30 @@ internal fun StickyThinkingHeader(
     SubcomposeLayout(modifier = modifier.fillMaxWidth().clipToBounds()) { constraints ->
         val header = subcompose(message.id) {
             Box(Modifier.fillMaxWidth().padding(start = 14.dp, end = 26.dp)) {
-                Surface(color = glassPanelColor().copy(alpha = 0.22f), tonalElevation = 0.dp, shadowElevation = 0.dp) {
-                    ThinkingHeader(
-                        title = thinkingTitle(streaming, hasThought, message.answerSeconds),
-                        expanded = true,
-                        canExpand = true,
-                        onToggle = { onToggle(); lane.toggle() },
-                        modifier = Modifier.fillMaxWidth().testTag("sticky_thinking_header")
-                    )
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = glassPanelColor().copy(alpha = 0.94f),
+                    tonalElevation = 0.dp,
+                    shadowElevation = 0.dp
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        ThinkingHeader(
+                            title = thinkingTitle(streaming, hasThought, message.answerSeconds),
+                            expanded = true,
+                            canExpand = true,
+                            onToggle = { onToggle(); lane.toggle() },
+                            modifier = Modifier.weight(1f).testTag("sticky_thinking_header")
+                        )
+                        ThinkingFullExpandButton(
+                            fullExpanded = lane.fullExpanded,
+                            onToggle = { onToggle(); lane.toggleFullExpanded() },
+                            modifier = Modifier.testTag("sticky_thinking_full_expand_toggle")
+                        )
+                    }
                 }
             }
         }.single().measure(constraints.copy(minHeight = 0))

@@ -146,7 +146,10 @@ fun LucentApp(
                             actions = {
                                 if (currentTab == HomeTab.Notebooks) {
                                     IconButton(
-                                        onClick = { AppNavigation.requestCreateNotebook() },
+                                        onClick = {
+                                            com.lucent.app.ui.Haptics.tick(context)
+                                            AppNavigation.requestCreateNotebook()
+                                        },
                                         modifier = Modifier
                                             .padding(end = 10.dp)
                                             .size(44.dp)

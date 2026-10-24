@@ -19,7 +19,8 @@ class PerformanceContractTest(unittest.TestCase):
         self.assertNotIn("pagerState.animateScrollToPage", main)
         self.assertEqual(1, home.count("pagerState.animateScrollToPage"))
         settings = (UI / "SettingsScreen.kt").read_text(encoding="utf-8")
-        self.assertIn(".graphicsLayer { alpha = 0.85f + enterProgress.value * 0.15f }", settings)
+        self.assertIn("alpha = 0.25f + enterProgress.value * 0.75f", settings)
+        self.assertIn("translationX = (1f - enterProgress.value) * 24.dp.toPx() * transitionDirection", settings)
         self.assertNotIn("AnimatedContent", settings)
 
     def test_startup_does_not_block_main_thread_for_datastore(self):

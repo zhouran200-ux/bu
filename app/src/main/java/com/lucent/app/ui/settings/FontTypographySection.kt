@@ -29,11 +29,13 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.lucent.app.i18n.S
+import com.lucent.app.ui.Haptics
 import com.lucent.app.ui.LocalOnGradient
 import com.lucent.app.ui.LocalOnGradientMuted
 import com.lucent.app.ui.LucentTitles
@@ -59,6 +61,7 @@ internal fun FontTypographySection(
     onLetterSpacingCommit: () -> Unit,
     onResetDefaults: () -> Unit
 ): Unit {
+    val context = LocalContext.current
     val onGradient = LocalOnGradient.current
     val onGradientMuted = LocalOnGradientMuted.current
     Column(
@@ -95,6 +98,7 @@ internal fun FontTypographySection(
                 modifier = Modifier
                     .clip(RoundedCornerShape(12.dp))
                     .clickable {
+                        Haptics.tick(context)
                         onResetDefaults()
                     }
             ) {

@@ -1,6 +1,7 @@
 package com.lucent.app.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -45,6 +46,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -78,7 +80,7 @@ fun NotebooksScreen(
     val counts by repository.itemCounts().collectAsState(initial = emptyList())
     val countById = remember(counts) { counts.associate { it.notebookId to it.count } }
 
-    var openNotebookId by remember { mutableStateOf<Long?>(null) }
+    var openNotebookId by rememberSaveable { mutableStateOf(AppNavigation.activeNotebookId) }
     LaunchedEffect(openNotebookId) {
         AppNavigation.activeNotebookId = openNotebookId
     }
@@ -121,6 +123,7 @@ fun NotebooksScreen(
 
     deleting?.let { notebook ->
         AlertDialog(
+            modifier = Modifier.border(0.75.dp, foregroundRim(), RoundedCornerShape(24.dp)),
             shape = RoundedCornerShape(24.dp),
             containerColor = glassPanelColor(),
             tonalElevation = 0.dp,
@@ -129,22 +132,28 @@ fun NotebooksScreen(
             text = { Text(com.lucent.app.i18n.S.notebookDeleteBody(notebook.title.ifBlank { com.lucent.app.i18n.S.notebookEmptyTitle })) },
             confirmButton = {
                 TextButton(onClick = {
+                    Haptics.tick(context)
                     val target = notebook
                     deleting = null
                     AppScope.io.launch {
                         try {
                             repository.purge(target.id)
                             ReadingPositionMemory.clearNotebook(context, target.id)
-                            LucentToast.show(context, com.lucent.app.i18n.S.notebookDeletedToast)
+                            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                LucentToast.show(context, com.lucent.app.i18n.S.notebookDeletedToast)
+                            }
                         } catch (e: kotlinx.coroutines.CancellationException) {
                             throw e
-                        } catch (_: Exception) {
+                        } catch (e: Exception) {
+                            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                LucentToast.show(context, e.message ?: com.lucent.app.i18n.S.chatDeleteFailed)
+                            }
                         }
                     }
                 }) { Text(com.lucent.app.i18n.S.actionDelete) }
             },
             dismissButton = {
-                TextButton(onClick = { deleting = null }) { Text(com.lucent.app.i18n.S.actionCancel) }
+                TextButton(onClick = { Haptics.tick(context); deleting = null }) { Text(com.lucent.app.i18n.S.actionCancel) }
             }
         )
     }
@@ -162,9 +171,7 @@ fun NotebooksScreen(
                 creating = false
                 scope.launch {
                     val newId = repository.create(finalName)
-                    if (newId > 0) {
-                        openNotebookId = newId
-                    }
+                    if (newId > 0) openNotebookId = newId
                 }
             },
             onDismiss = { creating = false }
@@ -209,11 +216,32 @@ fun NotebooksScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
+                androidx.compose.material3.Surface(
+                    shape = RoundedCornerShape(24.dp),
+                    color = androidx.compose.material3.MaterialTheme.colorScheme.primary.copy(alpha = 0.14f),
+                    modifier = Modifier.size(72.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = LucentIcons.Notebook,
+                            contentDescription = null,
+                            tint = androidx.compose.material3.MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(36.dp)
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
                 Text(
                     text = com.lucent.app.i18n.S.notebooksEmptyHint,
                     color = LocalOnGradientMuted.current,
                     fontSize = LucentTitles.SectionSize,
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(20.dp))
+                GlassButton(
+                    text = com.lucent.app.i18n.S.notebookNew,
+                    icon = LucentIcons.Create,
+                    onClick = { creating = true }
                 )
             }
             return@Column
@@ -300,12 +328,17 @@ private fun NotebookShelfItem(
     LaunchedEffect(listScrolling) { if (listScrolling) menuOpen = false }
     val title = notebook.title.ifBlank { com.lucent.app.i18n.S.notebookEmptyTitle }
     val formattedDate = remember(notebook.updatedAt) { formatMonthDateTime(notebook.updatedAt) }
+    val rowInteraction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
 
     Row(
         modifier = itemModifier
             .fillMaxWidth()
             .frostedGlass(cornerRadius = 22.dp)
-            .clickable(enabled = interactive) {
+            .clickable(
+                interactionSource = rowInteraction,
+                indication = rememberScaleIndication(),
+                enabled = interactive
+            ) {
                 Haptics.tick(context)
                 onOpen()
             }
@@ -333,7 +366,10 @@ private fun NotebookShelfItem(
 
         Box {
             IconButton(
-                onClick = { menuOpen = true },
+                onClick = {
+                    Haptics.tick(context)
+                    menuOpen = true
+                },
                 enabled = interactive,
                 modifier = Modifier.size(36.dp)
             ) {
@@ -358,12 +394,20 @@ private fun NotebookShelfItem(
                 androidx.compose.material3.DropdownMenuItem(
                     text = { Text(com.lucent.app.i18n.S.notebookRename) },
                     leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
-                    onClick = { menuOpen = false; onRename() }
+                    onClick = {
+                        Haptics.tick(context)
+                        menuOpen = false
+                        onRename()
+                    }
                 )
                 androidx.compose.material3.DropdownMenuItem(
                     text = { Text(com.lucent.app.i18n.S.actionDelete) },
                     leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
-                    onClick = { menuOpen = false; onDelete() }
+                    onClick = {
+                        Haptics.tick(context)
+                        menuOpen = false
+                        onDelete()
+                    }
                 )
             }
         }
@@ -397,6 +441,7 @@ internal fun NotebookNameDialog(
     val inputFocus = remember { androidx.compose.ui.focus.FocusRequester() }
     fun submit() {
         if (name.isNotBlank() || allowBlankName) {
+            Haptics.tick(context)
             onConfirm(name)
             onDismiss()
         }
@@ -430,7 +475,10 @@ internal fun NotebookNameDialog(
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                TextButton(onClick = onDismiss) { Text(com.lucent.app.i18n.S.actionCancel) }
+                TextButton(onClick = {
+                    Haptics.tick(context)
+                    onDismiss()
+                }) { Text(com.lucent.app.i18n.S.actionCancel) }
                 Spacer(modifier = Modifier.width(8.dp))
                 TextButton(onClick = { submit() }) { Text(confirmLabel) }
             }

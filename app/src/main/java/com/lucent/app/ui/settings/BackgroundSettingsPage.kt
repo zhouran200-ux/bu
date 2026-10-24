@@ -1,6 +1,5 @@
 package com.lucent.app.ui.settings
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -9,6 +8,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -19,12 +20,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.lucent.app.AppScope
 import com.lucent.app.data.SettingsCache
 import com.lucent.app.data.SettingsRepository
 import com.lucent.app.i18n.S
+import com.lucent.app.ui.Haptics
 import com.lucent.app.ui.LockNote
 import com.lucent.app.ui.LocalOnGradient
 import com.lucent.app.ui.LocalOnGradientMuted
@@ -37,6 +41,7 @@ import com.lucent.app.ui.PaletteSwatch
 import com.lucent.app.ui.frostedGlass
 import com.lucent.app.ui.rememberDynamicColorActive
 import com.lucent.app.ui.rememberPureWhiteActive
+import com.lucent.app.ui.selectedCard
 import com.lucent.app.ui.title
 
 @Composable
@@ -59,6 +64,7 @@ internal fun BackgroundSettingsPage(repo: SettingsRepository) {
         if (locked) return
         val motionGated = !backgroundAnimationEnabled && (name == PALETTE_CYCLE || name == PALETTE_RANDOM)
         if (motionGated) return
+        Haptics.tick(context)
         AppScope.setPalette(context, repo, name)
     }
 
@@ -73,6 +79,7 @@ internal fun BackgroundSettingsPage(repo: SettingsRepository) {
             Switch(
                 checked = backgroundAnimationEnabled,
                 onCheckedChange = { checked ->
+                    Haptics.tick(context)
                     AppScope.setBackgroundAnimationEnabled(context, repo, checked)
                 }
             )
@@ -85,12 +92,19 @@ internal fun BackgroundSettingsPage(repo: SettingsRepository) {
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable(enabled = !locked && backgroundAnimationEnabled) { pickPalette(PALETTE_CYCLE) }
+                .clip(RoundedCornerShape(12.dp))
+                .selectedCard(savedPalette == PALETTE_CYCLE, 12.dp)
+                .selectable(
+                    selected = savedPalette == PALETTE_CYCLE,
+                    enabled = !locked && backgroundAnimationEnabled,
+                    role = Role.RadioButton
+                ) { pickPalette(PALETTE_CYCLE) }
+                .padding(vertical = 2.dp)
         ) {
             RadioButton(
                 selected = savedPalette == PALETTE_CYCLE,
                 enabled = !locked && backgroundAnimationEnabled,
-                onClick = { pickPalette(PALETTE_CYCLE) }
+                onClick = null
             )
             Box(modifier = Modifier.alpha(motionAlpha)) {
                 PaletteSwatch(LucentPalette.pickerEntries.map { it.colors.first() })
@@ -104,28 +118,34 @@ internal fun BackgroundSettingsPage(repo: SettingsRepository) {
             )
         }
 
-        Column(
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable(enabled = !locked && backgroundAnimationEnabled) { pickPalette(PALETTE_RANDOM) }
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                RadioButton(
+                .clip(RoundedCornerShape(12.dp))
+                .selectedCard(savedPalette == PALETTE_RANDOM, 12.dp)
+                .selectable(
                     selected = savedPalette == PALETTE_RANDOM,
                     enabled = !locked && backgroundAnimationEnabled,
-                    onClick = { pickPalette(PALETTE_RANDOM) }
-                )
-                Box(modifier = Modifier.alpha(motionAlpha)) {
-                    PaletteSwatch(randomSwatch)
-                }
-                Text(
-                    S.paletteRandomAuto,
-                    color = onGradient.copy(alpha = onGradient.alpha * motionAlpha),
-                    fontSize = LucentTitles.ItemSize,
-                    fontWeight = LucentTitles.ItemWeight,
-                    modifier = Modifier.padding(start = 10.dp)
-                )
+                    role = Role.RadioButton
+                ) { pickPalette(PALETTE_RANDOM) }
+                .padding(vertical = 2.dp)
+        ) {
+            RadioButton(
+                selected = savedPalette == PALETTE_RANDOM,
+                enabled = !locked && backgroundAnimationEnabled,
+                onClick = null
+            )
+            Box(modifier = Modifier.alpha(motionAlpha)) {
+                PaletteSwatch(randomSwatch)
             }
+            Text(
+                S.paletteRandomAuto,
+                color = onGradient.copy(alpha = onGradient.alpha * motionAlpha),
+                fontSize = LucentTitles.ItemSize,
+                fontWeight = LucentTitles.ItemWeight,
+                modifier = Modifier.padding(start = 10.dp)
+            )
         }
 
         PaletteGroup.entries.forEach { group ->
@@ -142,12 +162,19 @@ internal fun BackgroundSettingsPage(repo: SettingsRepository) {
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable(enabled = !locked) { pickPalette(p.name) }
+                        .clip(RoundedCornerShape(12.dp))
+                        .selectedCard(savedPalette == p.name, 12.dp)
+                        .selectable(
+                            selected = savedPalette == p.name,
+                            enabled = !locked,
+                            role = Role.RadioButton
+                        ) { pickPalette(p.name) }
+                        .padding(vertical = 2.dp)
                 ) {
                     RadioButton(
                         selected = savedPalette == p.name,
                         enabled = !locked,
-                        onClick = { pickPalette(p.name) }
+                        onClick = null
                     )
                     Box(modifier = Modifier.alpha(lockAlpha)) {
                         PaletteSwatch(p.colors)

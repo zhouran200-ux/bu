@@ -20,7 +20,6 @@ class StreamRevealTextTest {
     }
 
     @Test fun cutKeepsZwjEmojiSequencesTogether() {
-        // man + ZWJ + woman + ZWJ + girl
         val family = "\uD83D\uDC68\u200D\uD83D\uDC69\u200D\uD83D\uDC67"
         assertEquals(family.length, 8)
         assertEquals(0, revealCut(family, 2))

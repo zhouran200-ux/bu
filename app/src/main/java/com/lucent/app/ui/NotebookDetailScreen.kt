@@ -37,6 +37,7 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.lucent.app.AppScope
 import com.lucent.app.data.NotebookRepository
 import com.lucent.app.i18n.S
 import com.lucent.app.data.Note
@@ -176,6 +177,9 @@ fun NotebookDetailScreen(
                                 sourceNotes = sourceNotes,
                                 modifier = Modifier.fillMaxSize(),
                                 active = active && selectedTab == NotebookDetailTab.CHAT,
+                                onDialogueSettingsSaved = {
+                                    AppScope.io.launch { repository.touch(notebookId) }
+                                },
                                 onOpenSource = { noteId, sliceId, revision ->
                                     focusRequest += 1
                                     sourceFocus = SourceFocus(noteId, sliceId, focusRequest, revision)

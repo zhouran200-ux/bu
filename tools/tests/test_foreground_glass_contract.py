@@ -9,6 +9,7 @@ POPUP_FILES = {
     "ProfileModelPickerSheet.kt": UI / "ProfileModelPickerSheet.kt",
     "SettingsComponents.kt": UI / "SettingsComponents.kt",
     "NotebooksScreen.kt": UI / "NotebooksScreen.kt",
+    "NotebookShelfItem.kt": UI / "NotebookShelfItem.kt",
     "NotebookChatTab.kt": UI / "NotebookChatTab.kt",
     "ChatOverlayComponents.kt": UI / "ChatOverlayComponents.kt",
     "ChatDialogueSettings.kt": UI / "ChatDialogueSettings.kt",
@@ -57,8 +58,8 @@ class ForegroundGlassContractTest(unittest.TestCase):
         self.assertIn("sheetGesturesEnabled = false", picker)
         self.assertIn("dragHandle = null", picker)
         self.assertIn("drawer.handle()", picker)
-        notebooks = POPUP_FILES["NotebooksScreen.kt"].read_text(encoding="utf-8")
-        self.assertIn("LaunchedEffect(listScrolling) { if (listScrolling) menuOpen = false }", notebooks)
+        card = POPUP_FILES["NotebookShelfItem.kt"].read_text(encoding="utf-8")
+        self.assertIn("LaunchedEffect(listScrolling) { if (listScrolling) menuOpen = false }", card)
 
 
 if __name__ == "__main__":

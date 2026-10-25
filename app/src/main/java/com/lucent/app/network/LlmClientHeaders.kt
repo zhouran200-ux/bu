@@ -20,9 +20,6 @@ internal object LlmHttpClients {
             .followRedirects(false)
             .followSslRedirects(false)
             .connectTimeout(20, TimeUnit.SECONDS)
-            // No socket idle timeout: it counts wall-clock time, so a frozen background app would
-            // abort a healthy stream the moment it resumes. StreamIdleWatchdog covers dead
-            // connections using foreground-only time instead.
             .readTimeout(0, TimeUnit.SECONDS)
             .callTimeout(0, TimeUnit.SECONDS)
             .retryOnConnectionFailure(false)

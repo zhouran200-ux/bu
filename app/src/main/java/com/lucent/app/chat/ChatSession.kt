@@ -332,10 +332,6 @@ class ChatSession(
         generation?.cancel()
     }
 
-    /**
-     * Persists in-flight progress so a process killed in the background does not discard the answer
-     * that was already streamed. The final save overwrites this snapshot on normal completion.
-     */
     fun checkpoint() {
         val answerId = streamingAnswerId ?: return
         val index = messages.indexOfFirst { it.id == answerId }
@@ -351,6 +347,5 @@ class ChatSession(
     }
 }
 
-/** Silence tolerated on a streaming connection while the app stays in the foreground. */
 internal const val STREAM_IDLE_TIMEOUT_MILLIS = 90_000L
 private const val WATCHDOG_TICK_MILLIS = 5_000L

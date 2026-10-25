@@ -54,8 +54,6 @@ import androidx.compose.runtime.getValue
 import com.lucent.app.ui.chat.ChatActionsCoordinator
 import androidx.compose.runtime.setValue
 
-
-
 @OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun NotebookChatTab(
@@ -63,6 +61,7 @@ fun NotebookChatTab(
     sourceNotes: List<Note>,
     modifier: Modifier = Modifier,
     active: Boolean = true,
+    onDialogueSettingsSaved: () -> Unit = {},
     onOpenSource: (Long, String, String) -> Unit = { _, _, _ -> }
 ) {
     val context = LocalContext.current
@@ -138,8 +137,6 @@ fun NotebookChatTab(
         if (!active) {
             actions.followStream = false
         } else if (session.streamingAnswerId != null && !listState.canScrollForward) {
-            // Returning to a running answer that was pinned to the tail should keep following it;
-            // the leave-foreground guard above only exists to stop scrolling while hidden.
             actions.followStream = true
         }
     }
@@ -457,6 +454,7 @@ fun NotebookChatTab(
                     actions.systemPrompt = p
                     actions.historyRounds = r
                     saveDialogueSettings(prefs, notebookId, p, r)
+                    onDialogueSettingsSaved()
                     LucentToast.show(context, S.chatSettingsSaved)
                 },
                 onDismiss = { showDialogueSettingsDialog = false },

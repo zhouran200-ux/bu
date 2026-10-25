@@ -12,6 +12,7 @@ import androidx.compose.ui.platform.LocalContext
 
 internal object LucentStatusColors {
     val Selected = Color(0xFF22C55E)
+    val SourcePresent = Selected
 }
 
 internal data class AppThemeColors(

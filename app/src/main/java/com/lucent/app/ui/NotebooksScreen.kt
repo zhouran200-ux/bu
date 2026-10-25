@@ -2,7 +2,6 @@ package com.lucent.app.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,18 +21,12 @@ import androidx.compose.ui.unit.IntOffset
 import kotlin.math.roundToInt
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.OutlinedTextField
@@ -52,21 +45,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.unit.sp
 import com.lucent.app.AppNavigation
 import com.lucent.app.AppScope
 import com.lucent.app.BackClaim
 import com.lucent.app.data.NotebookRepository
 import com.lucent.app.i18n.S
 import com.lucent.app.data.Notebook
-import java.time.Instant
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.util.Locale
 import kotlinx.coroutines.launch
 
 @Composable
@@ -294,120 +281,6 @@ fun NotebooksScreen(
                         ),
                     interactive = false,
                     onOpen = {}, onRename = {}, onDelete = {}
-                )
-            }
-        }
-    }
-}
-
-private val monthDateTimeFormatter: DateTimeFormatter =
-    DateTimeFormatter.ofPattern(S.dateMonthDayPattern, Locale.getDefault())
-
-private fun formatMonthDateTime(millis: Long): String {
-    val zoned = Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault())
-    return zoned.format(monthDateTimeFormatter)
-}
-
-@Composable
-private fun NotebookShelfItem(
-    notebook: Notebook,
-    sourceCount: Int,
-    itemModifier: Modifier,
-    interactive: Boolean = true,
-    listScrolling: Boolean = false,
-    onOpen: () -> Unit,
-    onRename: () -> Unit,
-    onDelete: () -> Unit
-) {
-    val context = LocalContext.current
-    val onGradient = LocalOnGradient.current
-    val onGradientMuted = LocalOnGradientMuted.current
-    var menuOpen by remember { mutableStateOf(false) }
-    BackHandler(enabled = interactive && menuOpen) { menuOpen = false }
-    LaunchedEffect(interactive) { if (!interactive) menuOpen = false }
-    LaunchedEffect(listScrolling) { if (listScrolling) menuOpen = false }
-    val title = notebook.title.ifBlank { com.lucent.app.i18n.S.notebookEmptyTitle }
-    val formattedDate = remember(notebook.updatedAt) { formatMonthDateTime(notebook.updatedAt) }
-    val rowInteraction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-
-    Row(
-        modifier = itemModifier
-            .fillMaxWidth()
-            .frostedGlass(cornerRadius = 22.dp)
-            .clickable(
-                interactionSource = rowInteraction,
-                indication = rememberScaleIndication(),
-                enabled = interactive
-            ) {
-                Haptics.tick(context)
-                onOpen()
-            }
-            .padding(horizontal = 16.dp, vertical = 18.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                color = LucentTitles.titleInk(onGradient),
-                fontSize = LucentTitles.EntrySize,
-                fontWeight = LucentTitles.EntryWeight,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = S.notebookSourcesSummary(sourceCount, formattedDate),
-                color = onGradientMuted,
-                fontSize = 13.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-
-        Box {
-            IconButton(
-                onClick = {
-                    Haptics.tick(context)
-                    menuOpen = true
-                },
-                enabled = interactive,
-                modifier = Modifier.size(36.dp)
-            ) {
-                Icon(
-                    Icons.Default.MoreVert,
-                    contentDescription = com.lucent.app.i18n.S.a11yMoreOptions,
-                    tint = onGradientMuted,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-            androidx.compose.material3.DropdownMenu(
-                modifier = Modifier.widthIn(min = 176.dp),
-                shape = RoundedCornerShape(16.dp),
-                containerColor = glassPanelColor(),
-                tonalElevation = 0.dp,
-                shadowElevation = 8.dp,
-                border = glassPopupBorder(),
-                expanded = interactive && menuOpen,
-                onDismissRequest = { menuOpen = false },
-                properties = NonEditingPopupProperties
-            ) {
-                androidx.compose.material3.DropdownMenuItem(
-                    text = { Text(com.lucent.app.i18n.S.notebookRename) },
-                    leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
-                    onClick = {
-                        Haptics.tick(context)
-                        menuOpen = false
-                        onRename()
-                    }
-                )
-                androidx.compose.material3.DropdownMenuItem(
-                    text = { Text(com.lucent.app.i18n.S.actionDelete) },
-                    leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
-                    onClick = {
-                        Haptics.tick(context)
-                        menuOpen = false
-                        onDelete()
-                    }
                 )
             }
         }

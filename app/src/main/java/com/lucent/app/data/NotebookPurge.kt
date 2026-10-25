@@ -30,6 +30,7 @@ object NotebookPurge {
         }
         val noteId = db.noteDao().insert(note)
         linkNote(db, notebookId, noteId)
+        db.notebookDao().touch(notebookId, System.currentTimeMillis())
         noteId
     }
 
@@ -38,17 +39,20 @@ object NotebookPurge {
         removeDocument(db, notebookId)
         val noteId = db.noteDao().insert(note)
         linkNote(db, notebookId, noteId)
+        db.notebookDao().touch(notebookId, System.currentTimeMillis())
         noteId
     }
 
     suspend fun removeDocument(db: AppDatabase, notebookId: Long) = db.withTransaction {
+        val attached = db.notebookDao().getItemsOnce(notebookId)
+            .filter { it.itemKind == NotebookItem.KIND_NOTE }
+        if (attached.isEmpty()) return@withTransaction
         val doomed = db.notebookDao().exclusiveItemIds(notebookId, NotebookItem.KIND_NOTE)
         doomed.forEach { noteId ->
             db.noteDao().getByIdOnce(noteId)?.let { TrashCleanup.purgeNote(db, it) }
         }
-        db.notebookDao().getItemsOnce(notebookId)
-            .filter { it.itemKind == NotebookItem.KIND_NOTE }
-            .forEach { db.notebookDao().removeItem(notebookId, NotebookItem.KIND_NOTE, it.itemId) }
+        attached.forEach { db.notebookDao().removeItem(notebookId, NotebookItem.KIND_NOTE, it.itemId) }
+        db.notebookDao().touch(notebookId, System.currentTimeMillis())
     }
 
     suspend fun purge(db: AppDatabase, notebookId: Long) {

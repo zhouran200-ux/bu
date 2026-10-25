@@ -192,7 +192,10 @@ class UnsupportedThinkingHeaderTest {
         rule.mainClock.autoAdvance = false
         rule.setContent {
             MaterialTheme {
-                CompositionLocalProvider(LocalDensity provides Density(1f, 1f)) {
+                CompositionLocalProvider(
+                    LocalDensity provides Density(1f, 1f),
+                    LocalBackgroundEnvironment provides BackgroundEnvironment(active = true, motionEnabled = false)
+                ) {
                     if (host.mounted.value) {
                         LazyColumn(Modifier.width(300.dp).height(360.dp)) {
                             item(key = "header") { Spacer(Modifier.height(8.dp)) }

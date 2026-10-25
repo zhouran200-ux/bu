@@ -80,6 +80,7 @@ object ChatSessions {
     private fun createSession(app: Context, notebookId: Long): ChatSession {
         val database = AppDatabase.getInstance(app)
         val dao = database.chatDao()
+        val notebookDao = database.notebookDao()
         val conversationId = ChatScope.forNotebook(notebookId)
         return ChatSession(
             dispatcher = Dispatchers.Main.immediate,
@@ -101,18 +102,21 @@ object ChatSessions {
             save = { message ->
                 database.withTransaction {
                     dao.upsert(mergeChatMessage(dao.getById(message.id), message, conversationId))
+                    notebookDao.touch(notebookId, System.currentTimeMillis())
                 }
             },
             updateContent = { id, content ->
                 database.withTransaction {
                     requireChatOwnership(dao.getById(id), conversationId)
                     dao.updateContent(id, content)
+                    notebookDao.touch(notebookId, System.currentTimeMillis())
                 }
             },
             deleteMessagesByIds = { ids ->
                 database.withTransaction {
                     ids.forEach { requireChatOwnership(dao.getById(it), conversationId) }
                     dao.deleteByIds(ids)
+                    notebookDao.touch(notebookId, System.currentTimeMillis())
                 }
             },
             replaceQuestion = { questionId, text, following ->
@@ -120,6 +124,7 @@ object ChatSessions {
                     (following + questionId).forEach { requireChatOwnership(dao.getById(it), conversationId) }
                     dao.updateContent(questionId, text)
                     if (following.isNotEmpty()) dao.deleteByIds(following)
+                    notebookDao.touch(notebookId, System.currentTimeMillis())
                 }
             },
             onRunningChanged = { active ->
@@ -166,7 +171,6 @@ object ChatSessions {
         sessions.values.forEach { it.first.stop() }
     }
 
-    /** Persists in-flight answers before the process can be frozen or killed. */
     fun checkpointAll() {
         sessions.values.forEach { it.first.checkpoint() }
     }

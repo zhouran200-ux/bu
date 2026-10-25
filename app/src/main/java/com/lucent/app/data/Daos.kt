@@ -94,6 +94,9 @@ interface NotebookDao {
     @Update
     suspend fun updateAll(notebooks: List<Notebook>)
 
+    @Query("UPDATE notebooks SET updatedAt = :updatedAt WHERE id = :id")
+    suspend fun touch(id: Long, updatedAt: Long)
+
     @Insert
     suspend fun insertItem(item: NotebookItem): Long
 

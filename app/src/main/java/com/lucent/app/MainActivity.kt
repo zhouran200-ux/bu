@@ -206,7 +206,6 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onStop() {
-        // Persist in-flight answers before the system may freeze or kill the process.
         ChatSessions.checkpointAll()
         AppLifecycleState.onBackground()
         super.onStop()

@@ -1,6 +1,5 @@
 package com.lucent.app.ui
 
-
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -40,7 +39,6 @@ internal data class MarkdownParseSnapshot(
     val annotated: List<AnnotatedString> = emptyList()
 )
 
-/** Revealed stream text plus whether the reveal animation has caught up with [text]. */
 private data class RevealedMarkdownInput(val text: String, val complete: Boolean)
 
 @Composable
@@ -86,8 +84,6 @@ internal fun MarkdownText(
         snapshotFlow { latestReveal.value }
             .conflate()
             .collect { snapshot ->
-                // Trim a citation marker that may still be completed: while the stream is running and
-                // while the completion animation is still revealing its tail.
                 val display = if ((streaming || !snapshot.complete) && style.citationsEnabled) {
                     streamingMarkdownTail(snapshot.text)
                 } else {

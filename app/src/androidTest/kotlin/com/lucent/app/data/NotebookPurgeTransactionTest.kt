@@ -70,6 +70,18 @@ class NotebookPurgeTransactionTest {
         assertEquals(1, db.noteDao().getAllOnce().size)
     }
 
+    @Test fun documentChangesBumpTheNotebookModifiedTimeButIdleRemovalDoesNot() = runBlocking {
+        val notebook = db.notebookDao().insert(Notebook(id = 900005, title = "modified", updatedAt = 1_000L))
+        NotebookPurge.importDocument(db, notebook, Note(title = "doc", body = "body"))
+        assertTrue(db.notebookDao().getAllOnce().single().updatedAt > 1_000L)
+        db.notebookDao().touch(notebook, 2_000L)
+        NotebookPurge.removeDocument(db, notebook)
+        assertTrue(db.notebookDao().getAllOnce().single().updatedAt > 2_000L)
+        db.notebookDao().touch(notebook, 3_000L)
+        NotebookPurge.removeDocument(db, notebook)
+        assertEquals(3_000L, db.notebookDao().getAllOnce().single().updatedAt)
+    }
+
     @Test fun sharedSourceSurvivesDeletingOnlyOneNotebook() = runBlocking {
         val first = db.notebookDao().insert(Notebook(id = 900002, title = "first"))
         val second = db.notebookDao().insert(Notebook(id = 900003, title = "second"))

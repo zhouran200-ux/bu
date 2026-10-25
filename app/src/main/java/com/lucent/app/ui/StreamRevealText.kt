@@ -14,7 +14,6 @@ import kotlinx.coroutines.isActive
 
 internal const val DEFAULT_REVEAL_MILLIS_PER_CHAR = 3f
 
-/** Guards the reveal speed multiplier so a stray setting cannot freeze or teleport the animation. */
 private const val MIN_REVEAL_SPEED_SCALE = 0.1f
 private const val MAX_REVEAL_SPEED_SCALE = 10f
 
@@ -59,12 +58,6 @@ internal class StreamPacer(
     }
 }
 
-/**
- * Pacing state machine for streamed text.
- *
- * Kept outside composition so the completion/rewrite behaviour can be unit tested:
- * [update] decides whether the next frame must animate, [frame] advances one frame.
- */
 internal class StreamRevealDriver {
     private val pacer = StreamPacer()
     private var lastTarget = ""
@@ -77,7 +70,6 @@ internal class StreamRevealDriver {
 
     val displayedLength: Float get() = pacer.displayedLength
 
-    /** Applies the newest input and reports whether a frame of animation is still needed. */
     fun update(target: String, streaming: Boolean, motionEnabled: Boolean): Boolean {
         if (!started) {
             started = true
@@ -94,7 +86,6 @@ internal class StreamRevealDriver {
             finishing = false
         }
         if (streamEnded && motionEnabled && !rewritten) {
-            // The stream is over but its tail has not been revealed yet: keep pacing instead of jumping.
             finishing = pacer.displayedLength < target.length.toFloat()
         }
         if (streaming) finishing = false
@@ -108,7 +99,6 @@ internal class StreamRevealDriver {
         if (pacer.displayedLength >= target.length.toFloat()) finishing = false
     }
 
-    /** Restores a consistent fully revealed state once nothing is animating any more. */
     fun settle(target: String) {
         if (visibleCut != target.length || pacer.displayedLength != target.length.toFloat()) snap(target)
     }
@@ -175,7 +165,6 @@ internal fun rememberRevealedText(
 internal fun normalizedRevealMillisPerChar(value: Float): Float =
     value.takeIf { it.isFinite() && it > 0f } ?: DEFAULT_REVEAL_MILLIS_PER_CHAR
 
-/** Larger values speed the reveal up; [DEFAULT_REVEAL_MILLIS_PER_CHAR] keeps the historical pacing. */
 internal fun revealSpeedScale(millisPerChar: Float): Float =
     (DEFAULT_REVEAL_MILLIS_PER_CHAR / normalizedRevealMillisPerChar(millisPerChar))
         .coerceIn(MIN_REVEAL_SPEED_SCALE, MAX_REVEAL_SPEED_SCALE)

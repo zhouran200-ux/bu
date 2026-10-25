@@ -19,6 +19,10 @@ class NotebookRepository(private val db: AppDatabase) {
         db.notebookDao().updateAll(notebooks)
     }
 
+    suspend fun touch(notebookId: Long, updatedAt: Long = System.currentTimeMillis()) {
+        db.notebookDao().touch(notebookId, updatedAt)
+    }
+
     suspend fun purge(notebookId: Long) {
         NotebookPurge.purge(db, notebookId)
     }

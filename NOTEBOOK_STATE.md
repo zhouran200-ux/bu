@@ -8,6 +8,7 @@
 - 聊天列表按消息 key/offset 恢复。所有思考面板重新收起会改变气泡高度，因此不承诺在展开状态变为收起后仍逐像素呈现相同画面。
 - 来源文档与模型原文分别保存 key/offset，首次进入未访问子页才沿用另一页的章节/切片锚点；之后各自恢复。记住来源子页及对话/来源标签。旧共享位置迁移到文档页。
 - 来源及已完成聊天历史在后台预解析 Markdown 后再恢复列表，避免空高度初始行把恢复位置挤回开头。
+- 主界面笔记本卡片不再显示「N 个来源」字样：有来源文档时在标题行显示一个绿点，无来源不显示。标题后并行显示最近修改时间，格式为「时:分 · 月日」，一行放不下时整组折到下一行。修改时间只在发送消息、编辑提问/回答、重新生成、删除气泡、导入/更换/移除来源文档、修改对话设置和重命名时更新；打开笔记本、浏览列表、切换来源页和查看原文预览不更新。
 
 ## 后台边界
 
@@ -17,10 +18,10 @@ Android/OEM 可结束进程、限制前台启动与服务时长。进程死亡�
 
 ## 本轮验证
 
-Debug 编译、Android 测试代码编译、全量 `:app:testDebugUnitTest`（包括 StreamRevealTextTest、StreamUiSchedulerAndParserTest、ChatSessionTest 等）、Python 138 项（6 项条件跳过）及 quick 静态门禁全通过。未本地打包或执行设备测试。
+Debug 与 Release Kotlin 编译、Android 测试代码编译、全量 `:app:testDebugUnitTest`（646 项、99 套件全通过）、Python 141 项及 quick 静态门禁全通过。新增 `NotebookModifiedAtTest` 覆盖「时:分 · 月日」格式，`NotebookPurgeTransactionTest` 增加来源导入/移除更新修改时间、空移除不更新的用例。未本地打包或执行设备测试，设备矩阵与 APK 交给 GitHub Actions。
 
-上轮 `a0719d2d`（Actions Run `39962457500`）中 source-hygiene、android-jvm-check、build-apk 及思考面板相关设备测试均通过；API33/35 仅 `SourceIndexPreviewTest` 3 个用例因测试辅助函数 `paragraph()` 末尾空格被 `MarkdownParser.parseBlocks` 的 `trimEnd()` 裁剪而无法匹配，本轮已对齐去除末尾空格并新增思考面板「完全展开 / 回到小窗」设备与单测用例；结果仍需下一轮云端复核，不将测试编译等同设备通过。
+上轮 `a0719d2d`（Actions Run `39962457500`）中 source-hygiene、android-jvm-check、build-apk 及思考面板相关设备测试均通过。之后 `5d369e8` 的云端结果：android-jvm-check 与 build-apk 通过，source-hygiene 因 26 处注释失败，API 33/35 设备测试因 `UnsupportedThinkingHeaderTest.liveReasoningExpandsOnlyAfterTheHeaderIsTapped` 失败。本轮清除源码注释、让该设备测试在关闭动画的环境下验证展开逻辑，并修正两条与当前实现对不上的静态契约（流式引用缓冲、未使用实体列）；设备结果仍需下一轮云端复核，不将测试编译等同设备通过。
 
 ## 结构与残留审查
 
-去除思考面板持久化读写、active=false 误重置、Activity/task-removal 停止生成路径，旧共享来源键迁移后清理；重构流式显示逻辑去除旧 Animatable 频繁重启。没有增加依赖、改变主副包名或正式发布行为。NotebookChatTab 507 行仍为聊天入口/布局协调；新增预解析准备已独立到 ChatInitialMarkdown，暂不为行数搬迁其他区域。
+主界面卡片从 `NotebooksScreen` 拆分到 `NotebookShelfItem.kt`，主界面降到约 360 行；卡片独立负责标题、来源绿点、修改时间与菜单。`NotebookChatTab` 511 行仍为聊天入口/布局协调，本轮只增加对话设置保存回调，未继续搬迁。补齐 i18n catalog 中缺失的 `chatIdleTimeout` / `chatIdleTimeoutReason` 生成源并重新生成 `I18n.kt`，移除源码中不符合项目规范的注释；未新增依赖、未改变主副包名或正式发布行为。

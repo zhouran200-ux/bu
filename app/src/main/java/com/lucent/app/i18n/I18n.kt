@@ -76,7 +76,6 @@ open class Tr {
     open val sourcesFastScroll: String = "文档快速滚动"
     open val sourceIndexPreviewOpen: String = "查看模型原文"
     open val sourceIndexPreviewTitle: String = "模型看到的资料"
-    open val sourceIndexPreviewSubtitle: String = "以下为注入模型的带标签原文（不含系统规则与自定义提示词），仅供核对。"
     open fun sourceIndexPreviewMeta(chapters: Int, slices: Int, chars: Int): String = "${chapters} 个章节 · ${slices} 个切片 · ${chars} 字符"
     open val sourceIndexPreviewBack: String = "返回文档"
     open val sourceIndexPreviewEmpty: String = "当前文档没有可显示的标签内容"

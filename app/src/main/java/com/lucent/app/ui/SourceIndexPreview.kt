@@ -29,9 +29,11 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -177,66 +179,68 @@ internal fun SourceIndexPreview(
     val reading = LocalReadingTypography.current
     val rowKeys = remember(rows) { rows.map { it.key } }
     val chapterIndices = remember(rows) { rows.indices.filter { rows[it].isChapter } }
+    val meta = S.sourceIndexPreviewMeta(
+        source.tagged.chapters.size,
+        source.tagged.slices.size,
+        source.tagged.text.length
+    )
+    val sourceLine = listOf(source.title.trim(), meta).filter { it.isNotBlank() }.joinToString(" · ")
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(lucentPanelBackground())
             .testTag("source_model_page")
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 6.dp, end = 12.dp, top = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = onBack, enabled = active) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                    contentDescription = S.sourceIndexPreviewBack,
-                    tint = ink
-                )
-            }
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = S.sourceIndexPreviewTitle,
-                    color = ink,
-                    fontSize = LucentTitles.EntrySize,
-                    fontWeight = LucentTitles.EntryWeight
-                )
-                Text(
-                    text = source.title,
-                    color = muted,
-                    fontSize = 12.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-            IconButton(onClick = { copyPlainTextWithToast(context, source.tagged.text) }) {
-                Icon(
-                    imageVector = Icons.Rounded.ContentCopy,
-                    contentDescription = S.sourceIndexPreviewCopy,
-                    tint = ink
-                )
+        CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 0.dp) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 2.dp, end = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(
+                    onClick = onBack,
+                    enabled = active,
+                    modifier = Modifier.size(44.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                        contentDescription = S.sourceIndexPreviewBack,
+                        tint = ink,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = S.sourceIndexPreviewTitle,
+                        color = ink,
+                        fontSize = 15.sp,
+                        fontWeight = LucentTitles.EntryWeight,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = sourceLine,
+                        color = muted,
+                        fontSize = 11.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                IconButton(
+                    onClick = { copyPlainTextWithToast(context, source.tagged.text) },
+                    modifier = Modifier.size(44.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.ContentCopy,
+                        contentDescription = S.sourceIndexPreviewCopy,
+                        tint = ink,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
         }
-        Text(
-            text = S.sourceIndexPreviewMeta(
-                source.tagged.chapters.size,
-                source.tagged.slices.size,
-                source.tagged.text.length
-            ),
-            color = muted,
-            fontSize = 11.sp,
-            modifier = Modifier.padding(horizontal = 18.dp, vertical = 2.dp)
-        )
-        Text(
-            text = S.sourceIndexPreviewSubtitle,
-            color = muted,
-            fontSize = 12.sp,
-            lineHeight = 18.sp,
-            modifier = Modifier.padding(horizontal = 18.dp, vertical = 4.dp)
-        )
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(2.dp))
         if (rows.isEmpty()) {
             Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                 Text(text = S.sourceIndexPreviewEmpty, color = muted, fontSize = LucentTitles.ItemSize)
@@ -248,7 +252,7 @@ internal fun SourceIndexPreview(
                         state = listState,
                         modifier = Modifier.fillMaxSize().testTag("source_model_list")
                             .sourceReadingPosition(listState, rowKeys),
-                        contentPadding = PaddingValues(start = 18.dp, end = 18.dp, bottom = 24.dp),
+                        contentPadding = PaddingValues(start = 18.dp, top = 4.dp, end = 18.dp, bottom = 24.dp),
                         verticalArrangement = Arrangement.spacedBy(20.dp * reading.paragraphSpacing)
                     ) {
                         items(rows, key = { it.key }) { row ->

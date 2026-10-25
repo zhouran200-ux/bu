@@ -40,6 +40,9 @@ internal data class MarkdownParseSnapshot(
     val annotated: List<AnnotatedString> = emptyList()
 )
 
+/** Revealed stream text plus whether the reveal animation has caught up with [text]. */
+private data class RevealedMarkdownInput(val text: String, val complete: Boolean)
+
 @Composable
 internal fun MarkdownText(
     text: String,
@@ -76,12 +79,20 @@ internal fun MarkdownText(
     val currentClick = rememberUpdatedState(onCitationClick)
     val click: (CitationRef) -> Unit = remember(clickable) { { ref -> currentClick.value?.invoke(ref) } }
     val revealed = rememberRevealedText(text, streaming)
-    val latestText = rememberUpdatedState(revealed)
+    val latestReveal = rememberUpdatedState(
+        RevealedMarkdownInput(revealed, complete = revealed.length >= text.length)
+    )
     LaunchedEffect(renderer, style, streaming) {
-        snapshotFlow { latestText.value }
+        snapshotFlow { latestReveal.value }
             .conflate()
-            .collect { target ->
-                val display = if (streaming && style.citationsEnabled) streamingMarkdownTail(target) else target
+            .collect { snapshot ->
+                // Trim a citation marker that may still be completed: while the stream is running and
+                // while the completion animation is still revealing its tail.
+                val display = if ((streaming || !snapshot.complete) && style.citationsEnabled) {
+                    streamingMarkdownTail(snapshot.text)
+                } else {
+                    snapshot.text
+                }
                 parsed = withContext(Dispatchers.Default) { renderer.render(display, style, click) }
             }
     }

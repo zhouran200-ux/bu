@@ -105,7 +105,7 @@ class NetworkBoundaryRegressionTest {
         }
         val ordinary = JSONObject()
         applyOpenAiProbeCap(ordinary, "gpt-4o")
-        assertEquals(1, ordinary.getInt("max_tokens"))
+        assertEquals(64, ordinary.getInt("max_tokens"))
     }
 
     @Test(timeout = 15000)

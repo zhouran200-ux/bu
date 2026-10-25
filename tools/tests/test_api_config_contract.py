@@ -49,15 +49,29 @@ class ApiConfigContractTest(unittest.TestCase):
         self.assertIn("ApiProfileImportMode.Replace", actions)
         self.assertFalse((SETTINGS / "ApiProfileTransferSection.kt").exists())
 
-    def test_connection_test_no_longer_targets_a_chat_model(self):
+    def test_connection_test_targets_a_selected_model_without_persisting_it(self):
         diagnostics = (SETTINGS / "ApiConnectionDiagnosticsSection.kt").read_text(encoding="utf-8")
         self.assertNotIn("currentTestTarget", diagnostics)
         self.assertNotIn("apiTestConnectionTarget", diagnostics)
-        self.assertIn("S.apiTestConnection", diagnostics)
+        self.assertIn("onTestModelChange", diagnostics)
+        self.assertIn("S.apiTestModel", diagnostics)
+        self.assertIn("S.apiTestGeneration", diagnostics)
+        self.assertIn("S.apiProbeScopeHintModel(testModel)", diagnostics)
         self.assertIn("S.apiProbeScopeHint", diagnostics)
         page = (SETTINGS / "ApiSettingsPage.kt").read_text(encoding="utf-8")
+        self.assertIn("ApiProbe.testConnection(url, spec, key, targetModel)", page)
+        self.assertIn("latestTestModel.value == targetModel", page)
+        self.assertNotIn("selectedModel", page)
         self.assertNotIn("if (res.success) {\n                            commitAndSaveProfile()", page)
         self.assertIn("onRequestTransfer", page)
+
+    def test_generation_probe_sends_hello_world_once(self):
+        payload = (MAIN / "network/ConnectionProbePayload.kt").read_text(encoding="utf-8")
+        connection = (MAIN / "network/LlmClientConnection.kt").read_text(encoding="utf-8")
+        self.assertIn('CONNECTION_PROBE_PROMPT = "hello world"', payload)
+        self.assertNotIn('"ping"', payload)
+        self.assertIn("connectionProbePayload(spec, probeModel)", connection)
+        self.assertNotIn('"ping"', connection)
 
 
 if __name__ == "__main__":

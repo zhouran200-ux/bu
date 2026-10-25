@@ -75,11 +75,18 @@ class TestConnectionDisplayTest {
     }
 
     @Test
-    fun successfulConnectionKeepsLatencySummary() {
+    fun statusIsBoundedAndSuccessfulHttpDoesNotHideMissingGeneration() {
+        assertTrue(failure(200, "{}", "no visible text").formatDisplayMessage().contains("尚未确认"))
+        val oversized = org.json.JSONObject().put("error", org.json.JSONObject().put("message", "x".repeat(10000))).toString()
+        assertTrue(failure(400, oversized).formatDisplayMessage().length <= 600)
+    }
+
+    @Test
+    fun successfulGenerationKeepsLatencySummary() {
         val result = TestConnectionResult(
             success = true, httpCode = 200, latencyMs = 88, targetModel = "m",
             requestUrl = "https://api.example.com", rawResponseBody = "{}"
         )
-        assertEquals("✓ 连接成功 [m] (88ms)", result.formatDisplayMessage())
+        assertEquals("✓ 模型生成成功 [m] (88ms)", result.formatDisplayMessage())
     }
 }

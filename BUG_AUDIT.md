@@ -1,5 +1,55 @@
 # 全项目 Bug 审计结果
 
+## 2026-10-26：可选模型生成测试及全项目审计
+
+本轮基线 `699dc28`。下方旧基线的数字仅为历史结果，不代表本轮。
+
+### 已修复
+
+- API 设置原先固定向测试函数传空模型，实际只有配置探测。现在可选可用模型发送一条 `hello world`，也保留仅检查配置；测试不自动保存、不改变聊天模型。切换配置或模型取消测试并隔离过期结果。
+- 统一三协议探测 payload，移除旧 `ping` 构造和重复分支；普通 OpenAI/Anthropic 预算 64 token，既有推理模型预算保留。生成测试有独立的 90 秒读/100 秒调用超时，避免直接套用模型列表的 20 秒读超时。
+- HTTP 2xx 不等于生成成功：检查协议对应可见文本，空正文、错误对象、仅推理内容不再显示生成成功。诊断摘要在脱敏后限制为 600 字符，原响应仍保留。
+- SSE 的内容、思考、Google finishReason 改为严格字符串读取，避免 Android JSONObject.NULL 和 JVM org.json 差异导致字面量 null/对象进入正文。
+- 非成功流式 HTTP 响应使用已有 2 MiB 缓冲上限，并设置错误正文 source deadline；不能将这一点声称为所有网络阻塞场景已经证明具有硬超时。
+- 删除无调用的 SettingsRepository.apiProfileSelected 单独 Flow，保留存储键、启动快照及原子组合 Flow。更新 i18n 生成文件、Python 契约与文档。
+
+### 审计范围与残留处理
+
+|范围|结果与边界|
+|---|---|
+|Kotlin/Java、Activity、Compose、状态与回调|全项目静态扫描加关键路径阅读；请求所有者、会话写队列及取消路径复核。没有新增 ViewModel 或第二份持久化模型选择。|
+|Repository、网络、Service|修复上述协议、正文体积与诊断问题；鉴权头、禁止自动重定向、前台生成服务及通知权限声明保留。|
+|导航、Deep Link、Intent|无新增导航路由/深链；Manifest 仅 launcher 及非导出生成服务，没有旧测试功能 Intent 需要删除。|
+|Room、DataStore、SharedPreferences|无 schema/偏好键迁移。旧实体字段由现有兼容基线记录，不因无 UI 引用擅自删列；损坏设置备份保留以避免破坏恢复证据。|
+|XML、图标、字符串、颜色、主题|生成文案与主题检查通过；未新增资源或权限；未将 Lint baseline 内的警告称为已修复。|
+|Gradle、依赖、R8、工作流|没有更改依赖和构建发布逻辑；保持主副 APK 包名分离。serialization debug 依赖有历史 CI 修复背景，不以无源码 import 为由删除。|
+|Worker、通知、日志、Feature Flag|未引入后台测试服务/通知/开关；测试使用现有页面 scope；检查前台服务声明与停止路径。|
+|单测、UI 测试、Mock/Fake|新增 loopback 请求测试覆盖三协议 POST、raw POST、GET/HEAD、probeKind；新增响应验证与 null 字段回归测试。UI 下拉尚未实机验证。|
+|文档、TODO、unused import、死代码|旧测试功能标识全局复查；余下 ping 为聊天测试输入而非生成探测。源码门禁 346 文件、0 错误/候选；这不是语义死代码完备证明。|
+
+### 明确保留的审计后续项
+
+- NotebookChatTab 511 行经过职责审查：入口协调、聊天布局、偏好同步、弹窗接线仍在同一文件；适合后续按偏好所有者/弹窗宿主拆分，本轮未把纯行数拆分当作 bug 修复。ChatSessionTest 642 行保留共享状态机测试。
+- 紧凑按钮触摸区域、页签状态同步、滚动性能等静态候选需 Compose 设备证据；不凭布局尺寸直接断言实际扩展触摸区域失效，也不贸然改变用户紧凑布局。
+- 损坏 DataStore 备份包含敏感配置、恢复通知未接线；需要恢复/清除交互设计，未直接删除备份。字体删除失败后的缓存恢复、清理任务相互影响、更新时间回退为后续容错整改项。
+- 现有 CI 测试数量下限较旧；设备基线不能依据 @Test 数直接提高。版本码拼接公式对未来多位版本号有单调性风险；需单独制定与既有安装版本兼容的策略。
+- HTTP 明文地址受 Android 平台策略限制；本轮未扩大明文访问。未验证真实付费供应商调用、慢速错误体极端网络行为、UI 手感或设备运行。
+
+### 上轮云端复核
+
+已用 GitHub API 核对基线提交的 [check](https://github.com/zhouran200-ux/bu/actions/runs/40206105011) 和 [Build APK only](https://github.com/zhouran200-ux/bu/actions/runs/40206104963) 均成功，check 的源码/JVM/API33/API35 jobs 均成功。未下载完整日志和测试 artifact，未声称完成独立代理的日志级复核。
+
+### 本轮本地验证
+
+- Python 151 项全部通过；quick 10 项门禁全部通过。
+- Debug JVM XML 实际统计：670 项、104 套件，0 失败/错误/跳过；test_inventory 通过。
+- Debug/Release Kotlin 与 Android 测试源码编译通过；Debug Lint 通过：29 warnings、5 hints；baseline 另过滤 18 warnings、2 hints，并报告 13 条过期 baseline 条目。本轮未扩大 baseline，未声称警告清零。
+- 没有本地运行设备测试或 APK/AAB 打包；Release JVM、Release Lint 和本轮设备矩阵交云端。
+
+---
+
+## 历史审计（以下“本轮”均指旧基线）
+
 基线：`f7b6db0982abc652e95b6d8b284a48096fdce306`。标准：崩溃/数据完整性、请求正确性、凭据隔离、异步生命周期、UI 进度与恢复。
 
 ## 本轮修复

@@ -7,7 +7,6 @@ import kotlinx.coroutines.withContext
 import okhttp3.Request
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
-import org.json.JSONArray
 import org.json.JSONObject
 
 internal object LlmClientConnection {
@@ -21,8 +20,9 @@ internal object LlmClientConnection {
         val start = System.currentTimeMillis()
         var resolvedUrl = ""
         var usedUa: String? = null
+        val probeModel = model.trim()
         val probeKind = when {
-            model.isNotBlank() -> ConnectionProbeKind.Generation
+            probeModel.isNotEmpty() -> ConnectionProbeKind.Generation
             rawEndpoint -> ConnectionProbeKind.Endpoint
             else -> ConnectionProbeKind.ModelCatalog
         }
@@ -34,48 +34,12 @@ internal object LlmClientConnection {
 
             val jsonMediaType = "application/json; charset=utf-8".toMediaType()
             val requestBuilder = Request.Builder()
-            val isModelSpecified = model.isNotBlank()
+            val isModelSpecified = probeModel.isNotEmpty()
             val url: String
 
             if (isModelSpecified) {
-                when (spec) {
-                    ApiSpec.OPENAI -> {
-                        url = EndpointUrls.generation(trimmed, spec, apiKey, model, rawEndpoint, stream = false).toString()
-                        val payload = JSONObject().apply {
-                            put("model", model.trim())
-                            put("messages", JSONArray().put(JSONObject().apply {
-                                put("role", "user")
-                                put("content", "ping")
-                            }))
-                            applyOpenAiProbeCap(this, model)
-                        }
-                        requestBuilder.url(url).post(payload.toString().toRequestBody(jsonMediaType))
-                    }
-                    ApiSpec.ANTHROPIC -> {
-                        url = EndpointUrls.generation(trimmed, spec, apiKey, model, rawEndpoint, stream = false).toString()
-                        val payload = JSONObject().apply {
-                            put("model", model.trim())
-                            put("max_tokens", 1)
-                            put("messages", JSONArray().put(JSONObject().apply {
-                                put("role", "user")
-                                put("content", "ping")
-                            }))
-                        }
-                        requestBuilder.url(url).post(payload.toString().toRequestBody(jsonMediaType))
-                    }
-                    ApiSpec.GOOGLE -> {
-                        url = EndpointUrls.generation(trimmed, spec, apiKey, model, rawEndpoint, stream = false).toString()
-
-                        val payload = JSONObject().apply {
-                            put("contents", JSONArray().put(JSONObject().apply {
-                                put("parts", JSONArray().put(JSONObject().apply {
-                                    put("text", "ping")
-                                }))
-                            }))
-                        }
-                        requestBuilder.url(url).post(payload.toString().toRequestBody(jsonMediaType))
-                    }
-                }
+                url = EndpointUrls.generation(trimmed, spec, apiKey, probeModel, rawEndpoint, stream = false).toString()
+                requestBuilder.url(url).post(connectionProbePayload(spec, probeModel).toString().toRequestBody(jsonMediaType))
             } else {
                 url = EndpointUrls.models(trimmed, spec, apiKey, rawEndpoint).toString()
                 if (rawEndpoint) requestBuilder.url(url).head() else requestBuilder.url(url).get()
@@ -83,7 +47,7 @@ internal object LlmClientConnection {
             resolvedUrl = url
             usedUa = applyHeaders(requestBuilder, spec, apiKey).ifBlank { null }
 
-            val response = BufferedTransport.executeBuffered(LlmHttpClients.client, requestBuilder.build())
+            val response = BufferedTransport.executeBuffered(if (isModelSpecified) LlmHttpClients.probeClient else LlmHttpClients.client, requestBuilder.build())
             val latency = System.currentTimeMillis() - start
             val bodyStr = response.body
             if (!response.isSuccessful) {
@@ -98,7 +62,7 @@ internal object LlmClientConnection {
                     success = false,
                     httpCode = response.code,
                     latencyMs = latency,
-                    targetModel = model,
+                    targetModel = probeModel,
                     requestUrl = resolvedUrl,
                     rawResponseBody = bodyStr,
                     errorMessage = "HTTP ${response.code}: ${errMsg.ifBlank { response.message }}",
@@ -107,15 +71,16 @@ internal object LlmClientConnection {
                 )
                 return@withContext Result.success(failureResult.redacted(apiKey))
             }
+            val generated = !isModelSpecified || generationProbeHasText(bodyStr, spec)
             Result.success(
                 TestConnectionResult(
-                    success = true,
+                    success = generated,
                     httpCode = response.code,
                     latencyMs = latency,
-                    targetModel = model,
+                    targetModel = probeModel,
                     requestUrl = resolvedUrl,
                     rawResponseBody = bodyStr,
-                    errorMessage = null,
+                    errorMessage = if (generated) null else "生成接口已响应，但未返回可见文本；请查看原始响应，不能据此确认模型生成成功。",
                     userAgentUsed = usedUa,
                     probeKind = probeKind
                 ).redacted(apiKey)
@@ -130,7 +95,7 @@ internal object LlmClientConnection {
                     success = false,
                     httpCode = 0,
                     latencyMs = latency,
-                    targetModel = model,
+                    targetModel = probeModel,
                     requestUrl = resolvedUrl,
                     rawResponseBody = DiagnosticRedaction.text(e.stackTraceToString(), apiKey).take(1500),
                     errorMessage = e.message ?: e.javaClass.simpleName,

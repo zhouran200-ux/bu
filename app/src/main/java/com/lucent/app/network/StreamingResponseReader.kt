@@ -54,9 +54,9 @@ internal object StreamingResponseReader {
                         val choices = json.optJSONArray("choices")
                         val delta = choices?.optJSONObject(0)?.optJSONObject("delta")
                         if (delta != null) {
-                            val content = delta.optString("content", "")
-                            val reasoning = delta.optString("reasoning_content", "")
-                                .ifBlank { delta.optString("reasoning", "") }
+                            val content = (delta.opt("content") as? String).orEmpty()
+                            val reasoning = (delta.opt("reasoning_content") as? String).orEmpty()
+                                .ifBlank { (delta.opt("reasoning") as? String).orEmpty() }
                                 .ifBlank { null }
                             if (content.isNotEmpty() || reasoning != null) {
                                 if (content.isNotEmpty()) fullContent.append(content)
@@ -68,7 +68,7 @@ internal object StreamingResponseReader {
                     ApiSpec.GOOGLE -> {
                         StreamUsageParser.parse(spec, json)?.let { usage = it }
                         val candidates = json.optJSONArray("candidates")
-                        val finishReason = candidates?.optJSONObject(0)?.optString("finishReason").orEmpty()
+                        val finishReason = (candidates?.optJSONObject(0)?.opt("finishReason") as? String).orEmpty()
                         if (finishReason.isNotBlank() && finishReason != "FINISH_REASON_UNSPECIFIED") sawGoogleFinish = true
                         val contentObj = candidates?.optJSONObject(0)?.optJSONObject("content")
                         val parts = contentObj?.optJSONArray("parts") ?: JSONArray()
@@ -76,7 +76,7 @@ internal object StreamingResponseReader {
                             ensureStreamActive()
                             val part = parts.optJSONObject(i) ?: continue
                             val isThought = part.optBoolean("thought", false)
-                            val text = part.optString("text", "")
+                            val text = (part.opt("text") as? String).orEmpty()
                             if (text.isNotEmpty()) {
                                 if (isThought) {
                                     fullReasoning.append(text)
@@ -98,14 +98,14 @@ internal object StreamingResponseReader {
                         if (delta != null) {
                             when (delta.optString("type")) {
                                 "text_delta" -> {
-                                    val text = delta.optString("text", "")
+                                    val text = (delta.opt("text") as? String).orEmpty()
                                     if (text.isNotEmpty()) {
                                         fullContent.append(text)
                                         onChunk(text, null)
                                     }
                                 }
                                 "thinking_delta" -> {
-                                    val thinking = delta.optString("thinking", "")
+                                    val thinking = (delta.opt("thinking") as? String).orEmpty()
                                     if (thinking.isNotEmpty()) {
                                         fullReasoning.append(thinking)
                                         onChunk("", thinking)

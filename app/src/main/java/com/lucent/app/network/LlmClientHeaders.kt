@@ -15,6 +15,14 @@ internal object LlmHttpClients {
             .build()
     }
 
+    val probeClient: OkHttpClient by lazy {
+        client.newBuilder()
+            .readTimeout(90, TimeUnit.SECONDS)
+            .callTimeout(100, TimeUnit.SECONDS)
+            .retryOnConnectionFailure(false)
+            .build()
+    }
+
     val streamClient: OkHttpClient by lazy {
         OkHttpClient.Builder()
             .followRedirects(false)

@@ -171,8 +171,6 @@ class SettingsRepository(context: Context) {
         prefs[SettingsKeys.API_PROFILES] ?: ""
     }
 
-    val apiProfileSelected: Flow<Int> = context.settingsDataStore.data.map { it[SettingsKeys.API_PROFILE_SELECTED] ?: 0 }
-
     val backgroundAnimationEnabled: Flow<Boolean> = context.settingsDataStore.data.map { it[SettingsKeys.BACKGROUND_ANIMATION_ENABLED] ?: true }
     suspend fun setBackgroundAnimationEnabled(value: Boolean) {
         context.settingsDataStore.edit { it[SettingsKeys.BACKGROUND_ANIMATION_ENABLED] = value }

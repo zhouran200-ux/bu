@@ -14,6 +14,16 @@ class StreamingResponseReaderTest {
         StreamingResponseReader.read(Buffer().writeUtf8(text), spec, {}, { _, _ -> })
     }
 
+    @Test fun nullAndNonStringDeltasAreNotRenderedAsText() {
+        val result = read(
+            event("""{"choices":[{"delta":{"content":null,"reasoning_content":null}}]}""") +
+                event("""{"choices":[{"delta":{"content":{},"reasoning_content":[],"reasoning":"thought"}}]}""") +
+                event("""{"choices":[{"delta":{"content":"hello"}}]}""") + event("[DONE]")
+        )
+        assertEquals("hello", result.content)
+        assertEquals("thought", result.reasoningText)
+    }
+
     @Test fun multilineJsonDeliversTextAndUsage() {
         val text = wire("data: {", "data: " + """"choices":[{"delta":{"content":"hello"}}],""", "data: " + """"usage":{"prompt_tokens":9}}""", "", "data: [DONE]", "", "")
         val result = read(text)

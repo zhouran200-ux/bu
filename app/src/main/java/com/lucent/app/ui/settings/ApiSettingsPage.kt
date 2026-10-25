@@ -94,6 +94,8 @@ internal fun ApiConfigSettingsPage(
     var lastTestResult by remember(requestTarget.profileId) { mutableStateOf<TestConnectionResult?>(null) }
     var fetchModelsError by remember(requestTarget.profileId) { mutableStateOf("") }
     var copiedRawHint by remember(requestTarget.profileId) { mutableStateOf(false) }
+    var testModel by remember(requestTarget.profileId) { mutableStateOf(models.firstOrNull().orEmpty()) }
+    val latestTestModel = rememberUpdatedState(testModel)
     val choices = remember(fetchedModels, models) { modelChoices(fetchedModels, models) }
     val dragState = remember { mutableStateOf<ProfileDrag?>(null) }
 
@@ -107,7 +109,13 @@ internal fun ApiConfigSettingsPage(
         onSaveProfile()
     }
 
-    LaunchedEffect(requestTarget) {
+    LaunchedEffect(models) {
+        if (testModel.isNotBlank() && testModel !in models) {
+            testModel = models.firstOrNull().orEmpty()
+        }
+    }
+
+    LaunchedEffect(requestTarget, testModel) {
         testRequests.cancel()
         lastTestResult = null
         testStatusText = ""
@@ -233,6 +241,9 @@ internal fun ApiConfigSettingsPage(
             fetchModelsError = fetchModelsError,
             errorText = errorText,
             copiedRawHint = copiedRawHint,
+            testModels = models,
+            testModel = testModel,
+            onTestModelChange = { testModel = it },
             onTest = test@{
                 if (url.trim().isEmpty()) {
                     onErrorTextChange(S.apiUrlRequired)
@@ -244,12 +255,15 @@ internal fun ApiConfigSettingsPage(
                 fetchModelsError = ""
                 onErrorTextChange("")
                 val target = requestTarget
+                val targetModel = testModel
                 testRequests.start(
                     scope = scope,
-                    isTargetCurrent = { latestRequestTarget.value == target },
+                    isTargetCurrent = {
+                        latestRequestTarget.value == target && latestTestModel.value == targetModel
+                    },
                     setBusy = { testingConn = it },
                     onFailure = { testSuccess = false; testStatusText = S.apiTestConnectionFailed },
-                    request = { ApiProbe.testConnection(url, spec, key, "") }
+                    request = { ApiProbe.testConnection(url, spec, key, targetModel) }
                 ) { result ->
                     result.onSuccess { res ->
                         lastTestResult = res

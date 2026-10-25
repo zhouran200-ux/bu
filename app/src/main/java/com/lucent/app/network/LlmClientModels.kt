@@ -29,7 +29,7 @@ data class TestConnectionResult(
         }
     }
 
-    fun formatDisplayMessage(): String = DiagnosticRedaction.text(formatDisplayMessageRaw())
+    fun formatDisplayMessage(): String = DiagnosticRedaction.text(formatDisplayMessageRaw()).take(600)
 
     private fun formatDisplayMessageRaw(): String {
         if (probeKind != ConnectionProbeKind.Generation) {
@@ -40,10 +40,11 @@ data class TestConnectionResult(
         }
         if (success) {
             val targetLabel = if (targetModel.isNotBlank()) " [$targetModel]" else ""
-            return "✓ 连接成功$targetLabel (${latencyMs}ms)"
+            return "✓ 模型生成成功$targetLabel (${latencyMs}ms)"
         }
 
         val prefix = when (httpCode) {
+            in 200..299 -> "接口已响应，但尚未确认可见文本生成（HTTP $httpCode）"
             400 -> "请求参数不被接受，请检查模型名称与所选协议是否匹配（HTTP 400）"
             401 -> "API Key 无效或未授权，请核对密钥是否正确、是否已开通该服务（HTTP 401）"
             403 -> "该账号或密钥没有访问权限，请确认套餐、地区限制或模型授权（HTTP 403）"
@@ -53,7 +54,7 @@ data class TestConnectionResult(
             in 500..599 -> "服务商或网关暂时异常，通常是服务端问题，请稍后重试并查看下方详情（HTTP $httpCode）"
             0 -> when {
                 errorMessage?.contains("timeout", true) == true || errorMessage?.contains("timed out", true) == true ->
-                    "连接超时：服务器长时间未响应，请检查网络或更换接口地址"
+                    "连接超时：模型可能仍在生成，本次测试未确认结果；请稍后重试或在对话中验证"
                 errorMessage?.contains("unable to resolve", true) == true || errorMessage?.contains("UnknownHost", true) == true ->
                     "无法解析地址：请检查基础 URL 拼写与设备网络"
                 errorMessage?.contains("connection refused", true) == true ->

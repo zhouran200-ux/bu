@@ -48,7 +48,10 @@ internal object LlmClientStream {
                 call.execute().use { response ->
                     ensureStreamActive()
                     if (!response.isSuccessful) {
-                        val bodyStr = response.body?.string().orEmpty()
+                        val bodyStr = response.body?.let { body ->
+                            body.source().timeout().deadline(20, java.util.concurrent.TimeUnit.SECONDS)
+                            BufferedResponseLimits.read(body)
+                        }.orEmpty()
                         ensureStreamActive()
                         val errMsg = try {
                             val json = JSONObject(bodyStr)

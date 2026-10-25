@@ -24,8 +24,10 @@ import java.util.concurrent.TimeUnit
 
 class LlmClientStreamTest {
     @Test
-    fun streamingHasFortySecondReadTimeoutAndNoOverallDeadline() {
-        assertEquals(40000, LlmHttpClients.streamClient.readTimeoutMillis)
+    fun streamingHasNoWallClockReadTimeoutAndNoOverallDeadline() {
+        // A backgrounded app can be frozen for minutes; a wall-clock read timeout would abort a
+        // healthy stream on resume. StreamIdleWatchdog enforces idleness using foreground time.
+        assertEquals(0, LlmHttpClients.streamClient.readTimeoutMillis)
         assertEquals(0, LlmHttpClients.streamClient.callTimeoutMillis)
         assertTrue(LlmHttpClients.streamClient.connectTimeoutMillis > 0)
         assertFalse(LlmHttpClients.streamClient.retryOnConnectionFailure)

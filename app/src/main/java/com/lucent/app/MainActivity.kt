@@ -31,6 +31,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import com.lucent.app.AppScope
+import com.lucent.app.chat.ChatSessions
 import com.lucent.app.data.SettingsRepository
 import com.lucent.app.data.TrashCleanup
 import com.lucent.app.ui.LocalBackgroundEnvironment
@@ -197,6 +198,18 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        AppLifecycleState.onForeground()
+    }
+
+    override fun onStop() {
+        // Persist in-flight answers before the system may freeze or kill the process.
+        ChatSessions.checkpointAll()
+        AppLifecycleState.onBackground()
+        super.onStop()
     }
 
     private fun applySystemBarStyle(dark: Boolean) {

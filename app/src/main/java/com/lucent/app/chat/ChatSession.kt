@@ -1,5 +1,6 @@
 package com.lucent.app.chat
 
+import com.lucent.app.AppLifecycleState
 import com.lucent.app.i18n.S
 
 import androidx.compose.runtime.getValue
@@ -18,6 +19,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.Deferred
@@ -30,6 +32,9 @@ class ChatSession(
     private val save: suspend (UiChatMessage) -> Unit,
     private val onRunningChanged: (Boolean) -> Unit = {},
     private val monotonicNanos: () -> Long = System::nanoTime,
+    private val idleTimeoutMillis: Long = STREAM_IDLE_TIMEOUT_MILLIS,
+    private val isForeground: () -> Boolean = { AppLifecycleState.isForeground },
+    private val foregroundResumeToken: () -> Long = { AppLifecycleState.resumeToken },
     private val updateContent: suspend (Long, String) -> Unit = { _, _ -> },
     private val deleteMessagesByIds: suspend (List<Long>) -> Unit = {},
     private val replaceQuestion: suspend (Long, String, List<Long>) -> Unit = { _, _, _ -> }
@@ -173,6 +178,23 @@ class ChatSession(
             var result: ChatCompletionResult? = null
             var failure: Throwable? = null
             var initialPersistenceFailed = false
+            var idleTimedOut = false
+            val idleWatchdog = StreamIdleWatchdog(
+                idleLimitMillis = idleTimeoutMillis,
+                nowMillis = { monotonicNanos() / 1_000_000L },
+                isForeground = isForeground,
+                resumeToken = foregroundResumeToken
+            )
+            val watchdogJob = scope.launch {
+                while (isActive) {
+                    delay(WATCHDOG_TICK_MILLIS)
+                    if (idleWatchdog.tick()) {
+                        idleTimedOut = true
+                        callHandle.cancel()
+                        break
+                    }
+                }
+            }
             try {
                 val binding = sourceBinding()
                 initial = initial.copy(sourceNoteId = binding.first, sourceRevision = binding.second)
@@ -181,12 +203,14 @@ class ChatSession(
                 if (saveMessage(initial).await().isFailure) return@launch
                 initialPersistenceFailed = false
                 startedAt = monotonicNanos()
+                idleWatchdog.markActivity()
                 val response = stream(callHandle) { text, reasoning ->
                     val arrivedAt = monotonicNanos()
                     withContext(dispatcher) {
                         if (firstTokenMillis == null && text.isNotBlank()) {
                             firstTokenMillis = ((arrivedAt - startedAt!!) / 1_000_000L).coerceAtLeast(0L)
                         }
+                        idleWatchdog.markActivity()
                         scheduler.append(text, reasoning)
                         trailingFlushJob?.cancel()
                         if (scheduler.hasPending()) {
@@ -208,6 +232,7 @@ class ChatSession(
             } finally {
                 val elapsedMillis = startedAt?.let { ((monotonicNanos() - it) / 1_000_000L).coerceAtLeast(0L) }
                 withContext(NonCancellable) {
+                    watchdogJob.cancel()
                     trailingFlushJob?.cancel()
                     trailingFlushJob = null
                     if (initialPersistenceFailed && !callHandle.isCancelled) {
@@ -226,6 +251,8 @@ class ChatSession(
                     scheduler.forceFlush()
                     val partial = scheduler.getFinalContent()
                     val content = when {
+                        idleTimedOut && partial.isBlank() -> S.chatIdleTimeout
+                        idleTimedOut -> S.chatNetworkInterrupted(partial, S.chatIdleTimeoutReason)
                         callHandle.isCancelled -> partial.ifBlank { S.chatStopped }
                         result != null -> result.content.ifBlank { partial }.ifBlank { S.chatEmptyReply }
                         partial.isNotBlank() -> S.chatNetworkInterrupted(partial, failure?.message ?: S.chatConnectionClosed)
@@ -305,8 +332,25 @@ class ChatSession(
         generation?.cancel()
     }
 
+    /**
+     * Persists in-flight progress so a process killed in the background does not discard the answer
+     * that was already streamed. The final save overwrites this snapshot on normal completion.
+     */
+    fun checkpoint() {
+        val answerId = streamingAnswerId ?: return
+        val index = messages.indexOfFirst { it.id == answerId }
+        if (index < 0) return
+        val message = messages[index]
+        if (message.content.isBlank() && message.reasoningText.isNullOrBlank()) return
+        saveMessage(message)
+    }
+
     private fun update(message: UiChatMessage) {
         val index = messages.indexOfFirst { it.id == message.id }
         if (index >= 0) messages[index] = message
     }
 }
+
+/** Silence tolerated on a streaming connection while the app stays in the foreground. */
+internal const val STREAM_IDLE_TIMEOUT_MILLIS = 90_000L
+private const val WATCHDOG_TICK_MILLIS = 5_000L

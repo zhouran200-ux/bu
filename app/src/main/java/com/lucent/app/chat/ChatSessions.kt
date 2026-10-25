@@ -165,6 +165,11 @@ object ChatSessions {
     fun stopAll() {
         sessions.values.forEach { it.first.stop() }
     }
+
+    /** Persists in-flight answers before the process can be frozen or killed. */
+    fun checkpointAll() {
+        sessions.values.forEach { it.first.checkpoint() }
+    }
 }
 
 internal fun requireChatOwnership(existing: ChatMessage?, conversationId: Long) {

@@ -192,6 +192,8 @@ open class Tr {
     open val chatEmptyReply: String = "（模型返回了空回复）"
     open fun chatNetworkInterrupted(partial: String, error: String): String = "${partial}\n\n[网络中断：${error}，已保留已生成内容]"
     open val chatConnectionClosed: String = "连接已关闭"
+    open val chatIdleTimeoutReason: String = "服务器长时间没有返回新内容"
+    open val chatIdleTimeout: String = "【请求失败】服务器长时间没有返回新内容，已停止等待。\n\n可稍后重试或更换接口地址。"
     open fun chatRequestFailed(error: String): String = "【请求失败】${error}\n\n请检查网络连接、API 密钥与模型端点配置。"
     open val chatNetworkError: String = "网络或接口异常"
     open val chatStopBeforeDelete: String = "请先停止此笔记本中的回答，再删除笔记本"

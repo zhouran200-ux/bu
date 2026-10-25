@@ -135,7 +135,13 @@ fun NotebookChatTab(
     val viewportAnchor = remember(notebookId) { ChatViewportAnchor() }
     val scrollOwnership = remember(notebookId) { ChatScrollOwnership() }
     LaunchedEffect(active) {
-        if (!active) actions.followStream = false
+        if (!active) {
+            actions.followStream = false
+        } else if (session.streamingAnswerId != null && !listState.canScrollForward) {
+            // Returning to a running answer that was pinned to the tail should keep following it;
+            // the leave-foreground guard above only exists to stop scrolling while hidden.
+            actions.followStream = true
+        }
     }
     val readingScrollConnection = remember(listState) {
         object : androidx.compose.ui.input.nestedscroll.NestedScrollConnection {

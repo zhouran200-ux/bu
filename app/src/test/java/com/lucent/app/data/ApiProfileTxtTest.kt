@@ -15,7 +15,6 @@ class ApiProfileTxtTest {
             spec = "openai",
             baseUrl = "https://token.sensenova.cn/v1",
             apiKey = "sk-abc:123",
-            model = "SenseChat-5",
             selectedModels = listOf("SenseChat-5", "SenseChat-Turbo"),
             id = "fixed-1"
         ),
@@ -24,7 +23,6 @@ class ApiProfileTxtTest {
             spec = "anthropic",
             baseUrl = "http://localhost:8080/v1",
             apiKey = "",
-            model = "",
             selectedModels = emptyList(),
             id = "fixed-2"
         )
@@ -33,6 +31,7 @@ class ApiProfileTxtTest {
     @Test fun roundTripKeepsEveryFieldExceptTheLocalId() {
         val encoded = ApiProfileTxt.encode(sample(), 1_700_000_000_000L, zone)
         val parsed = ApiProfileTxt.decode(encoded).getOrThrow()
+        assertTrue(encoded.lines().none { it.startsWith("model:") })
         assertEquals(2, parsed.profiles.size)
         assertEquals(0, parsed.invalidLines)
         parsed.profiles.forEachIndexed { index, restored ->
@@ -41,7 +40,6 @@ class ApiProfileTxtTest {
             assertEquals(original.spec, restored.spec)
             assertEquals(original.baseUrl, restored.baseUrl)
             assertEquals(original.apiKey, restored.apiKey)
-            assertEquals(original.model, restored.model)
             assertEquals(original.selectedModels, restored.selectedModels)
         }
     }
@@ -62,6 +60,12 @@ class ApiProfileTxtTest {
         assertEquals("a:b:c", restored.apiKey)
     }
 
+    @Test fun decodeKeepsTheLegacySingleModelInTheAvailableList() {
+        val text = "[方案]\nname: 旧\nmodels: A\nmodel: Legacy-1\n"
+        val restored = ApiProfileTxt.decode(text).getOrThrow().profiles.single()
+        assertEquals(listOf("A", "Legacy-1"), restored.selectedModels)
+    }
+
     @Test fun decodeRejectsTextWithoutAnyRecord() {
         assertTrue(ApiProfileTxt.decode("# only comments\n\n").isFailure)
         assertTrue(ApiProfileTxt.decode("").isFailure)
@@ -76,8 +80,8 @@ class ApiProfileTxtTest {
     @Test fun mergeUpdatesMatchingProfilesAndAppendsTheRest() {
         val existing = sample()
         val incoming = listOf(
-            ApiProfile(name = "商汤", spec = "openai", baseUrl = "https://token.sensenova.cn/v1/", apiKey = "new", model = "M2", selectedModels = listOf("M2")),
-            ApiProfile(name = "商汤", spec = "openai", baseUrl = "https://other.test/v1", apiKey = "k2", model = "M3", selectedModels = listOf("M3"))
+            ApiProfile(name = "商汤", spec = "openai", baseUrl = "https://token.sensenova.cn/v1/", apiKey = "new", selectedModels = listOf("M2")),
+            ApiProfile(name = "商汤", spec = "openai", baseUrl = "https://other.test/v1", apiKey = "k2", selectedModels = listOf("M3"))
         )
         val plan = planApiProfileImport(existing, "fixed-2", incoming, ApiProfileImportMode.Merge)
         assertEquals(1, plan.updated)
@@ -93,11 +97,10 @@ class ApiProfileTxtTest {
 
     @Test fun mergeKeepsExistingSecretsWhenTheFileLeavesThemBlank() {
         val existing = sample()
-        val incoming = listOf(ApiProfile(name = "商汤", spec = "openai", baseUrl = "https://token.sensenova.cn/v1", apiKey = "", model = "", selectedModels = emptyList()))
+        val incoming = listOf(ApiProfile(name = "商汤", spec = "openai", baseUrl = "https://token.sensenova.cn/v1", apiKey = "", selectedModels = emptyList()))
         val plan = planApiProfileImport(existing, "fixed-1", incoming, ApiProfileImportMode.Merge)
         assertEquals(1, plan.updated)
         assertEquals("sk-abc:123", plan.profiles[0].apiKey)
-        assertEquals("SenseChat-5", plan.profiles[0].model)
         assertEquals(listOf("SenseChat-5", "SenseChat-Turbo"), plan.profiles[0].selectedModels)
     }
 

@@ -1,6 +1,7 @@
 package com.lucent.app.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -177,16 +178,30 @@ fun Modifier.pressableGlass(
 }
 
 @Composable
-fun Modifier.selectedCard(selected: Boolean, cornerRadius: Dp): Modifier = composed {
+fun Modifier.selectedCard(
+    selected: Boolean,
+    cornerRadius: Dp,
+    borderWidth: Dp = 0.dp,
+    washStrength: Float = 1f
+): Modifier = composed {
     val accent = MaterialTheme.colorScheme.primary
     val shape = RoundedCornerShape(cornerRadius)
     val enabled = LocalBackgroundEnvironment.current.motionEnabled
+    val baseWash = if (isDarkGlass()) 0.13f else 0.09f
     val tint = androidx.compose.animation.animateColorAsState(
-        targetValue = if (selected) accent.copy(alpha = if (isDarkGlass()) 0.13f else 0.09f) else Color.Transparent,
+        targetValue = if (selected) accent.copy(alpha = baseWash * washStrength) else Color.Transparent,
         animationSpec = if (enabled) androidx.compose.animation.core.tween(160) else androidx.compose.animation.core.snap(),
         label = "selectionWash"
     )
-    this.clip(shape).drawBehind {
-        drawRoundRect(color = tint.value, cornerRadius = androidx.compose.ui.geometry.CornerRadius(cornerRadius.toPx()))
-    }
+    this.clip(shape)
+        .then(
+            if (selected && borderWidth > 0.dp) {
+                Modifier.border(borderWidth, accent.copy(alpha = 0.72f), shape)
+            } else {
+                Modifier
+            }
+        )
+        .drawBehind {
+            drawRoundRect(color = tint.value, cornerRadius = androidx.compose.ui.geometry.CornerRadius(cornerRadius.toPx()))
+        }
 }

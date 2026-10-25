@@ -25,7 +25,6 @@ internal class ApiProfileDraft(profile: ApiProfile?) {
     val url = mutableStateOf(profile?.baseUrl.orEmpty())
     val spec = mutableStateOf(profile?.spec ?: "openai")
     val key = mutableStateOf(profile?.apiKey.orEmpty())
-    val selectedModel = mutableStateOf(profile?.model.orEmpty())
     val models = mutableStateOf(profile?.selectedModels ?: emptyList())
     val customModelInput = mutableStateOf("")
 }

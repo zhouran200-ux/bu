@@ -34,8 +34,8 @@ class ModelPickerPositionTest {
         assertEquals(ModelPickerPosition(null, 1), modelPickerPosition(listOf(profile("a", "x"), profile("b")), "b", "gone"))
     }
 
-    @Test fun normalizedModelsAndLegacyPrimaryUseSameOrderAsRenderedRows() {
-        val profiles = listOf(ApiProfile(id = "a", selectedModels = listOf(" x ", "x", "", "y"), model = "z"))
+    @Test fun normalizedModelsUseTheSameOrderAsRenderedRows() {
+        val profiles = listOf(ApiProfile(id = "a", selectedModels = listOf(" x ", "x", "", "y", "z")))
         assertEquals(ModelPickerPosition("a", 3), modelPickerPosition(profiles, "a", "z"))
     }
 }

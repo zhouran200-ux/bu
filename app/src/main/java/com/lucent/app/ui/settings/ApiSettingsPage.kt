@@ -34,7 +34,6 @@ import com.lucent.app.network.TestConnectionResult
 import com.lucent.app.ui.GlassButton
 import com.lucent.app.ui.Haptics
 import com.lucent.app.ui.copyPlainText
-import com.lucent.app.ui.copyPlainTextWithToast
 import com.lucent.app.ui.frostedGlass
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -57,8 +56,6 @@ internal fun ApiConfigSettingsPage(
     onKeyChange: (String) -> Unit,
     keyVisible: Boolean,
     onRevealKey: () -> Unit,
-    selectedModel: String,
-    onSelectedModelChange: (String) -> Unit,
     models: List<String>,
     onModelsChange: (List<String>) -> Unit,
     customModelInput: String,
@@ -98,23 +95,10 @@ internal fun ApiConfigSettingsPage(
     var copiedRawHint by remember(requestTarget.profileId) { mutableStateOf(false) }
     val choices = remember(fetchedModels, models) { modelChoices(fetchedModels, models) }
     val dragState = remember { mutableStateOf<ProfileDrag?>(null) }
-    val currentTestTarget = if (selectedModel.isNotBlank()) {
-        selectedModel
-    } else {
-        customModelInput.trim()
-    }
-    val latestTestModel = rememberUpdatedState(currentTestTarget)
 
     fun commitAndSaveProfile() {
         val input = customModelInput.trim()
-        val finalModels = if (input.isNotBlank() && input !in models) {
-            models + input
-        } else {
-            models
-        }
-        if (selectedModel.isBlank() && input.isNotBlank()) {
-            onSelectedModelChange(input)
-        }
+        val finalModels = if (input.isNotBlank() && input !in models) models + input else models
         if (input.isNotBlank()) {
             onCustomModelInputChange("")
         }
@@ -122,7 +106,7 @@ internal fun ApiConfigSettingsPage(
         onSaveProfile()
     }
 
-    LaunchedEffect(requestTarget, currentTestTarget) {
+    LaunchedEffect(requestTarget) {
         testRequests.cancel()
         lastTestResult = null
         testStatusText = ""
@@ -219,20 +203,12 @@ internal fun ApiConfigSettingsPage(
             )
         }
 
-        ApiModelSelectionSection(
+        ApiModelsSection(
             models = models,
-            selectedModel = selectedModel,
             customModelInput = customModelInput,
             onModelsChange = onModelsChange,
-            onSelectedModelChange = onSelectedModelChange,
-            onCustomModelInputChange = onCustomModelInputChange,
-            onCopyModel = { model ->
-                copyPlainTextWithToast(context, model)
-                Haptics.tick(context)
-            }
+            onCustomModelInputChange = onCustomModelInputChange
         )
-
-        ApiReasoningSummarySection(provider = spec, model = selectedModel.ifBlank { customModelInput.trim() }, baseUrl = url)
 
         Spacer(modifier = Modifier.height(10.dp))
 
@@ -251,7 +227,6 @@ internal fun ApiConfigSettingsPage(
         ApiConnectionDiagnosticsSection(
             active = active,
             testingConn = testingConn,
-            currentTestTarget = currentTestTarget,
             testStatusText = testStatusText,
             testSuccess = testSuccess,
             lastTestResult = lastTestResult,
@@ -269,13 +244,12 @@ internal fun ApiConfigSettingsPage(
                 fetchModelsError = ""
                 onErrorTextChange("")
                 val target = requestTarget
-                val targetModel = currentTestTarget
                 testRequests.start(
                     scope = scope,
-                    isTargetCurrent = { latestRequestTarget.value == target && latestTestModel.value == targetModel },
+                    isTargetCurrent = { latestRequestTarget.value == target },
                     setBusy = { testingConn = it },
                     onFailure = { testSuccess = false; testStatusText = S.apiTestConnectionFailed },
-                    request = { ApiProbe.testConnection(url, spec, key, targetModel) }
+                    request = { ApiProbe.testConnection(url, spec, key, "") }
                 ) { result ->
                     result.onSuccess { res ->
                         lastTestResult = res
@@ -299,13 +273,11 @@ internal fun ApiConfigSettingsPage(
 
     GlobalUserAgentSection(repo = repo)
 
-    ApiModelSelectionDialog(
+    ApiModelsPickerDialog(
         pickerOpen = pickerOpen,
         choices = choices,
         models = models,
-        selectedModel = selectedModel,
         onModelsChange = onModelsChange,
-        onSelectedModelChange = onSelectedModelChange,
         onApplied = {},
         onDismiss = { pickerOpen = false }
     )

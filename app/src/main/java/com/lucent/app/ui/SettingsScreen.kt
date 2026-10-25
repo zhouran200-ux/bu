@@ -61,7 +61,6 @@ fun SettingsScreen(active: Boolean = true) {
     var url by draft.url
     var spec by draft.spec
     var key by draft.key
-    var selectedModel by draft.selectedModel
     var models by draft.models
     var customModelInput by draft.customModelInput
 
@@ -230,8 +229,6 @@ fun SettingsScreen(active: Boolean = true) {
                     onKeyChange = { key = it; typingReveal = true; keystrokeSeq++ },
                     keyVisible = keyVisible,
                     onRevealKey = { manualReveal = true },
-                    selectedModel = selectedModel,
-                    onSelectedModelChange = { selectedModel = it },
                     models = models,
                     onModelsChange = { picked -> models = picked },
                     customModelInput = customModelInput,

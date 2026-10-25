@@ -32,7 +32,7 @@ class ApiSettingsStateTest {
         val state = ApiSettingsState(ApiProfileSnapshot(listOf(a, b), a.id), ApiProfileCommandQueue(this), this,
             { commands += it }, { _, _ -> }, {}, { "saved" })
         state.draft.name.value = "edited A"
-        state.draft.selectedModel.value = "model-A"
+        state.draft.models.value = listOf("model-A")
         state.saveActiveProfile()
         state.acceptCommitted(ApiProfileSnapshot(listOf(a, b), b.id))
         repeat(4) { yield() }
@@ -41,6 +41,22 @@ class ApiSettingsStateTest {
         assertEquals("edited A", command.profile.name)
         assertEquals(listOf("model-A"), command.profile.selectedModels)
         assertEquals("B", state.draft.name.value)
+    }
+
+    @Test fun customModelInputBecomesAnAvailableModelWithoutSelectingIt() = runBlocking {
+        val a = ApiProfile(id = "a", name = "A")
+        val commands = mutableListOf<ApiProfileMutation>()
+        val state = ApiSettingsState(ApiProfileSnapshot(listOf(a), a.id), ApiProfileCommandQueue(this), this,
+            { commands += it }, { _, _ -> }, {}, { "saved" })
+        state.draft.customModelInput.value = "manual-model"
+        assertTrue(state.hasUnsavedChanges())
+        state.saveActiveProfile()
+        repeat(4) { yield() }
+        val command = commands.single() as ApiProfileMutation.Update
+        assertEquals(listOf("manual-model"), command.profile.selectedModels)
+        assertTrue(state.draft.customModelInput.value.isEmpty())
+        state.acceptCommitted(ApiProfileSnapshot(listOf(command.profile), a.id))
+        assertFalse(state.hasUnsavedChanges())
     }
 
     @Test fun reorderCompletionIsSingleAndOnlyAfterPersistence() = runBlocking {

@@ -23,7 +23,6 @@ class ApiProfileTest {
                 spec = "openai",
                 baseUrl = "https://api.example.com/v1",
                 apiKey = "test-key-123",
-                model = "gpt-4o",
                 selectedModels = listOf("gpt-4o", "gpt-4o-mini")
             ),
             ApiProfile(
@@ -31,19 +30,21 @@ class ApiProfileTest {
                 spec = "openai",
                 baseUrl = "https://api.openai.com/v1",
                 apiKey = "sk-default",
-                model = "gpt-3.5-turbo"
+                selectedModels = listOf("gpt-3.5-turbo")
             )
         )
 
         val serialized = ApiProfiles.serialize(original)
         val parsed = ApiProfiles.parse(serialized)
 
+        assertFalse(serialized.contains("\"model\""))
         assertEquals(original, parsed)
         assertEquals(2, parsed.size)
         assertEquals("SillyTavern Profile", parsed[0].name)
         assertEquals(listOf("gpt-4o", "gpt-4o-mini"), parsed[0].selectedModels)
         assertEquals("Default Profile", parsed[1].name)
         assertEquals("sk-default", parsed[1].apiKey)
+        assertEquals(listOf("gpt-3.5-turbo"), parsed[1].selectedModels)
     }
 
     @Test
@@ -125,12 +126,12 @@ class ApiProfileTest {
     }
 
     @Test
-    fun testParseNormalizesSelectedModelsAndKeepsLegacyPrimaryAvailable() {
+    fun testParseNormalizesSelectedModelsAndMigratesLegacyPrimaryIntoTheList() {
         val profiles = ApiProfiles.parse("""[
             {"name":"A", "model":" primary ", "selectedModels":[" one ", "", "one", "  ", " two "]},
             {"name":"B", "model":" legacy "}
         ]""".trimIndent())
-        assertEquals(listOf("one", "two"), profiles[0].selectedModels)
+        assertEquals(listOf("one", "two", "primary"), profiles[0].selectedModels)
         assertEquals(listOf("one", "two", "primary"), ApiProfiles.availableModels(profiles[0]))
         assertEquals(listOf("legacy"), profiles[1].selectedModels)
         assertEquals(listOf("legacy"), ApiProfiles.availableModels(profiles[1]))
@@ -249,12 +250,12 @@ class ApiProfileTest {
     }
 
     private fun profileWithModels(name: String, vararg models: String) =
-        ApiProfile(name = name, model = models.firstOrNull().orEmpty(), selectedModels = models.toList())
+        ApiProfile(name = name, selectedModels = models.toList())
 
     @Test
     fun testResolveSelectionDistinguishesDuplicateNamesById() {
-        val first = ApiProfile(name = "same", baseUrl = "https://first.example", apiKey = "first-key", model = "shared")
-        val second = ApiProfile(name = "same", baseUrl = "https://second.example", apiKey = "second-key", model = "shared")
+        val first = ApiProfile(name = "same", baseUrl = "https://first.example", apiKey = "first-key", selectedModels = listOf("shared"))
+        val second = ApiProfile(name = "same", baseUrl = "https://second.example", apiKey = "second-key", selectedModels = listOf("shared"))
         val profiles = listOf(first, second)
         assertEquals(second to "shared", ApiProfiles.resolveSelection(profiles, second.id, "same", "shared"))
         assertEquals(first to "shared", ApiProfiles.resolveSelection(profiles, "", "same", "shared"))
@@ -281,21 +282,18 @@ class ApiProfileTest {
     }
 
     @Test
-    fun testAvailableModelsTrimsDeduplicatesAndAppendsMissingPrimary() {
-        val profile = ApiProfile(model = " primary ", selectedModels = listOf(" one ", "", "one", "  ", " two "))
-        assertEquals(listOf("one", "two", "primary"), ApiProfiles.availableModels(profile))
-        assertEquals(listOf("one", "two"), ApiProfiles.availableModels(profile.copy(model = " one ")))
-        assertEquals(listOf("primary"), ApiProfiles.availableModels(profile.copy(selectedModels = emptyList())))
+    fun testAvailableModelsTrimsAndDeduplicates() {
+        val profile = ApiProfile(selectedModels = listOf(" one ", "", "one", "  ", " two "))
+        assertEquals(listOf("one", "two"), ApiProfiles.availableModels(profile))
+        assertEquals(emptyList<String>(), ApiProfiles.availableModels(profile.copy(selectedModels = emptyList())))
     }
 
     @Test
-    fun testResolveSelectionUsesNormalizedSavedThenPrimaryThenFirstModel() {
-        val profile = ApiProfile(model = " primary ", selectedModels = listOf(" one ", "two", " two "))
+    fun testResolveSelectionUsesSavedThenFirstAvailableModel() {
+        val profile = ApiProfile(selectedModels = listOf(" one ", "two", " two "))
         assertEquals(profile to "two", ApiProfiles.resolveSelection(listOf(profile), profile.id, "", " two "))
-        assertEquals(profile to "primary", ApiProfiles.resolveSelection(listOf(profile), profile.id, "", "gone"))
-        assertEquals(profile to "primary", ApiProfiles.resolveSelection(listOf(profile), profile.id, "", " primary "))
-        val withoutPrimary = profile.copy(model = "  ")
-        assertEquals(withoutPrimary to "one", ApiProfiles.resolveSelection(listOf(withoutPrimary), profile.id, "", "gone"))
+        assertEquals(profile to "one", ApiProfiles.resolveSelection(listOf(profile), profile.id, "", "gone"))
+        assertEquals(profile to "one", ApiProfiles.resolveSelection(listOf(profile), profile.id, "", " primary "))
         assertEquals(profile.name to "two", ApiProfiles.selectionFor(listOf(profile), profile.name, " two "))
     }
 
@@ -303,7 +301,7 @@ class ApiProfileTest {
     fun testResolveSelectionHandlesEmptyProfilesAndModels() {
         assertNull(ApiProfiles.resolveSelection(emptyList(), "id", "name", "model"))
         assertEquals("" to "", ApiProfiles.selectionFor(emptyList(), "name", "model"))
-        val profile = ApiProfile(model = "  ", selectedModels = listOf("", "  "))
+        val profile = ApiProfile(selectedModels = listOf("", "  "))
         assertEquals(emptyList<String>(), ApiProfiles.availableModels(profile))
         assertEquals(profile to "", ApiProfiles.resolveSelection(listOf(profile), profile.id, "", "missing"))
     }
@@ -332,10 +330,10 @@ class ApiProfileTest {
     @Test
     fun testSelectionForNeverReturnsAModelTheProfileDoesNotOffer() {
         val profiles = listOf(
-            ApiProfile(name = "甲", model = "m-a1", selectedModels = listOf("m-a2")),
-            ApiProfile(name = "乙", model = "", selectedModels = emptyList())
+            ApiProfile(name = "甲", selectedModels = listOf("m-a2")),
+            ApiProfile(name = "乙", selectedModels = emptyList())
         )
-        assertEquals("甲" to "m-a1", ApiProfiles.selectionFor(profiles, "甲", "m-a1"))
+        assertEquals("甲" to "m-a2", ApiProfiles.selectionFor(profiles, "甲", "m-a1"))
         assertEquals("乙" to "", ApiProfiles.selectionFor(profiles, "乙", "别的方案里的模型"))
         assertEquals("乙" to "", ApiProfiles.selectionFor(profiles, "乙", ""))
     }

@@ -67,7 +67,7 @@ class PickerContractTest(unittest.TestCase):
         self.assertNotIn("showDialogueSettingsDialog = false", settings)
 
     def test_api_settings_callback_does_not_dismiss(self):
-        api = (UI / "settings/ApiModelSelectionSection.kt").read_text(encoding="utf-8")
+        api = (UI / "settings/ApiModelsSection.kt").read_text(encoding="utf-8")
         callback = api.split("        ApiModelPickerDialog(", 1)[1].split("onDismiss =", 1)[0]
         self.assertNotIn("pickerOpen = false", callback)
         self.assertNotIn("onDismiss()", callback)

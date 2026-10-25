@@ -9,7 +9,6 @@ data class ApiProfile(
     val spec: String = "openai",
     val baseUrl: String = "",
     val apiKey: String = "",
-    val model: String = "",
     val selectedModels: List<String> = emptyList(),
     val id: String = UUID.randomUUID().toString()
 )
@@ -28,7 +27,6 @@ object ApiProfiles {
             spec = "openai",
             baseUrl = "https://token.sensenova.cn/v1",
             apiKey = "",
-            model = "",
             id = deterministicId("商汤", "openai", "https://token.sensenova.cn/v1", 0)
         )
     )
@@ -45,7 +43,6 @@ object ApiProfiles {
                     .put("spec", p.spec)
                     .put("baseUrl", p.baseUrl)
                     .put("apiKey", p.apiKey)
-                    .put("model", p.model)
                     .put("selectedModels", models)
             )
         }
@@ -66,22 +63,23 @@ object ApiProfiles {
                 val name = o.optString("name", "方案 ${i + 1}")
                 val spec = o.optString("spec", "openai")
                 val baseUrl = o.optString("baseUrl", "")
-                val model = o.optString("model", "")
+                val legacyModel = o.optString("model", "").trim()
                 val stored = o.optJSONArray("selectedModels")
-                val selectedModels = if (stored == null) {
-                    listOfNotNull(model.trim().takeIf { it.isNotBlank() })
-                } else {
-                    (0 until stored.length())
-                        .map { stored.optString(it).trim() }
-                        .filter { it.isNotBlank() }
-                        .distinct()
+                val selectedModels = buildList {
+                    if (stored != null) {
+                        (0 until stored.length())
+                            .map { stored.optString(it).trim() }
+                            .filter { it.isNotBlank() }
+                            .distinct()
+                            .forEach { add(it) }
+                    }
+                    if (legacyModel.isNotBlank() && legacyModel !in this) add(legacyModel)
                 }
                 ApiProfile(
                     name = name,
                     spec = spec,
                     baseUrl = baseUrl,
                     apiKey = o.optString("apiKey", ""),
-                    model = model,
                     selectedModels = selectedModels,
                     id = o.optString("id", "").ifBlank {
                         deterministicId(name, spec, baseUrl, i)
@@ -141,7 +139,7 @@ object ApiProfiles {
     }
 
     fun availableModels(profile: ApiProfile): List<String> =
-        (profile.selectedModels + profile.model).map { it.trim() }.filter { it.isNotBlank() }.distinct()
+        profile.selectedModels.map { it.trim() }.filter { it.isNotBlank() }.distinct()
 
     fun resolveSelection(
         profiles: List<ApiProfile>,
@@ -156,7 +154,6 @@ object ApiProfiles {
         } ?: profiles.firstOrNull() ?: return null
         val models = availableModels(profile)
         val model = models.firstOrNull { it == savedModel.trim() }
-            ?: models.firstOrNull { it == profile.model.trim() }
             ?: models.firstOrNull().orEmpty()
         return profile to model
     }

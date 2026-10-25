@@ -8,6 +8,7 @@
 - 聊天列表按消息 key/offset 恢复。所有思考面板重新收起会改变气泡高度，因此不承诺在展开状态变为收起后仍逐像素呈现相同画面。
 - 来源文档与模型原文分别保存 key/offset，首次进入未访问子页才沿用另一页的章节/切片锚点；之后各自恢复。记住来源子页及对话/来源标签。旧共享位置迁移到文档页。
 - 来源及已完成聊天历史在后台预解析 Markdown 后再恢复列表，避免空高度初始行把恢复位置挤回开头。
+- API 配置页只维护方案与可用模型列表，不再保存对话模型；对话模型仍按 notebookId 保存在聊天偏好中。旧 JSON / TXT 的 `model` 字段在读取时并入 `selectedModels`，保存后只写可用模型列表。
 - 主界面笔记本卡片不再显示「N 个来源」字样：有来源文档时在标题行显示一个绿点，无来源不显示。标题后并行显示最近修改时间，格式为「时:分 · 月日」，一行放不下时整组折到下一行。修改时间只在发送消息、编辑提问/回答、重新生成、删除气泡、导入/更换/移除来源文档、修改对话设置和重命名时更新；打开笔记本、浏览列表、切换来源页和查看原文预览不更新。
 
 ## 后台边界
@@ -18,10 +19,10 @@ Android/OEM 可结束进程、限制前台启动与服务时长。进程死亡�
 
 ## 本轮验证
 
-Debug 与 Release Kotlin 编译、Android 测试代码编译、全量 `:app:testDebugUnitTest`（646 项、99 套件全通过）、Python 141 项及 quick 静态门禁全通过。新增 `NotebookModifiedAtTest` 覆盖「时:分 · 月日」格式，`NotebookPurgeTransactionTest` 增加来源导入/移除更新修改时间、空移除不更新的用例。未本地打包或执行设备测试，设备矩阵与 APK 交给 GitHub Actions。
+Debug 与 Release Kotlin 编译、Android 测试代码编译、全量 `:app:testDebugUnitTest`（648 项、99 套件全通过）、Python 145 项及 quick 静态门禁全通过。新增 API 配置契约：模型输入只进入可用模型列表，旧 `model` 字段读取时并入 `selectedModels`、保存后不再写出；`ApiSettingsStateTest` 覆盖手动模型保存后无“当前模型”概念。未本地打包或执行设备测试，设备矩阵与 APK 交给 GitHub Actions。
 
-上轮 `a0719d2d`（Actions Run `39962457500`）中 source-hygiene、android-jvm-check、build-apk 及思考面板相关设备测试均通过。之后 `5d369e8` 的云端结果：android-jvm-check 与 build-apk 通过，source-hygiene 因 26 处注释失败，API 33/35 设备测试因 `UnsupportedThinkingHeaderTest.liveReasoningExpandsOnlyAfterTheHeaderIsTapped` 失败。本轮清除源码注释、让该设备测试在关闭动画的环境下验证展开逻辑，并修正两条与当前实现对不上的静态契约（流式引用缓冲、未使用实体列）；设备结果仍需下一轮云端复核，不将测试编译等同设备通过。
+上轮 `5547fd1` 的云端结果全部通过：check Run `40179067179`（source-hygiene、android-jvm-check、API 33/35 设备测试）、build-apk Run `40179067156`（build-apk、publish-preview）。更早的 `5d369e8` 曾因注释与 `UnsupportedThinkingHeaderTest` 失败，已在 `5547fd1` 修复并获得云端验证。
 
 ## 结构与残留审查
 
-主界面卡片从 `NotebooksScreen` 拆分到 `NotebookShelfItem.kt`，主界面降到约 360 行；卡片独立负责标题、来源绿点、修改时间与菜单。`NotebookChatTab` 511 行仍为聊天入口/布局协调，本轮只增加对话设置保存回调，未继续搬迁。补齐 i18n catalog 中缺失的 `chatIdleTimeout` / `chatIdleTimeoutReason` 生成源并重新生成 `I18n.kt`，移除源码中不符合项目规范的注释；未新增依赖、未改变主副包名或正式发布行为。
+主界面卡片从 `NotebooksScreen` 拆分到 `NotebookShelfItem.kt`，主界面降到约 360 行；卡片独立负责标题、来源绿点、修改时间与菜单。`NotebookChatTab` 511 行仍为聊天入口/布局协调。API 配置页移除对话模型选择与模型思考摘要：删除 `ApiModelSelectionSection.kt`、`ApiReasoningSummarySection.kt` 与 `ApiProfile.model`，新增 `ApiModelsSection.kt` 管理可用模型；旧 JSON/TXT 的 `model` 读取时并入 `selectedModels`，保存后不再写出。选中方案卡增加主色边框、名称加粗并提高选中底色强度。模型选择仍只由聊天页 `ProfileModelPickerSheet` 按 notebookId 写入偏好。未新增依赖、未改变主副包名或正式发布行为。

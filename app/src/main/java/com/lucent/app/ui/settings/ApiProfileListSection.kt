@@ -3,8 +3,8 @@ package com.lucent.app.ui.settings
 import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -46,6 +46,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -254,7 +256,7 @@ internal fun ApiProfileListSection(
                                 alpha = if (held) HELD_ALPHA else 1f
                             }
                             .frostedGlass(cornerRadius = ROW_CARD_RADIUS)
-                            .selectedCard(isActive, ROW_CARD_RADIUS)
+                            .selectedCard(isActive, ROW_CARD_RADIUS, borderWidth = 1.5.dp, washStrength = 1.35f)
                             .padding(horizontal = 10.dp, vertical = 8.dp)
                     ) {
                         if (canReorder) {
@@ -306,10 +308,12 @@ internal fun ApiProfileListSection(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
                                 .weight(1f)
-                                .clickable(
+                                .selectable(
+                                    selected = isActive,
                                     interactionSource = remember { MutableInteractionSource() },
                                     indication = rememberScaleIndication(),
                                     enabled = settled,
+                                    role = Role.RadioButton,
                                     onClick = {
                                         Haptics.tick(context)
                                         onSelectProfile(idx)
@@ -320,7 +324,7 @@ internal fun ApiProfileListSection(
                                 text = p.name.ifBlank { S.apiProfileDefaultName(idx + 1) },
                                 color = onGradient,
                                 fontSize = LucentTitles.ItemSize,
-                                fontWeight = LucentTitles.ItemWeight,
+                                fontWeight = if (isActive) FontWeight.Bold else LucentTitles.ItemWeight,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )

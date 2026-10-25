@@ -90,17 +90,14 @@ internal class ApiSettingsState(
         val profile = profiles.getOrNull(index) ?: return
         val editing = drafts.forProfile(profile)
         val customInput = editing.customModelInput.value.trim()
-        val model = editing.selectedModel.value.trim().ifBlank { customInput }
         val models = editing.models.value
             .let { if (customInput.isNotBlank() && customInput !in it) it + customInput else it }
-            .let { if (model.isNotBlank() && model !in it) it + model else it }
-        editing.selectedModel.value = model
         editing.models.value = models
         editing.customModelInput.value = ""
         val updated = profile.copy(
             name = editing.name.value.trim().ifBlank { S.apiDefaultName(index + 1) },
             spec = editing.spec.value, baseUrl = editing.url.value.trim(), apiKey = editing.key.value.trim(),
-            model = model, selectedModels = models
+            selectedModels = models
         )
         submit(ApiProfileMutation.Update(updated)) {
             notify(if (it.isSuccess) savedMessage() else S.apiSaveFailed)
@@ -112,17 +109,14 @@ internal class ApiSettingsState(
         val profile = profiles.getOrNull(index) ?: return false
         val editing = drafts.forProfile(profile)
         val customInput = editing.customModelInput.value.trim()
-        val model = editing.selectedModel.value.trim().ifBlank { customInput }
         val models = editing.models.value
             .let { if (customInput.isNotBlank() && customInput !in it) it + customInput else it }
-            .let { if (model.isNotBlank() && model !in it) it + model else it }
         val name = editing.name.value.trim().ifBlank { S.apiDefaultName(index + 1) }
         return customInput.isNotEmpty() ||
             name != profile.name ||
             editing.spec.value != profile.spec ||
             editing.url.value.trim() != profile.baseUrl.trim() ||
             editing.key.value.trim() != profile.apiKey.trim() ||
-            model != profile.model.trim() ||
             models != profile.selectedModels
     }
 

@@ -29,7 +29,6 @@ import com.lucent.app.network.TestConnectionResult
 internal fun ApiConnectionDiagnosticsSection(
     active: Boolean,
     testingConn: Boolean,
-    currentTestTarget: String,
     testStatusText: String,
     testSuccess: Boolean,
     lastTestResult: TestConnectionResult?,
@@ -39,13 +38,7 @@ internal fun ApiConnectionDiagnosticsSection(
     onTest: () -> Unit,
     copyRawResponse: (String) -> Unit
 ) {
-    val testBtnText = if (testingConn) {
-        S.apiTesting
-    } else if (currentTestTarget.isNotBlank()) {
-        S.apiTestConnectionTarget(currentTestTarget)
-    } else {
-        S.apiTestConnection
-    }
+    val testBtnText = if (testingConn) S.apiTesting else S.apiTestConnection
 
     Button(
         onClick = onTest,

@@ -8,7 +8,7 @@ class ApiProfileMutationTest {
     private val b = ApiProfile(id = "b", name = "B")
 
     @Test fun staleOrderDoesNotOverwriteFreshlySavedProfileFields() {
-        val saved = a.copy(apiKey = "new-key", model = "new-model")
+        val saved = a.copy(apiKey = "new-key", selectedModels = listOf("new-model"))
         val current = ApiProfileSnapshot(listOf(saved, b), "a")
         val next = current.mutate(ApiProfileMutation.Reorder(listOf("b", "a"), "b"))
         assertEquals(listOf("b", "a"), next.profiles.map { it.id })

@@ -49,7 +49,6 @@ internal object ApiProfileTxt {
             appendLine("spec: " + oneLine(profile.spec))
             appendLine("baseUrl: " + oneLine(profile.baseUrl))
             appendLine("apiKey: " + oneLine(profile.apiKey))
-            appendLine("model: " + oneLine(profile.model))
             profile.selectedModels.forEach { appendLine("models: " + oneLine(it)) }
         }
     }
@@ -110,8 +109,12 @@ internal object ApiProfileTxt {
         val name = last(record, "name")
         val baseUrl = last(record, "baseurl")
         val apiKey = last(record, "apikey")
-        val model = last(record, "model")
-        val models = record["models"].orEmpty().map { it.trim() }.filter { it.isNotBlank() }.distinct()
+        val legacyModel = last(record, "model")
+        val models = record["models"].orEmpty()
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+            .toMutableList()
+        if (legacyModel.isNotBlank() && legacyModel !in models) models.add(legacyModel)
         if (name.isBlank() && baseUrl.isBlank() && apiKey.isBlank() && models.isEmpty()) return null
         val spec = last(record, "spec").lowercase(Locale.US)
         return ApiProfile(
@@ -119,8 +122,7 @@ internal object ApiProfileTxt {
             spec = if (spec in SPECS) spec else SPEC_OPENAI,
             baseUrl = baseUrl,
             apiKey = apiKey,
-            model = model,
-            selectedModels = models
+            selectedModels = models.distinct()
         )
     }
 
@@ -156,7 +158,6 @@ internal fun planApiProfileImport(
             val current = result[slot]
             result[slot] = current.copy(
                 apiKey = incoming.apiKey.ifBlank { current.apiKey },
-                model = incoming.model.ifBlank { current.model },
                 selectedModels = if (incoming.selectedModels.isEmpty()) current.selectedModels else incoming.selectedModels
             )
             updated++

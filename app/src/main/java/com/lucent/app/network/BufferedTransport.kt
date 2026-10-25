@@ -17,7 +17,7 @@ internal object BufferedTransport {
         cancellationSignal.invokeOnCompletion { cause -> if (cause != null) call.cancel() }
         try {
             call.execute().use { response ->
-                val body = response.body?.string().orEmpty()
+                val body = response.body?.let { BufferedResponseLimits.read(it) }.orEmpty()
                 coroutineContext.ensureActive()
                 BufferedReply(response.code, response.message, response.isSuccessful, body)
             }

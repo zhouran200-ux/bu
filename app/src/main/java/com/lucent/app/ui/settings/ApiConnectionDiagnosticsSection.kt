@@ -4,6 +4,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -45,7 +46,7 @@ internal fun ApiConnectionDiagnosticsSection(
         enabled = !testingConn && active,
         modifier = Modifier
             .fillMaxWidth()
-            .height(38.dp),
+            .heightIn(min = 44.dp),
         shape = RoundedCornerShape(10.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
@@ -67,6 +68,14 @@ internal fun ApiConnectionDiagnosticsSection(
             overflow = TextOverflow.Ellipsis
         )
     }
+
+    Spacer(modifier = Modifier.height(6.dp))
+    Text(
+        text = S.apiProbeScopeHint,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        fontSize = 11.sp,
+        lineHeight = 15.sp
+    )
 
     if (testingConn) {
         Spacer(modifier = Modifier.height(6.dp))
@@ -95,10 +104,14 @@ internal fun ApiConnectionDiagnosticsSection(
             }
         }
         val textToCopy = prettyBody
+        val displayBody = remember(prettyBody) {
+            if (prettyBody.length <= 120_000) prettyBody else
+                prettyBody.take(120_000) + "\n\n" + S.apiResponseTruncated(prettyBody.length)
+        }
         Spacer(modifier = Modifier.height(8.dp))
         ResponseCard(
-            body = prettyBody,
-            charCount = prettyBody.length,
+            body = displayBody,
+            charCount = textToCopy.length,
             copied = copiedRawHint,
             onCopy = { copyRawResponse(textToCopy) }
         )

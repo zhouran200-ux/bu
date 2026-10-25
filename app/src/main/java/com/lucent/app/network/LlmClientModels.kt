@@ -11,7 +11,8 @@ data class TestConnectionResult(
     val requestUrl: String,
     val rawResponseBody: String,
     val errorMessage: String? = null,
-    val userAgentUsed: String? = null
+    val userAgentUsed: String? = null,
+    val probeKind: ConnectionProbeKind = ConnectionProbeKind.Generation
 ) {
     fun prettyResponseBody(): String = DiagnosticRedaction.text(prettyResponseBodyRaw())
 
@@ -31,6 +32,12 @@ data class TestConnectionResult(
     fun formatDisplayMessage(): String = DiagnosticRedaction.text(formatDisplayMessageRaw())
 
     private fun formatDisplayMessageRaw(): String {
+        if (probeKind != ConnectionProbeKind.Generation) {
+            val summary = configurationProbeMessage(probeKind, success, httpCode, latencyMs)
+            if (success) return summary
+            val detail = parseErrorDetail(rawResponseBody, errorMessage)
+            return if (detail.isNotBlank()) "$summary\n详细信息：$detail" else summary
+        }
         if (success) {
             val targetLabel = if (targetModel.isNotBlank()) " [$targetModel]" else ""
             return "✓ 连接成功$targetLabel (${latencyMs}ms)"

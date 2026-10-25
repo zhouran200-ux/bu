@@ -1,7 +1,7 @@
 package com.lucent.app.ui.settings
 
 import com.lucent.app.data.ApiProfile
-import com.lucent.app.data.ApiProfileImportPlan
+import com.lucent.app.data.ApiProfileImportMode
 import com.lucent.app.data.ApiProfileMutation
 import com.lucent.app.data.ApiProfileSnapshot
 import kotlinx.coroutines.runBlocking
@@ -59,6 +59,60 @@ class ApiSettingsStateTest {
         assertFalse(state.hasUnsavedChanges())
     }
 
+    @Test fun failedSaveDoesNotRunSuccessfulContinuationAndCanRetry() = runBlocking {
+        val a = ApiProfile(id = "a", name = "A")
+        var failSave = true
+        var continued = 0
+        val outcomes = mutableListOf<Boolean>()
+        val state = ApiSettingsState(ApiProfileSnapshot(listOf(a), a.id), ApiProfileCommandQueue(this), this,
+            { if (failSave) error("disk full") }, { _, _ -> }, {}, { "saved" })
+        state.draft.name.value = "edited"
+        state.saveActiveProfile { result ->
+            outcomes += result.isSuccess
+            if (result.isSuccess) continued++
+        }
+        assertTrue(state.saving)
+        repeat(4) { yield() }
+        assertFalse(state.saving)
+        assertEquals(listOf(false), outcomes)
+        assertEquals(0, continued)
+        assertEquals("edited", state.draft.name.value)
+        assertTrue(state.hasUnsavedChanges())
+        failSave = false
+        state.saveActiveProfile { if (it.isSuccess) continued++ }
+        repeat(4) { yield() }
+        assertEquals(1, continued)
+        assertFalse(state.hasUnsavedChanges())
+    }
+
+    @Test fun importRejectsUnsavedDraftAndPreservesIt() = runBlocking {
+        val a = ApiProfile(id = "a", name = "A")
+        var writes = 0
+        val state = ApiSettingsState(ApiProfileSnapshot(listOf(a), a.id), ApiProfileCommandQueue(this), this,
+            {}, { _, _ -> writes++ }, {}, { "saved" })
+        state.draft.key.value = "unsaved secret"
+        state.importProfiles(listOf(a.copy(name = "replacement")), ApiProfileImportMode.Replace)
+        repeat(4) { yield() }
+        assertEquals(0, writes)
+        assertEquals("unsaved secret", state.draft.key.value)
+        assertTrue(state.hasUnsavedChanges())
+    }
+
+    @Test fun savedDraftIsIncludedWhenImportPlanIsBuiltAfterSave() = runBlocking {
+        val a = ApiProfile(id = "a", name = "A")
+        var result: List<ApiProfile>? = null
+        val state = ApiSettingsState(ApiProfileSnapshot(listOf(a), a.id), ApiProfileCommandQueue(this), this,
+            {}, { profiles, _ -> result = profiles }, {}, { "saved" })
+        state.draft.key.value = "new secret"
+        state.saveActiveProfile { outcome ->
+            if (outcome.isSuccess) state.importProfiles(listOf(ApiProfile(id = "b", name = "B")), ApiProfileImportMode.Merge)
+        }
+        repeat(8) { yield() }
+        assertEquals("new secret", result!!.first().apiKey)
+        assertEquals(2, result!!.size)
+        assertFalse(state.saving)
+    }
+
     @Test fun reorderCompletionIsSingleAndOnlyAfterPersistence() = runBlocking {
         val a = ApiProfile(id = "a", name = "A")
         val b = ApiProfile(id = "b", name = "B")
@@ -82,8 +136,7 @@ class ApiSettingsStateTest {
         val state = ApiSettingsState(ApiProfileSnapshot(listOf(a), a.id), ApiProfileCommandQueue(this), this,
             {}, { list, index -> savedNames = list.map { it.name }; savedIndex = index },
             { notifications += it }, { "saved" })
-        state.draft.name.value = "unsaved"
-        state.importProfiles(ApiProfileImportPlan(listOf(a.copy(name = "A2")), a.id, added = 1, updated = 0, dropped = 0))
+        state.importProfiles(listOf(a.copy(name = "A2")), ApiProfileImportMode.Replace)
         repeat(4) { yield() }
         assertEquals(listOf("A2"), savedNames)
         assertEquals(0, savedIndex)

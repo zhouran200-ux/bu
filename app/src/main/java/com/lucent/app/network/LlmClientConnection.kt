@@ -21,6 +21,11 @@ internal object LlmClientConnection {
         val start = System.currentTimeMillis()
         var resolvedUrl = ""
         var usedUa: String? = null
+        val probeKind = when {
+            model.isNotBlank() -> ConnectionProbeKind.Generation
+            rawEndpoint -> ConnectionProbeKind.Endpoint
+            else -> ConnectionProbeKind.ModelCatalog
+        }
         try {
             val trimmed = baseUrl.trim()
             if (trimmed.isBlank()) {
@@ -73,7 +78,7 @@ internal object LlmClientConnection {
                 }
             } else {
                 url = EndpointUrls.models(trimmed, spec, apiKey, rawEndpoint).toString()
-                requestBuilder.url(url).get()
+                if (rawEndpoint) requestBuilder.url(url).head() else requestBuilder.url(url).get()
             }
             resolvedUrl = url
             usedUa = applyHeaders(requestBuilder, spec, apiKey).ifBlank { null }
@@ -97,7 +102,8 @@ internal object LlmClientConnection {
                     requestUrl = resolvedUrl,
                     rawResponseBody = bodyStr,
                     errorMessage = "HTTP ${response.code}: ${errMsg.ifBlank { response.message }}",
-                    userAgentUsed = usedUa
+                    userAgentUsed = usedUa,
+                    probeKind = probeKind
                 )
                 return@withContext Result.success(failureResult.redacted(apiKey))
             }
@@ -110,7 +116,8 @@ internal object LlmClientConnection {
                     requestUrl = resolvedUrl,
                     rawResponseBody = bodyStr,
                     errorMessage = null,
-                    userAgentUsed = usedUa
+                    userAgentUsed = usedUa,
+                    probeKind = probeKind
                 ).redacted(apiKey)
             )
         } catch (cancelled: CancellationException) {
@@ -127,7 +134,8 @@ internal object LlmClientConnection {
                     requestUrl = resolvedUrl,
                     rawResponseBody = DiagnosticRedaction.text(e.stackTraceToString(), apiKey).take(1500),
                     errorMessage = e.message ?: e.javaClass.simpleName,
-                    userAgentUsed = usedUa
+                    userAgentUsed = usedUa,
+                    probeKind = probeKind
                 ).redacted(apiKey)
             )
         }

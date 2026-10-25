@@ -4,7 +4,6 @@ import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.Query
-import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 
 data class NoteTitleCandidate(val id: Long, val title: String)
@@ -88,11 +87,11 @@ interface NotebookDao {
     @Insert
     suspend fun insert(notebook: Notebook): Long
 
-    @Update
-    suspend fun update(notebook: Notebook)
+    @Query("UPDATE notebooks SET title = :title, updatedAt = MAX(updatedAt, :updatedAt) WHERE id = :id AND title != :title")
+    suspend fun rename(id: Long, title: String, updatedAt: Long)
 
-    @Update
-    suspend fun updateAll(notebooks: List<Notebook>)
+    @Query("UPDATE notebooks SET manualOrder = :manualOrder WHERE id = :id")
+    suspend fun updateOrder(id: Long, manualOrder: Int)
 
     @Query("UPDATE notebooks SET updatedAt = :updatedAt WHERE id = :id")
     suspend fun touch(id: Long, updatedAt: Long)

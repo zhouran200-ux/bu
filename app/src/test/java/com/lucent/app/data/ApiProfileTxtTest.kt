@@ -99,7 +99,7 @@ class ApiProfileTxtTest {
         val existing = sample()
         val incoming = listOf(ApiProfile(name = "商汤", spec = "openai", baseUrl = "https://token.sensenova.cn/v1", apiKey = "", selectedModels = emptyList()))
         val plan = planApiProfileImport(existing, "fixed-1", incoming, ApiProfileImportMode.Merge)
-        assertEquals(1, plan.updated)
+        assertEquals(0, plan.updated)
         assertEquals("sk-abc:123", plan.profiles[0].apiKey)
         assertEquals(listOf("SenseChat-5", "SenseChat-Turbo"), plan.profiles[0].selectedModels)
     }
@@ -135,6 +135,16 @@ class ApiProfileTxtTest {
         val plan = planApiProfileImport(emptyList(), null, parsed.profiles, ApiProfileImportMode.Replace)
         assertEquals(ApiProfiles.MAX, plan.profiles.size)
         assertEquals(2, plan.dropped)
+    }
+
+    @Test fun identicalBackupMergeDoesNotReportAnUpdate() {
+        val existing = sample()
+        val imported = ApiProfileTxt.decode(ApiProfileTxt.encode(existing, 0L, zone)).getOrThrow().profiles
+        val plan = planApiProfileImport(existing, "fixed-1", imported, ApiProfileImportMode.Merge)
+        assertEquals(existing, plan.profiles)
+        assertEquals(0, plan.updated)
+        assertEquals(0, plan.added)
+        assertEquals(0, plan.dropped)
     }
 
     @Test fun emptyFileProducesNoPlanChange() {

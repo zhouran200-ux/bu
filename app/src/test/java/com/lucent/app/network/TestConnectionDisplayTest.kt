@@ -57,6 +57,24 @@ class TestConnectionDisplayTest {
     }
 
     @Test
+    fun endpointAndCatalogProbesDoNotClaimGenerationWorks() {
+        val catalog = TestConnectionResult(
+            success = true, httpCode = 200, latencyMs = 8, targetModel = "",
+            requestUrl = "https://api.example.com/models", rawResponseBody = "[]",
+            probeKind = ConnectionProbeKind.ModelCatalog
+        ).formatDisplayMessage()
+        assertTrue(catalog.contains("模型列表探测"))
+        assertTrue(catalog.contains("未验证模型调用"))
+        val endpoint = TestConnectionResult(
+            success = false, httpCode = 405, latencyMs = 9, targetModel = "",
+            requestUrl = "https://api.example.com/generate", rawResponseBody = "",
+            errorMessage = "method not allowed", probeKind = ConnectionProbeKind.Endpoint
+        ).formatDisplayMessage()
+        assertTrue(endpoint.contains("HEAD"))
+        assertTrue(endpoint.contains("不能据此判定生成接口无效"))
+    }
+
+    @Test
     fun successfulConnectionKeepsLatencySummary() {
         val result = TestConnectionResult(
             success = true, httpCode = 200, latencyMs = 88, targetModel = "m",

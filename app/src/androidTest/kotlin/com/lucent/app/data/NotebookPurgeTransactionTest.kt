@@ -82,6 +82,23 @@ class NotebookPurgeTransactionTest {
         assertEquals(3_000L, db.notebookDao().getAllOnce().single().updatedAt)
     }
 
+    @Test fun staleReorderPreservesFreshTitleAndModificationTime() = runBlocking {
+        val dao = db.notebookDao()
+        val id = dao.insert(Notebook(title = "old", updatedAt = 100L))
+        val stale = dao.getAllOnce().single()
+        dao.rename(id, "fresh", 200L)
+        NotebookRepository(db).reorder(listOf(stale.copy(manualOrder = 1000)))
+        val saved = dao.getAllOnce().single()
+        assertEquals("fresh", saved.title)
+        assertEquals(200L, saved.updatedAt)
+        assertEquals(1000, saved.manualOrder)
+        dao.rename(id, "fresh", 300L)
+        assertEquals(200L, dao.getAllOnce().single().updatedAt)
+        dao.rename(id, "renamed", 150L)
+        assertEquals(200L, dao.getAllOnce().single().updatedAt)
+        assertEquals(1000, dao.getAllOnce().single().manualOrder)
+    }
+
     @Test fun sharedSourceSurvivesDeletingOnlyOneNotebook() = runBlocking {
         val first = db.notebookDao().insert(Notebook(id = 900002, title = "first"))
         val second = db.notebookDao().insert(Notebook(id = 900003, title = "second"))

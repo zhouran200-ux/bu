@@ -179,14 +179,16 @@ internal fun SourceReaderDocument(
                         verticalArrangement = Arrangement.spacedBy(4.dp * reading.paragraphSpacing)
                     ) {
                         itemsIndexed(items, key = { _, item -> item.key }) { _, item ->
-                            MarkdownText(
-                                text = item.text,
-                                initialSnapshot = content.markdown.getValue(item.key),
-                                emphasized = item.sliceId != null && emphasizedFocus?.noteId == source.noteId &&
-                                    emphasizedFocus.revision == source.revision && emphasizedFocus.sliceId == item.sliceId,
-                                citationsEnabled = false,
-                                modifier = Modifier.fillMaxWidth()
-                            )
+                            ScopedReadingTypography {
+                                MarkdownText(
+                                    text = item.text,
+                                    initialSnapshot = content.markdown.getValue(item.key),
+                                    emphasized = item.sliceId != null && emphasizedFocus?.noteId == source.noteId &&
+                                        emphasizedFocus.revision == source.revision && emphasizedFocus.sliceId == item.sliceId,
+                                    citationsEnabled = false,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
                         }
                         item(key = "footer") { Spacer(modifier = Modifier.height(48.dp)) }
                     }

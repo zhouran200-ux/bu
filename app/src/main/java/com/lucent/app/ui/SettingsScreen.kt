@@ -82,6 +82,7 @@ fun SettingsScreen(active: Boolean = true) {
     }
 
     fun guardUnsavedApi(action: () -> Unit) {
+        if (apiState.saving) return
         if (apiState.hasUnsavedChanges()) {
             pendingUnsavedAction = action
         } else {
@@ -119,7 +120,7 @@ fun SettingsScreen(active: Boolean = true) {
             shape = RoundedCornerShape(24.dp),
             containerColor = glassPanelColor(),
             tonalElevation = 0.dp,
-            onDismissRequest = { pendingUnsavedAction = null },
+            onDismissRequest = { if (!apiState.saving) pendingUnsavedAction = null },
             title = {
                 KeepKeyboardForNonEditingDialog()
                 Text(S.apiUnsavedTitle, fontSize = LucentTitles.EntrySize, fontWeight = LucentTitles.EntryWeight)
@@ -129,10 +130,13 @@ fun SettingsScreen(active: Boolean = true) {
                 TextButton(onClick = {
                     Haptics.tick(context)
                     val next = pendingUnsavedAction
-                    pendingUnsavedAction = null
-                    apiState.saveActiveProfile()
-                    next?.invoke()
-                }) {
+                    apiState.saveActiveProfile { outcome ->
+                        if (outcome.isSuccess && !apiState.hasUnsavedChanges()) {
+                            pendingUnsavedAction = null
+                            next?.invoke()
+                        }
+                    }
+                }, enabled = !apiState.saving) {
                     Text(S.saveApi, color = MaterialTheme.colorScheme.primary)
                 }
             },
@@ -143,7 +147,7 @@ fun SettingsScreen(active: Boolean = true) {
                     pendingUnsavedAction = null
                     apiState.discardActiveDraft()
                     next?.invoke()
-                }) {
+                }, enabled = !apiState.saving) {
                     Text(S.apiDiscardChanges)
                 }
             }
@@ -216,7 +220,7 @@ fun SettingsScreen(active: Boolean = true) {
                     repo = repo,
                     scrollState = rootScroll,
                     viewportBounds = viewportBounds,
-                    active = active,
+                    active = active && !apiState.saving,
                     profiles = profiles,
                     selectedProfileIdx = selectedProfileIdx,
                     editingProfileName = editingProfileName,
@@ -246,7 +250,10 @@ fun SettingsScreen(active: Boolean = true) {
                     onReorderProfiles = { order, selected, complete -> apiState.reorderProfiles(order, selected, complete) },
                     onAddProfile = { guardUnsavedApi { apiState.addProfile() } },
                     onSaveProfile = { apiState.saveActiveProfile() },
-                    onImportProfiles = { apiState.importProfiles(it) }
+                    onRequestTransfer = { action -> guardUnsavedApi(action) },
+                    onImportProfiles = { incoming, mode ->
+                        guardUnsavedApi { apiState.importProfiles(incoming, mode) }
+                    }
                 )
             }
         }

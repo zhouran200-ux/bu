@@ -156,11 +156,14 @@ internal fun planApiProfileImport(
         val slot = result.indexOfFirst { sameProfileIdentity(it, incoming) }
         if (slot >= 0) {
             val current = result[slot]
-            result[slot] = current.copy(
+            val merged = current.copy(
                 apiKey = incoming.apiKey.ifBlank { current.apiKey },
                 selectedModels = if (incoming.selectedModels.isEmpty()) current.selectedModels else incoming.selectedModels
             )
-            updated++
+            if (merged != current) {
+                result[slot] = merged
+                updated++
+            }
         } else if (result.size < ApiProfiles.MAX) {
             result += incoming.copy(id = freshProfileId(taken), name = uniqueProfileName(result, incoming.name))
             added++

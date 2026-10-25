@@ -201,8 +201,16 @@ internal fun ApiProfileListSection(
 
     Column(modifier = Modifier.fillMaxWidth().frostedGlass().padding(12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(S.apiSelectionTitle, color = onGradient, fontSize = LucentTitles.SectionSize, fontWeight = LucentTitles.SectionWeight, modifier = Modifier.weight(1f))
-            Text("${shownProfiles.size}/${ApiProfiles.MAX}", color = onGradientMuted, fontSize = 13.sp)
+            Text(
+                S.apiSelectionTitle,
+                color = onGradient,
+                fontSize = LucentTitles.SectionSize,
+                fontWeight = LucentTitles.SectionWeight,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
+            Text("${shownProfiles.size}/${ApiProfiles.MAX}", color = onGradientMuted, fontSize = 11.sp)
             Spacer(modifier = Modifier.width(8.dp))
             headerActions()
         }

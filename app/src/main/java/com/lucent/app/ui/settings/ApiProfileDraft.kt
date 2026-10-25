@@ -1,22 +1,31 @@
 package com.lucent.app.ui.settings
 
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import com.lucent.app.data.ApiProfile
 
 internal class ApiProfileDraftStore {
     private val drafts = mutableMapOf<String?, ApiProfileDraft>()
+    private val revision = mutableIntStateOf(0)
 
-    fun forProfile(profile: ApiProfile?): ApiProfileDraft =
-        drafts.getOrPut(profile?.id) { ApiProfileDraft(profile) }
+    fun forProfile(profile: ApiProfile?): ApiProfileDraft {
+        revision.intValue
+        return drafts.getOrPut(profile?.id) { ApiProfileDraft(profile) }
+    }
 
-    fun removeAfterSuccessfulDelete(id: String) { drafts.remove(id) }
+    fun removeAfterSuccessfulDelete(id: String) {
+        drafts.remove(id)
+        revision.intValue++
+    }
 
     fun discardUnpersisted(id: String) {
         drafts.remove(id)
+        revision.intValue++
     }
 
     fun clear() {
         drafts.clear()
+        revision.intValue++
     }
 }
 

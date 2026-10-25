@@ -172,40 +172,36 @@ fun NotebookDetailScreen(
                 ) { page ->
                     when (tabs[page]) {
                         NotebookDetailTab.CHAT -> {
-                            ScopedReadingTypography {
-                                NotebookChatTab(
-                                    notebookId = notebookId,
-                                    sourceNotes = sourceNotes,
-                                    modifier = Modifier.fillMaxSize(),
-                                    active = active && selectedTab == NotebookDetailTab.CHAT,
-                                    onDialogueSettingsSaved = {
-                                        AppScope.io.launch { repository.touch(notebookId) }
-                                    },
-                                    onOpenSource = { noteId, sliceId, revision ->
-                                        focusRequest += 1
-                                        sourceFocus = SourceFocus(noteId, sliceId, focusRequest, revision)
-                                        scope.launch {
-                                            if (motionOn) {
-                                                pagerState.animateScrollToPage(tabs.indexOf(NotebookDetailTab.SOURCES))
-                                            } else {
-                                                pagerState.scrollToPage(tabs.indexOf(NotebookDetailTab.SOURCES))
-                                            }
+                            NotebookChatTab(
+                                notebookId = notebookId,
+                                sourceNotes = sourceNotes,
+                                modifier = Modifier.fillMaxSize(),
+                                active = active && selectedTab == NotebookDetailTab.CHAT,
+                                onDialogueSettingsSaved = {
+                                    AppScope.io.launch { repository.touch(notebookId) }
+                                },
+                                onOpenSource = { noteId, sliceId, revision ->
+                                    focusRequest += 1
+                                    sourceFocus = SourceFocus(noteId, sliceId, focusRequest, revision)
+                                    scope.launch {
+                                        if (motionOn) {
+                                            pagerState.animateScrollToPage(tabs.indexOf(NotebookDetailTab.SOURCES))
+                                        } else {
+                                            pagerState.scrollToPage(tabs.indexOf(NotebookDetailTab.SOURCES))
                                         }
                                     }
-                                )
-                            }
+                                }
+                            )
                         }
                         NotebookDetailTab.SOURCES -> {
-                            ScopedReadingTypography {
-                                NotebookSourcesTab(
-                                    notebookId = notebookId,
-                                    sourceNotes = sourceNotes,
-                                    onReload = { reloadCount++ },
-                                    modifier = Modifier.fillMaxSize(),
-                                    focus = sourceFocus,
-                                    active = active && selectedTab == NotebookDetailTab.SOURCES
-                                )
-                            }
+                            NotebookSourcesTab(
+                                notebookId = notebookId,
+                                sourceNotes = sourceNotes,
+                                onReload = { reloadCount++ },
+                                modifier = Modifier.fillMaxSize(),
+                                focus = sourceFocus,
+                                active = active && selectedTab == NotebookDetailTab.SOURCES
+                            )
                         }
                     }
                 }

@@ -17,6 +17,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -25,11 +26,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.lucent.app.data.ApiProfile
 import com.lucent.app.data.ApiProfileImportMode
-import com.lucent.app.data.ApiProfileImportPlan
 import com.lucent.app.data.ApiProfileTxt
 import com.lucent.app.data.ApiProfileTxtParse
 import com.lucent.app.data.DocumentInputLimits
-import com.lucent.app.data.planApiProfileImport
 import com.lucent.app.i18n.S
 import com.lucent.app.ui.GlassButton
 import com.lucent.app.ui.KeepKeyboardForNonEditingDialog
@@ -50,36 +49,27 @@ private val PROFILE_FILE_TYPES = arrayOf("text/plain", "text/*", "application/oc
 @Composable
 internal fun ApiProfileTransferActions(
     profiles: List<ApiProfile>,
-    selectedProfileId: String?,
     active: Boolean,
-    onApply: (ApiProfileImportPlan) -> Unit
+    onRequestTransfer: (() -> Unit) -> Unit,
+    onApply: (List<ApiProfile>, ApiProfileImportMode) -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val latestProfiles = rememberUpdatedState(profiles)
     var pending by remember { mutableStateOf<ApiProfileTxtParse?>(null) }
     var busy by remember { mutableStateOf(false) }
 
-    fun fail(message: String) {
-        pending = null
-        LucentToast.show(context, message)
-    }
-
     fun apply(mode: ApiProfileImportMode) {
         val parse = pending ?: return
-        val plan = planApiProfileImport(profiles, selectedProfileId, parse.profiles, mode)
-        if (mode == ApiProfileImportMode.Merge && plan.added == 0 && plan.updated == 0 && plan.dropped == 0) {
-            fail(S.apiTransferNothing)
-            return
-        }
         pending = null
-        onApply(plan)
+        onApply(parse.profiles, mode)
     }
 
     val exporter = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument(PROFILE_FILE_MIME)) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
         busy = true
         scope.launch {
-            val payload = ApiProfileTxt.encode(profiles, System.currentTimeMillis(), TimeZone.getDefault())
+            val payload = ApiProfileTxt.encode(latestProfiles.value, System.currentTimeMillis(), TimeZone.getDefault())
             val outcome = withContext(Dispatchers.IO) {
                 runCatching {
                     context.contentResolver.openOutputStream(uri)?.use { stream ->
@@ -91,7 +81,7 @@ internal fun ApiProfileTransferActions(
             LucentToast.show(
                 context,
                 outcome.fold(
-                    onSuccess = { S.apiTransferExported(profiles.size) },
+                    onSuccess = { S.apiTransferExported(latestProfiles.value.size) },
                     onFailure = { S.apiTransferExportFailed(it.message ?: S.noDetails) }
                 )
             )
@@ -121,14 +111,16 @@ internal fun ApiProfileTransferActions(
         GlassButton(
             text = S.apiTransferImport,
             enabled = active && !busy,
-            onClick = { importer.launch(PROFILE_FILE_TYPES) }
+            onClick = { onRequestTransfer { importer.launch(PROFILE_FILE_TYPES) } }
         )
         Spacer(modifier = Modifier.width(6.dp))
         GlassButton(
             text = S.apiTransferExport,
             enabled = active && !busy && profiles.isNotEmpty(),
             onClick = {
-                exporter.launch(ApiProfileTxt.fileName(System.currentTimeMillis(), TimeZone.getDefault()))
+                onRequestTransfer {
+                    exporter.launch(ApiProfileTxt.fileName(System.currentTimeMillis(), TimeZone.getDefault()))
+                }
             }
         )
     }

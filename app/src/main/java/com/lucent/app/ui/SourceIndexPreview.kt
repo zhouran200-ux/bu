@@ -184,7 +184,7 @@ internal fun SourceIndexPreview(
         source.tagged.slices.size,
         source.tagged.text.length
     )
-    val sourceLine = listOf(source.title.trim(), meta).filter { it.isNotBlank() }.joinToString(" · ")
+    val sourceLine = listOf(meta, source.title.trim()).filter { it.isNotBlank() }.joinToString(" · ")
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -256,13 +256,15 @@ internal fun SourceIndexPreview(
                         verticalArrangement = Arrangement.spacedBy(20.dp * reading.paragraphSpacing)
                     ) {
                         items(rows, key = { it.key }) { row ->
-                            Text(
-                                text = row.text,
-                                color = ink,
-                                fontSize = 13.sp,
-                                lineHeight = (20f * reading.lineFactor).sp,
-                                letterSpacing = reading.letterSpacing.sp
-                            )
+                            ScopedReadingTypography {
+                                Text(
+                                    text = row.text,
+                                    color = ink,
+                                    fontSize = 13.sp,
+                                    lineHeight = (20f * reading.lineFactor).sp,
+                                    letterSpacing = reading.letterSpacing.sp
+                                )
+                            }
                         }
                     }
                 }

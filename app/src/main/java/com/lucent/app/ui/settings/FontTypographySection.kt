@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -41,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.lucent.app.data.TypographyScopes
 import com.lucent.app.i18n.S
+import com.lucent.app.ui.DEFAULT_READING_LINE_SPACING
 import com.lucent.app.ui.Haptics
 import com.lucent.app.ui.LocalOnGradient
 import com.lucent.app.ui.LocalOnGradientMuted
@@ -48,6 +50,7 @@ import com.lucent.app.ui.LucentTitles
 import com.lucent.app.ui.StepperSlider
 import com.lucent.app.ui.frostedGlass
 import com.lucent.app.ui.rememberLucentFont
+import java.util.Locale
 import kotlin.math.roundToInt
 
 
@@ -119,28 +122,31 @@ internal fun FontTypographySection(
                     border = BorderStroke(1.dp, onGradient.copy(alpha = 0.16f)),
                     modifier = Modifier
                         .clip(RoundedCornerShape(12.dp))
+                        .heightIn(min = 44.dp)
                         .clickable {
                             Haptics.tick(context)
                             onResetDefaults()
                         }
                 ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Refresh,
-                            contentDescription = null,
-                            tint = onGradient,
-                            modifier = Modifier.size(12.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = S.resetTypographyDefaults,
-                            color = onGradient,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Medium
-                        )
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = null,
+                                tint = onGradient,
+                                modifier = Modifier.size(12.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = S.resetTypographyDefaults,
+                                color = onGradient,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
                     }
                 }
             }
@@ -160,9 +166,10 @@ internal fun FontTypographySection(
                 textOnly = typographyScope == TypographyScopes.TEXT
             )
         )
-        val previewLineHeight = (previewFontSize.value * 1.35f * lineSpacing).sp
+        val previewLineHeight = (previewFontSize.value * DEFAULT_READING_LINE_SPACING *
+            (lineSpacing / DEFAULT_READING_LINE_SPACING)).sp
         val previewLetterSpacing = letterSpacing.sp
-        val previewParagraphGap = 8.dp * paragraphSpacing
+        val previewParagraphGap = 6.dp * paragraphSpacing
         val previewStyle = MaterialTheme.typography.bodyMedium.copy(
             fontFamily = previewFamily,
             fontSize = previewFontSize,
@@ -175,7 +182,7 @@ internal fun FontTypographySection(
                 Text(
                     text = S.typographyPreviewSample,
                     style = previewStyle,
-                    maxLines = 1,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     color = onGradient
                 )
@@ -219,7 +226,7 @@ internal fun FontTypographySection(
         StepperSlider(
             compact = true,
             title = S.lineSpacingTitle,
-            valueLabel = if (kotlin.math.abs(lineSpacing - 1.2f) < 0.005f) S.fontValueDefault else String.format("%.2fx", lineSpacing),
+            valueLabel = if (kotlin.math.abs(lineSpacing - 1.2f) < 0.005f) S.fontValueDefault else String.format(Locale.ROOT, "%.2fx", lineSpacing),
             value = lineSpacing,
             valueRange = 1.0f..1.8f,
             step = 0.05f,
@@ -238,7 +245,7 @@ internal fun FontTypographySection(
         StepperSlider(
             compact = true,
             title = S.letterSpacingTitle,
-            valueLabel = if (kotlin.math.abs(letterSpacing) < 0.005f) S.fontValueDefault else String.format("%+.1fsp", letterSpacing),
+            valueLabel = if (kotlin.math.abs(letterSpacing) < 0.005f) S.fontValueDefault else String.format(Locale.ROOT, "%+.1fsp", letterSpacing),
             value = letterSpacing,
             valueRange = -0.5f..2.0f,
             step = 0.1f,
@@ -257,7 +264,7 @@ internal fun FontTypographySection(
         StepperSlider(
             compact = true,
             title = S.paragraphSpacingTitle,
-            valueLabel = if (kotlin.math.abs(paragraphSpacing - 1f) < 0.005f) S.fontValueDefault else String.format("%.2fx", paragraphSpacing),
+            valueLabel = if (kotlin.math.abs(paragraphSpacing - 1f) < 0.005f) S.fontValueDefault else String.format(Locale.ROOT, "%.2fx", paragraphSpacing),
             value = paragraphSpacing,
             valueRange = 0.5f..2.0f,
             step = 0.05f,
@@ -322,8 +329,8 @@ private fun TypographyScopeOption(
                 Haptics.tick(context)
                 onClick()
             }
-            .heightIn(min = 28.dp)
-            .padding(horizontal = 8.dp, vertical = 3.dp),
+            .heightIn(min = 44.dp)
+            .padding(horizontal = 7.dp, vertical = 3.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(

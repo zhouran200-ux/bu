@@ -40,16 +40,18 @@ internal fun CollapsibleUserText(
         val body = subcompose("text") {
             Box {
                 SelectionContainer {
-                    Text(
-                        text = text,
-                        color = textColor,
-                        fontSize = 15.sp,
-                        lineHeight = (22f * reading.lineFactor).sp,
-                        letterSpacing = reading.letterSpacing.sp,
-                        maxLines = if (expanded) Int.MAX_VALUE else UserMessageCollapsedLines,
-                        overflow = TextOverflow.Ellipsis,
-                        onTextLayout = { textLayout.result = it }
-                    )
+                    ScopedReadingTypography {
+                        Text(
+                            text = text,
+                            color = textColor,
+                            fontSize = 15.sp,
+                            lineHeight = (22f * reading.lineFactor).sp,
+                            letterSpacing = reading.letterSpacing.sp,
+                            maxLines = if (expanded) Int.MAX_VALUE else UserMessageCollapsedLines,
+                            overflow = TextOverflow.Ellipsis,
+                            onTextLayout = { textLayout.result = it }
+                        )
+                    }
                 }
             }
         }.single().measure(childConstraints)

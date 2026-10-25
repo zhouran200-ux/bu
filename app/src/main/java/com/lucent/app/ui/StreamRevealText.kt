@@ -151,6 +151,7 @@ internal fun rememberRevealedText(
             } else {
                 lastFrameNanos = 0L
                 driver.settle(current.target)
+                if (visibleCut != driver.visibleCut) visibleCut = driver.visibleCut
                 snapshotFlow { latestInput.value }.first { it != current }
             }
             if (visibleCut != driver.visibleCut) visibleCut = driver.visibleCut

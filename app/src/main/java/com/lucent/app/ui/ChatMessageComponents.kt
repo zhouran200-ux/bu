@@ -143,15 +143,17 @@ internal fun AiMessageCard(
             ) {
                 SelectionContainer {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        MarkdownText(
-                            text = message.content,
-                            initialSnapshot = initialMarkdown,
-                            streaming = streaming,
-                            modifier = Modifier.fillMaxWidth(),
-                            onCitationClick = onCitationClick,
-                            sourceNoteId = message.sourceNoteId,
-                            sourceRevision = message.sourceRevision
-                        )
+                        ScopedReadingTypography {
+                            MarkdownText(
+                                text = message.content,
+                                initialSnapshot = initialMarkdown,
+                                streaming = streaming,
+                                modifier = Modifier.fillMaxWidth(),
+                                onCitationClick = onCitationClick,
+                                sourceNoteId = message.sourceNoteId,
+                                sourceRevision = message.sourceRevision
+                            )
+                        }
                     }
                 }
             }

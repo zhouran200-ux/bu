@@ -54,6 +54,10 @@ class ApiConfigContractTest(unittest.TestCase):
         self.assertNotIn("currentTestTarget", diagnostics)
         self.assertNotIn("apiTestConnectionTarget", diagnostics)
         self.assertIn("S.apiTestConnection", diagnostics)
+        self.assertIn("S.apiProbeScopeHint", diagnostics)
+        page = (SETTINGS / "ApiSettingsPage.kt").read_text(encoding="utf-8")
+        self.assertNotIn("if (res.success) {\n                            commitAndSaveProfile()", page)
+        self.assertIn("onRequestTransfer", page)
 
 
 if __name__ == "__main__":

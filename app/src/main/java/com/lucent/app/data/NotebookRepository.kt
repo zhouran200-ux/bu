@@ -1,6 +1,7 @@
 package com.lucent.app.data
 
 import android.content.Context
+import androidx.room.withTransaction
 import kotlinx.coroutines.flow.Flow
 
 class NotebookRepository(private val db: AppDatabase) {
@@ -12,11 +13,13 @@ class NotebookRepository(private val db: AppDatabase) {
     suspend fun create(title: String): Long = db.notebookDao().insert(Notebook(title = title))
 
     suspend fun rename(notebook: Notebook, title: String) {
-        db.notebookDao().update(notebook.copy(title = title, updatedAt = System.currentTimeMillis()))
+        db.notebookDao().rename(notebook.id, title, System.currentTimeMillis())
     }
 
     suspend fun reorder(notebooks: List<Notebook>) {
-        db.notebookDao().updateAll(notebooks)
+        db.withTransaction {
+            notebooks.forEach { db.notebookDao().updateOrder(it.id, it.manualOrder) }
+        }
     }
 
     suspend fun touch(notebookId: Long, updatedAt: Long = System.currentTimeMillis()) {

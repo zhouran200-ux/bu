@@ -5,7 +5,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.lucent.app.data.ApiProfile
 import com.lucent.app.data.ApiProfiles
-import com.lucent.app.data.ApiProfileImportPlan
+import com.lucent.app.data.ApiProfileImportMode
+import com.lucent.app.data.planApiProfileImport
 import com.lucent.app.data.ApiProfileMutation
 import com.lucent.app.i18n.S
 import com.lucent.app.data.ApiProfileSnapshot
@@ -26,6 +27,8 @@ internal class ApiSettingsState(
     val profiles: List<ApiProfile> get() = committed.profiles
     val selectedProfileIdx: Int get() = committed.selectedIndex.coerceIn(0, (profiles.size - 1).coerceAtLeast(0))
     val draft: ApiProfileDraft get() = drafts.forProfile(profiles.getOrNull(selectedProfileIdx))
+    var saving by mutableStateOf(false)
+        private set
     var loading by mutableStateOf(false)
     var errorText by mutableStateOf("")
 
@@ -71,11 +74,24 @@ internal class ApiSettingsState(
         submit(ApiProfileMutation.Reorder(order.map { it.id }, order.getOrNull(selected)?.id), complete)
     }
 
-    fun importProfiles(plan: ApiProfileImportPlan) {
+    fun importProfiles(incoming: List<ApiProfile>, mode: ApiProfileImportMode) {
+        if (saving) return
+        if (hasUnsavedChanges()) {
+            notify(S.apiUnsavedBody)
+            return
+        }
+        val plan = planApiProfileImport(profiles, committed.selectedId, incoming, mode)
+        if (mode == ApiProfileImportMode.Merge && plan.added == 0 && plan.updated == 0 && plan.dropped == 0) {
+            notify(S.apiTransferNothing)
+            return
+        }
+        saving = true
         val index = plan.profiles.indexOfFirst { it.id == plan.selectedId }.coerceAtLeast(0)
         queue.submit({ persistAll(plan.profiles, index) }, { outcome ->
             callbackScope.launch {
+                saving = false
                 if (outcome.isSuccess) {
+                    committed = ApiProfileSnapshot(plan.profiles, plan.selectedId)
                     drafts.clear()
                     notify(S.apiTransferApplied(plan.added, plan.updated, plan.dropped))
                 } else {
@@ -85,9 +101,15 @@ internal class ApiSettingsState(
         })
     }
 
-    fun saveActiveProfile() {
+    fun saveActiveProfile(complete: (Result<Unit>) -> Unit = {}) {
+        if (saving) return
         val index = selectedProfileIdx
-        val profile = profiles.getOrNull(index) ?: return
+        val profile = profiles.getOrNull(index)
+        if (profile == null) {
+            notify(S.apiListChanged)
+            complete(Result.failure(IllegalStateException(S.apiListChanged)))
+            return
+        }
         val editing = drafts.forProfile(profile)
         val customInput = editing.customModelInput.value.trim()
         val models = editing.models.value
@@ -99,8 +121,16 @@ internal class ApiSettingsState(
             spec = editing.spec.value, baseUrl = editing.url.value.trim(), apiKey = editing.key.value.trim(),
             selectedModels = models
         )
-        submit(ApiProfileMutation.Update(updated)) {
-            notify(if (it.isSuccess) savedMessage() else S.apiSaveFailed)
+        saving = true
+        submit(ApiProfileMutation.Update(updated)) { outcome ->
+            saving = false
+            if (outcome.isSuccess) {
+                committed = committed.copy(profiles = committed.profiles.map {
+                    if (it.id == updated.id) updated else it
+                })
+            }
+            notify(if (outcome.isSuccess) savedMessage() else S.apiSaveFailed)
+            complete(outcome)
         }
     }
 

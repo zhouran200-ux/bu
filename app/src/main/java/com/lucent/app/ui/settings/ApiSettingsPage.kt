@@ -26,7 +26,7 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.lucent.app.data.ApiProfile
-import com.lucent.app.data.ApiProfileImportPlan
+import com.lucent.app.data.ApiProfileImportMode
 import com.lucent.app.data.SettingsRepository
 import com.lucent.app.i18n.S
 import com.lucent.app.network.ApiProbe
@@ -69,7 +69,8 @@ internal fun ApiConfigSettingsPage(
     onReorderProfiles: (List<ApiProfile>, Int, (Result<Unit>) -> Unit) -> Unit,
     onAddProfile: () -> Unit,
     onSaveProfile: () -> Unit,
-    onImportProfiles: (ApiProfileImportPlan) -> Unit
+    onRequestTransfer: (() -> Unit) -> Unit,
+    onImportProfiles: (List<ApiProfile>, ApiProfileImportMode) -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -123,8 +124,8 @@ internal fun ApiConfigSettingsPage(
         headerActions = {
             ApiProfileTransferActions(
                 profiles = profiles,
-                selectedProfileId = profiles.getOrNull(selectedProfileIdx)?.id,
                 active = active,
+                onRequestTransfer = onRequestTransfer,
                 onApply = onImportProfiles
             )
         }
@@ -254,9 +255,7 @@ internal fun ApiConfigSettingsPage(
                         lastTestResult = res
                         testSuccess = res.success
                         testStatusText = res.formatDisplayMessage()
-                        if (res.success) {
-                            commitAndSaveProfile()
-                        }
+
                     }.onFailure { err ->
                         testSuccess = false
                         val msg = (err.message ?: "").trim().ifBlank { S.apiConnectionFailed }.take(180)

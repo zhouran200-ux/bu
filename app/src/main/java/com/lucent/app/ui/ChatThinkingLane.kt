@@ -125,28 +125,30 @@ internal fun ThinkingLane(
                         modifier = Modifier.padding(bottom = 4.dp)
                     )
                 }
-                Text(
-                    text = visibleThought.ifBlank { S.thinkingWaiting },
-                    color = if (visibleThought.isBlank()) {
-                        onGradientMuted.copy(alpha = 0.7f)
-                    } else {
-                        onGradientMuted
-                    },
-                    fontSize = 13.sp,
-                    lineHeight = (19f * reading.lineFactor).sp,
-                    letterSpacing = reading.letterSpacing.sp,
-                    modifier = if (lane.fullExpanded) {
-                        Modifier
-                            .fillMaxWidth()
-                            .testTag("thinking_text")
-                    } else {
-                        Modifier
-                            .fillMaxWidth()
-                            .testTag("thinking_text")
-                            .heightIn(max = THINKING_LANE_MAX_HEIGHT)
-                            .verticalScroll(lane.scroll)
-                    }
-                )
+                ScopedReadingTypography {
+                    Text(
+                        text = visibleThought.ifBlank { S.thinkingWaiting },
+                        color = if (visibleThought.isBlank()) {
+                            onGradientMuted.copy(alpha = 0.7f)
+                        } else {
+                            onGradientMuted
+                        },
+                        fontSize = 13.sp,
+                        lineHeight = (19f * reading.lineFactor).sp,
+                        letterSpacing = reading.letterSpacing.sp,
+                        modifier = if (lane.fullExpanded) {
+                            Modifier
+                                .fillMaxWidth()
+                                .testTag("thinking_text")
+                        } else {
+                            Modifier
+                                .fillMaxWidth()
+                                .testTag("thinking_text")
+                                .heightIn(max = THINKING_LANE_MAX_HEIGHT)
+                                .verticalScroll(lane.scroll)
+                        }
+                    )
+                }
                 if (streaming || lane.retainLiveHeight) {
                     Spacer(modifier = Modifier.height(6.dp))
                     if (streaming) ThoughtPulse(color = accent)

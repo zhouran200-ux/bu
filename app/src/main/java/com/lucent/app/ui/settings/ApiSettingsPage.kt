@@ -119,16 +119,15 @@ internal fun ApiConfigSettingsPage(
         profiles = profiles, selectedProfileIdx = selectedProfileIdx, models = models,
         active = active, scrollState = scrollState, viewportBounds = viewportBounds,
         onRequestDeleteProfile = onRequestDeleteProfile, onSelectProfile = onSelectProfile,
-        onReorderProfiles = onReorderProfiles, onAddProfile = onAddProfile
-    )
-
-    Spacer(modifier = Modifier.height(8.dp))
-
-    ApiProfileTransferSection(
-        profiles = profiles,
-        selectedProfileId = profiles.getOrNull(selectedProfileIdx)?.id,
-        active = active,
-        onApply = onImportProfiles
+        onReorderProfiles = onReorderProfiles, onAddProfile = onAddProfile,
+        headerActions = {
+            ApiProfileTransferActions(
+                profiles = profiles,
+                selectedProfileId = profiles.getOrNull(selectedProfileIdx)?.id,
+                active = active,
+                onApply = onImportProfiles
+            )
+        }
     )
 
     Spacer(modifier = Modifier.height(8.dp))

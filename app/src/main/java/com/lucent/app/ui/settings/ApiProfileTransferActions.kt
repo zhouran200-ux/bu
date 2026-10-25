@@ -2,14 +2,16 @@ package com.lucent.app.ui.settings
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -30,11 +32,13 @@ import com.lucent.app.data.DocumentInputLimits
 import com.lucent.app.data.planApiProfileImport
 import com.lucent.app.i18n.S
 import com.lucent.app.ui.GlassButton
+import com.lucent.app.ui.KeepKeyboardForNonEditingDialog
 import com.lucent.app.ui.LocalOnGradient
 import com.lucent.app.ui.LocalOnGradientMuted
 import com.lucent.app.ui.LucentTitles
 import com.lucent.app.ui.LucentToast
-import com.lucent.app.ui.frostedGlass
+import com.lucent.app.ui.foregroundRim
+import com.lucent.app.ui.glassPanelColor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -44,7 +48,7 @@ private const val PROFILE_FILE_MIME = "text/plain"
 private val PROFILE_FILE_TYPES = arrayOf("text/plain", "text/*", "application/octet-stream")
 
 @Composable
-internal fun ApiProfileTransferSection(
+internal fun ApiProfileTransferActions(
     profiles: List<ApiProfile>,
     selectedProfileId: String?,
     active: Boolean,
@@ -52,8 +56,6 @@ internal fun ApiProfileTransferSection(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val onGradient = LocalOnGradient.current
-    val onGradientMuted = LocalOnGradientMuted.current
     var pending by remember { mutableStateOf<ApiProfileTxtParse?>(null) }
     var busy by remember { mutableStateOf(false) }
 
@@ -115,62 +117,71 @@ internal fun ApiProfileTransferSection(
         }
     }
 
-    Column(modifier = Modifier.fillMaxWidth().frostedGlass().padding(12.dp)) {
-        Text(
-            text = S.apiTransferTitle,
-            color = onGradient,
-            fontSize = LucentTitles.SectionSize,
-            fontWeight = LucentTitles.SectionWeight
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        GlassButton(
+            text = S.apiTransferImport,
+            enabled = active && !busy,
+            onClick = { importer.launch(PROFILE_FILE_TYPES) }
         )
-        Spacer(modifier = Modifier.height(6.dp))
-        Text(text = S.apiTransferHint, color = onGradientMuted, fontSize = 13.sp, lineHeight = 19.sp)
-        Spacer(modifier = Modifier.height(10.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            GlassButton(
-                text = S.apiTransferExport,
-                enabled = active && !busy && profiles.isNotEmpty(),
-                onClick = {
-                    exporter.launch(ApiProfileTxt.fileName(System.currentTimeMillis(), TimeZone.getDefault()))
-                }
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            GlassButton(
-                text = S.apiTransferImport,
-                enabled = active && !busy,
-                onClick = { importer.launch(PROFILE_FILE_TYPES) }
-            )
-        }
-
-        pending?.let { parse ->
-            Spacer(modifier = Modifier.height(10.dp))
-            Text(
-                text = S.apiTransferRead(parse.profiles.size, parse.invalidLines),
-                color = onGradient,
-                fontSize = 13.sp
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(text = S.apiTransferMergeHint, color = onGradientMuted, fontSize = 12.sp, lineHeight = 17.sp)
-            Text(text = S.apiTransferReplaceHint, color = onGradientMuted, fontSize = 12.sp, lineHeight = 17.sp)
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                GlassButton(
-                    text = S.apiTransferMerge,
-                    enabled = active && !busy,
-                    onClick = { apply(ApiProfileImportMode.Merge) }
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                GlassButton(
-                    text = S.apiTransferReplace,
-                    enabled = active && !busy,
-                    onClick = { apply(ApiProfileImportMode.Replace) }
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                GlassButton(
-                    text = S.actionCancel,
-                    enabled = !busy,
-                    onClick = { pending = null }
-                )
+        Spacer(modifier = Modifier.width(6.dp))
+        GlassButton(
+            text = S.apiTransferExport,
+            enabled = active && !busy && profiles.isNotEmpty(),
+            onClick = {
+                exporter.launch(ApiProfileTxt.fileName(System.currentTimeMillis(), TimeZone.getDefault()))
             }
-        }
+        )
+    }
+
+    pending?.let { parse ->
+        AlertDialog(
+            modifier = Modifier.border(0.75.dp, foregroundRim(), RoundedCornerShape(24.dp)),
+            shape = RoundedCornerShape(24.dp),
+            containerColor = glassPanelColor(),
+            tonalElevation = 0.dp,
+            onDismissRequest = { if (!busy) pending = null },
+            title = {
+                KeepKeyboardForNonEditingDialog()
+                Text(S.apiTransferTitle, fontSize = LucentTitles.EntrySize, fontWeight = LucentTitles.EntryWeight)
+            },
+            text = {
+                Column {
+                    Text(
+                        text = S.apiTransferRead(parse.profiles.size, parse.invalidLines),
+                        color = LocalOnGradient.current,
+                        fontSize = 13.sp
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = S.apiTransferMergeHint,
+                        color = LocalOnGradientMuted.current,
+                        fontSize = 12.sp,
+                        lineHeight = 17.sp
+                    )
+                    Text(
+                        text = S.apiTransferReplaceHint,
+                        color = LocalOnGradientMuted.current,
+                        fontSize = 12.sp,
+                        lineHeight = 17.sp
+                    )
+                }
+            },
+            confirmButton = {
+                Row {
+                    TextButton(onClick = { apply(ApiProfileImportMode.Merge) }, enabled = active && !busy) {
+                        Text(S.apiTransferMerge)
+                    }
+                    Spacer(modifier = Modifier.width(4.dp))
+                    TextButton(onClick = { apply(ApiProfileImportMode.Replace) }, enabled = active && !busy) {
+                        Text(S.apiTransferReplace)
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pending = null }, enabled = !busy) {
+                    Text(S.actionCancel)
+                }
+            }
+        )
     }
 }

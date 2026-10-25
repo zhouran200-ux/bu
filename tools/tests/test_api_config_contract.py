@@ -34,6 +34,21 @@ class ApiConfigContractTest(unittest.TestCase):
         self.assertIn("fontWeight = if (isActive) FontWeight.Bold", list_section)
         self.assertIn("selected = isActive", list_section)
 
+    def test_transfer_actions_sit_beside_the_profile_count_without_a_card(self):
+        page = (SETTINGS / "ApiSettingsPage.kt").read_text(encoding="utf-8")
+        actions = (SETTINGS / "ApiProfileTransferActions.kt").read_text(encoding="utf-8")
+        list_section = (SETTINGS / "ApiProfileListSection.kt").read_text(encoding="utf-8")
+        self.assertNotIn("ApiProfileTransferSection", page)
+        self.assertIn("headerActions = {", page)
+        self.assertIn("ApiProfileTransferActions(", page)
+        self.assertIn("headerActions: @Composable () -> Unit", list_section)
+        self.assertIn("headerActions()", list_section)
+        self.assertIn("S.apiTransferImport", actions)
+        self.assertIn("S.apiTransferExport", actions)
+        self.assertIn("ApiProfileImportMode.Merge", actions)
+        self.assertIn("ApiProfileImportMode.Replace", actions)
+        self.assertFalse((SETTINGS / "ApiProfileTransferSection.kt").exists())
+
     def test_connection_test_no_longer_targets_a_chat_model(self):
         diagnostics = (SETTINGS / "ApiConnectionDiagnosticsSection.kt").read_text(encoding="utf-8")
         self.assertNotIn("currentTestTarget", diagnostics)

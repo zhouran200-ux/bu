@@ -78,7 +78,8 @@ internal fun ApiProfileListSection(
     onRequestDeleteProfile: (Int) -> Unit,
     onSelectProfile: (Int) -> Unit,
     onReorderProfiles: (List<ApiProfile>, Int, (Result<Unit>) -> Unit) -> Unit,
-    onAddProfile: () -> Unit
+    onAddProfile: () -> Unit,
+    headerActions: @Composable () -> Unit = {}
 ) {
     val context = LocalContext.current
     val onGradient = LocalOnGradient.current
@@ -202,6 +203,8 @@ internal fun ApiProfileListSection(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(S.apiSelectionTitle, color = onGradient, fontSize = LucentTitles.SectionSize, fontWeight = LucentTitles.SectionWeight, modifier = Modifier.weight(1f))
             Text("${shownProfiles.size}/${ApiProfiles.MAX}", color = onGradientMuted, fontSize = 13.sp)
+            Spacer(modifier = Modifier.width(8.dp))
+            headerActions()
         }
         Spacer(modifier = Modifier.height(8.dp))
         SectionRule()

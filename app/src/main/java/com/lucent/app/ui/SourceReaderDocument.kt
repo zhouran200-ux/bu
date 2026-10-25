@@ -218,7 +218,8 @@ internal fun SourceReaderDocument(
                         style = MaterialTheme.typography.labelMedium.copy(
                             fontSize = 13.sp,
                             lineHeight = 18.sp,
-                            letterSpacing = 0.sp
+                            letterSpacing = 0.sp,
+                            fontFamily = reading.fontFamily
                         ),
                         fontWeight = LucentTitles.SectionWeight,
                         maxLines = 1,

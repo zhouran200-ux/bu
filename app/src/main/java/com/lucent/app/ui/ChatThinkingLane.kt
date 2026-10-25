@@ -136,6 +136,7 @@ internal fun ThinkingLane(
                         fontSize = 13.sp,
                         lineHeight = (19f * reading.lineFactor).sp,
                         letterSpacing = reading.letterSpacing.sp,
+                        fontFamily = reading.fontFamily,
                         modifier = if (lane.fullExpanded) {
                             Modifier
                                 .fillMaxWidth()

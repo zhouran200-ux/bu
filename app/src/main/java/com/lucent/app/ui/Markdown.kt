@@ -58,6 +58,7 @@ internal fun MarkdownText(
     val accent = MaterialTheme.colorScheme.primary
     val reading = LocalReadingTypography.current
     val lineFactor = reading.lineFactor
+    val readingFontFamily = reading.fontFamily
     val extraLetterSpacing = reading.letterSpacing.sp
     val paragraphGap = 6.dp * reading.paragraphSpacing
     val blankGap = 12.dp * reading.paragraphSpacing
@@ -125,6 +126,7 @@ internal fun MarkdownText(
                         inlineContent = badgeContents,
                         fontSize = headingSize,
                         lineHeight = (headingSize.value * 1.2f * lineFactor).sp,
+                        fontFamily = readingFontFamily,
                         letterSpacing = extraLetterSpacing,
                         fontWeight = FontWeight.Bold
                     )
@@ -140,6 +142,7 @@ internal fun MarkdownText(
                         inlineContent = badgeContents,
                         fontSize = 14.sp,
                         lineHeight = (14f * 1.2f * lineFactor).sp,
+                        fontFamily = readingFontFamily,
                         letterSpacing = extraLetterSpacing
                     )
                 }
@@ -153,6 +156,7 @@ internal fun MarkdownText(
                             fontWeight = fontWeight,
                             fontSize = 14.sp,
                             lineHeight = (14f * 1.2f * lineFactor).sp,
+                            fontFamily = readingFontFamily,
                             letterSpacing = extraLetterSpacing,
                             modifier = Modifier.padding(end = 8.dp)
                         )
@@ -163,6 +167,7 @@ internal fun MarkdownText(
                             inlineContent = badgeContents,
                             fontSize = 14.sp,
                             lineHeight = (14f * 1.2f * lineFactor).sp,
+                            fontFamily = readingFontFamily,
                             letterSpacing = extraLetterSpacing,
                             modifier = Modifier.weight(1f)
                         )
@@ -178,6 +183,7 @@ internal fun MarkdownText(
                             fontWeight = fontWeight,
                             fontSize = 14.sp,
                             lineHeight = (14f * 1.2f * lineFactor).sp,
+                            fontFamily = readingFontFamily,
                             letterSpacing = extraLetterSpacing,
                             modifier = Modifier.padding(end = 8.dp)
                         )
@@ -187,6 +193,7 @@ internal fun MarkdownText(
                             fontWeight = fontWeight,
                             fontSize = 14.sp,
                             lineHeight = (14f * 1.2f * lineFactor).sp,
+                            fontFamily = readingFontFamily,
                             letterSpacing = extraLetterSpacing,
                             modifier = Modifier.weight(1f)
                         )
@@ -210,6 +217,7 @@ internal fun MarkdownText(
                             inlineContent = badgeContents,
                             fontSize = 14.sp,
                             lineHeight = (14f * 1.2f * lineFactor).sp,
+                            fontFamily = readingFontFamily,
                             letterSpacing = extraLetterSpacing,
                             modifier = Modifier.padding(start = 8.dp)
                         )

@@ -187,6 +187,7 @@ class MainActivity : ComponentActivity() {
                         lineSpacing = lineSpacing,
                         letterSpacing = letterSpacing,
                         paragraphSpacing = paragraphSpacing,
+                        fontFamily = MaterialTheme.typography.bodyLarge.fontFamily,
                         scoped = scopedTypography
                     ),
                     LocalOnGradient provides onGradient,

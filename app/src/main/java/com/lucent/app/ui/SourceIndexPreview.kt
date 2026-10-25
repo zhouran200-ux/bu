@@ -215,6 +215,7 @@ internal fun SourceIndexPreview(
                         text = S.sourceIndexPreviewTitle,
                         color = ink,
                         fontSize = 15.sp,
+                        fontFamily = reading.fontFamily,
                         fontWeight = LucentTitles.EntryWeight,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -223,6 +224,7 @@ internal fun SourceIndexPreview(
                         text = sourceLine,
                         color = muted,
                         fontSize = 11.sp,
+                        fontFamily = reading.fontFamily,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -262,7 +264,8 @@ internal fun SourceIndexPreview(
                                     color = ink,
                                     fontSize = 13.sp,
                                     lineHeight = (20f * reading.lineFactor).sp,
-                                    letterSpacing = reading.letterSpacing.sp
+                                    letterSpacing = reading.letterSpacing.sp,
+                                    fontFamily = reading.fontFamily
                                 )
                             }
                         }

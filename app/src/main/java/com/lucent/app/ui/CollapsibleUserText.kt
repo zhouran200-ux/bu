@@ -47,6 +47,7 @@ internal fun CollapsibleUserText(
                             fontSize = 15.sp,
                             lineHeight = (22f * reading.lineFactor).sp,
                             letterSpacing = reading.letterSpacing.sp,
+                            fontFamily = reading.fontFamily,
                             maxLines = if (expanded) Int.MAX_VALUE else UserMessageCollapsedLines,
                             overflow = TextOverflow.Ellipsis,
                             onTextLayout = { textLayout.result = it }

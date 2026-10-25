@@ -174,6 +174,7 @@ internal fun SourceIndexPreview(
     val ink = LocalOnGradient.current
     val muted = LocalOnGradientMuted.current
     val context = LocalContext.current
+    val reading = LocalReadingTypography.current
     val rowKeys = remember(rows) { rows.map { it.key } }
     val chapterIndices = remember(rows) { rows.indices.filter { rows[it].isChapter } }
     Column(
@@ -248,14 +249,15 @@ internal fun SourceIndexPreview(
                         modifier = Modifier.fillMaxSize().testTag("source_model_list")
                             .sourceReadingPosition(listState, rowKeys),
                         contentPadding = PaddingValues(start = 18.dp, end = 18.dp, bottom = 24.dp),
-                        verticalArrangement = Arrangement.spacedBy(20.dp)
+                        verticalArrangement = Arrangement.spacedBy(20.dp * reading.paragraphSpacing)
                     ) {
                         items(rows, key = { it.key }) { row ->
                             Text(
                                 text = row.text,
                                 color = ink,
                                 fontSize = 13.sp,
-                                lineHeight = 20.sp
+                                lineHeight = (20f * reading.lineFactor).sp,
+                                letterSpacing = reading.letterSpacing.sp
                             )
                         }
                     }

@@ -60,6 +60,7 @@ internal fun ThinkingLane(
     val accent = MaterialTheme.colorScheme.primary
     val onGradientMuted = LocalOnGradientMuted.current
     val motionOn = LocalBackgroundEnvironment.current.motionEnabled
+    val reading = LocalReadingTypography.current
     val thought = liveThought?.value ?: storedThought
     val visibleThought = rememberRevealedText(thought, streaming)
     val canExpand = streaming || thought.isNotBlank()
@@ -132,7 +133,8 @@ internal fun ThinkingLane(
                         onGradientMuted
                     },
                     fontSize = 13.sp,
-                    lineHeight = 19.sp,
+                    lineHeight = (19f * reading.lineFactor).sp,
+                    letterSpacing = reading.letterSpacing.sp,
                     modifier = if (lane.fullExpanded) {
                         Modifier
                             .fillMaxWidth()

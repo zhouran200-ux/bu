@@ -77,6 +77,8 @@ private object SettingsKeys {
     val FONT_SCALE = floatPreferencesKey("font_scale")
     val LINE_SPACING = floatPreferencesKey("line_spacing")
     val LETTER_SPACING = floatPreferencesKey("letter_spacing")
+    val PARAGRAPH_SPACING = floatPreferencesKey("paragraph_spacing")
+    val TYPOGRAPHY_SCOPE = stringPreferencesKey("typography_scope")
     val DYNAMIC_COLOR_ENABLED = booleanPreferencesKey("dynamic_color_enabled")
 
     val CUSTOM_USER_AGENT = stringPreferencesKey("custom_user_agent")
@@ -110,6 +112,10 @@ class SettingsRepository(context: Context) {
     val fontScale: Flow<Float> = context.settingsDataStore.data.map { it[SettingsKeys.FONT_SCALE] ?: 1.0f }
     val lineSpacing: Flow<Float> = context.settingsDataStore.data.map { it[SettingsKeys.LINE_SPACING] ?: 1.2f }
     val letterSpacing: Flow<Float> = context.settingsDataStore.data.map { it[SettingsKeys.LETTER_SPACING] ?: 0.0f }
+    val paragraphSpacing: Flow<Float> = context.settingsDataStore.data.map { it[SettingsKeys.PARAGRAPH_SPACING] ?: 1.0f }
+    val typographyScope: Flow<String> = context.settingsDataStore.data.map {
+        TypographyScopes.normalize(it[SettingsKeys.TYPOGRAPHY_SCOPE])
+    }
 
     val dynamicColorEnabled: Flow<Boolean> =
         context.settingsDataStore.data.map { it[SettingsKeys.DYNAMIC_COLOR_ENABLED] ?: false }
@@ -120,7 +126,9 @@ class SettingsRepository(context: Context) {
         val font: String,
         val fontScale: Float = 1.0f,
         val lineSpacing: Float = 1.2f,
-        val letterSpacing: Float = 0.0f
+        val letterSpacing: Float = 0.0f,
+        val paragraphSpacing: Float = 1.0f,
+        val typographyScope: String = TypographyScopes.GLOBAL
     )
 
     data class StartupPrefs(
@@ -141,7 +149,9 @@ class SettingsRepository(context: Context) {
                 font = prefs[SettingsKeys.FONT] ?: "system",
                 fontScale = prefs[SettingsKeys.FONT_SCALE] ?: 1.0f,
                 lineSpacing = prefs[SettingsKeys.LINE_SPACING] ?: 1.2f,
-                letterSpacing = prefs[SettingsKeys.LETTER_SPACING] ?: 0.0f
+                letterSpacing = prefs[SettingsKeys.LETTER_SPACING] ?: 0.0f,
+                paragraphSpacing = prefs[SettingsKeys.PARAGRAPH_SPACING] ?: 1.0f,
+                typographyScope = TypographyScopes.normalize(prefs[SettingsKeys.TYPOGRAPHY_SCOPE])
             ),
             backgroundAnimationEnabled = prefs[SettingsKeys.BACKGROUND_ANIMATION_ENABLED] ?: true,
             dynamicColor = prefs[SettingsKeys.DYNAMIC_COLOR_ENABLED] ?: false,
@@ -280,11 +290,18 @@ class SettingsRepository(context: Context) {
     suspend fun setLetterSpacing(value: Float) {
         context.settingsDataStore.edit { it[SettingsKeys.LETTER_SPACING] = value }
     }
+    suspend fun setParagraphSpacing(value: Float) {
+        context.settingsDataStore.edit { it[SettingsKeys.PARAGRAPH_SPACING] = value }
+    }
+    suspend fun setTypographyScope(value: String) {
+        context.settingsDataStore.edit { it[SettingsKeys.TYPOGRAPHY_SCOPE] = TypographyScopes.normalize(value) }
+    }
     suspend fun resetTypographyDefaults() {
         context.settingsDataStore.edit {
             it[SettingsKeys.FONT_SCALE] = 1.0f
             it[SettingsKeys.LINE_SPACING] = 1.2f
             it[SettingsKeys.LETTER_SPACING] = 0.0f
+            it[SettingsKeys.PARAGRAPH_SPACING] = 1.0f
         }
     }
     suspend fun setDynamicColorEnabled(value: Boolean) {

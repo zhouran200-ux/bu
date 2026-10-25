@@ -56,6 +56,11 @@ internal fun MarkdownText(
     val onGradient = LocalOnGradient.current
     val onGradientMuted = LocalOnGradientMuted.current
     val accent = MaterialTheme.colorScheme.primary
+    val reading = LocalReadingTypography.current
+    val lineFactor = reading.lineFactor
+    val extraLetterSpacing = reading.letterSpacing.sp
+    val paragraphGap = 6.dp * reading.paragraphSpacing
+    val blankGap = 12.dp * reading.paragraphSpacing
     val clickable = onCitationClick != null
     val style = remember(
         onGradient, onGradientMuted, accent, citationsEnabled,
@@ -108,60 +113,88 @@ internal fun MarkdownText(
             when (block) {
                 is MdBlock.Heading -> {
                     if (index > 0) Spacer(modifier = Modifier.height(10.dp))
+                    val headingSize = when (block.level) {
+                        1 -> 22.sp
+                        2 -> 19.sp
+                        3 -> 17.sp
+                        else -> 15.sp
+                    }
                     Text(
                         annotated[index],
                         color = onGradient,
                         inlineContent = badgeContents,
-                        fontSize = when (block.level) {
-                            1 -> 22.sp
-                            2 -> 19.sp
-                            3 -> 17.sp
-                            else -> 15.sp
-                        },
+                        fontSize = headingSize,
+                        lineHeight = (headingSize.value * 1.2f * lineFactor).sp,
+                        letterSpacing = extraLetterSpacing,
                         fontWeight = FontWeight.Bold
                     )
                     Spacer(modifier = Modifier.height(10.dp))
                 }
 
                 is MdBlock.Paragraph -> {
-                    if (index > 0) Spacer(modifier = Modifier.height(6.dp))
+                    if (index > 0) Spacer(modifier = Modifier.height(paragraphGap))
                     Text(
                         annotated[index],
                         color = onGradient,
                         fontWeight = fontWeight,
-                        inlineContent = badgeContents
+                        inlineContent = badgeContents,
+                        fontSize = 14.sp,
+                        lineHeight = (14f * 1.2f * lineFactor).sp,
+                        letterSpacing = extraLetterSpacing
                     )
                 }
 
                 is MdBlock.Bullet -> {
-                    if (index > 0) Spacer(modifier = Modifier.height(6.dp))
+                    if (index > 0) Spacer(modifier = Modifier.height(paragraphGap))
                     Row(modifier = Modifier.fillMaxWidth()) {
-                        Text("•", color = onGradientMuted, fontWeight = fontWeight, modifier = Modifier.padding(end = 8.dp))
+                        Text(
+                            "•",
+                            color = onGradientMuted,
+                            fontWeight = fontWeight,
+                            fontSize = 14.sp,
+                            lineHeight = (14f * 1.2f * lineFactor).sp,
+                            letterSpacing = extraLetterSpacing,
+                            modifier = Modifier.padding(end = 8.dp)
+                        )
                         Text(
                             annotated[index],
                             color = onGradient,
                             fontWeight = fontWeight,
                             inlineContent = badgeContents,
+                            fontSize = 14.sp,
+                            lineHeight = (14f * 1.2f * lineFactor).sp,
+                            letterSpacing = extraLetterSpacing,
                             modifier = Modifier.weight(1f)
                         )
                     }
                 }
 
                 is MdBlock.Numbered -> {
-                    if (index > 0) Spacer(modifier = Modifier.height(6.dp))
+                    if (index > 0) Spacer(modifier = Modifier.height(paragraphGap))
                     Row(modifier = Modifier.fillMaxWidth()) {
-                        Text("${block.marker}.", color = onGradientMuted, fontWeight = fontWeight, modifier = Modifier.padding(end = 8.dp))
+                        Text(
+                            "${block.marker}.",
+                            color = onGradientMuted,
+                            fontWeight = fontWeight,
+                            fontSize = 14.sp,
+                            lineHeight = (14f * 1.2f * lineFactor).sp,
+                            letterSpacing = extraLetterSpacing,
+                            modifier = Modifier.padding(end = 8.dp)
+                        )
                         Text(
                             annotated[index],
                             color = onGradient,
                             fontWeight = fontWeight,
+                            fontSize = 14.sp,
+                            lineHeight = (14f * 1.2f * lineFactor).sp,
+                            letterSpacing = extraLetterSpacing,
                             modifier = Modifier.weight(1f)
                         )
                     }
                 }
 
                 is MdBlock.Quote -> {
-                    if (index > 0) Spacer(modifier = Modifier.height(6.dp))
+                    if (index > 0) Spacer(modifier = Modifier.height(paragraphGap))
                     Row(modifier = Modifier.fillMaxWidth()) {
                         Box(
                             modifier = Modifier
@@ -175,13 +208,16 @@ internal fun MarkdownText(
                             fontWeight = fontWeight,
                             fontStyle = FontStyle.Italic,
                             inlineContent = badgeContents,
+                            fontSize = 14.sp,
+                            lineHeight = (14f * 1.2f * lineFactor).sp,
+                            letterSpacing = extraLetterSpacing,
                             modifier = Modifier.padding(start = 8.dp)
                         )
                     }
                 }
 
                 is MdBlock.Code -> {
-                    if (index > 0) Spacer(modifier = Modifier.height(6.dp))
+                    if (index > 0) Spacer(modifier = Modifier.height(paragraphGap))
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -194,12 +230,14 @@ internal fun MarkdownText(
                             color = onGradient,
                             fontWeight = fontWeight,
                             fontFamily = FontFamily.Monospace,
-                            fontSize = 13.sp
+                            fontSize = 13.sp,
+                            lineHeight = (13f * 1.2f * lineFactor).sp,
+                            letterSpacing = extraLetterSpacing
                         )
                     }
                 }
 
-                MdBlock.Blank -> Spacer(modifier = Modifier.height(12.dp))
+                MdBlock.Blank -> Spacer(modifier = Modifier.height(blankGap))
 
                 MdBlock.Rule -> Box(
                     modifier = Modifier

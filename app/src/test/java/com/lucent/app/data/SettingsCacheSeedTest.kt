@@ -14,6 +14,8 @@ class SettingsCacheSeedTest {
         val fontScale: Float,
         val lineSpacing: Float,
         val letterSpacing: Float,
+        val paragraphSpacing: Float,
+        val typographyScope: String,
         val dynamicColor: Boolean,
         val backgroundAnimationEnabled: Boolean,
         val customUserAgent: String,
@@ -32,6 +34,8 @@ class SettingsCacheSeedTest {
             fontScale = SettingsCache.fontScale,
             lineSpacing = SettingsCache.lineSpacing,
             letterSpacing = SettingsCache.letterSpacing,
+            paragraphSpacing = SettingsCache.paragraphSpacing,
+            typographyScope = SettingsCache.typographyScope,
             dynamicColor = SettingsCache.dynamicColor,
             backgroundAnimationEnabled = SettingsCache.backgroundAnimationEnabled,
             customUserAgent = SettingsCache.customUserAgent,
@@ -48,6 +52,8 @@ class SettingsCacheSeedTest {
         SettingsCache.fontScale = saved.fontScale
         SettingsCache.lineSpacing = saved.lineSpacing
         SettingsCache.letterSpacing = saved.letterSpacing
+        SettingsCache.paragraphSpacing = saved.paragraphSpacing
+        SettingsCache.typographyScope = saved.typographyScope
         SettingsCache.dynamicColor = saved.dynamicColor
         SettingsCache.backgroundAnimationEnabled = saved.backgroundAnimationEnabled
         SettingsCache.customUserAgent = saved.customUserAgent
@@ -65,7 +71,9 @@ class SettingsCacheSeedTest {
                     font = "custom-font-id",
                     fontScale = 1.35f,
                     lineSpacing = 1.6f,
-                    letterSpacing = 0.05f
+                    letterSpacing = 0.05f,
+                    paragraphSpacing = 1.4f,
+                    typographyScope = TypographyScopes.TEXT
                 ),
                 backgroundAnimationEnabled = false,
                 dynamicColor = true,
@@ -81,6 +89,8 @@ class SettingsCacheSeedTest {
         assertEquals(1.35f, SettingsCache.fontScale, 0.0001f)
         assertEquals(1.6f, SettingsCache.lineSpacing, 0.0001f)
         assertEquals(0.05f, SettingsCache.letterSpacing, 0.0001f)
+        assertEquals(1.4f, SettingsCache.paragraphSpacing, 0.0001f)
+        assertEquals(TypographyScopes.TEXT, SettingsCache.typographyScope)
         assertEquals(true, SettingsCache.dynamicColor)
         assertEquals(false, SettingsCache.backgroundAnimationEnabled)
         assertEquals("node-fetch (+https://github.com/node-fetch/node-fetch)", SettingsCache.customUserAgent)
@@ -120,6 +130,8 @@ class SettingsCacheSeedTest {
         assertEquals(1.0f, defaults.display.fontScale, 0.0001f)
         assertEquals(1.2f, defaults.display.lineSpacing, 0.0001f)
         assertEquals(0.0f, defaults.display.letterSpacing, 0.0001f)
+        assertEquals(1.0f, defaults.display.paragraphSpacing, 0.0001f)
+        assertEquals(TypographyScopes.GLOBAL, defaults.display.typographyScope)
         assertEquals(true, defaults.backgroundAnimationEnabled)
         assertEquals(false, defaults.dynamicColor)
         assertEquals("", defaults.customUserAgent)

@@ -34,13 +34,16 @@ import com.lucent.app.AppScope
 import com.lucent.app.chat.ChatSessions
 import com.lucent.app.data.SettingsRepository
 import com.lucent.app.data.TrashCleanup
+import com.lucent.app.data.TypographyScopes
 import com.lucent.app.ui.LocalBackgroundEnvironment
 import com.lucent.app.ui.rememberBackgroundEnvironment
 import com.lucent.app.ui.LocalOnGradient
 import com.lucent.app.ui.LocalOnGradientMuted
 import com.lucent.app.ui.LocalBackdropColor
 import com.lucent.app.ui.LocalPureWhite
+import com.lucent.app.ui.LocalReadingTypography
 import com.lucent.app.ui.LucentGlass
+import com.lucent.app.ui.ReadingTypography
 import com.lucent.app.ui.LucentToast
 import com.lucent.app.ui.lucentTypography
 import kotlinx.coroutines.launch
@@ -63,7 +66,9 @@ class MainActivity : ComponentActivity() {
                 cachedSettings.font,
                 cachedSettings.fontScale,
                 cachedSettings.lineSpacing,
-                cachedSettings.letterSpacing
+                cachedSettings.letterSpacing,
+                cachedSettings.paragraphSpacing,
+                cachedSettings.typographyScope
             ),
             dynamicColor = cachedSettings.dynamicColor,
             backgroundAnimationEnabled = cachedSettings.backgroundAnimationEnabled
@@ -126,6 +131,8 @@ class MainActivity : ComponentActivity() {
             val fontScale by settingsRepo.fontScale.collectAsState(initial = com.lucent.app.data.SettingsCache.fontScale)
             val lineSpacing by settingsRepo.lineSpacing.collectAsState(initial = com.lucent.app.data.SettingsCache.lineSpacing)
             val letterSpacing by settingsRepo.letterSpacing.collectAsState(initial = com.lucent.app.data.SettingsCache.letterSpacing)
+            val paragraphSpacing by settingsRepo.paragraphSpacing.collectAsState(initial = com.lucent.app.data.SettingsCache.paragraphSpacing)
+            val typographyScope by settingsRepo.typographyScope.collectAsState(initial = com.lucent.app.data.SettingsCache.typographyScope)
             val backgroundAnimated by settingsRepo.backgroundAnimationEnabled.collectAsState(
                 initial = startup.backgroundAnimationEnabled
             )
@@ -156,10 +163,11 @@ class MainActivity : ComponentActivity() {
             }
 
             val currentDensity = LocalDensity.current
-            val appDensity = remember(currentDensity, fontScale) {
+            val scopedTypography = typographyScope == TypographyScopes.TEXT
+            val appDensity = remember(currentDensity, fontScale, scopedTypography) {
                 Density(
                     density = currentDensity.density,
-                    fontScale = currentDensity.fontScale * fontScale
+                    fontScale = currentDensity.fontScale * if (scopedTypography) 1f else fontScale
                 )
             }
 
@@ -168,12 +176,19 @@ class MainActivity : ComponentActivity() {
                 typography = lucentTypography(
                     fontKey = fontKey,
                     fontScale = fontScale,
-                    lineSpacing = lineSpacing,
-                    letterSpacing = letterSpacing
+                    lineSpacing = if (scopedTypography) 1f else lineSpacing,
+                    letterSpacing = if (scopedTypography) 0f else letterSpacing
                 )
             ) {
                 CompositionLocalProvider(
                     LocalDensity provides appDensity,
+                    LocalReadingTypography provides ReadingTypography(
+                        fontScale = fontScale,
+                        lineSpacing = lineSpacing,
+                        letterSpacing = letterSpacing,
+                        paragraphSpacing = paragraphSpacing,
+                        scoped = scopedTypography
+                    ),
                     LocalOnGradient provides onGradient,
                     LocalOnGradientMuted provides onGradientMuted,
                     LocalBackdropColor provides backdropColor,

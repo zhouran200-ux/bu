@@ -61,10 +61,14 @@ internal fun FontSettingsPage(
     val savedFontScale by repo.fontScale.collectAsState(initial = SettingsCache.fontScale)
     val savedLineSpacing by repo.lineSpacing.collectAsState(initial = SettingsCache.lineSpacing)
     val savedLetterSpacing by repo.letterSpacing.collectAsState(initial = SettingsCache.letterSpacing)
+    val savedParagraphSpacing by repo.paragraphSpacing.collectAsState(initial = SettingsCache.paragraphSpacing)
+    val savedTypographyScope by repo.typographyScope.collectAsState(initial = SettingsCache.typographyScope)
 
     var activeFontScale by remember(savedFontScale) { mutableFloatStateOf(savedFontScale) }
     var activeLineSpacing by remember(savedLineSpacing) { mutableFloatStateOf(savedLineSpacing) }
     var activeLetterSpacing by remember(savedLetterSpacing) { mutableFloatStateOf(savedLetterSpacing) }
+    var activeParagraphSpacing by remember(savedParagraphSpacing) { mutableFloatStateOf(savedParagraphSpacing) }
+    var activeTypographyScope by remember(savedTypographyScope) { mutableStateOf(savedTypographyScope) }
 
     var fontRefreshIndex by remember { mutableIntStateOf(0) }
     var importedFonts by remember { mutableStateOf<List<FontStore.FontSlot>>(emptyList()) }
@@ -138,6 +142,8 @@ internal fun FontSettingsPage(
         appliedFontScale = savedFontScale,
         lineSpacing = activeLineSpacing,
         letterSpacing = activeLetterSpacing,
+        paragraphSpacing = activeParagraphSpacing,
+        typographyScope = activeTypographyScope,
         onFontScaleChange = { activeFontScale = it },
         onFontScaleCommit = {
             AppScope.setFontScale(context, repo, activeFontScale)
@@ -150,10 +156,19 @@ internal fun FontSettingsPage(
         onLetterSpacingCommit = {
             AppScope.setLetterSpacing(context, repo, activeLetterSpacing)
         },
+        onParagraphSpacingChange = { activeParagraphSpacing = it },
+        onParagraphSpacingCommit = {
+            AppScope.setParagraphSpacing(context, repo, activeParagraphSpacing)
+        },
+        onTypographyScopeChange = { scope ->
+            activeTypographyScope = scope
+            AppScope.setTypographyScope(context, repo, scope)
+        },
         onResetDefaults = {
             activeFontScale = 1.0f
-            activeLineSpacing = 1.0f
+            activeLineSpacing = 1.2f
             activeLetterSpacing = 0.0f
+            activeParagraphSpacing = 1.0f
             AppScope.resetTypographyDefaults(context, repo)
         }
     )

@@ -33,6 +33,7 @@ internal fun CollapsibleUserText(
     val context = LocalContext.current
     val textLayout = remember(text) { UserMessageTextLayout() }
     val textColor = LocalOnGradient.current
+    val reading = LocalReadingTypography.current
 
     SubcomposeLayout(modifier = modifier) { constraints ->
         val childConstraints = constraints.copy(minWidth = 0, minHeight = 0)
@@ -43,7 +44,8 @@ internal fun CollapsibleUserText(
                         text = text,
                         color = textColor,
                         fontSize = 15.sp,
-                        lineHeight = 22.sp,
+                        lineHeight = (22f * reading.lineFactor).sp,
+                        letterSpacing = reading.letterSpacing.sp,
                         maxLines = if (expanded) Int.MAX_VALUE else UserMessageCollapsedLines,
                         overflow = TextOverflow.Ellipsis,
                         onTextLayout = { textLayout.result = it }

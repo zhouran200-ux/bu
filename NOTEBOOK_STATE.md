@@ -8,6 +8,7 @@
 - 聊天列表按消息 key/offset 恢复。所有思考面板重新收起会改变气泡高度，因此不承诺在展开状态变为收起后仍逐像素呈现相同画面。
 - 来源文档与模型原文分别保存 key/offset，首次进入未访问子页才沿用另一页的章节/切片锚点；之后各自恢复。记住来源子页及对话/来源标签。旧共享位置迁移到文档页。
 - 来源及已完成聊天历史在后台预解析 Markdown 后再恢复列表，避免空高度初始行把恢复位置挤回开头。
+- 字体与排版新增段间距和「全局 / 文本」互斥范围：全局沿用整机字体缩放与行距/字距，文本只作用于对话、文档阅读和模型原文预览；段间距缩放 Markdown 段落间隔、文档条目间隔和模型原文行距。设置按全局/文本持久化，恢复默认不改变范围选择。
 - API 配置页只维护方案与可用模型列表，不再保存对话模型；对话模型仍按 notebookId 保存在聊天偏好中。旧 JSON / TXT 的 `model` 字段在读取时并入 `selectedModels`，保存后只写可用模型列表。方案导入/导出按钮位于「API 选择」标题行的方案计数旁，导入读取后以弹窗选择合并或替换；独立导出卡片 `ApiProfileTransferSection` 已删除，按钮逻辑拆到 `ApiProfileTransferActions`，列表标题通过 `headerActions` 插槽复用。
 - 主界面笔记本卡片不再显示「N 个来源」字样：有来源文档时在标题行显示一个绿点，无来源不显示。标题后并行显示最近修改时间，格式为「时:分 · 月日」，一行放不下时整组折到下一行。修改时间只在发送消息、编辑提问/回答、重新生成、删除气泡、导入/更换/移除来源文档、修改对话设置和重命名时更新；打开笔记本、浏览列表、切换来源页和查看原文预览不更新。
 
@@ -19,10 +20,10 @@ Android/OEM 可结束进程、限制前台启动与服务时长。进程死亡�
 
 ## 本轮验证
 
-Debug 与 Release Kotlin 编译、Android 测试代码编译、全量 `:app:testDebugUnitTest`（648 项、99 套件全通过）、Python 146 项及 quick 静态门禁全通过。方案导入/导出按钮已移到「API 选择」标题行计数旁，独立导出卡片删除；导入读取后的合并/替换选择改为弹窗，文件格式、导入计划与回写逻辑未变。未本地打包或执行设备测试，设备矩阵与 APK 交给 GitHub Actions。
+Debug 与 Release Kotlin 编译、Android 测试代码编译、全量 `:app:testDebugUnitTest`（652 项、100 套件全通过）、Python 149 项及 quick 静态门禁全通过。字体与排版新增段间距与「全局 / 文本」范围；新增 `ReadingTypographyTest`、`FontPreviewScaleTest` 的范围/预览缩放用例和布局契约，设置缓存 13 项读写保持一致。未本地打包或执行设备测试，设备矩阵与 APK 交给 GitHub Actions。
 
-上轮 `f2e4379`（API 配置与模型选择拆分）云端结果全部通过：check Run `40181438361`（source-hygiene、android-jvm-check、API 33/35 设备测试）、build-apk Run `40181438518`（build-apk、publish-preview）。更早的 `5547fd1` 同样全部通过；`5d369e8` 的注释与 `UnsupportedThinkingHeaderTest` 失败已在 `5547fd1` 修复。
+上轮 `7a867c5`（导入/导出按钮移入 API 标题行）云端结果全部通过：check Run `40183985689`（source-hygiene、android-jvm-check、API 33/35 设备测试）、build-apk Run `40183985726`（build-apk、publish-preview）。更早的 `f2e4379`、`5547fd1` 同样全部通过；`5d369e8` 的注释与 `UnsupportedThinkingHeaderTest` 失败已在 `5547fd1` 修复。
 
 ## 结构与残留审查
 
-主界面卡片从 `NotebooksScreen` 拆分到 `NotebookShelfItem.kt`，主界面降到约 360 行；卡片独立负责标题、来源绿点、修改时间与菜单。`NotebookChatTab` 511 行仍为聊天入口/布局协调。API 配置页移除对话模型选择与模型思考摘要：删除 `ApiModelSelectionSection.kt`、`ApiReasoningSummarySection.kt` 与 `ApiProfile.model`，新增 `ApiModelsSection.kt` 管理可用模型；旧 JSON/TXT 的 `model` 读取时并入 `selectedModels`，保存后不再写出。选中方案卡增加主色边框、名称加粗并提高选中底色强度。模型选择仍只由聊天页 `ProfileModelPickerSheet` 按 notebookId 写入偏好。未新增依赖、未改变主副包名或正式发布行为。
+主界面卡片从 `NotebooksScreen` 拆分到 `NotebookShelfItem.kt`，主界面降到约 360 行；卡片独立负责标题、来源绿点、修改时间与菜单。`NotebookChatTab` 511 行仍为聊天入口/布局协调。API 配置页移除对话模型选择与模型思考摘要：删除 `ApiModelSelectionSection.kt`、`ApiReasoningSummarySection.kt` 与 `ApiProfile.model`，新增 `ApiModelsSection.kt` 管理可用模型；旧 JSON/TXT 的 `model` 读取时并入 `selectedModels`，保存后不再写出。选中方案卡增加主色边框、名称加粗并提高选中底色强度。模型选择仍只由聊天页 `ProfileModelPickerSheet` 按 notebookId 写入偏好。字体与排版新增 `ReadingTypography.kt` 范围层：全局模式继续使用根 `LocalDensity` 与 `lucentTypography`，文本模式只在聊天页/来源页内缩放字体；`MarkdownText`、用户气泡、思考区与模型原文读取范围值应用行距/字距/段间距。新增 `TypographyScopes`、段间距/范围持久化与 `TypographyScopeToggle`，恢复默认只重置四个排版数值、不改变范围。未新增依赖、未改变主副包名或正式发布行为。

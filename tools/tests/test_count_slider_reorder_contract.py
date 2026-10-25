@@ -25,8 +25,8 @@ class CountSliderReorderContractTest(unittest.TestCase):
         text = (UI / "settings/FontTypographySection.kt").read_text(encoding="utf-8")
         card = text.split("compact = true,", 1)[0].rsplit("Column(", 1)[1]
         self.assertIn(".padding(horizontal = 16.dp, vertical = 12.dp)", card)
-        self.assertEqual(3, text.count("compact = true,"))
-        self.assertEqual(2, text.count("Modifier.padding(vertical = 4.dp)"))
+        self.assertEqual(4, text.count("compact = true,"))
+        self.assertEqual(3, text.count("Modifier.padding(vertical = 4.dp)"))
         slider = (UI / "StepperSlider.kt").read_text(encoding="utf-8")
         self.assertIn("compact: Boolean = false", slider)
         self.assertIn("if (compact) 0.dp else 2.dp", slider)

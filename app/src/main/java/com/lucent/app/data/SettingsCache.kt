@@ -7,6 +7,8 @@ internal data class SettingsSnapshot(
     val fontScale: Float = 1.0f,
     val lineSpacing: Float = 1.2f,
     val letterSpacing: Float = 0.0f,
+    val paragraphSpacing: Float = 1.0f,
+    val typographyScope: String = TypographyScopes.GLOBAL,
     val dynamicColor: Boolean = false,
     val backgroundAnimationEnabled: Boolean = true,
     val customUserAgent: String = "",
@@ -41,6 +43,14 @@ object SettingsCache {
         get() = state.get().letterSpacing
         set(value) { state.updateAndGet { it.copy(letterSpacing = value) } }
 
+    var paragraphSpacing: Float
+        get() = state.get().paragraphSpacing
+        set(value) { state.updateAndGet { it.copy(paragraphSpacing = value) } }
+
+    var typographyScope: String
+        get() = state.get().typographyScope
+        set(value) { state.updateAndGet { it.copy(typographyScope = TypographyScopes.normalize(value)) } }
+
     var dynamicColor: Boolean
         get() = state.get().dynamicColor
         set(value) { state.updateAndGet { it.copy(dynamicColor = value) } }
@@ -68,14 +78,17 @@ object SettingsCache {
     }
 
     internal fun resetTypography() {
-        state.updateAndGet { it.copy(fontScale = 1.0f, lineSpacing = 1.2f, letterSpacing = 0.0f) }
+        state.updateAndGet {
+            it.copy(fontScale = 1.0f, lineSpacing = 1.2f, letterSpacing = 0.0f, paragraphSpacing = 1.0f)
+        }
     }
 
     fun seed(prefs: SettingsRepository.StartupPrefs) {
         val seeded = SettingsSnapshot(
             themeMode = prefs.display.themeMode, palette = prefs.display.palette, font = prefs.display.font,
             fontScale = prefs.display.fontScale, lineSpacing = prefs.display.lineSpacing,
-            letterSpacing = prefs.display.letterSpacing, dynamicColor = prefs.dynamicColor,
+            letterSpacing = prefs.display.letterSpacing, paragraphSpacing = prefs.display.paragraphSpacing,
+            typographyScope = prefs.display.typographyScope, dynamicColor = prefs.dynamicColor,
             backgroundAnimationEnabled = prefs.backgroundAnimationEnabled, customUserAgent = prefs.customUserAgent,
             apiProfilesJson = prefs.apiProfilesJson, apiProfileSelected = prefs.apiProfileSelected
         )

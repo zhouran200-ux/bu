@@ -87,6 +87,7 @@ internal fun SourceReaderDocument(
     }
     val previewKeys = remember(content.previewRows) { content.previewRows.map { it.key } }
     val motionEnabled = LocalBackgroundEnvironment.current.motionEnabled
+    val reading = LocalReadingTypography.current
     val readerKeys = remember(items) { items.map { it.key } }
     val readingKeys = remember(readerKeys) { readerKeys + "footer" }
     val chapterIndices = remember(items) { items.indices.filter { items[it].sliceId == null } }
@@ -175,7 +176,7 @@ internal fun SourceReaderDocument(
                         modifier = Modifier.fillMaxSize().testTag("source_reader_list")
                             .sourceReadingPosition(listState, readingKeys),
                         contentPadding = PaddingValues(start = 18.dp, top = 60.dp, end = 18.dp, bottom = 16.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                        verticalArrangement = Arrangement.spacedBy(4.dp * reading.paragraphSpacing)
                     ) {
                         itemsIndexed(items, key = { _, item -> item.key }) { _, item ->
                             MarkdownText(

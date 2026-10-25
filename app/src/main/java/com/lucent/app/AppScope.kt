@@ -9,6 +9,7 @@ import kotlinx.coroutines.withContext
 import com.lucent.app.data.SettingsCache
 import com.lucent.app.data.SettingsRepository
 import com.lucent.app.data.SettingsWriteCoordinator
+import com.lucent.app.data.TypographyScopes
 import com.lucent.app.i18n.S
 import com.lucent.app.ui.LucentToast
 import android.content.Context
@@ -52,6 +53,20 @@ object AppScope {
     fun setLetterSpacing(context: Context, repo: SettingsRepository, value: Float) =
         save(context, listOf(letterSpacingSetting.change(value) { repo.letterSpacing.first() })) { repo.setLetterSpacing(value) }
 
+    private val paragraphSpacingSetting = SettingsWriteCoordinator.Setting({ SettingsCache.paragraphSpacing }, { SettingsCache.paragraphSpacing = it })
+
+    fun setParagraphSpacing(context: Context, repo: SettingsRepository, value: Float) =
+        save(context, listOf(paragraphSpacingSetting.change(value) { repo.paragraphSpacing.first() })) { repo.setParagraphSpacing(value) }
+
+    private val typographyScopeSetting = SettingsWriteCoordinator.Setting({ SettingsCache.typographyScope }, { SettingsCache.typographyScope = it })
+
+    fun setTypographyScope(context: Context, repo: SettingsRepository, value: String) {
+        val scope = TypographyScopes.normalize(value)
+        save(context, listOf(typographyScopeSetting.change(scope) { repo.typographyScope.first() })) {
+            repo.setTypographyScope(scope)
+        }
+    }
+
     private val dynamicColorSetting = SettingsWriteCoordinator.Setting({ SettingsCache.dynamicColor }, { SettingsCache.dynamicColor = it })
 
     fun setDynamicColorEnabled(context: Context, repo: SettingsRepository, value: Boolean) =
@@ -67,7 +82,8 @@ object AppScope {
         listOf(
             fontScaleSetting.change(1.0f) { repo.fontScale.first() },
             lineSpacingSetting.change(1.2f) { repo.lineSpacing.first() },
-            letterSpacingSetting.change(0.0f) { repo.letterSpacing.first() }
+            letterSpacingSetting.change(0.0f) { repo.letterSpacing.first() },
+            paragraphSpacingSetting.change(1.0f) { repo.paragraphSpacing.first() }
         )
     ) { repo.resetTypographyDefaults() }
 

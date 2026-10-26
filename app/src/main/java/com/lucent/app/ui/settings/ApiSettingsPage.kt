@@ -213,6 +213,8 @@ internal fun ApiConfigSettingsPage(
 
         ApiModelsSection(
             models = models,
+            testModel = testModel,
+            onTestModelChange = { testModel = it },
             customModelInput = customModelInput,
             onModelsChange = onModelsChange,
             onCustomModelInputChange = onCustomModelInputChange
@@ -241,9 +243,8 @@ internal fun ApiConfigSettingsPage(
             fetchModelsError = fetchModelsError,
             errorText = errorText,
             copiedRawHint = copiedRawHint,
-            testModels = models,
+            hasModels = models.isNotEmpty(),
             testModel = testModel,
-            onTestModelChange = { testModel = it },
             onTest = test@{
                 if (url.trim().isEmpty()) {
                     onErrorTextChange(S.apiUrlRequired)

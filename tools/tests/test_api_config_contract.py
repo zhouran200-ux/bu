@@ -8,7 +8,7 @@ SETTINGS = UI / "settings"
 
 
 class ApiConfigContractTest(unittest.TestCase):
-    def test_api_config_only_manages_profiles_and_available_models(self):
+    def test_api_config_manages_profiles_and_available_models_with_a_transient_test_choice(self):
         page = (SETTINGS / "ApiSettingsPage.kt").read_text(encoding="utf-8")
         section = (SETTINGS / "ApiModelsSection.kt").read_text(encoding="utf-8")
         self.assertNotIn("selectedModel", page)
@@ -18,6 +18,11 @@ class ApiConfigContractTest(unittest.TestCase):
         self.assertNotIn("selectedCard", section)
         self.assertIn("S.apiAvailableModels", section)
         self.assertIn("ApiModelPickerDialog(", section)
+        self.assertIn("testModel: String", section)
+        self.assertIn("onTestModelChange: (String) -> Unit", section)
+        self.assertIn("selectable(", section)
+        self.assertIn("testModel = testModel", page)
+        self.assertIn("onTestModelChange = { testModel = it }", page)
 
     def test_chat_picker_remains_the_only_chat_model_selector(self):
         picker = (UI / "ProfileModelPickerSheet.kt").read_text(encoding="utf-8")
@@ -53,12 +58,13 @@ class ApiConfigContractTest(unittest.TestCase):
         diagnostics = (SETTINGS / "ApiConnectionDiagnosticsSection.kt").read_text(encoding="utf-8")
         self.assertNotIn("currentTestTarget", diagnostics)
         self.assertNotIn("apiTestConnectionTarget", diagnostics)
-        self.assertIn("onTestModelChange", diagnostics)
-        self.assertIn("S.apiTestModel", diagnostics)
+        self.assertNotIn("onTestModelChange", diagnostics)
+        self.assertNotIn("DropdownMenu", diagnostics)
         self.assertIn("S.apiTestGeneration", diagnostics)
         self.assertIn("S.apiProbeScopeHintModel(testModel)", diagnostics)
         self.assertIn("S.apiProbeScopeHint", diagnostics)
         page = (SETTINGS / "ApiSettingsPage.kt").read_text(encoding="utf-8")
+        self.assertIn("hasModels = models.isNotEmpty()", page)
         self.assertIn("ApiProbe.testConnection(url, spec, key, targetModel)", page)
         self.assertIn("latestTestModel.value == targetModel", page)
         self.assertNotIn("selectedModel", page)

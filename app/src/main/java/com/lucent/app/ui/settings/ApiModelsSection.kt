@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -28,6 +29,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
@@ -44,6 +46,8 @@ import com.lucent.app.ui.LucentTitles
 @Composable
 internal fun ApiModelsSection(
     models: List<String>,
+    testModel: String,
+    onTestModelChange: (String) -> Unit,
     customModelInput: String,
     onModelsChange: (List<String>) -> Unit,
     onCustomModelInputChange: (String) -> Unit
@@ -88,13 +92,27 @@ internal fun ApiModelsSection(
             ) {
                 models.forEach { m ->
                     val cardShape = RoundedCornerShape(10.dp)
+                    val isTestModel = m == testModel
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(cardShape)
-                            .background(onGradient.copy(alpha = 0.04f))
-                            .border(1.dp, onGradientMuted.copy(alpha = 0.2f), cardShape)
+                            .background(
+                                if (isTestModel) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                                else onGradient.copy(alpha = 0.04f)
+                            )
+                            .border(
+                                1.dp,
+                                if (isTestModel) MaterialTheme.colorScheme.primary.copy(alpha = 0.65f)
+                                else onGradientMuted.copy(alpha = 0.2f),
+                                cardShape
+                            )
+                            .selectable(
+                                selected = isTestModel,
+                                role = Role.RadioButton,
+                                onClick = { onTestModelChange(if (isTestModel) "" else m) }
+                            )
                             .padding(horizontal = 10.dp, vertical = 5.dp)
                     ) {
                         Box(
@@ -107,16 +125,16 @@ internal fun ApiModelsSection(
                             Icon(
                                 imageVector = LucentIcons.Model,
                                 contentDescription = null,
-                                tint = onGradientMuted,
+                                tint = if (isTestModel) MaterialTheme.colorScheme.primary else onGradientMuted,
                                 modifier = Modifier.size(16.dp)
                             )
                         }
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = m,
-                            color = onGradient,
+                            color = if (isTestModel) MaterialTheme.colorScheme.primary else onGradient,
                             fontSize = LucentTitles.ItemSize,
-                            fontWeight = FontWeight.Normal,
+                            fontWeight = if (isTestModel) FontWeight.SemiBold else FontWeight.Normal,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f)

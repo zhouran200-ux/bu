@@ -38,6 +38,8 @@ internal fun ApiConnectionDiagnosticsSection(
     copiedRawHint: Boolean,
     hasModels: Boolean,
     testModel: String,
+    reasoningProvider: String,
+    reasoningBaseUrl: String,
     onTest: () -> Unit,
     copyRawResponse: (String) -> Unit
 ) {
@@ -79,6 +81,12 @@ internal fun ApiConnectionDiagnosticsSection(
             overflow = TextOverflow.Ellipsis
         )
     }
+
+    ApiReasoningSummarySection(
+        provider = reasoningProvider,
+        model = testModel,
+        baseUrl = reasoningBaseUrl
+    )
 
     Spacer(modifier = Modifier.height(6.dp))
     Text(

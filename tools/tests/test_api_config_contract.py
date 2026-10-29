@@ -62,6 +62,8 @@ class ApiConfigContractTest(unittest.TestCase):
         self.assertNotIn("DropdownMenu", diagnostics)
         self.assertIn("S.apiTestGeneration", diagnostics)
         self.assertIn("S.apiProbeScopeHintModel(testModel)", diagnostics)
+        self.assertIn("ApiReasoningSummarySection(", diagnostics)
+        self.assertIn("reasoningProvider: String", diagnostics)
         self.assertIn("S.apiProbeScopeHint", diagnostics)
         page = (SETTINGS / "ApiSettingsPage.kt").read_text(encoding="utf-8")
         self.assertIn("hasModels = models.isNotEmpty()", page)

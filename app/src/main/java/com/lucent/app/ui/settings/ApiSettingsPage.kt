@@ -245,6 +245,8 @@ internal fun ApiConfigSettingsPage(
             copiedRawHint = copiedRawHint,
             hasModels = models.isNotEmpty(),
             testModel = testModel,
+            reasoningProvider = spec,
+            reasoningBaseUrl = url,
             onTest = test@{
                 if (url.trim().isEmpty()) {
                     onErrorTextChange(S.apiUrlRequired)

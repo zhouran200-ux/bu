@@ -1,5 +1,39 @@
 # 全项目 Bug 审计结果
 
+## 2026-10-29：思考强度下发专项审计
+
+基线 `02c3d44d15b2953bcdccf70d54aa39d48b9e5858`。检查链路：聊天偏好 → ReasoningResolver → 模型能力/协议策略 → StreamingRequestBuilder → 实际 JSON；同时复核 API 设置摘要与连接探测。
+
+### 确认问题与修复
+
+1. **组合中转别名漏识别**：`[RP]gpt-5.5-reasoning` 去标签后未继续应用已支持的后缀规则，导致识别失败、所选档位没有下发。统一候选集组合标签/前缀与后缀，保留原始请求 model ID；未知名称仍不推测能力。
+2. **档位回退受 metadata 顺序影响**：只支持 LOW/HIGH 的模型，MEDIUM 等距时，返回结果取决于服务商数组顺序。现在等距固定取较低强度，并纳入合法 none 档位；不会因为数组倒序悄悄变强。
+3. **不完整能力信息猜出 max**：未知模型只提供 effort 类型、不提供 levels 时，旧代码沿用任意目标值。现在必须提供有效 levels，或继承同类型已知模型的 levels；显式 supported=false 无需额外 control 字段即可禁用覆盖。
+4. **Claude 输出上限与摘要预算不一致**：旧上限只匹配区分大小写的一部分拼写，反向顺序、紧凑别名、部分快照会漏限；解析阶段也未采用输出上限，导致摘要显示的 budget 被序列化再次缩小。共享 AnthropicModelLimits 做已知模型别名归一化和预算预限制，保留至少 1024 token 回答空间。未新增未经验证的供应商额度。
+5. **成功刷新后旧 metadata 残留、摘要不刷新**：原先只累加发现记录，服务商撤回能力仍可能沿用旧控制；摘要 remember 也只观察模型/协议/地址。完整拉取成功后按端点/协议原子替换，失败保留原数据；发布 revision 使摘要更新。未改变精确模型 ID/命名空间隔离规则。
+6. **发送边界少一道协议校验**：旧的或外部构造的跨协议配置能绕过解析层，在原生 Claude 请求中误显示/误带控制。请求构造再按实际协议及最终 URL 应用同一策略；地址首尾空白不再使官方 Claude 兼容限制失效。
+7. **连接测试与聊天档位易混淆**：连接测试发送 hello world，未携带聊天所选思考档位；按钮下方摘要是聊天各档位映射，不是本次测试抓包。补充原位置小字说明，不新增控件、不更改聊天档位选择。
+
+### 验证
+
+- 新增 7 项 JVM 回归（组合别名、等距/none、缺失 levels、Claude cap 别名与预算一致性、请求协议过滤、成功/失败 catalog 刷新）。原有供应商 JSON、AUTO 不下发、budget/effort 互斥测试保留。
+- 全量 Debug JVM：677 项、105 套件，0 失败/错误/跳过；XML inventory 门禁通过。
+- Debug/Release Kotlin 与 Android 测试代码编译通过；新增摘要随 metadata 变化的 Compose 测试仅编译，设备执行交 CI。测试使用项目已有 Compose Rule API，编译有弃用提示，未声称设备运行通过。
+- Python 工具测试 151 项通过；quick 10 项全通过；source audit 350 文件、0 错误/候选。Debug Lint 通过，仍有 29 warnings、5 hints，baseline 未扩大。
+- 没有本地 APK/AAB 打包、没有真实供应商付费请求。新测试核对的是本地产生的请求 JSON，不证明任意中转站接受、转换或执行这些字段。
+
+### 保留边界与审计残留
+
+- AUTO 表示不覆盖服务商默认，不是强制关思考；极速也不保证关闭。模型不支持五个独立强度时，多个 UI 档位可以映射到同一值，这是现有设计，不虚构额外供应商档位。
+- 模型目录的 reasoning metadata 是可选扩展，不是所有供应商的统一标准。当前仍按端点/协议/精确模型隔离，未按 API Key 分账号；并发目录请求的先后次序与第三方网关字段转换属于后续边界。
+- Google 兼容 raw HTTP 中 extra_body.google.thinking_config 的结构已与官方 REST 示例核对，未误当 SDK 参数而扁平化。Claude/OpenAI/Google 的原有原生与兼容字段保持。
+- 已全局搜索旧 registerDiscovered 与旧 cap 声明，旧累加写入路径/网络层重复 cap 已移除；测试 import 同步。未改 Manifest、导航、通知、数据库/偏好键、资源主题、Gradle/依赖、R8、主副包名或工作流，不存在该次迁移专属资源/配置待删。
+- 上轮 [check](https://github.com/zhouran200-ux/bu/actions/runs/40835490291) 及 [Build APK only](https://github.com/zhouran200-ux/bu/actions/runs/40835490148) 均成功；源码/JVM/API33/API35 jobs 成功。独立审查代理调用失败，未完成 artifact/完整日志级独立复核，以上为主代理一次性 API 查询。
+
+参考：[Google OpenAI 兼容 REST 示例](https://ai.google.dev/gemini-api/docs/openai)、[Claude effort](https://platform.claude.com/docs/en/build-with-claude/effort)、[Claude extended thinking](https://platform.claude.com/docs/en/build-with-claude/extended-thinking)、[DeepSeek 思考默认与 effort](https://api-docs.deepseek.com/guides/thinking_mode/)。
+
+---
+
 ## 2026-10-26：可选模型生成测试及全项目审计
 
 本轮基线 `699dc28`。下方旧基线的数字仅为历史结果，不代表本轮。

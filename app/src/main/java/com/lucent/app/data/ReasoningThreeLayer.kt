@@ -65,7 +65,7 @@ data class ReasoningCapability(
 
 
 object ReasoningLevels {
-    private val ladder = listOf("minimal", "low", "medium", "high", "xhigh", "max")
+    private val ladder = listOf("none", "minimal", "low", "medium", "high", "xhigh", "max")
 
     fun supported(desired: String, levels: List<String>): String {
         if (levels.isEmpty()) return desired
@@ -77,7 +77,7 @@ object ReasoningLevels {
             val index = ladder.indexOf(level.trim().lowercase())
             if (index >= 0) {
                 val candidate = kotlin.math.abs(index - target)
-                if (candidate < distance) {
+                if (candidate < distance || (candidate == distance && index < ladder.indexOf(chosen.trim().lowercase()))) {
                     distance = candidate
                     chosen = level
                 }
@@ -148,7 +148,8 @@ class AnthropicReasoningMapper : ReasoningMapper {
     override fun map(preset: ReasoningPreset, model: ModelDefinition): ResolvedReasoningConfig {
         if (preset == ReasoningPreset.AUTO) return ResolvedReasoningConfig.AUTO
         val usesBudget = model.reasoning.control == ReasoningControl.ANTHROPIC_BUDGET || model.reasoning.thinkingType == "enabled"
-        if (usesBudget && (model.reasoning.thinkingBudgetMax ?: Int.MAX_VALUE) < 1024) return FallbackReasoningMapper().map(preset, model)
+        val maximumBudget = minOf(model.reasoning.thinkingBudgetMax ?: Int.MAX_VALUE, anthropicOutputCap(model.id) - 1024)
+        if (usesBudget && maximumBudget < 1024) return FallbackReasoningMapper().map(preset, model)
 
         return if (model.reasoning.control == ReasoningControl.ANTHROPIC_EFFORT) {
             val desired = when (preset) {
@@ -163,11 +164,11 @@ class AnthropicReasoningMapper : ReasoningMapper {
                 preset = preset,
                 claudeEffort = effort,
                 claudeThinkingType = model.reasoning.thinkingType,
-                claudeBudgetTokens = if (model.reasoning.thinkingType == "enabled") budget(preset).coerceAtMost(model.reasoning.thinkingBudgetMax ?: Int.MAX_VALUE) else null,
+                claudeBudgetTokens = if (model.reasoning.thinkingType == "enabled") budget(preset).coerceAtMost(maximumBudget) else null,
                 displayTag = "Claude $effort"
             )
         } else {
-            val budget = budget(preset).coerceAtMost(model.reasoning.thinkingBudgetMax ?: Int.MAX_VALUE)
+            val budget = budget(preset).coerceAtMost(maximumBudget)
             ResolvedReasoningConfig(
                 preset = preset,
                 claudeBudgetTokens = budget,

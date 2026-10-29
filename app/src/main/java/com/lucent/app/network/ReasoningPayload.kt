@@ -1,6 +1,7 @@
 package com.lucent.app.network
 
 import com.lucent.app.data.ResolvedReasoningConfig
+import com.lucent.app.data.anthropicOutputCap
 import org.json.JSONObject
 
 internal fun applyCompatibleReasoning(payload: JSONObject, config: ResolvedReasoningConfig?, model: String, url: String) {

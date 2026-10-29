@@ -7,18 +7,22 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.lucent.app.data.ModelCapabilityRegistry
 import com.lucent.app.data.ReasoningPlanBuilder
 import com.lucent.app.i18n.S
 
 @Composable
 internal fun ApiReasoningSummarySection(provider: String, model: String, baseUrl: String) {
     if (model.isBlank()) return
-    val plan = remember(provider, model, baseUrl) { ReasoningPlanBuilder.build(provider, model, baseUrl) }
+    val revision by ModelCapabilityRegistry.revision.collectAsState()
+    val plan = remember(provider, model, baseUrl, revision) { ReasoningPlanBuilder.build(provider, model, baseUrl) }
 
     Spacer(modifier = Modifier.height(8.dp))
     Column(modifier = Modifier.fillMaxWidth()) {

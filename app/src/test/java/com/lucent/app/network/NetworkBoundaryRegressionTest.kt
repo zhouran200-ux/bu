@@ -157,6 +157,26 @@ class NetworkBoundaryRegressionTest {
         }
     }
 
+    @Test(timeout = 15000)
+    fun aSuccessfulCatalogRefreshReplacesOldScopedOverrides() = runBlocking {
+        val model = "audit-refresh-effort"
+        val page = """{"data":[{"id":"audit-refresh-effort","reasoning":{"control":"effort","levels":["low","high"]}}]}"""
+        Server(listOf(page, "not-json", """{"data":[{"id":"audit-refresh-effort"}]}""")).use { server ->
+            val before = ModelCapabilityRegistry.revision.value
+            LlmClient.fetchModels(server.url, ApiSpec.OPENAI, "").getOrThrow()
+            assertEquals("high", ReasoningResolver.resolve(ReasoningPreset.DEEP, "openai", model, server.url).openAiEffort)
+            assertTrue(ModelCapabilityRegistry.revision.value > before)
+            val loaded = ModelCapabilityRegistry.revision.value
+            assertTrue(LlmClient.fetchModels(server.url, ApiSpec.OPENAI, "").isFailure)
+            assertEquals(loaded, ModelCapabilityRegistry.revision.value)
+            assertEquals("high", ReasoningResolver.resolve(ReasoningPreset.DEEP, "openai", model, server.url).openAiEffort)
+            LlmClient.fetchModels(server.url, ApiSpec.OPENAI, "").getOrThrow()
+            assertTrue(ReasoningResolver.resolve(ReasoningPreset.DEEP, "openai", model, server.url).isAuto)
+            assertTrue(ModelCapabilityRegistry.revision.value > loaded)
+            server.await()
+        }
+    }
+
     @Test
     fun invalidMetadataIsIgnored() {
         for (json in listOf(

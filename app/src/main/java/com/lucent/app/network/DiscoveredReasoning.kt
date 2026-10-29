@@ -8,6 +8,7 @@ import org.json.JSONObject
 
 internal fun discoveredReasoning(id: String, spec: ApiSpec, json: JSONObject): ModelDefinition? {
     if (json.has("supported") && json.opt("supported") !is Boolean) return null
+    if (json.opt("supported") == false) return ModelDefinition(id, ReasoningCapability.NONE)
     if (json.has("adaptive") && json.opt("adaptive") !is Boolean) return null
     val control = when (json.opt("control")) {
         "openai_effort", "effort" -> ReasoningControl.OPENAI_EFFORT
@@ -34,6 +35,9 @@ internal fun discoveredReasoning(id: String, spec: ApiSpec, json: JSONObject): M
         (0 until array.length()).map { (array.opt(it) as? String)?.takeIf { level -> level in allowed } ?: return null }
             .distinct().takeIf { it.isNotEmpty() } ?: return null
     } else known?.levels.orEmpty()
+    if (control in setOf(ReasoningControl.OPENAI_EFFORT, ReasoningControl.ANTHROPIC_EFFORT,
+            ReasoningControl.GEMINI_THINKING_LEVEL, ReasoningControl.DEEPSEEK_EFFORT,
+            ReasoningControl.QWEN_EFFORT, ReasoningControl.ZHIPU_EFFORT) && levels.isEmpty()) return null
     val thinking = if (json.has("thinking_type")) (json.opt("thinking_type") as? String)
         ?.takeIf { it == "enabled" || it == "adaptive" } ?: return null else known?.thinkingType
     val budget = if (json.has("thinking_budget_max")) {

@@ -1,22 +1,12 @@
 package com.lucent.app.network
 
 import com.lucent.app.data.ResolvedReasoningConfig
+import com.lucent.app.data.reasoningForEndpoint
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
-
-internal fun anthropicOutputCap(model: String): Int = when {
-    model.contains("claude-3-opus") || model.contains("claude-3-sonnet") || model.contains("claude-3-haiku") -> 4096
-    model.contains("claude-2") -> 4096
-    model.contains("claude-3-5") || model.contains("claude-3.5") || model.contains("claude35") -> 8192
-    model.contains("claude-opus-4-5") || model.contains("claude-sonnet-4-5") || model.contains("claude-haiku-4-5") -> 65536
-    model.contains("claude-opus-4-6") || model.contains("claude-sonnet-4-6") || model.contains("claude-opus-4-7") ||
-        model.contains("claude-opus-4-8") || model.contains("claude-opus-5") || model.contains("claude-sonnet-5") ||
-        model.contains("claude-haiku-5-5") || model.contains("claude-fable-5") || model.contains("claude-mythos-5") -> 131072
-    else -> Int.MAX_VALUE
-}
 
 internal object StreamingRequestBuilder {
     fun build(
@@ -59,7 +49,7 @@ internal object StreamingRequestBuilder {
                         })
                     }
                     put("messages", messagesArray)
-                    applyCompatibleReasoning(this, reasoningConfig, cleanModel, url)
+                    applyCompatibleReasoning(this, reasoningConfig?.let { reasoningForEndpoint(it, spec.name, url) }, cleanModel, url)
                 }
                 requestBuilder.url(url).post(payload.toString().toRequestBody(jsonMediaType))
             }
@@ -69,7 +59,7 @@ internal object StreamingRequestBuilder {
                 val payload = JSONObject().apply {
                     put("model", cleanModel)
                     put("stream", true)
-                    applyAnthropicReasoning(this, reasoningConfig, cleanModel)
+                    applyAnthropicReasoning(this, reasoningConfig?.let { reasoningForEndpoint(it, spec.name, url) }, cleanModel)
                     if (systemInstruction.isNotBlank()) {
                         put("system", systemInstruction)
                     }
@@ -107,7 +97,7 @@ internal object StreamingRequestBuilder {
                         })
                     }
                     put("contents", contentsArray)
-                    googleThinkingConfig(reasoningConfig, compatible = false)?.let { thinking ->
+                    googleThinkingConfig(reasoningConfig?.let { reasoningForEndpoint(it, spec.name, url) }, compatible = false)?.let { thinking ->
                         put("generationConfig", JSONObject().put("thinkingConfig", thinking))
                     }
                 }

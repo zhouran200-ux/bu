@@ -8,7 +8,7 @@ internal fun reasoningForEndpoint(config: ResolvedReasoningConfig, provider: Str
         (nativeGoogle && config.geminiThinkingLevel == null && config.geminiThinkingBudget == null)) {
         return ResolvedReasoningConfig(config.preset, isAuto = true, displayTag = "当前协议未确认该模型的思考控制，使用模型默认")
     }
-    val host = runCatching { java.net.URI(baseUrl).host?.lowercase() }.getOrNull()
+    val host = runCatching { java.net.URI(baseUrl.trim()).host?.lowercase() }.getOrNull()
     if (!nativeClaude && !nativeGoogle && config.claudeEffort != null && host == "api.anthropic.com") {
         if (config.claudeBudgetTokens != null) return config.copy(claudeEffort = null,
             displayTag = "Claude " + config.claudeBudgetTokens + "t 预算")

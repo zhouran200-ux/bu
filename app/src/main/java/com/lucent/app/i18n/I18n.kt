@@ -121,7 +121,7 @@ open class Tr {
     open val apiReasoningUnsupported: String = "未识别该模型的思考参数，所选档位不会下发"
     open val apiProbeScopeHint: String = "点选上方可用模型后发送 hello world 验证生成；未选择时只探测地址、鉴权与模型列表。"
     open val apiProbeScopeHintNoModels: String = "先在上方「可用模型」中添加模型，再点选模型验证生成。"
-    open fun apiProbeScopeHintModel(model: String): String = "将向 ${model} 发送 hello world，验证模型生成。"
+    open fun apiProbeScopeHintModel(model: String): String = "将向 ${model} 发送 hello world 验证生成；本次测试使用模型默认，不下发上方的聊天思考档位。"
     open fun apiResponseTruncated(total: Int): String = "响应过长，仅显示前 120000 字符；复制仍包含完整内容（共 ${total} 字符）。"
     open val apiTestConnectionFailed: String = "连接测试失败，请重试"
     open val apiConnectionFailed: String = "连接失败"

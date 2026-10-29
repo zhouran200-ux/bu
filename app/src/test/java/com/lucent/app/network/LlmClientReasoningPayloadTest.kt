@@ -2,6 +2,7 @@ package com.lucent.app.network
 
 import com.lucent.app.data.ReasoningPreset
 import com.lucent.app.data.ReasoningResolver
+import com.lucent.app.data.anthropicOutputCap
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse

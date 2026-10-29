@@ -2,6 +2,8 @@ package com.lucent.app.data
 
 import java.time.DateTimeException
 import java.time.LocalDate
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 object ModelCapabilityRegistry {
     private data class SnapshotRule(
@@ -9,6 +11,8 @@ object ModelCapabilityRegistry {
         val earliestDate: Int = 20000101
     )
 
+    private val changes = MutableStateFlow(0L)
+    internal val revision = changes.asStateFlow()
     private val registry = mutableMapOf<String, ModelDefinition>()
     private val packedRegistry = mutableMapOf<String, ModelDefinition>()
     private val snapshotRules = mutableMapOf<String, SnapshotRule>()
@@ -39,6 +43,7 @@ object ModelCapabilityRegistry {
         registry.keys.removeAll { packed(it) == compact }
         registry[key] = definition
         packedRegistry[compact] = definition
+        changes.value += 1
     }
 
     @Synchronized
@@ -61,9 +66,14 @@ object ModelCapabilityRegistry {
     }
 
     @Synchronized
-    fun registerDiscovered(definition: ModelDefinition, provider: String, baseUrl: String) {
-        val key = discoveryKey(definition.id, provider, baseUrl) ?: return
-        discovered[key] = definition
+    internal fun replaceDiscovered(definitions: Collection<ModelDefinition>, provider: String, baseUrl: String) {
+        val scope = discoveryKey("", provider, baseUrl) ?: return
+        val previous = discovered.filterKeys { it.endpoint == scope.endpoint && it.protocol == scope.protocol }
+        val next = definitions.associateBy { scope.copy(id = it.id.trim()) }
+        if (previous == next) return
+        discovered.keys.removeAll { it.endpoint == scope.endpoint && it.protocol == scope.protocol }
+        discovered.putAll(next)
+        changes.value += 1
     }
 
     @Synchronized
@@ -71,8 +81,7 @@ object ModelCapabilityRegistry {
         discoveryKey(modelId, provider, baseUrl)?.let { discovered[it] }?.let { return it }
         val clean = normalize(modelId)
         registered(clean)?.let { return it }
-        val capability = snapshotCapability(clean)
-            ?: relayCandidates(clean).firstNotNullOfOrNull { snapshotCapability(it) }
+        val capability = modelCandidates(clean).firstNotNullOfOrNull { snapshotCapability(it) }
             ?: ReasoningCapability.NONE
         return ModelDefinition(clean, capability)
     }
@@ -80,15 +89,16 @@ object ModelCapabilityRegistry {
     private fun registered(clean: String): ModelDefinition? {
         registry[clean]?.let { return it }
         packedRegistry[packed(clean)]?.let { return it }
-        relayCandidates(clean).forEach { candidate ->
-            registry[candidate]?.let { return it }
-            packedRegistry[packed(candidate)]?.let { return it }
-        }
-        decoratedCandidates(clean).forEach { candidate ->
+        modelCandidates(clean).forEach { candidate ->
             registry[candidate]?.let { return it }
             packedRegistry[packed(candidate)]?.let { return it }
         }
         return null
+    }
+
+    private fun modelCandidates(clean: String): List<String> {
+        val candidates = listOf(clean) + relayCandidates(clean)
+        return (candidates + candidates.flatMap { decoratedCandidates(it) }).distinct()
     }
 
     private fun decoratedCandidates(clean: String): List<String> =

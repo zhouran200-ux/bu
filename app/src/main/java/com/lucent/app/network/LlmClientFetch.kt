@@ -61,7 +61,7 @@ internal object LlmClientFetch {
                     if (spec == ApiSpec.GOOGLE) "pageToken" else "after_id", token).build()
             }
             coroutineContext.ensureActive()
-            definitions.values.forEach { ModelCapabilityRegistry.registerDiscovered(it, spec.name, baseUrl) }
+            ModelCapabilityRegistry.replaceDiscovered(definitions.values, spec.name, baseUrl)
             Result.success(ids.toList())
         } catch (cancelled: CancellationException) {
             throw cancelled

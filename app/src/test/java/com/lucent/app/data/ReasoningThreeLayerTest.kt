@@ -114,10 +114,11 @@ class ReasoningThreeLayerTest {
         assertNull(claude35.claudeBudgetTokens)
         assertNull(claude35.openAiEffort)
 
-        val claude37 = ReasoningResolver.resolve(ReasoningPreset.DEEP, "openai", "claude-3-7-sonnet")
-        assertNull(claude37.claudeEffort)
-        assertEquals(16384, claude37.claudeBudgetTokens)
-        assertNull(claude37.openAiEffort)
+        val claude45 = ReasoningResolver.resolve(ReasoningPreset.DEEP, "openai", "claude-sonnet-4-5")
+        assertNull(claude45.claudeEffort)
+        assertEquals(16384, claude45.claudeBudgetTokens)
+        assertNull(claude45.openAiEffort)
+        assertTrue(ReasoningResolver.resolve(ReasoningPreset.DEEP, "openai", "claude-3-7-sonnet").isAuto)
 
         val gemini = ReasoningResolver.resolve(ReasoningPreset.BALANCED, "openai", "gemini-2.5-flash")
         assertNull(gemini.geminiThinkingLevel)
@@ -137,8 +138,8 @@ class ReasoningThreeLayerTest {
 
     @Test
     fun genericOpenAiModelsStillUseEffortMapping() {
-        val o3 = ReasoningResolver.resolve(ReasoningPreset.DEEP, "openai", "o3")
-        assertEquals("high", o3.openAiEffort)
+        val gpt55 = ReasoningResolver.resolve(ReasoningPreset.DEEP, "openai", "gpt-5.5")
+        assertEquals("high", gpt55.openAiEffort)
 
         val gpt6 = ReasoningResolver.resolve(ReasoningPreset.MAXIMUM, "openai", "gpt-6.1-sol")
         assertEquals("max", gpt6.openAiEffort)

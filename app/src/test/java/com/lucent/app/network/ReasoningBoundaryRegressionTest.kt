@@ -49,14 +49,15 @@ class ReasoningBoundaryRegressionTest {
     }
 
     @Test fun claudeLimitsMatchRegistryAliasesCaseAndSnapshots() {
-        for (model in listOf("claude-opus-3", "CLAUDE-3-OPUS", "vendor/Claude-3-Opus-20240229")) {
-            assertEquals(model, 4096, anthropicOutputCap(model))
-            assertEquals(model, 4096, payload(model, ApiSpec.ANTHROPIC,
+        for (model in listOf("claude-sonnet-4-5", "CLAUDE-SONNET-4-5", "vendor/Claude-Sonnet-4-5-20250929")) {
+            assertEquals(model, 65536, anthropicOutputCap(model))
+            assertEquals(model, 8192, payload(model, ApiSpec.ANTHROPIC,
                 ReasoningResolver.resolve(ReasoningPreset.AUTO, "anthropic", model)).getInt("max_tokens"))
         }
         for (model in listOf("claude45sonnet", "claude-4-5-sonnet", "[RP]CLAUDE-SONNET-4-5")) {
             assertEquals(model, 65536, anthropicOutputCap(model))
         }
+        assertEquals(4096, anthropicOutputCap("claude-3-opus"))
     }
 
     @Test fun displayedBudgetIsTheBudgetThatSurvivesOutputCapClamping() {

@@ -108,12 +108,12 @@ class LlmClientReasoningPayloadTest {
 
     @Test(timeout = 15000)
     fun autoModeSendsNoReasoningParametersAtAll() = runBlocking {
-        val json = org.json.JSONObject(send(ReasoningPreset.AUTO, "claude-3-7-sonnet"))
+        val json = org.json.JSONObject(send(ReasoningPreset.AUTO, "claude-sonnet-4-5"))
         assertNull(json.opt("reasoning"))
         assertNull(json.opt("reasoning_effort"))
         assertNull(json.opt("max_completion_tokens"))
         assertTrue(json.optBoolean("stream"))
-        assertEquals("claude-3-7-sonnet", json.optString("model"))
+        assertEquals("claude-sonnet-4-5", json.optString("model"))
         assertFalse(json.optJSONArray("messages")!!.length() == 0)
     }
 

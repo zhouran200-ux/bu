@@ -220,10 +220,8 @@ object ModelCapabilityRegistry {
 
     private fun registerOpenAiModels() {
         val control = ReasoningControl.OPENAI_EFFORT
-        addModels(listOf("gpt-5"), effort(control, listOf("minimal") + standardLevels))
-        addModels(listOf("gpt-5.1"), effort(control, listOf("none") + standardLevels))
         addModels(
-            listOf("gpt-5.2", "gpt-5.4", "gpt-5.5"),
+            listOf("gpt-5.5"),
             effort(control, listOf("none") + standardLevels + "xhigh")
         )
         addModels(
@@ -232,8 +230,6 @@ object ModelCapabilityRegistry {
         )
         addModels(listOf("gpt-6-astra", "gpt-6.1-sol"), effort(control, extendedLevels))
         addModels(listOf("gpt-5.6-luna"), effort(control, listOf("none") + extendedLevels))
-        addModels(listOf("o1", "o3", "o3-mini", "o4-mini"), effort(control, standardLevels))
-        addModels(listOf("o1-mini", "o1-preview"), ReasoningCapability.NONE)
     }
 
     private fun claudeIds(vararg models: Pair<String, String>): List<String> =
@@ -243,14 +239,7 @@ object ModelCapabilityRegistry {
 
     private fun registerAnthropicModels() {
         addModels(
-            claudeIds("sonnet" to "3-5", "haiku" to "3-5", "opus" to "3", "sonnet" to "3", "haiku" to "3"),
-            ReasoningCapability.NONE
-        )
-        addModels(
-            claudeIds(
-                "sonnet" to "3-7", "sonnet" to "4", "opus" to "4", "opus" to "4-1",
-                "sonnet" to "4-5", "haiku" to "4-5"
-            ),
+            claudeIds("sonnet" to "4-5", "haiku" to "4-5"),
             budget(ReasoningControl.ANTHROPIC_BUDGET, thinkingType = "enabled")
         )
         addModels(
@@ -353,7 +342,6 @@ object ModelCapabilityRegistry {
             effort(ReasoningControl.OPENAI_EFFORT, listOf("low", "medium", "high", "xhigh"))
         )
         addModels(listOf("grok-4.5"), effort(ReasoningControl.OPENAI_EFFORT, standardLevels))
-        addModels(listOf("grok-3-mini"), effort(ReasoningControl.OPENAI_EFFORT, listOf("low", "high")))
     }
 
     private fun registerMimoModels() {

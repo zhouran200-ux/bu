@@ -14,19 +14,20 @@ class ModelCapabilityRegistryAuditTest {
     private val geminiMinimal = listOf("MINIMAL") + geminiStandard
 
     @Test
-    fun openAiGenerationsKeepTheirOwnDocumentedLevels() {
-        assertLevels(ReasoningControl.OPENAI_EFFORT, listOf("minimal") + standard, "gpt-5", "gpt-5-2025-08-07")
-        assertLevels(ReasoningControl.OPENAI_EFFORT, listOf("none") + standard, "gpt-5.1", "gpt-5.1-2025-11-13")
+    fun openAiGenerationsStartAtFiftyFiveAndKeepTheirDocumentedLevels() {
         assertLevels(
             ReasoningControl.OPENAI_EFFORT, listOf("none") + standard + "xhigh",
-            "gpt-5.2", "gpt-5.4", "gpt-5.5", "gpt-5.4-2026-03-05"
+            "gpt-5.5", "gpt-5.5-2026-03-05"
         )
         assertLevels(
             ReasoningControl.OPENAI_EFFORT, listOf("none") + extended,
             "gpt-5.6", "gpt-5.6-sol", "gpt-6-sol", "gpt-6-luna"
         )
         assertLevels(ReasoningControl.OPENAI_EFFORT, extended, "gpt-6-astra", "gpt-6.1-sol")
-        assertLevels(ReasoningControl.OPENAI_EFFORT, standard, "o1", "o3", "o3-mini", "o4-mini", "o3-2025-04-16")
+        assertNoOverride(
+            "gpt-5", "gpt-5.1", "gpt-5.2", "gpt-5.4", "o1", "o3", "o3-mini", "o4-mini",
+            "o1-mini", "o1-preview"
+        )
     }
 
     @Test
@@ -41,15 +42,14 @@ class ModelCapabilityRegistryAuditTest {
     }
 
     @Test
-    fun claudeLegacyModelsAreNotMistakenForExtendedThinkingModels() {
+    fun claudeSupportStartsAtFourFiveAndLegacyNamesStayUnknown() {
         assertNoOverride(
             "claude-2", "claude-2.1", "claude-3-opus", "claude-3-sonnet", "claude-3-haiku",
-            "claude-3-5-sonnet", "claude-3-5-haiku", "claude-3-5-sonnet-20241022"
-        )
-        listOf(
+            "claude-3-5-sonnet", "claude-3-5-haiku", "claude-3-5-sonnet-20241022",
             "claude-3-7-sonnet", "claude-3-7-sonnet-20250219", "claude-sonnet-4",
-            "claude-opus-4", "claude-opus-4-1", "claude-sonnet-4-5", "claude-haiku-4-5"
-        ).forEach { id ->
+            "claude-opus-4", "claude-opus-4-1"
+        )
+        listOf("claude-sonnet-4-5", "claude-haiku-4-5").forEach { id ->
             val capability = capability(id)
             assertTrue(id, capability.supported)
             assertEquals(id, ReasoningControl.ANTHROPIC_BUDGET, capability.control)
@@ -190,8 +190,7 @@ class ModelCapabilityRegistryAuditTest {
             "grok-4.6", "grok-4.7", "muse-spark-1.3"
         )
         assertLevels(ReasoningControl.OPENAI_EFFORT, standard, "grok-4.5")
-        assertLevels(ReasoningControl.OPENAI_EFFORT, listOf("low", "high"), "grok-3-mini")
-        assertNoOverride("grok-4.20-reasoning", "grok-build", "grok-3", "muse-spark-9.9")
+        assertNoOverride("grok-3-mini", "grok-4.20-reasoning", "grok-build", "grok-3", "muse-spark-9.9")
     }
 
     @Test

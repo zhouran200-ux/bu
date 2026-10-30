@@ -89,8 +89,8 @@ class LlmClientFetchModelsTest {
 
     @Test(timeout = 15000)
     fun openAiAndAnthropicStyleDataArrayIsParsedInOrder() {
-        val ids = fetch(ApiSpec.OPENAI, """{"data":[{"id":"gpt-4o"},{"id":"o3"},{"id":"o3-mini"}]}""").getOrThrow()
-        assertEquals(listOf("gpt-4o", "o3", "o3-mini"), ids)
+        val ids = fetch(ApiSpec.OPENAI, """{"data":[{"id":"gpt-4o"},{"id":"gpt-5.5"},{"id":"gpt-6.1-sol"}]}""").getOrThrow()
+        assertEquals(listOf("gpt-4o", "gpt-5.5", "gpt-6.1-sol"), ids)
     }
 
     @Test(timeout = 15000)
@@ -113,9 +113,9 @@ class LlmClientFetchModelsTest {
 
     @Test(timeout = 15000)
     fun untrustedMetadataDoesNotChangeGlobalBuiltins() {
-        val previous = ModelCapabilityRegistry.findOrRegister("o3", "openai")
-        fetch(ApiSpec.OPENAI, """{"data":[{"id":"o3","reasoning":{"control":"none","supported":false}}]}""").getOrThrow()
-        assertEquals(previous, ModelCapabilityRegistry.findOrRegister("o3", "openai"))
+        val previous = ModelCapabilityRegistry.findOrRegister("gpt-5.5", "openai")
+        fetch(ApiSpec.OPENAI, """{"data":[{"id":"gpt-5.5","reasoning":{"control":"none","supported":false}}]}""").getOrThrow()
+        assertEquals(previous, ModelCapabilityRegistry.findOrRegister("gpt-5.5", "openai"))
         assertNull(ModelCapabilityRegistry.find("future-budget-model"))
     }
 

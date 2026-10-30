@@ -1,5 +1,15 @@
 # 全项目 Bug 审计结果
 
+## 2026-10-30：思考能力范围按实际使用收窄
+
+- GPT 只保留 5.5 及以后；5.4、5.2、5.1、5、o1/o3/o4-mini 等旧模型不再映射思考参数，未知时使用服务商默认。
+- Claude 只保留 4.5 及以后：Sonnet/Haiku 4.5 走 thinking budget，Opus 4.5 走 effort+budget，4.6+ 走 effort/adaptive；3.x、3.7、Sonnet 4、Opus 4/4.1 不再识别，也不会被装入思考字段。
+- Grok 3 mini 移除；Grok 4.5/4.6/4.7 保留。
+- Claude/Gemini 的验证重点改为中转站 OpenAI 兼容路径：Claude 4.5 预算、Opus 4.5 effort+budget、Claude 4.6+ adaptive effort、Gemini level/budget 均新增实际 JSON 断言，确认不会混入另一协议的字段。
+- 旧模型输出上限常量仍保留为安全截断，不代表继续提供旧模型思考档位；旧模型命中时会落到“未识别/模型默认”。
+- 同步更新模型能力审计测试、旧别名期望、测试连接探测范围与文档。验证以本轮集中运行为准，不把静态浏览当成执行结果。
+- 验证：全量 Debug JVM 679 项/105 套件全通过；Python 151 项、quick 10 项门禁、Debug/Release Kotlin、Android 测试代码编译和 Debug Lint 通过；未运行设备测试或打包 APK。
+
 ## 2026-10-29：思考强度下发专项审计
 
 基线 `02c3d44d15b2953bcdccf70d54aa39d48b9e5858`。检查链路：聊天偏好 → ReasoningResolver → 模型能力/协议策略 → StreamingRequestBuilder → 实际 JSON；同时复核 API 设置摘要与连接探测。
@@ -17,7 +27,7 @@
 ### 验证
 
 - 新增 7 项 JVM 回归（组合别名、等距/none、缺失 levels、Claude cap 别名与预算一致性、请求协议过滤、成功/失败 catalog 刷新）。原有供应商 JSON、AUTO 不下发、budget/effort 互斥测试保留。
-- 全量 Debug JVM：677 项、105 套件，0 失败/错误/跳过；XML inventory 门禁通过。
+- 全量 Debug JVM：679 项、105 套件，0 失败/错误/跳过；XML inventory 门禁通过。
 - Debug/Release Kotlin 与 Android 测试代码编译通过；新增摘要随 metadata 变化的 Compose 测试仅编译，设备执行交 CI。测试使用项目已有 Compose Rule API，编译有弃用提示，未声称设备运行通过。
 - Python 工具测试 151 项通过；quick 10 项全通过；source audit 350 文件、0 错误/候选。Debug Lint 通过，仍有 29 warnings、5 hints，baseline 未扩大。
 - 没有本地 APK/AAB 打包、没有真实供应商付费请求。新测试核对的是本地产生的请求 JSON，不证明任意中转站接受、转换或执行这些字段。

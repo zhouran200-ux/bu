@@ -90,14 +90,14 @@ class NetworkBoundaryRegressionTest {
             assertEquals(if (stream) "sse" else null, google.queryParameter("alt"))
         }
         assertEquals("/v1/chat/completions", EndpointUrls.generation("https://example.test/v1/chat/completions?x=y",
-            ApiSpec.OPENAI, "", "o3", false, false).encodedPath)
+            ApiSpec.OPENAI, "", "gpt-5.5", false, false).encodedPath)
         assertEquals("/v1/messages", EndpointUrls.generation("https://example.test/v1?x=y",
             ApiSpec.ANTHROPIC, "", "claude", false, true).encodedPath)
     }
 
     @Test
     fun probeUsesCompatibleCompletionTokenCap() {
-        for (model in listOf("o3", "o3-mini", "o4-mini", "openai/o3-2025-04-16")) {
+        for (model in listOf("gpt-5.5", "gpt-5.6", "openai/gpt-5.5-2026-03-05")) {
             val payload = JSONObject()
             applyOpenAiProbeCap(payload, model)
             assertFalse(payload.has("max_tokens"))
@@ -139,16 +139,16 @@ class NetworkBoundaryRegressionTest {
 
     @Test(timeout = 15000)
     fun discoveredOverridesStayInExactEndpointProtocolAndNamespace() = runBlocking {
-        val original = ModelCapabilityRegistry.findOrRegister("o3", "openai")
-        val payload = """{"data":[{"id":"o3","reasoning":{"supported":false,"control":"none"}},
+        val original = ModelCapabilityRegistry.findOrRegister("gpt-5.5", "openai")
+        val payload = """{"data":[{"id":"gpt-5.5","reasoning":{"supported":false,"control":"none"}},
             {"id":"vendor/Exact-Model","reasoning":{"supported":true,"control":"openai_effort","levels":["low","high"]}}]}"""
         Server(listOf(payload)).use { server ->
             LlmClient.fetchModels(server.url, ApiSpec.OPENAI, "").getOrThrow()
             server.await()
-            assertEquals(original, ModelCapabilityRegistry.findOrRegister("o3", "openai"))
-            assertEquals(ReasoningControl.NONE, ModelCapabilityRegistry.findOrRegister("o3", "openai", server.url).reasoning.control)
-            assertEquals(original, ModelCapabilityRegistry.findOrRegister("o3", "openai", server.url + "/other"))
-            assertEquals(original, ModelCapabilityRegistry.findOrRegister("o3", "anthropic", server.url))
+            assertEquals(original, ModelCapabilityRegistry.findOrRegister("gpt-5.5", "openai"))
+            assertEquals(ReasoningControl.NONE, ModelCapabilityRegistry.findOrRegister("gpt-5.5", "openai", server.url).reasoning.control)
+            assertEquals(original, ModelCapabilityRegistry.findOrRegister("gpt-5.5", "openai", server.url + "/other"))
+            assertEquals(original, ModelCapabilityRegistry.findOrRegister("gpt-5.5", "anthropic", server.url))
             assertEquals("high", ReasoningResolver.resolve(ReasoningPreset.DEEP, "openai", "vendor/Exact-Model", server.url).openAiEffort)
             assertTrue(ReasoningPlanBuilder.build("openai", "vendor/Exact-Model", server.url).supported)
             for (id in listOf("Exact-Model", "other/Exact-Model", "vendor/exact-model", "vendor/ExactModel")) {

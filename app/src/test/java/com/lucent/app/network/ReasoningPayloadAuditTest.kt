@@ -87,6 +87,43 @@ class ReasoningPayloadAuditTest {
         assertFalse(automatic.has("thinking"))
     }
 
+    @Test fun openAiCompatibleRelaysKeepTheRelayFacingReasoningFields() {
+        val budget = payload("claude-sonnet-4-5", ApiSpec.OPENAI, ReasoningPreset.DEEP, "https://relay.example/v1")
+        assertEquals(16384, budget.getJSONObject("thinking").getInt("budget_tokens"))
+        assertEquals(17408, budget.getInt("max_tokens"))
+        assertFalse(budget.has("reasoning_effort"))
+
+        val opus45 = payload("claude-opus-4-5", ApiSpec.OPENAI, ReasoningPreset.DEEP, "https://relay.example/v1")
+        assertEquals("high", opus45.getString("reasoning_effort"))
+        assertEquals(16384, opus45.getJSONObject("thinking").getInt("budget_tokens"))
+
+        val adaptive = payload("claude-sonnet-4-6", ApiSpec.OPENAI, ReasoningPreset.DEEP, "https://relay.example/v1")
+        assertEquals("high", adaptive.getString("reasoning_effort"))
+        assertFalse(adaptive.has("thinking"))
+        assertFalse(adaptive.has("output_config"))
+
+        val geminiLevel = payload("gemini-3.8-flash", ApiSpec.OPENAI, ReasoningPreset.DEEP, "https://relay.example/v1")
+        val levelConfig = geminiLevel.getJSONObject("extra_body").getJSONObject("google").getJSONObject("thinking_config")
+        assertEquals("high", levelConfig.getString("thinking_level"))
+        assertFalse(geminiLevel.has("reasoning_effort"))
+
+        val geminiBudget = payload("gemini-2.5-pro", ApiSpec.OPENAI, ReasoningPreset.DEEP, "https://relay.example/v1")
+        val budgetConfig = geminiBudget.getJSONObject("extra_body").getJSONObject("google").getJSONObject("thinking_config")
+        assertEquals(16384, budgetConfig.getInt("thinking_budget"))
+        assertTrue(budgetConfig.getBoolean("include_thoughts"))
+    }
+
+    @Test fun retiredModelNamesNeverEmitReasoningFields() {
+        for (model in listOf("gpt-5.4", "gpt-5.2", "gpt-5.1", "gpt-5", "o3", "claude-3-7-sonnet",
+            "claude-sonnet-4", "claude-opus-4-1", "grok-3-mini")) {
+            val body = payload(model, ApiSpec.OPENAI, ReasoningPreset.MAXIMUM, "https://relay.example/v1")
+            for (field in listOf("thinking", "output_config", "reasoning_effort", "thinking_budget",
+                "enable_thinking", "extra_body")) {
+                assertFalse("$model $field", body.has(field))
+            }
+        }
+    }
+
     @Test fun automaticModeNeverAddsThinkingOverridesAcrossVendors() {
         for ((model, spec) in listOf("gpt-6-astra" to ApiSpec.OPENAI,
             "qwen-plus" to ApiSpec.OPENAI, "claude-opus-5-5" to ApiSpec.ANTHROPIC,

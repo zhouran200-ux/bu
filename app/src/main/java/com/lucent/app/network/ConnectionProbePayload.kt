@@ -7,7 +7,7 @@ internal const val CONNECTION_PROBE_PROMPT = "hello world"
 
 internal fun applyOpenAiProbeCap(payload: JSONObject, model: String) {
     val name = model.trim().substringAfterLast('/').lowercase()
-    val reasoningModel = Regex("^(o[134](?:-|$)|gpt-5(?:[.\\-]|$))").containsMatchIn(name)
+    val reasoningModel = Regex("^gpt-5(?:[.\\-]|$)").containsMatchIn(name)
     if (reasoningModel) payload.put("max_completion_tokens", 1024)
     else payload.put("max_tokens", 64)
 }

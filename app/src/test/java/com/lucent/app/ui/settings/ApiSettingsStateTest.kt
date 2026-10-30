@@ -85,6 +85,22 @@ class ApiSettingsStateTest {
         assertFalse(state.hasUnsavedChanges())
     }
 
+    @Test fun duplicateNonBlankKeyBlocksSaveAndNamesTheExistingProfile() = runBlocking {
+        val a = ApiProfile(id = "a", name = "A", apiKey = "same-key")
+        val b = ApiProfile(id = "b", name = "B", apiKey = "other-key")
+        val commands = mutableListOf<ApiProfileMutation>()
+        val notifications = mutableListOf<String>()
+        val state = ApiSettingsState(ApiProfileSnapshot(listOf(a, b), b.id), ApiProfileCommandQueue(this), this,
+            { commands += it }, { _, _ -> }, { notifications += it }, { "saved" })
+        state.draft.key.value = "same-key"
+        state.saveActiveProfile()
+        repeat(4) { yield() }
+        assertTrue(commands.isEmpty())
+        assertTrue(notifications.single().contains("A"))
+        assertFalse(state.saving)
+        assertTrue(state.hasUnsavedChanges())
+    }
+
     @Test fun importRejectsUnsavedDraftAndPreservesIt() = runBlocking {
         val a = ApiProfile(id = "a", name = "A")
         var writes = 0

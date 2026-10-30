@@ -326,10 +326,7 @@ class SettingsRepository(context: Context) {
                     error("API 配置无法解析，已阻止覆盖写入")
                 }
             when (command) {
-                is ApiProfileMutation.Add -> {
-                    check(profiles.size < ApiProfiles.MAX) { "方案数量已达上限" }
-                    check(profiles.none { it.id == command.profile.id }) { "方案ID已存在" }
-                }
+                is ApiProfileMutation.Add -> check(profiles.none { it.id == command.profile.id }) { "方案ID已存在" }
                 is ApiProfileMutation.Update -> check(profiles.any { it.id == command.profile.id }) { "方案已删除，无法保存" }
                 is ApiProfileMutation.Select -> check(profiles.any { it.id == command.id }) { "方案已删除，无法切换" }
                 else -> Unit
@@ -343,9 +340,8 @@ class SettingsRepository(context: Context) {
     }
 
     suspend fun saveApiProfiles(profiles: List<ApiProfile>, selected: Int) {
-        val safe = profiles.take(ApiProfiles.MAX)
-        val idx = if (safe.isEmpty()) 0 else selected.coerceIn(0, safe.size - 1)
-        val profilesJson = ApiProfiles.serialize(safe)
+        val idx = if (profiles.isEmpty()) 0 else selected.coerceIn(0, profiles.size - 1)
+        val profilesJson = ApiProfiles.serialize(profiles)
         context.settingsDataStore.edit { prefs ->
             prefs[SettingsKeys.API_PROFILES] = profilesJson
             prefs[SettingsKeys.API_PROFILE_SELECTED] = idx

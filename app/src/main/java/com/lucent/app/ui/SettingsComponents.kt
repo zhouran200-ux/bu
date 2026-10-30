@@ -21,14 +21,18 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -46,6 +50,8 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.text.font.FontWeight
@@ -224,6 +230,12 @@ internal fun ApiModelPickerDialog(
     val context = androidx.compose.ui.platform.LocalContext.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var draft by remember(names) { mutableStateOf(selected) }
+    var searchOpen by remember { mutableStateOf(false) }
+    var query by remember { mutableStateOf("") }
+    val filteredNames = remember(names, query) {
+        val text = query.trim()
+        if (text.isEmpty()) names else names.filter { it.contains(text, ignoreCase = true) }
+    }
     val drawer = rememberModelPickerDrawer(sheetState, onDismiss = onDismiss)
 
     ModalBottomSheet(
@@ -269,6 +281,56 @@ internal fun ApiModelPickerDialog(
                     )
                 }
                 Spacer(modifier = Modifier.weight(1f))
+                IconButton(
+                    onClick = {
+                        if (searchOpen) {
+                            searchOpen = false
+                            query = ""
+                        } else {
+                            searchOpen = true
+                        }
+                    },
+                    modifier = Modifier.size(30.dp)
+                ) {
+                    Icon(
+                        imageVector = if (searchOpen) Icons.Default.Close else Icons.Default.Search,
+                        contentDescription = if (searchOpen) S.actionCancel else S.actionSearch,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(19.dp)
+                    )
+                }
+            }
+
+            if (searchOpen) {
+                Spacer(modifier = Modifier.height(8.dp))
+                BasicTextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    singleLine = true,
+                    textStyle = MaterialTheme.typography.bodySmall.copy(
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurface
+                    ),
+                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("api_model_search")
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(glassControlColor())
+                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                    decorationBox = { inner ->
+                        Box(contentAlignment = Alignment.CenterStart) {
+                            if (query.isEmpty()) {
+                                Text(
+                                    text = S.apiSearchModelsPlaceholder,
+                                    fontSize = 13.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                )
+                            }
+                            inner()
+                        }
+                    }
+                )
             }
 
             Spacer(modifier = Modifier.height(10.dp))
@@ -283,36 +345,25 @@ internal fun ApiModelPickerDialog(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.weight(1f))
+                val allFilteredSelected = filteredNames.isNotEmpty() && filteredNames.all { it in draft }
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(6.dp))
                         .background(glassControlColor())
                         .clickable {
                             Haptics.tick(context)
-                            draft = draft + names
+                            if (filteredNames.isNotEmpty()) {
+                                draft = if (allFilteredSelected) {
+                                    draft - filteredNames.toSet()
+                                } else {
+                                    draft + filteredNames
+                                }
+                            }
                         }
                         .padding(horizontal = 8.dp, vertical = 2.dp)
                 ) {
                     Text(
-                        text = S.selectAll,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Spacer(modifier = Modifier.width(6.dp))
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(glassControlColor())
-                        .clickable {
-                            Haptics.tick(context)
-                            draft = emptySet()
-                        }
-                        .padding(horizontal = 8.dp, vertical = 2.dp)
-                ) {
-                    Text(
-                        text = S.clearAllSelection,
+                        text = if (allFilteredSelected) S.clearAllSelection else S.selectAll,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Medium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -335,6 +386,19 @@ internal fun ApiModelPickerDialog(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
+            } else if (filteredNames.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(120.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = S.apiSearchNoResults,
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             } else {
                 CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 0.dp) {
                     LazyColumn(
@@ -343,7 +407,7 @@ internal fun ApiModelPickerDialog(
                             .heightIn(min = 120.dp, max = minOf(340.dp, sheetContentHeightLimit())),
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        items(names, key = { it }) { name ->
+                        items(filteredNames, key = { it }) { name ->
                             val checked = name in draft
                             val itemBg = glassControlColor(selected = checked)
                             val itemBorder = if (checked) {

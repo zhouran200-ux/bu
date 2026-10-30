@@ -66,6 +66,13 @@ class PickerContractTest(unittest.TestCase):
         self.assertNotIn("showHistorySheet = false", history)
         self.assertNotIn("showDialogueSettingsDialog = false", settings)
 
+    def test_model_picker_uses_one_bulk_toggle_and_search(self):
+        text = (UI / "SettingsComponents.kt").read_text(encoding="utf-8")
+        self.assertIn("val allFilteredSelected", text)
+        self.assertIn("text = if (allFilteredSelected) S.clearAllSelection else S.selectAll", text)
+        self.assertIn("S.apiSearchModelsPlaceholder", text)
+        self.assertIn("items(filteredNames", text)
+
     def test_api_settings_callback_does_not_dismiss(self):
         api = (UI / "settings/ApiModelsSection.kt").read_text(encoding="utf-8")
         callback = api.split("        ApiModelPickerDialog(", 1)[1].split("onDismiss =", 1)[0]

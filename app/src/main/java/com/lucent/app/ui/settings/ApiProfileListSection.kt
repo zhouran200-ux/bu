@@ -22,9 +22,12 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DragHandle
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -92,6 +95,8 @@ internal fun ApiProfileListSection(
     var drag by dragState
     var rowStride by remember { mutableFloatStateOf(0f) }
     var rootPointer by remember { mutableStateOf<Offset?>(null) }
+    var searchOpen by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
     val liveViewport = rememberUpdatedState(viewportBounds)
     val density = LocalDensity.current
     val edgeZone = with(density) { 72.dp.toPx() }
@@ -100,12 +105,19 @@ internal fun ApiProfileListSection(
     val shownProfiles = drag?.order ?: profiles
     val shownKeys = drag?.keys ?: baseKeys
     val activeProfileIdx = drag?.selected ?: selectedProfileIdx
-    val canReorder = shownProfiles.size > 1
+    val searchActive = searchQuery.trim().isNotEmpty()
+    val displayedProfiles = remember(shownProfiles, searchQuery) {
+        val text = searchQuery.trim()
+        shownProfiles.withIndex().filter {
+            text.isEmpty() || it.value.name.contains(text, ignoreCase = true)
+        }
+    }
+    val canReorder = shownProfiles.size > 1 && !searchActive
     val settled = drag == null
     val liveProfiles = rememberUpdatedState(profiles)
     val liveSelected = rememberUpdatedState(selectedProfileIdx)
     val liveReorder = rememberUpdatedState(onReorderProfiles)
-    val pageCount = profilePageCount(profiles.size)
+    val pageCount = profilePageCount(displayedProfiles.size)
     val listState = rememberLazyListState(
         initialFirstVisibleItemIndex = (selectedProfileIdx / PROFILES_PER_PAGE).coerceIn(0, pageCount - 1)
     )
@@ -115,9 +127,13 @@ internal fun ApiProfileListSection(
     val snapBehavior = rememberSnapFlingBehavior(listState)
 
     LaunchedEffect(selectedProfileIdx, pageCount) {
-        if (drag != null) return@LaunchedEffect
+        if (drag != null || searchActive) return@LaunchedEffect
         val target = (selectedProfileIdx / PROFILES_PER_PAGE).coerceIn(0, pageCount - 1)
         if (listState.firstVisibleItemIndex != target) listState.animateScrollToItem(target)
+    }
+
+    LaunchedEffect(searchQuery) {
+        if (searchActive) listState.scrollToItem(0)
     }
 
     fun beginDrag(idx: Int) {
@@ -230,24 +246,63 @@ internal fun ApiProfileListSection(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f)
             )
-            Text("${shownProfiles.size}/${ApiProfiles.MAX}", color = onGradientMuted, fontSize = 11.sp)
+            Text("${shownProfiles.size}", color = onGradientMuted, fontSize = 11.sp)
             if (pageCount > 1) {
                 Spacer(modifier = Modifier.width(6.dp))
                 Text("${currentPage + 1}/$pageCount", color = onGradientMuted, fontSize = 11.sp)
             }
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.width(4.dp))
+            IconButton(
+                onClick = {
+                    if (searchOpen) {
+                        searchOpen = false
+                        searchQuery = ""
+                    } else {
+                        searchOpen = true
+                    }
+                },
+                modifier = Modifier.size(30.dp)
+            ) {
+                Icon(
+                    imageVector = if (searchOpen) Icons.Default.Close else Icons.Default.Search,
+                    contentDescription = if (searchOpen) S.actionCancel else S.actionSearch,
+                    tint = onGradientMuted,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+            Spacer(modifier = Modifier.width(4.dp))
             headerActions()
         }
         Spacer(modifier = Modifier.height(8.dp))
         SectionRule()
         Spacer(modifier = Modifier.height(8.dp))
+        if (searchOpen) {
+            CompactField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                placeholder = S.apiSearchProfilesPlaceholder,
+                trailing = {
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(onClick = { searchQuery = "" }, modifier = Modifier.size(28.dp)) {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = S.actionCancel,
+                                tint = onGradientMuted,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                }
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+        }
         if (profiles.isEmpty()) {
             Text(S.apiNoneTitle, color = onGradient, fontSize = 14.sp)
             Spacer(modifier = Modifier.height(3.dp))
             Text(S.apiNoneBody, color = onGradientMuted, fontSize = 13.sp)
             Spacer(modifier = Modifier.height(3.dp))
         }
-        if (shownProfiles.isNotEmpty()) {
+        if (displayedProfiles.isNotEmpty()) {
             CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 0.dp) {
                 BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
                     val pageWidth = maxWidth
@@ -265,9 +320,11 @@ internal fun ApiProfileListSection(
                         items(count = pageCount) { page ->
                             Column(modifier = Modifier.width(pageWidth)) {
                                 val pageStart = page * PROFILES_PER_PAGE
-                                val pageEnd = minOf(pageStart + PROFILES_PER_PAGE, shownProfiles.size)
-                                for (idx in pageStart until pageEnd) {
-                                    val p = shownProfiles[idx]
+                                val pageEnd = minOf(pageStart + PROFILES_PER_PAGE, displayedProfiles.size)
+                                for (position in pageStart until pageEnd) {
+                                    val entry = displayedProfiles[position]
+                                    val idx = entry.index
+                                    val p = entry.value
                                     val identity = shownKeys[idx]
                                     itemKey(identity) {
                                         var restingIdx by remember { mutableIntStateOf(idx) }
@@ -412,15 +469,19 @@ internal fun ApiProfileListSection(
                     }
                 }
             }
-        }
-        if (profiles.size < ApiProfiles.MAX) {
-            Spacer(modifier = Modifier.height(4.dp))
-            GlassButton(
-                text = S.apiAddButton,
-                icon = Icons.Default.Add,
-                enabled = settled,
-                onClick = onAddProfile
+        } else if (searchActive) {
+            Text(
+                text = S.apiSearchNoResults,
+                color = onGradientMuted,
+                fontSize = 13.sp
             )
         }
+        Spacer(modifier = Modifier.height(4.dp))
+        GlassButton(
+            text = S.apiAddButton,
+            icon = Icons.Default.Add,
+            enabled = settled,
+            onClick = onAddProfile
+        )
     }
 }

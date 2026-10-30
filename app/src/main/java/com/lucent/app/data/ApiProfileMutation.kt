@@ -14,7 +14,7 @@ internal sealed interface ApiProfileMutation {
 
 internal fun ApiProfileSnapshot.mutate(command: ApiProfileMutation): ApiProfileSnapshot = when (command) {
     is ApiProfileMutation.Select -> if (profiles.any { it.id == command.id }) copy(selectedId = command.id) else this
-    is ApiProfileMutation.Add -> if (profiles.size >= ApiProfiles.MAX || profiles.any { it.id == command.profile.id }) this
+    is ApiProfileMutation.Add -> if (profiles.any { it.id == command.profile.id }) this
         else ApiProfileSnapshot(profiles + command.profile, command.profile.id)
     is ApiProfileMutation.Delete -> {
         val remaining = profiles.filterNot { it.id == command.id }

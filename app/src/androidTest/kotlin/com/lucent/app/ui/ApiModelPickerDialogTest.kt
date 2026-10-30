@@ -120,6 +120,7 @@ class ApiModelPickerDialogTest {
             }
         }
 
+        rule.onNodeWithText(S.selectAll).performClick()
         rule.onNodeWithText(S.clearAllSelection).performClick()
         rule.onNodeWithText("模型乙").performClick().assertIsOn()
         rule.waitForIdle()

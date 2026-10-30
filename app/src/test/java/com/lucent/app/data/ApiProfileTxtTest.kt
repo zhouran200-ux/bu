@@ -86,7 +86,6 @@ class ApiProfileTxtTest {
         val plan = planApiProfileImport(existing, "fixed-2", incoming, ApiProfileImportMode.Merge)
         assertEquals(1, plan.updated)
         assertEquals(1, plan.added)
-        assertEquals(0, plan.dropped)
         assertEquals(3, plan.profiles.size)
         assertEquals("fixed-1", plan.profiles[0].id)
         assertEquals("new", plan.profiles[0].apiKey)
@@ -104,37 +103,34 @@ class ApiProfileTxtTest {
         assertEquals(listOf("SenseChat-5", "SenseChat-Turbo"), plan.profiles[0].selectedModels)
     }
 
-    @Test fun mergeStopsAtTheProfileCapAndCountsTheDroppedOnes() {
-        val existing = (1..ApiProfiles.MAX).map { ApiProfile(name = "旧 " + it, spec = "openai", baseUrl = "https://x.test/" + it) }
+    @Test fun mergeAddsBeyondFiftyProfiles() {
+        val existing = (1..50).map { ApiProfile(name = "旧 " + it, spec = "openai", baseUrl = "https://x.test/" + it) }
         val incoming = listOf(ApiProfile(name = "新增", spec = "openai", baseUrl = "https://y.test"))
         val plan = planApiProfileImport(existing, null, incoming, ApiProfileImportMode.Merge)
-        assertEquals(0, plan.added)
-        assertEquals(1, plan.dropped)
-        assertEquals(ApiProfiles.MAX, plan.profiles.size)
+        assertEquals(1, plan.added)
+        assertEquals(51, plan.profiles.size)
     }
 
-    @Test fun replaceSwapsEverythingAndTrimsToTheCap() {
+    @Test fun replaceSwapsEverythingWithoutTrimming() {
         val existing = sample()
-        val incoming = (1..(ApiProfiles.MAX + 3)).map {
+        val incoming = (1..53).map {
             ApiProfile(name = "新 " + it, spec = "google", baseUrl = "https://z.test/" + it)
         }
         val plan = planApiProfileImport(existing, "fixed-1", incoming, ApiProfileImportMode.Replace)
-        assertEquals(ApiProfiles.MAX, plan.profiles.size)
-        assertEquals(ApiProfiles.MAX, plan.added)
-        assertEquals(3, plan.dropped)
+        assertEquals(53, plan.profiles.size)
+        assertEquals(53, plan.added)
         assertEquals(0, plan.updated)
         assertTrue(plan.profiles.none { it.id == "fixed-1" })
         assertEquals(plan.profiles.first().id, plan.selectedId)
     }
 
-    @Test fun decodeKeepsEveryRecordAndThePlannerAppliesTheCap() {
+    @Test fun decodeKeepsEveryRecordAndThePlannerKeepsAll() {
         val builder = StringBuilder()
-        repeat(ApiProfiles.MAX + 2) { builder.append("[方案]\nname: n").append(it).append("\nbaseUrl: https://x.test/").append(it).append("\n") }
+        repeat(52) { builder.append("[方案]\nname: n").append(it).append("\nbaseUrl: https://x.test/").append(it).append("\n") }
         val parsed = ApiProfileTxt.decode(builder.toString()).getOrThrow()
-        assertEquals(ApiProfiles.MAX + 2, parsed.profiles.size)
+        assertEquals(52, parsed.profiles.size)
         val plan = planApiProfileImport(emptyList(), null, parsed.profiles, ApiProfileImportMode.Replace)
-        assertEquals(ApiProfiles.MAX, plan.profiles.size)
-        assertEquals(2, plan.dropped)
+        assertEquals(52, plan.profiles.size)
     }
 
     @Test fun identicalBackupMergeDoesNotReportAnUpdate() {
@@ -144,7 +140,6 @@ class ApiProfileTxtTest {
         assertEquals(existing, plan.profiles)
         assertEquals(0, plan.updated)
         assertEquals(0, plan.added)
-        assertEquals(0, plan.dropped)
     }
 
     @Test fun emptyFileProducesNoPlanChange() {

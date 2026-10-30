@@ -19,8 +19,6 @@ object UserAgentPresets {
 
 object ApiProfiles {
 
-    const val MAX = 50
-
     val DEFAULT_PROFILES = listOf(
         ApiProfile(
             name = "商汤",
@@ -33,7 +31,7 @@ object ApiProfiles {
 
     fun serialize(profiles: List<ApiProfile>): String {
         val arr = JSONArray()
-        profiles.take(MAX).forEach { p ->
+        profiles.forEach { p ->
             val models = JSONArray()
             p.selectedModels.forEach { models.put(it) }
             arr.put(
@@ -85,7 +83,7 @@ object ApiProfiles {
                         deterministicId(name, spec, baseUrl, i)
                     }
                 )
-            }.take(MAX)
+            }
         } catch (e: Exception) {
             return null
         }

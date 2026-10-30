@@ -339,13 +339,9 @@ class ApiProfileTest {
     }
 
     @Test
-    fun profileCountIsCappedOnBothWriteAndRead() {
-        val many = (1..(ApiProfiles.MAX + 5)).map { profileWithModels("方案 $it", "m$it") }
-        assertEquals(ApiProfiles.MAX, ApiProfiles.parse(ApiProfiles.serialize(many)).size)
-        assertEquals(ApiProfiles.MAX, ApiProfiles.parse(ApiProfiles.serialize(many.take(ApiProfiles.MAX))).size)
-
-        val oversizedJson = ApiProfiles.serialize(many)
-        assertEquals(ApiProfiles.MAX, ApiProfiles.parse(oversizedJson).size)
+    fun profileCountIsNotCappedOnWriteOrRead() {
+        val many = (1..120).map { profileWithModels("方案 $it", "m$it") }
+        assertEquals(120, ApiProfiles.parse(ApiProfiles.serialize(many)).size)
     }
 
     @Test

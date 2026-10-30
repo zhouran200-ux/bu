@@ -47,7 +47,6 @@ internal class ApiSettingsState(
     }
 
     fun addProfile() {
-        if (profiles.size >= ApiProfiles.MAX) return
         val profile = ApiProfile(name = ApiProfiles.nextDefaultName(profiles))
         drafts.forProfile(profile)
         submit(ApiProfileMutation.Add(profile)) {
@@ -81,7 +80,7 @@ internal class ApiSettingsState(
             return
         }
         val plan = planApiProfileImport(profiles, committed.selectedId, incoming, mode)
-        if (mode == ApiProfileImportMode.Merge && plan.added == 0 && plan.updated == 0 && plan.dropped == 0) {
+        if (mode == ApiProfileImportMode.Merge && plan.added == 0 && plan.updated == 0) {
             notify(S.apiTransferNothing)
             return
         }
@@ -93,7 +92,7 @@ internal class ApiSettingsState(
                 if (outcome.isSuccess) {
                     committed = ApiProfileSnapshot(plan.profiles, plan.selectedId)
                     drafts.clear()
-                    notify(S.apiTransferApplied(plan.added, plan.updated, plan.dropped))
+                    notify(S.apiTransferApplied(plan.added, plan.updated))
                 } else {
                     notify(S.apiSaveFailed)
                 }
@@ -114,13 +113,25 @@ internal class ApiSettingsState(
         val customInput = editing.customModelInput.value.trim()
         val models = editing.models.value
             .let { if (customInput.isNotBlank() && customInput !in it) it + customInput else it }
-        editing.models.value = models
-        editing.customModelInput.value = ""
         val updated = profile.copy(
             name = editing.name.value.trim().ifBlank { S.apiDefaultName(index + 1) },
             spec = editing.spec.value, baseUrl = editing.url.value.trim(), apiKey = editing.key.value.trim(),
             selectedModels = models
         )
+        val duplicate = updated.apiKey.takeIf { it.isNotEmpty() }?.let { key ->
+            profiles.firstOrNull { it.id != updated.id && it.apiKey.trim() == key }
+        }
+        if (duplicate != null) {
+            val duplicateName = duplicate.name.ifBlank {
+                S.apiProfileDefaultName(profiles.indexOfFirst { it.id == duplicate.id } + 1)
+            }
+            val message = S.apiDuplicateKey(duplicateName)
+            notify(message)
+            complete(Result.failure(IllegalStateException(message)))
+            return
+        }
+        editing.models.value = models
+        editing.customModelInput.value = ""
         saving = true
         submit(ApiProfileMutation.Update(updated)) { outcome ->
             saving = false

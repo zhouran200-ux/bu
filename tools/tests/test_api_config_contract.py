@@ -48,11 +48,22 @@ class ApiConfigContractTest(unittest.TestCase):
         self.assertIn("ApiProfileTransferActions(", page)
         self.assertIn("headerActions: @Composable () -> Unit", list_section)
         self.assertIn("headerActions()", list_section)
+        self.assertIn("S.apiTransferMenu", actions)
         self.assertIn("S.apiTransferImport", actions)
         self.assertIn("S.apiTransferExport", actions)
         self.assertIn("ApiProfileImportMode.Merge", actions)
         self.assertIn("ApiProfileImportMode.Replace", actions)
+        self.assertIn("S.apiSearchProfilesPlaceholder", list_section)
+        self.assertIn("S.actionSearch", list_section)
+        self.assertNotIn("ApiProfiles.MAX", list_section)
         self.assertFalse((SETTINGS / "ApiProfileTransferSection.kt").exists())
+
+    def test_profiles_are_unbounded_and_duplicate_keys_are_rejected(self):
+        data = (MAIN / "data/ApiProfile.kt").read_text(encoding="utf-8")
+        state = (SETTINGS / "ApiSettingsState.kt").read_text(encoding="utf-8")
+        self.assertNotIn("ApiProfiles.MAX", data)
+        self.assertIn("S.apiDuplicateKey(", state)
+        self.assertIn("it.apiKey.trim() == key", state)
 
     def test_connection_test_targets_a_selected_model_without_persisting_it(self):
         diagnostics = (SETTINGS / "ApiConnectionDiagnosticsSection.kt").read_text(encoding="utf-8")

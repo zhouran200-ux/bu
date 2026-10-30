@@ -17,8 +17,7 @@ internal data class ApiProfileImportPlan(
     val profiles: List<ApiProfile>,
     val selectedId: String?,
     val added: Int,
-    val updated: Int,
-    val dropped: Int
+    val updated: Int
 )
 
 internal object ApiProfileTxt {
@@ -138,20 +137,18 @@ internal fun planApiProfileImport(
 ): ApiProfileImportPlan {
     if (mode == ApiProfileImportMode.Replace) {
         val taken = mutableSetOf<String>()
-        val replacement = imported.take(ApiProfiles.MAX).map { it.copy(id = freshProfileId(taken)) }
+        val replacement = imported.map { it.copy(id = freshProfileId(taken)) }
         return ApiProfileImportPlan(
             profiles = replacement,
             selectedId = replacement.firstOrNull()?.id,
             added = replacement.size,
-            updated = 0,
-            dropped = (imported.size - replacement.size).coerceAtLeast(0)
+            updated = 0
         )
     }
     val result = existing.toMutableList()
     val taken = result.map { it.id }.toMutableSet()
     var added = 0
     var updated = 0
-    var dropped = 0
     imported.forEach { incoming ->
         val slot = result.indexOfFirst { sameProfileIdentity(it, incoming) }
         if (slot >= 0) {
@@ -164,15 +161,13 @@ internal fun planApiProfileImport(
                 result[slot] = merged
                 updated++
             }
-        } else if (result.size < ApiProfiles.MAX) {
+        } else {
             result += incoming.copy(id = freshProfileId(taken), name = uniqueProfileName(result, incoming.name))
             added++
-        } else {
-            dropped++
         }
     }
     val selected = existingSelectedId?.takeIf { id -> result.any { it.id == id } } ?: result.firstOrNull()?.id
-    return ApiProfileImportPlan(result, selected, added, updated, dropped)
+    return ApiProfileImportPlan(result, selected, added, updated)
 }
 
 private fun sameProfileIdentity(left: ApiProfile, right: ApiProfile): Boolean =

@@ -17,7 +17,18 @@ internal data class ApiProfileImportPlan(
     val profiles: List<ApiProfile>,
     val selectedId: String?,
     val added: Int,
-    val updated: Int
+    val skipped: Int
+)
+
+internal data class ApiProfileKeyConflict(
+    val importedName: String,
+    val existingName: String
+)
+
+internal data class ApiProfileImportPreparation(
+    val profiles: List<ApiProfile>,
+    val mergedDuplicateCount: Int,
+    val conflicts: List<ApiProfileKeyConflict>
 )
 
 internal object ApiProfileTxt {
@@ -55,6 +66,7 @@ internal object ApiProfileTxt {
     fun decode(text: String): Result<ApiProfileTxtParse> {
         val records = mutableListOf<MutableMap<String, MutableList<String>>>()
         var current: MutableMap<String, MutableList<String>>? = null
+        var skippingUnknownSection = false
         var invalid = 0
         text.removePrefix("\uFEFF").lineSequence().forEach { raw ->
             val line = raw.trim()
@@ -66,15 +78,19 @@ internal object ApiProfileTxt {
                     val record = mutableMapOf<String, MutableList<String>>()
                     records += record
                     current = record
+                    skippingUnknownSection = false
                 } else {
                     invalid++
+                    current = null
+                    skippingUnknownSection = true
                 }
                 return@forEach
             }
+            if (skippingUnknownSection) return@forEach
             val colon = line.indexOf(':')
             val equals = line.indexOf('=')
             val separator = when {
-                colon > 0 -> colon
+                colon > 0 && (equals <= 0 || colon < equals) -> colon
                 equals > 0 -> equals
                 else -> -1
             }
@@ -135,45 +151,79 @@ internal fun planApiProfileImport(
     imported: List<ApiProfile>,
     mode: ApiProfileImportMode
 ): ApiProfileImportPlan {
+    val prepared = prepareApiProfileImport(existing, imported)
     if (mode == ApiProfileImportMode.Replace) {
         val taken = mutableSetOf<String>()
-        val replacement = imported.map { it.copy(id = freshProfileId(taken)) }
+        val replacement = prepared.profiles.map { it.copy(id = freshProfileId(taken)) }
         return ApiProfileImportPlan(
             profiles = replacement,
             selectedId = replacement.firstOrNull()?.id,
             added = replacement.size,
-            updated = 0
+            skipped = 0
         )
     }
     val result = existing.toMutableList()
     val taken = result.map { it.id }.toMutableSet()
     var added = 0
-    var updated = 0
-    imported.forEach { incoming ->
-        val slot = result.indexOfFirst { sameProfileIdentity(it, incoming) }
-        if (slot >= 0) {
-            val current = result[slot]
-            val merged = current.copy(
-                apiKey = incoming.apiKey.ifBlank { current.apiKey },
-                selectedModels = if (incoming.selectedModels.isEmpty()) current.selectedModels else incoming.selectedModels
-            )
-            if (merged != current) {
-                result[slot] = merged
-                updated++
-            }
-        } else {
-            result += incoming.copy(id = freshProfileId(taken), name = uniqueProfileName(result, incoming.name))
-            added++
+    var skipped = prepared.conflicts.size
+    prepared.profiles.forEach { incoming ->
+        if (incoming.apiKey.isNotEmpty() && existing.any { it.apiKey.trim() == incoming.apiKey }) {
+            return@forEach
         }
+        if (existing.any { sameProfileContent(it, incoming) }) {
+            skipped++
+            return@forEach
+        }
+        result += incoming.copy(id = freshProfileId(taken), name = uniqueProfileName(result, incoming.name))
+        added++
     }
     val selected = existingSelectedId?.takeIf { id -> result.any { it.id == id } } ?: result.firstOrNull()?.id
-    return ApiProfileImportPlan(result, selected, added, updated)
+    return ApiProfileImportPlan(result, selected, added, skipped)
 }
 
-private fun sameProfileIdentity(left: ApiProfile, right: ApiProfile): Boolean =
-    left.name.trim() == right.name.trim() &&
-        left.spec.trim().lowercase(Locale.US) == right.spec.trim().lowercase(Locale.US) &&
-        left.baseUrl.trim().trimEnd('/') == right.baseUrl.trim().trimEnd('/')
+private fun sameProfileContent(left: ApiProfile, right: ApiProfile): Boolean =
+    left.name == right.name &&
+        left.spec == right.spec &&
+        left.baseUrl == right.baseUrl &&
+        left.apiKey == right.apiKey &&
+        left.selectedModels == right.selectedModels
+
+internal fun prepareApiProfileImport(
+    existing: List<ApiProfile>,
+    imported: List<ApiProfile>
+): ApiProfileImportPreparation {
+    val merged = mutableListOf<ApiProfile>()
+    val slotsByKey = mutableMapOf<String, Int>()
+    var mergedDuplicateCount = 0
+    imported.forEach { incoming ->
+        val key = incoming.apiKey.trim()
+        val slot = key.takeIf { it.isNotEmpty() }?.let(slotsByKey::get)
+        if (slot != null) {
+            val current = merged[slot]
+            val models = (current.selectedModels + incoming.selectedModels)
+                .map { it.trim() }
+                .filter { it.isNotEmpty() }
+                .distinct()
+            merged[slot] = current.copy(selectedModels = models)
+            mergedDuplicateCount++
+        } else {
+            if (key.isNotEmpty()) slotsByKey[key] = merged.size
+            merged += incoming.copy(apiKey = key)
+        }
+    }
+    val existingByKey = existing
+        .mapNotNull { profile -> profile.apiKey.trim().takeIf { it.isNotEmpty() }?.let { it to profile } }
+        .toMap()
+    val conflicts = merged.mapIndexedNotNull { index, incoming ->
+        val sameKey = incoming.apiKey.takeIf { it.isNotEmpty() }?.let(existingByKey::get)
+            ?: return@mapIndexedNotNull null
+        ApiProfileKeyConflict(
+            importedName = incoming.name.ifBlank { "方案 ${index + 1}" },
+            existingName = sameKey.name.ifBlank { "现有方案" }
+        )
+    }
+    return ApiProfileImportPreparation(merged, mergedDuplicateCount, conflicts)
+}
 
 private fun freshProfileId(taken: MutableSet<String>): String {
     var id = UUID.randomUUID().toString()

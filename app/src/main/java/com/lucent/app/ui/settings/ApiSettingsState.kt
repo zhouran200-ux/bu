@@ -80,7 +80,7 @@ internal class ApiSettingsState(
             return
         }
         val plan = planApiProfileImport(profiles, committed.selectedId, incoming, mode)
-        if (mode == ApiProfileImportMode.Merge && plan.added == 0 && plan.updated == 0) {
+        if (mode == ApiProfileImportMode.Merge && plan.added == 0) {
             notify(S.apiTransferNothing)
             return
         }
@@ -92,7 +92,7 @@ internal class ApiSettingsState(
                 if (outcome.isSuccess) {
                     committed = ApiProfileSnapshot(plan.profiles, plan.selectedId)
                     drafts.clear()
-                    notify(S.apiTransferApplied(plan.added, plan.updated))
+                    notify(S.apiTransferApplied(plan.added, plan.skipped))
                 } else {
                     notify(S.apiSaveFailed)
                 }

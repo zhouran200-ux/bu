@@ -58,6 +58,17 @@ class ApiConfigContractTest(unittest.TestCase):
         self.assertNotIn("ApiProfiles.MAX", list_section)
         self.assertFalse((SETTINGS / "ApiProfileTransferSection.kt").exists())
 
+    def test_import_conflicts_are_confirmed_without_changing_existing_profiles(self):
+        data = (MAIN / "data/ApiProfileTxt.kt").read_text(encoding="utf-8")
+        state = (SETTINGS / "ApiSettingsState.kt").read_text(encoding="utf-8")
+        actions = (SETTINGS / "ApiProfileTransferActions.kt").read_text(encoding="utf-8")
+        self.assertIn("prepareApiProfileImport(latestProfiles.value, parse.profiles)", actions)
+        self.assertIn("request.prepared.conflicts.isNotEmpty()", actions)
+        self.assertIn("S.apiTransferConflictTitle", actions)
+        self.assertIn("ApiProfileImportPreparation", data)
+        self.assertIn("existing.any { it.apiKey.trim() == incoming.apiKey }", data)
+        self.assertIn("S.apiTransferApplied(plan.added, plan.skipped)", state)
+
     def test_profiles_are_unbounded_and_duplicate_keys_are_rejected(self):
         data = (MAIN / "data/ApiProfile.kt").read_text(encoding="utf-8")
         state = (SETTINGS / "ApiSettingsState.kt").read_text(encoding="utf-8")

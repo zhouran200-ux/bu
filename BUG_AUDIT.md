@@ -8,7 +8,7 @@
 - Claude/Gemini 的验证重点改为中转站 OpenAI 兼容路径：Claude 4.5 预算、Opus 4.5 effort+budget、Claude 4.6+ adaptive effort、Gemini level/budget 均新增实际 JSON 断言，确认不会混入另一协议的字段。
 - 旧模型输出上限常量仍保留为安全截断，不代表继续提供旧模型思考档位；旧模型命中时会落到“未识别/模型默认”。
 - 同步更新模型能力审计测试、旧别名期望、测试连接探测范围与文档。验证以本轮集中运行为准，不把静态浏览当成执行结果。
-- 验证：全量 Debug JVM 679 项/105 套件全通过；Python 151 项、quick 10 项门禁、Debug/Release Kotlin、Android 测试代码编译和 Debug Lint 通过；未运行设备测试或打包 APK。
+- 验证：全量 Debug JVM 681 项/105 套件全通过；Python 151 项、quick 10 项门禁、Debug/Release Kotlin、Android 测试代码编译和 Debug Lint 通过；未运行设备测试或打包 APK。API 方案卡改为每 10 个一页，卡片高度压缩约 1/4，下方字段区域未改。
 
 ## 2026-10-29：思考强度下发专项审计
 

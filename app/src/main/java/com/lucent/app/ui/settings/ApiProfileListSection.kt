@@ -4,9 +4,11 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -16,6 +18,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DragHandle
@@ -26,6 +30,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key as itemKey
 import androidx.compose.runtime.mutableFloatStateOf
@@ -100,6 +105,20 @@ internal fun ApiProfileListSection(
     val liveProfiles = rememberUpdatedState(profiles)
     val liveSelected = rememberUpdatedState(selectedProfileIdx)
     val liveReorder = rememberUpdatedState(onReorderProfiles)
+    val pageCount = profilePageCount(profiles.size)
+    val listState = rememberLazyListState(
+        initialFirstVisibleItemIndex = (selectedProfileIdx / PROFILES_PER_PAGE).coerceIn(0, pageCount - 1)
+    )
+    val currentPage by remember(pageCount) {
+        derivedStateOf { listState.firstVisibleItemIndex.coerceIn(0, pageCount - 1) }
+    }
+    val snapBehavior = rememberSnapFlingBehavior(listState)
+
+    LaunchedEffect(selectedProfileIdx, pageCount) {
+        if (drag != null) return@LaunchedEffect
+        val target = (selectedProfileIdx / PROFILES_PER_PAGE).coerceIn(0, pageCount - 1)
+        if (listState.firstVisibleItemIndex != target) listState.animateScrollToItem(target)
+    }
 
     fun beginDrag(idx: Int) {
         val current = drag
@@ -143,10 +162,11 @@ internal fun ApiProfileListSection(
         val current = drag ?: return
         val stride = rowStride
         if (current.held < 0 || stride <= 0f) return
+        val pageRange = profilePageRange(current.held, shownProfiles.lastIndex)
         var travelled = current.travel + distance
         var next = current
         while (travelled >= stride) {
-            val stepped = next.stepped(+1)
+            val stepped = next.stepped(+1, pageRange)
             if (stepped === next) {
                 travelled = 0f
                 break
@@ -155,7 +175,7 @@ internal fun ApiProfileListSection(
             travelled -= stride
         }
         while (travelled <= -stride) {
-            val stepped = next.stepped(-1)
+            val stepped = next.stepped(-1, pageRange)
             if (stepped === next) {
                 travelled = 0f
                 break
@@ -164,8 +184,8 @@ internal fun ApiProfileListSection(
             travelled += stride
         }
         val edge = when {
-            next.held == 0 -> travelled.coerceIn(0f, stride)
-            next.held == next.order.lastIndex -> travelled.coerceIn(-stride, 0f)
+            next.held == pageRange.first -> travelled.coerceIn(0f, stride)
+            next.held == pageRange.last -> travelled.coerceIn(-stride, 0f)
             else -> travelled.coerceIn(-stride, stride)
         }
         drag = next.copy(travel = edge)
@@ -211,6 +231,10 @@ internal fun ApiProfileListSection(
                 modifier = Modifier.weight(1f)
             )
             Text("${shownProfiles.size}/${ApiProfiles.MAX}", color = onGradientMuted, fontSize = 11.sp)
+            if (pageCount > 1) {
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("${currentPage + 1}/$pageCount", color = onGradientMuted, fontSize = 11.sp)
+            }
             Spacer(modifier = Modifier.width(8.dp))
             headerActions()
         }
@@ -223,139 +247,168 @@ internal fun ApiProfileListSection(
             Text(S.apiNoneBody, color = onGradientMuted, fontSize = 13.sp)
             Spacer(modifier = Modifier.height(3.dp))
         }
-        CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 0.dp) {
-            shownProfiles.forEachIndexed { idx, p ->
-                val identity = shownKeys[idx]
-                itemKey(identity) {
-                    var restingIdx by remember { mutableIntStateOf(idx) }
-                    val slide = remember { Animatable(0f) }
-                    val liveIdx = rememberUpdatedState(idx)
-                    var handleCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
-                    val held = drag?.held == idx
-                    val isActive = idx == activeProfileIdx
-                    LaunchedEffect(idx, held) {
-                        val stride = rowStride
-                        if (restingIdx != idx) {
-                            val shift = (restingIdx - idx) * stride
-                            restingIdx = idx
-                            if (held || stride <= 0f) {
-                                slide.snapTo(0f)
-                            } else {
-                                slide.snapTo(shift)
-                                slide.animateTo(0f, PROFILE_SLIDE_SPRING)
-                            }
-                        } else if (!held) {
-                            val residual = drag?.travel ?: 0f
-                            if (residual != 0f && stride > 0f) {
-                                slide.snapTo(residual)
-                                slide.animateTo(0f, PROFILE_SLIDE_SPRING)
-                            }
-                        }
+        if (shownProfiles.isNotEmpty()) {
+            CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 0.dp) {
+                BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                    val pageWidth = maxWidth
+                    val fillerHeight = if (rowStride > 0f) {
+                        with(density) { rowStride.toDp() }
+                    } else {
+                        49.dp
                     }
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .zIndex(if (held) 1f else 0f)
-                            .fillMaxWidth()
-                            .onSizeChanged { if (it.height > 0) rowStride = it.height.toFloat() }
-                            .padding(bottom = 6.dp)
-                            .graphicsLayer {
-                                val carried = drag?.travel ?: 0f
-                                translationY = slide.value + (if (held) carried else 0f)
-                                scaleX = if (held) HELD_SCALE else 1f
-                                scaleY = if (held) HELD_SCALE else 1f
-                                alpha = if (held) HELD_ALPHA else 1f
-                            }
-                            .frostedGlass(cornerRadius = ROW_CARD_RADIUS)
-                            .selectedCard(isActive, ROW_CARD_RADIUS, borderWidth = 1.5.dp, washStrength = 1.35f)
-                            .padding(horizontal = 10.dp, vertical = 8.dp)
+                    LazyRow(
+                        state = listState,
+                        flingBehavior = snapBehavior,
+                        userScrollEnabled = pageCount > 1 && settled,
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        if (canReorder) {
-                            Box(
-                                modifier = Modifier
-                                    .size(30.dp)
-                                    .onGloballyPositioned { handleCoordinates = it }
-                                    .pointerInput(identity, active) {
-                                        if (!active) return@pointerInput
-                                        try {
-                                            detectDragGesturesAfterLongPress(
-                                                onDragStart = { position ->
-                                                    val coordinates = handleCoordinates
-                                                    if (coordinates != null && coordinates.isAttached) {
-                                                        beginDrag(liveIdx.value)
-                                                        rootPointer = coordinates.localToRoot(position)
-                                                    }
-                                                },
-                                                onDrag = { change, _ ->
-                                                    change.consume()
-                                                    val coordinates = handleCoordinates
-                                                    if (coordinates != null && coordinates.isAttached) {
-                                                        val pointer = coordinates.localToRoot(change.position)
-                                                        val previous = rootPointer
-                                                        rootPointer = pointer
-                                                        if (previous != null) moveDrag(pointer.y - previous.y)
-                                                    } else {
-                                                        cancelDrag()
-                                                    }
-                                                },
-                                                onDragEnd = { endDrag() },
-                                                onDragCancel = { cancelDrag() }
-                                            )
-                                        } finally {
-                                            if (drag?.keys?.getOrNull(drag?.held ?: -1) == identity) cancelDrag()
+                        items(count = pageCount) { page ->
+                            Column(modifier = Modifier.width(pageWidth)) {
+                                val pageStart = page * PROFILES_PER_PAGE
+                                val pageEnd = minOf(pageStart + PROFILES_PER_PAGE, shownProfiles.size)
+                                for (idx in pageStart until pageEnd) {
+                                    val p = shownProfiles[idx]
+                                    val identity = shownKeys[idx]
+                                    itemKey(identity) {
+                                        var restingIdx by remember { mutableIntStateOf(idx) }
+                                        val slide = remember { Animatable(0f) }
+                                        val liveIdx = rememberUpdatedState(idx)
+                                        var handleCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
+                                        val held = drag?.held == idx
+                                        val isActive = idx == activeProfileIdx
+                                        LaunchedEffect(idx, held) {
+                                            val stride = rowStride
+                                            if (restingIdx != idx) {
+                                                val shift = (restingIdx - idx) * stride
+                                                restingIdx = idx
+                                                if (held || stride <= 0f) {
+                                                    slide.snapTo(0f)
+                                                } else {
+                                                    slide.snapTo(shift)
+                                                    slide.animateTo(0f, PROFILE_SLIDE_SPRING)
+                                                }
+                                            } else if (!held) {
+                                                val residual = drag?.travel ?: 0f
+                                                if (residual != 0f && stride > 0f) {
+                                                    slide.snapTo(residual)
+                                                    slide.animateTo(0f, PROFILE_SLIDE_SPRING)
+                                                }
+                                            }
                                         }
-                                    },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    Icons.Default.DragHandle,
-                                    contentDescription = S.a11yDragToReorder,
-                                    tint = onGradientMuted.copy(alpha = onGradientMuted.alpha * 0.7f),
-                                    modifier = Modifier.size(18.dp)
-                                )
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            modifier = Modifier
+                                                .zIndex(if (held) 1f else 0f)
+                                                .fillMaxWidth()
+                                                .onSizeChanged { if (it.height > 0) rowStride = it.height.toFloat() }
+                                                .padding(bottom = 3.dp)
+                                                .graphicsLayer {
+                                                    val carried = drag?.travel ?: 0f
+                                                    translationY = slide.value + (if (held) carried else 0f)
+                                                    scaleX = if (held) HELD_SCALE else 1f
+                                                    scaleY = if (held) HELD_SCALE else 1f
+                                                    alpha = if (held) HELD_ALPHA else 1f
+                                                }
+                                                .frostedGlass(cornerRadius = ROW_CARD_RADIUS)
+                                                .selectedCard(isActive, ROW_CARD_RADIUS, borderWidth = 1.5.dp, washStrength = 1.35f)
+                                                .padding(horizontal = 10.dp, vertical = 1.dp)
+                                        ) {
+                                            if (canReorder) {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .size(30.dp)
+                                                        .onGloballyPositioned { handleCoordinates = it }
+                                                        .pointerInput(identity, active) {
+                                                            if (!active) return@pointerInput
+                                                            try {
+                                                                detectDragGesturesAfterLongPress(
+                                                                    onDragStart = { position ->
+                                                                        val coordinates = handleCoordinates
+                                                                        if (coordinates != null && coordinates.isAttached) {
+                                                                            beginDrag(liveIdx.value)
+                                                                            rootPointer = coordinates.localToRoot(position)
+                                                                        }
+                                                                    },
+                                                                    onDrag = { change, _ ->
+                                                                        change.consume()
+                                                                        val coordinates = handleCoordinates
+                                                                        if (coordinates != null && coordinates.isAttached) {
+                                                                            val pointer = coordinates.localToRoot(change.position)
+                                                                            val previous = rootPointer
+                                                                            rootPointer = pointer
+                                                                            if (previous != null) moveDrag(pointer.y - previous.y)
+                                                                        } else {
+                                                                            cancelDrag()
+                                                                        }
+                                                                    },
+                                                                    onDragEnd = { endDrag() },
+                                                                    onDragCancel = { cancelDrag() }
+                                                                )
+                                                            } finally {
+                                                                if (drag?.keys?.getOrNull(drag?.held ?: -1) == identity) cancelDrag()
+                                                            }
+                                                        },
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    Icon(
+                                                        Icons.Default.DragHandle,
+                                                        contentDescription = S.a11yDragToReorder,
+                                                        tint = onGradientMuted.copy(alpha = onGradientMuted.alpha * 0.7f),
+                                                        modifier = Modifier.size(18.dp)
+                                                    )
+                                                }
+                                            }
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                modifier = Modifier
+                                                    .weight(1f)
+                                                    .selectable(
+                                                        selected = isActive,
+                                                        interactionSource = remember { MutableInteractionSource() },
+                                                        indication = rememberScaleIndication(),
+                                                        enabled = settled,
+                                                        role = Role.RadioButton,
+                                                        onClick = {
+                                                            Haptics.tick(context)
+                                                            onSelectProfile(idx)
+                                                        }
+                                                    )
+                                            ) {
+                                                Text(
+                                                    text = p.name.ifBlank { S.apiProfileDefaultName(idx + 1) },
+                                                    color = onGradient,
+                                                    fontSize = LucentTitles.ItemSize,
+                                                    fontWeight = if (isActive) FontWeight.Bold else LucentTitles.ItemWeight,
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis
+                                                )
+                                                Spacer(modifier = Modifier.width(6.dp))
+                                                val modelCount = if (idx == activeProfileIdx) models.size else p.selectedModels.size
+                                                Text(
+                                                    text = S.modelCountLabel(modelCount),
+                                                    color = onGradientMuted,
+                                                    fontSize = 12.sp
+                                                )
+                                            }
+                                            DeleteWithConfirmButton(
+                                                onDelete = { if (settled) onRequestDeleteProfile(idx) },
+                                                tint = onGradientMuted,
+                                                buttonSize = 30.dp,
+                                                iconSize = 18.dp,
+                                                confirmTextPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                                                confirmTextSize = 11.sp,
+                                                contentDescription = S.apiDeleteA11y
+                                            )
+                                        }
+                                    }
+                                }
+                                if (pageCount > 1) {
+                                    repeat(PROFILES_PER_PAGE - (pageEnd - pageStart)) {
+                                        Spacer(modifier = Modifier.height(fillerHeight))
+                                    }
+                                }
                             }
                         }
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .weight(1f)
-                                .selectable(
-                                    selected = isActive,
-                                    interactionSource = remember { MutableInteractionSource() },
-                                    indication = rememberScaleIndication(),
-                                    enabled = settled,
-                                    role = Role.RadioButton,
-                                    onClick = {
-                                        Haptics.tick(context)
-                                        onSelectProfile(idx)
-                                    }
-                                )
-                        ) {
-                            Text(
-                                text = p.name.ifBlank { S.apiProfileDefaultName(idx + 1) },
-                                color = onGradient,
-                                fontSize = LucentTitles.ItemSize,
-                                fontWeight = if (isActive) FontWeight.Bold else LucentTitles.ItemWeight,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            val modelCount = if (idx == activeProfileIdx) models.size else p.selectedModels.size
-                            Text(
-                                text = S.modelCountLabel(modelCount),
-                                color = onGradientMuted,
-                                fontSize = 12.sp
-                            )
-                        }
-                        DeleteWithConfirmButton(
-                            onDelete = { if (settled) onRequestDeleteProfile(idx) },
-                            tint = onGradientMuted,
-                            buttonSize = 30.dp,
-                            iconSize = 18.dp,
-                            confirmTextPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-                            confirmTextSize = 11.sp,
-                            contentDescription = S.apiDeleteA11y
-                        )
                     }
                 }
             }

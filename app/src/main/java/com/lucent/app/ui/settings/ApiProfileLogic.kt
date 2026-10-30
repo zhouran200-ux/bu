@@ -13,6 +13,16 @@ internal fun modelChoices(fetched: List<String>, saved: List<String>): List<Stri
     return out.toList()
 }
 
+internal const val PROFILES_PER_PAGE = 10
+
+internal fun profilePageCount(profileCount: Int): Int =
+    ((profileCount + PROFILES_PER_PAGE - 1) / PROFILES_PER_PAGE).coerceAtLeast(1)
+
+internal fun profilePageRange(index: Int, lastIndex: Int): IntRange {
+    val start = (index / PROFILES_PER_PAGE) * PROFILES_PER_PAGE
+    return start..minOf(start + PROFILES_PER_PAGE - 1, lastIndex)
+}
+
 internal val PROFILE_SLIDE_SPRING = spring<Float>(dampingRatio = 0.62f, stiffness = Spring.StiffnessMediumLow)
 internal val ROW_CARD_RADIUS = 14.dp
 internal const val HELD_SCALE = 1.02f
@@ -26,9 +36,9 @@ internal data class ProfileDrag(
     val travel: Float
 )
 
-internal fun ProfileDrag.stepped(step: Int): ProfileDrag {
+internal fun ProfileDrag.stepped(step: Int, range: IntRange = order.indices): ProfileDrag {
     val to = held + step
-    if (held !in order.indices || to !in order.indices) return this
+    if (held !in range || to !in range) return this
     return ProfileDrag(
         order = ApiProfiles.moved(order, held, to),
         keys = ApiProfiles.moved(keys, held, to),

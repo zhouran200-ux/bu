@@ -19,14 +19,14 @@ class TestConnectionDisplayTest {
     fun plainExplanationComesFirstFollowedByProviderDetail() {
         val message = failure(401, """{"error":{"message":"Incorrect API key","type":"invalid_request_error"}}""")
             .formatDisplayMessage()
-        assertTrue(message.startsWith("API Key 无效或未授权"), message)
-        assertTrue(message.contains("详细信息：invalid_request_error: Incorrect API key"), message)
+        assertTrue(message.startsWith("HTTP 401：API Key 无效或未授权"), message)
+        assertTrue(message.contains("invalid_request_error: Incorrect API key"), message)
     }
 
     @Test
     fun quotaAndRateLimitMentionWaiting() {
         val message = failure(429, """{"error":{"message":"rate limit exceeded"}}""").formatDisplayMessage()
-        assertTrue(message.startsWith("额度不足或请求太频繁"), message)
+        assertTrue(message.startsWith("HTTP 429：请求频率过高或额度不足"), message)
         assertTrue(message.contains("rate limit exceeded"), message)
     }
 
@@ -34,15 +34,15 @@ class TestConnectionDisplayTest {
     fun timeoutAndUnresolvableHostExplainTheNextStep() {
         assertTrue(
             failure(0, errorMessage = "java.net.SocketTimeoutException: Read timed out")
-                .formatDisplayMessage().startsWith("连接超时")
+                .formatDisplayMessage().startsWith("连接或读取超时")
         )
         assertTrue(
             failure(0, errorMessage = "Unable to resolve host api.example.com")
-                .formatDisplayMessage().startsWith("无法解析地址")
+                .formatDisplayMessage().startsWith("无法解析服务器地址")
         )
         assertTrue(
             failure(0, errorMessage = "Connection refused")
-                .formatDisplayMessage().startsWith("连接被拒绝")
+                .formatDisplayMessage().startsWith("无法建立连接")
         )
     }
 
@@ -53,7 +53,9 @@ class TestConnectionDisplayTest {
 
     @Test
     fun missingDetailFallsBackToExplanationOnly() {
-        assertEquals("请求失败（HTTP 418）", failure(418).formatDisplayMessage())
+        val message = failure(418).formatDisplayMessage()
+        assertTrue(message.startsWith("HTTP 418：请求失败"), message)
+        assertTrue(message.contains("查看服务商返回内容"), message)
     }
 
     @Test
@@ -78,7 +80,7 @@ class TestConnectionDisplayTest {
     fun statusIsBoundedAndSuccessfulHttpDoesNotHideMissingGeneration() {
         assertTrue(failure(200, "{}", "no visible text").formatDisplayMessage().contains("尚未确认"))
         val oversized = org.json.JSONObject().put("error", org.json.JSONObject().put("message", "x".repeat(10000))).toString()
-        assertTrue(failure(400, oversized).formatDisplayMessage().length <= 600)
+        assertTrue(failure(400, oversized).formatDisplayMessage().length <= 700)
     }
 
     @Test

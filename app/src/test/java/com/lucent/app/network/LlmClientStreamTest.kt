@@ -196,7 +196,7 @@ class LlmClientStreamTest {
         }.use { server ->
             val result = stream(server) { _, _ -> throw failure }
             assertTrue(result.isFailure)
-            assertEquals(failure.message, result.exceptionOrNull()?.message)
+            assertTrue(result.exceptionOrNull()?.message.orEmpty().contains("consumer failed"))
             assertNull(result.exceptionOrNull()?.cause)
             server.awaitFinished()
         }
@@ -247,7 +247,9 @@ class LlmClientStreamTest {
                 flush()
             }
         }.use { server ->
-            assertEquals("HTTP 429: quota exhausted", stream(server).exceptionOrNull()?.message)
+            val message = stream(server).exceptionOrNull()?.message.orEmpty()
+            assertTrue(message, message.startsWith("HTTP 429：请求频率过高或额度不足"))
+            assertTrue(message, message.contains("quota exhausted"))
             server.awaitFinished()
         }
     }

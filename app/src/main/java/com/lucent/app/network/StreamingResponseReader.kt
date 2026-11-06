@@ -24,7 +24,9 @@ internal object StreamingResponseReader {
             ensureStreamActive()
             val event = events.next(ensureStreamActive) ?: break
             ensureStreamActive()
-            if (event.type == "error") throw IOException("服务端返回 SSE 错误事件")
+            if (event.type == "error") {
+                throw IOException("服务端返回 SSE 错误事件：" + event.data.take(800))
+            }
             val data = event.data
             if (data.isNotBlank()) {
                 if (data.trim() == "[DONE]") {
@@ -39,10 +41,10 @@ internal object StreamingResponseReader {
                     }
                     value
                 } catch (error: JSONException) {
-                    throw IOException("服务端返回无效的 SSE JSON 事件", error)
+                    throw IOException("服务端返回无效的 SSE JSON 事件：" + data.take(200), error)
                 }
                 if (json.has("error") || json.optString("type") == "error") {
-                    throw IOException("服务端返回流式错误响应")
+                    throw IOException("服务端返回流式错误响应：" + json.toString().take(800))
                 }
                 if (spec == ApiSpec.ANTHROPIC && json.optString("type") == "message_stop") {
                     sawEndOfStream = true

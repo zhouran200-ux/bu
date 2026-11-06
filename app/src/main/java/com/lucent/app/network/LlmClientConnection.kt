@@ -65,7 +65,7 @@ internal object LlmClientConnection {
                     targetModel = probeModel,
                     requestUrl = resolvedUrl,
                     rawResponseBody = bodyStr,
-                    errorMessage = "HTTP ${response.code}: ${errMsg.ifBlank { response.message }}",
+                    errorMessage = errMsg.ifBlank { response.message },
                     userAgentUsed = usedUa,
                     probeKind = probeKind
                 )
@@ -98,7 +98,7 @@ internal object LlmClientConnection {
                     targetModel = probeModel,
                     requestUrl = resolvedUrl,
                     rawResponseBody = DiagnosticRedaction.text(e.stackTraceToString(), apiKey).take(1500),
-                    errorMessage = e.message ?: e.javaClass.simpleName,
+                    errorMessage = e.javaClass.simpleName + ": " + (e.message ?: "未知网络错误"),
                     userAgentUsed = usedUa,
                     probeKind = probeKind
                 ).redacted(apiKey)

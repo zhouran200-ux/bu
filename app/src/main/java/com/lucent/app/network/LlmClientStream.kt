@@ -5,8 +5,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Job
-import org.json.JSONException
-import org.json.JSONObject
+import java.io.IOException
 
 internal object LlmClientStream {
     suspend fun chatStream(
@@ -28,6 +27,7 @@ internal object LlmClientStream {
             }
         }
 
+        var requestUrl = ""
         try {
             ensureStreamActive()
             val requestBuilder = StreamingRequestBuilder.build(
@@ -37,7 +37,9 @@ internal object LlmClientStream {
             requestBuilder.header("Accept", "text/event-stream")
             applyHeaders(requestBuilder, spec, apiKey)
 
-            val call = LlmHttpClients.streamClient.newCall(requestBuilder.build())
+            val request = requestBuilder.build()
+            requestUrl = request.url.toString()
+            val call = LlmHttpClients.streamClient.newCall(request)
             handle?.attach(call)
             val cancellationSignal = Job(coroutineContext[Job])
             cancellationSignal.invokeOnCompletion { cause ->
@@ -53,18 +55,23 @@ internal object LlmClientStream {
                             BufferedResponseLimits.read(body)
                         }.orEmpty()
                         ensureStreamActive()
-                        val errMsg = try {
-                            val json = JSONObject(bodyStr)
-                            val errorObj = json.optJSONObject("error")
-                            errorObj?.optString("message") ?: DiagnosticRedaction.text(bodyStr, apiKey).take(200)
-                        } catch (_: JSONException) {
-                            DiagnosticRedaction.text(bodyStr, apiKey).take(200)
-                        }
-                        return@withContext Result.failure(Exception("HTTP ${response.code}: ${DiagnosticRedaction.text(errMsg.ifBlank { response.message }, apiKey)}"))
+                        return@withContext Result.failure(IOException(RequestFailureFormatter.http(
+                            code = response.code,
+                            body = bodyStr,
+                            apiKey = apiKey,
+                            responseMessage = response.message,
+                            requestUrl = requestUrl,
+                            model = model
+                        )))
                     }
 
                     val source = response.body?.source()
-                        ?: return@withContext Result.failure(Exception("响应数据为空"))
+                        ?: return@withContext Result.failure(IOException(RequestFailureFormatter.protocol(
+                            problem = "服务商返回了空响应体",
+                            requestUrl = requestUrl,
+                            model = model,
+                            apiKey = apiKey
+                        )))
                     Result.success(StreamingResponseReader.read(source, spec, ::ensureStreamActive, onChunk))
                 }
             } finally {
@@ -75,7 +82,7 @@ internal object LlmClientStream {
             throw e
         } catch (e: Exception) {
             ensureStreamActive()
-            Result.failure(DiagnosticRedaction.failure(e, apiKey))
+            Result.failure(IOException(RequestFailureFormatter.network(e, apiKey, requestUrl, model)))
         }
     }
 }

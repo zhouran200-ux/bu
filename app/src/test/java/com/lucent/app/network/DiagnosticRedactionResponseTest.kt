@@ -29,7 +29,7 @@ class DiagnosticRedactionResponseTest {
             StubServer(streamBody).use { server ->
                 val result = LlmClient.chatStream(server.url, ApiSpec.OPENAI, key, "test", emptyList()) { _, _ -> }
                 assertTrue(result.isFailure)
-                assertTrue(result.exceptionOrNull()!!.message!!.startsWith("HTTP 401:"))
+                assertTrue(result.exceptionOrNull()!!.message!!.startsWith("HTTP 401"))
                 assertFalse(result.exceptionOrNull()!!.message!!.contains(key.take(5)))
                 server.awaitFinished()
             }

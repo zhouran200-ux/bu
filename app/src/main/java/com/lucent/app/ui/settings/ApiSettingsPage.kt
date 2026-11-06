@@ -176,7 +176,12 @@ internal fun ApiConfigSettingsPage(
                             scope = scope,
                             isTargetCurrent = { latestRequestTarget.value == target },
                             setBusy = onLoadingChange,
-                            onFailure = { fetchModelsError = S.apiFetchModelsFailed },
+                            onFailure = { failure ->
+                                val detail = (failure.message ?: "").trim()
+                                    .ifBlank { S.apiFetchModelsFailed }
+                                    .take(700)
+                                fetchModelsError = S.apiModelsFetchFailed(detail)
+                            },
                             request = { ApiProbe.fetchModels(url, spec, key) }
                         ) { result ->
                             result.onSuccess { list ->
@@ -187,7 +192,9 @@ internal fun ApiConfigSettingsPage(
                                     pickerOpen = true
                                 }
                             }.onFailure {
-                                val detail = (it.message ?: "").trim().ifBlank { S.noDetails }.take(180)
+                                val detail = (it.message ?: "").trim()
+                                    .ifBlank { S.noDetails }
+                                    .take(700)
                                 fetchModelsError = S.apiModelsFetchFailed(detail)
                             }
                         }
@@ -265,7 +272,13 @@ internal fun ApiConfigSettingsPage(
                         latestRequestTarget.value == target && latestTestModel.value == targetModel
                     },
                     setBusy = { testingConn = it },
-                    onFailure = { testSuccess = false; testStatusText = S.apiTestConnectionFailed },
+                    onFailure = { failure ->
+                        testSuccess = false
+                        val detail = (failure.message ?: "").trim()
+                            .ifBlank { S.apiTestConnectionFailed }
+                            .take(700)
+                        testStatusText = S.apiTestConnectionFailedDetail(detail)
+                    },
                     request = { ApiProbe.testConnection(url, spec, key, targetModel) }
                 ) { result ->
                     result.onSuccess { res ->
@@ -275,8 +288,10 @@ internal fun ApiConfigSettingsPage(
 
                     }.onFailure { err ->
                         testSuccess = false
-                        val msg = (err.message ?: "").trim().ifBlank { S.apiConnectionFailed }.take(180)
-                        testStatusText = S.apiNetworkFailed(msg)
+                        val detail = (err.message ?: "").trim()
+                            .ifBlank { S.apiTestConnectionFailed }
+                            .take(700)
+                        testStatusText = S.apiTestConnectionFailedDetail(detail)
                     }
                 }
             },

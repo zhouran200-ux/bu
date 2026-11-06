@@ -19,6 +19,7 @@ internal object LlmClientFetch {
         apiKey: String,
         rawEndpoint: Boolean = false
     ): Result<List<String>> = withContext(Dispatchers.IO) {
+        var requestUrl = ""
         try {
             val initialUrl = EndpointUrls.models(baseUrl, spec, apiKey, rawEndpoint)
             var url = initialUrl
@@ -29,11 +30,18 @@ internal object LlmClientFetch {
             while (true) {
                 coroutineContext.ensureActive()
                 check(pages++ < MAX_PAGES) { "Model pagination exceeded $MAX_PAGES pages" }
+                requestUrl = url.toString()
                 val request = Request.Builder().url(url).get()
                 applyHeaders(request, spec, apiKey)
                 val response = BufferedTransport.executeBuffered(LlmHttpClients.client, request.build())
-                if (!response.isSuccessful) return@withContext Result.failure(Exception(
-                    "HTTP "+response.code+": "+DiagnosticRedaction.text(response.body, apiKey)))
+                if (!response.isSuccessful) return@withContext Result.failure(java.io.IOException(
+                    RequestFailureFormatter.http(
+                        code = response.code,
+                        body = response.body,
+                        apiKey = apiKey,
+                        responseMessage = response.message,
+                        requestUrl = requestUrl
+                    )))
                 val json = JSONObject(response.body)
                 val array = json.optJSONArray("data") ?: json.optJSONArray("models") ?: JSONArray()
                 for (i in 0 until array.length()) {
@@ -67,7 +75,7 @@ internal object LlmClientFetch {
             throw cancelled
         } catch (e: Exception) {
             coroutineContext.ensureActive()
-            Result.failure(DiagnosticRedaction.failure(e, apiKey))
+            Result.failure(java.io.IOException(RequestFailureFormatter.network(e, apiKey, requestUrl)))
         }
     }
 }

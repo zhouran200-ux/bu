@@ -179,7 +179,7 @@ internal fun ApiConfigSettingsPage(
                             onFailure = { failure ->
                                 val detail = (failure.message ?: "").trim()
                                     .ifBlank { S.apiFetchModelsFailed }
-                                    .take(700)
+                                    .take(8000)
                                 fetchModelsError = S.apiModelsFetchFailed(detail)
                             },
                             request = { ApiProbe.fetchModels(url, spec, key) }
@@ -194,7 +194,7 @@ internal fun ApiConfigSettingsPage(
                             }.onFailure {
                                 val detail = (it.message ?: "").trim()
                                     .ifBlank { S.noDetails }
-                                    .take(700)
+                                    .take(8000)
                                 fetchModelsError = S.apiModelsFetchFailed(detail)
                             }
                         }
@@ -276,7 +276,7 @@ internal fun ApiConfigSettingsPage(
                         testSuccess = false
                         val detail = (failure.message ?: "").trim()
                             .ifBlank { S.apiTestConnectionFailed }
-                            .take(700)
+                            .take(8000)
                         testStatusText = S.apiTestConnectionFailedDetail(detail)
                     },
                     request = { ApiProbe.testConnection(url, spec, key, targetModel) }
@@ -290,7 +290,7 @@ internal fun ApiConfigSettingsPage(
                         testSuccess = false
                         val detail = (err.message ?: "").trim()
                             .ifBlank { S.apiTestConnectionFailed }
-                            .take(700)
+                            .take(8000)
                         testStatusText = S.apiTestConnectionFailedDetail(detail)
                     }
                 }

@@ -61,7 +61,8 @@ internal object LlmClientStream {
                             apiKey = apiKey,
                             responseMessage = response.message,
                             requestUrl = requestUrl,
-                            model = model
+                            model = model,
+                            headersText = RequestFailureFormatter.headerText(response.headers, apiKey)
                         )))
                     }
 

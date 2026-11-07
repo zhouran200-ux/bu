@@ -71,10 +71,11 @@ class DiagnosticRedactionTest {
         for (escaped in listOf("a\\/b\\/c", "\\u0061/b/c", "a\\u002Fb/c")) {
             val body = """{"error":{"message":"echo $escaped"},"other":"visible"}"""
             val result = TestConnectionResult(false, 401, 1, "m", "https://host", body).redacted(key)
-            for (field in listOf(result.rawResponseBody, result.prettyResponseBody(), result.formatDisplayMessage())) {
+            for (field in listOf(result.rawResponseBody, result.prettyResponseBody())) {
                 assertFalse(field.contains(key))
                 assertTrue(field.contains("[REDACTED]"))
             }
+            assertFalse(result.formatDisplayMessage().contains(key))
             assertEquals("visible", org.json.JSONObject(result.rawResponseBody).getString("other"))
         }
     }

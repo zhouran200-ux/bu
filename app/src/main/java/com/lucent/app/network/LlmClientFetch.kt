@@ -40,7 +40,8 @@ internal object LlmClientFetch {
                         body = response.body,
                         apiKey = apiKey,
                         responseMessage = response.message,
-                        requestUrl = requestUrl
+                        requestUrl = requestUrl,
+                        headersText = RequestFailureFormatter.headerText(response.headers, apiKey)
                     )))
                 val json = JSONObject(response.body)
                 val array = json.optJSONArray("data") ?: json.optJSONArray("models") ?: JSONArray()

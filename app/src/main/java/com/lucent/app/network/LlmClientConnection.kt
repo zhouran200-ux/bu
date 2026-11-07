@@ -67,7 +67,8 @@ internal object LlmClientConnection {
                     rawResponseBody = bodyStr,
                     errorMessage = errMsg.ifBlank { response.message },
                     userAgentUsed = usedUa,
-                    probeKind = probeKind
+                    probeKind = probeKind,
+                    responseHeaders = RequestFailureFormatter.headerText(response.headers, apiKey)
                 )
                 return@withContext Result.success(failureResult.redacted(apiKey))
             }

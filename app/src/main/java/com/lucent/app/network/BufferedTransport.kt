@@ -4,10 +4,17 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
+import okhttp3.Headers
 import okhttp3.OkHttpClient
 import okhttp3.Request
 
-internal data class BufferedReply(val code: Int, val message: String, val isSuccessful: Boolean, val body: String)
+internal data class BufferedReply(
+    val code: Int,
+    val message: String,
+    val isSuccessful: Boolean,
+    val body: String,
+    val headers: Headers
+)
 
 internal object BufferedTransport {
     suspend fun executeBuffered(client: OkHttpClient, request: Request): BufferedReply = withContext(Dispatchers.IO) {
@@ -19,7 +26,7 @@ internal object BufferedTransport {
             call.execute().use { response ->
                 val body = response.body?.let { BufferedResponseLimits.read(it) }.orEmpty()
                 coroutineContext.ensureActive()
-                BufferedReply(response.code, response.message, response.isSuccessful, body)
+                BufferedReply(response.code, response.message, response.isSuccessful, body, response.headers)
             }
         } catch (failure: Exception) {
             coroutineContext.ensureActive()

@@ -118,6 +118,10 @@ internal fun ApiConnectionDiagnosticsSection(
                 if (res.httpCode > 0) appendLine(S.apiHttpStatus(res.httpCode))
                 appendLine(S.apiLatency(res.latencyMs))
                 res.errorMessage?.takeIf { it.isNotBlank() }?.let { appendLine(it) }
+                if (res.responseHeaders.isNotBlank()) {
+                    appendLine(S.apiResponseHeaders)
+                    appendLine(res.responseHeaders)
+                }
                 appendLine(S.apiRawResponse)
                 append(res.prettyResponseBody().ifBlank { S.apiEmptyResponse })
             }

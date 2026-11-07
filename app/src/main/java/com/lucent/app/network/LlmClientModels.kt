@@ -12,7 +12,8 @@ data class TestConnectionResult(
     val rawResponseBody: String,
     val errorMessage: String? = null,
     val userAgentUsed: String? = null,
-    val probeKind: ConnectionProbeKind = ConnectionProbeKind.Generation
+    val probeKind: ConnectionProbeKind = ConnectionProbeKind.Generation,
+    val responseHeaders: String = ""
 ) {
     fun prettyResponseBody(): String = DiagnosticRedaction.text(prettyResponseBodyRaw())
 
@@ -53,7 +54,9 @@ data class TestConnectionResult(
             body = rawResponseBody,
             responseMessage = errorMessage.orEmpty(),
             requestUrl = requestUrl,
-            model = targetModel
+            model = targetModel,
+            headersText = responseHeaders,
+            includeRawBody = false
         )
     }
 

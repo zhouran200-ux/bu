@@ -8,26 +8,32 @@ class TestConnectionDisplayTest {
     private fun failure(
         httpCode: Int,
         raw: String = "",
-        errorMessage: String? = null
+        errorMessage: String? = null,
+        headers: String = ""
     ) = TestConnectionResult(
         success = false, httpCode = httpCode, latencyMs = 12, targetModel = "m",
         requestUrl = "https://api.example.com", rawResponseBody = raw,
-        errorMessage = errorMessage
+        errorMessage = errorMessage, responseHeaders = headers
     )
 
     @Test
-    fun plainExplanationComesFirstFollowedByProviderDetail() {
-        val message = failure(401, """{"error":{"message":"Incorrect API key","type":"invalid_request_error"}}""")
-            .formatDisplayMessage()
+    fun plainExplanationComesFirstAndRawProviderDataFollows() {
+        val message = failure(
+            401,
+            """{"error":{"message":"Incorrect API key","type":"invalid_request_error"}}""",
+            headers = "x-request-id: req_1"
+        ).formatDisplayMessage()
         assertTrue(message.startsWith("HTTP 401：API Key 无效或未授权"), message)
-        assertTrue(message.contains("invalid_request_error: Incorrect API key"), message)
+        assertTrue(message.contains("请求 ID：req_1"), message)
+        assertTrue(message.contains("--- 原始数据 ---"), message)
+        assertTrue(message.contains("x-request-id: req_1"), message)
     }
 
     @Test
     fun quotaAndRateLimitMentionWaiting() {
         val message = failure(429, """{"error":{"message":"rate limit exceeded"}}""").formatDisplayMessage()
         assertTrue(message.startsWith("HTTP 429：请求频率过高或额度不足"), message)
-        assertTrue(message.contains("rate limit exceeded"), message)
+        assertTrue(message.contains("稍后重试"), message)
     }
 
     @Test
@@ -52,10 +58,10 @@ class TestConnectionDisplayTest {
     }
 
     @Test
-    fun missingDetailFallsBackToExplanationOnly() {
+    fun missingDetailStillExplainsWhatToDo() {
         val message = failure(418).formatDisplayMessage()
         assertTrue(message.startsWith("HTTP 418：请求失败"), message)
-        assertTrue(message.contains("查看服务商返回内容"), message)
+        assertTrue(message.contains("--- 原始数据 ---"), message)
     }
 
     @Test

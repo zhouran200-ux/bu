@@ -83,7 +83,7 @@ class SourceIndexPreviewTest {
         assertEquals(80, sourceReadingItems(source.body, source.tagged).size)
     }
 
-    @Test fun firstModelEntrySharesAnchorThenBothPagesKeepTheirOwnPixelOffsets() {
+    @Test fun everyPageSwitchSharesAnchorWithoutReusingOtherLayoutPixels() {
         render()
         rule.onNodeWithTag("source_reader_list").performScrollToIndex(21)
         rule.onNodeWithTag("source_reader_list").performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, 120f) }
@@ -104,10 +104,10 @@ class SourceIndexPreviewTest {
         assertTrue(rawPosition.offset > 0)
         InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
         rule.waitForIdle()
-        assertEquals(readerPosition, position("source_reader_list"))
+        assertPosition("source_reader_list", rawPosition.index, rawPosition.itemKey)
         rule.onNodeWithContentDescription(S.sourceIndexPreviewOpen).performClick()
         rule.waitForIdle()
-        assertEquals(rawPosition, position("source_model_list"))
+        assertPosition("source_model_list", rawPosition.index, rawPosition.itemKey)
     }
 
     private fun position(tag: String): ReadingPosition = ReadingPosition.decode(
@@ -143,14 +143,14 @@ class SourceIndexPreviewTest {
         assertEquals(model, position("source_model_list"))
         rule.onNodeWithContentDescription(S.sourceIndexPreviewBack).performClick()
         rule.waitForIdle()
-        assertEquals(document, position("source_reader_list"))
+        assertPosition("source_reader_list", model.index, model.itemKey)
         rule.runOnIdle { visible.value = false }
         rule.runOnIdle { visible.value = true }
         rule.waitUntil(5_000) {
             rule.onAllNodesWithContentDescription(S.sourceIndexPreviewOpen).fetchSemanticsNodes().isNotEmpty()
         }
         rule.waitForIdle()
-        assertEquals(document, position("source_reader_list"))
+        assertPosition("source_reader_list", model.index, model.itemKey)
     }
 
     @Test fun citationFromRawPageOverridesRawProgress() {
@@ -164,8 +164,8 @@ class SourceIndexPreviewTest {
         rule.onNodeWithTag("source_model_page").assertDoesNotExist()
         rule.onNodeWithContentDescription(S.sourceIndexPreviewOpen).performClick()
         rule.waitForIdle()
-        assertPosition("source_model_list", 41, "slice:S21-1")
-        rule.onNodeWithText("〔S：21-1〕", substring = true).assertIsDisplayed()
+        assertPosition("source_model_list", 21, "slice:S11-1")
+        rule.onNodeWithText("〔S：11-1〕", substring = true).assertIsDisplayed()
     }
 
     @Test fun coldDocumentRestoreHasPreparedGeometryBeforeFirstScroll() {
@@ -208,7 +208,22 @@ class SourceIndexPreviewTest {
         rule.onNodeWithTag("source_model_page").assertDoesNotExist()
     }
 
-    @Test fun pageSwitchesRetainIndependentReadingProgress() {
+    @Test fun revisitingModelPageFollowsTheNewChapterInsteadOfItsOldPosition() {
+        render()
+        rule.onNodeWithContentDescription(S.sourceIndexPreviewOpen).performClick()
+        rule.waitForIdle()
+        rule.onNodeWithContentDescription(S.sourceIndexPreviewBack).performClick()
+        rule.waitForIdle()
+        rule.onNodeWithTag("source_reader_list").performScrollToIndex(2)
+        rule.onNodeWithContentDescription(S.sourceIndexPreviewOpen).performClick()
+        rule.waitForIdle()
+        assertPosition("source_model_list", 2, "chapter:2")
+        rule.onNodeWithContentDescription(S.sourceIndexPreviewBack).performClick()
+        rule.waitForIdle()
+        assertPosition("source_reader_list", 2, "chapter:2")
+    }
+
+    @Test fun pageSwitchesSynchronizeReadingProgressInBothDirections() {
         render()
         rule.onNodeWithTag("source_reader_list").performScrollToIndex(21)
         assertPosition("source_reader_list", 21, "slice:S11-1")
@@ -219,8 +234,8 @@ class SourceIndexPreviewTest {
         rule.onNodeWithTag("source_model_list").performScrollToIndex(41)
         rule.onNodeWithContentDescription(S.sourceIndexPreviewBack).performClick()
         rule.waitForIdle()
-        assertPosition("source_reader_list", 21, "slice:S11-1")
-        rule.onNodeWithText(paragraph(11), substring = true).assertIsDisplayed()
+        assertPosition("source_reader_list", 41, "slice:S21-1")
+        rule.onNodeWithText(paragraph(21), substring = true).assertIsDisplayed()
         rule.onNodeWithContentDescription(S.sourceIndexPreviewOpen).performClick()
         rule.waitForIdle()
         rule.onNodeWithText("〔S：21-1〕", substring = true).assertIsDisplayed()

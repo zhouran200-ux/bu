@@ -111,7 +111,7 @@ internal fun SourceReaderDocument(
         if (modelVisited) previewListState.sourcePosition(previewKeys) else null
     }
     val returnToDocument: () -> Unit = {
-        if (!documentVisited) {
+        if (showIndexPreview) {
             val position = previewListState.sourcePosition(previewKeys).forSourceLayout(readingKeys)
             listState = LazyListState(position.index, position.offset)
             documentVisited = true
@@ -245,11 +245,9 @@ internal fun SourceReaderDocument(
                     SourceIndexPreviewEntry(
                         enabled = active && !showIndexPreview && source.tagged.text.isNotBlank(),
                         onClick = {
-                            if (!modelVisited) {
-                                val position = listState.sourcePosition(readingKeys).forSourceLayout(previewKeys)
-                                previewListState = LazyListState(position.index, position.offset)
-                                modelVisited = true
-                            }
+                            val position = listState.sourcePosition(readingKeys).forSourceLayout(previewKeys)
+                            previewListState = LazyListState(position.index, position.offset)
+                            modelVisited = true
                             showIndexPreview = true
                         }
                     )

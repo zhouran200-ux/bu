@@ -12,7 +12,6 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsProperties
-import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -63,14 +62,14 @@ class ThinkingLaneStabilityTest {
         val live = geometry(host)
         val expectedThought = host.thought.value
         assertEquals("Live reasoning must stay inside its viewport", historicalLimitPx(), live.textHeight.toFloat(), 1f)
-        assertInnerScrollReachesTheNewestLine()
+        assertFixedInnerScrollIsAvailable()
         complete(host)
         repeat(8) {
             advanceFrame()
             rule.onNodeWithContentDescription(S.thinkingCollapse).assertExists()
             assertEquals(expectedThought, thoughtNode().fetchSemanticsNode().config[SemanticsProperties.Text].single().text)
             assertStableGeometry(live, geometry(host))
-            assertInnerScrollReachesTheNewestLine()
+            assertFixedInnerScrollIsAvailable()
         }
     }
 
@@ -99,88 +98,26 @@ class ThinkingLaneStabilityTest {
             0.6f
         )
         assertEquals(host.thought.value, thoughtNode().fetchSemanticsNode().config[SemanticsProperties.Text].single().text)
-        assertInnerScrollReachesTheNewestLine()
+        assertFixedInnerScrollIsAvailable()
         repeat(4) {
             advanceFrame()
             assertEquals(historicalLimitPx(), geometry(host).textHeight.toFloat(), 1f)
         }
     }
 
-    @Test fun legacyExpandedPreferenceIsIgnoredAndOnlyANewVisitResetsManualChoice() {
-        val host = mount(seedLegacyExpanded = true)
-        complete(host)
-        repeat(4) { advanceFrame() }
-        val lane = host.owner.value.thinking(host.readingKey) { error("Existing visit lane") }
-        val scrollBefore = lane.scroll.value
-        rule.runOnUiThread { host.mounted.value = false }
-        advanceFrame()
-        rule.runOnUiThread { host.mounted.value = true }
-        advanceAnimation()
-        rule.onNodeWithContentDescription(S.thinkingCollapse).assertExists()
-        rule.runOnUiThread {
-            assertTrue(lane.expanded)
-            assertEquals(scrollBefore, lane.scroll.value)
-        }
-        rule.runOnUiThread { host.mounted.value = false }
-        advanceFrame()
-        rule.runOnUiThread {
-            host.owner.value = NotebookMessageUiState()
-            host.mounted.value = true
-        }
-        advanceAnimation()
-        thoughtNode().assertDoesNotExist()
-        rule.onNodeWithContentDescription(S.thinkingExpand).assertExists()
-        rule.runOnUiThread {
-            val fresh = host.owner.value.thinking(host.readingKey) { error("New visit lane") }
-            assertFalse(fresh.expanded)
-            assertEquals(0, fresh.scroll.value)
-            assertEquals(ReadingPosition("expanded", 0, 87), ReadingPositionMemory.read(
-                InstrumentationRegistry.getInstrumentation().targetContext, host.readingKey
-            ))
-        }
-    }
-
-    @Test fun fullExpandButtonSwitchesBetweenFullHeightAndSmallWindowWhileHeaderClosesAll() {
+    @Test fun fixedThinkingLaneKeepsInnerScrollAcrossCompletion() {
         val host = mount()
+        val live = geometry(host)
+        val range = thoughtNode().fetchSemanticsNode().config[SemanticsProperties.VerticalScrollAxisRange]
+        rule.runOnUiThread { assertTrue(range.maxValue() > 0f) }
         complete(host)
         repeat(4) { advanceFrame() }
-        val smallWindowHeight = thoughtNode().fetchSemanticsNode().size.height
-        assertEquals(historicalLimitPx(), smallWindowHeight.toFloat(), 1f)
-        fullExpandNode().assertTextEquals(S.thinkingFullExpand)
-
-        fullExpandNode().performClick()
-        advanceAnimation()
-        fullExpandNode().assertTextEquals(S.thinkingReturnWindow)
-        val fullHeight = thoughtNode().fetchSemanticsNode().size.height
-        assertTrue("Full expand must show more than the bounded inner window", fullHeight > smallWindowHeight)
-
-        fullExpandNode().performClick()
-        advanceAnimation()
-        fullExpandNode().assertTextEquals(S.thinkingFullExpand)
-        assertEquals(smallWindowHeight, thoughtNode().fetchSemanticsNode().size.height)
-
-        fullExpandNode().performClick()
-        advanceAnimation()
-        assertTrue(thoughtNode().fetchSemanticsNode().size.height > smallWindowHeight)
-        rule.onNodeWithContentDescription(S.thinkingCollapse).performClick()
-        advanceAnimation()
-        thoughtNode().assertDoesNotExist()
-        fullExpandNode().assertDoesNotExist()
-
-        rule.onNodeWithContentDescription(S.thinkingExpand).performClick()
-        advanceAnimation()
-        fullExpandNode().assertTextEquals(S.thinkingFullExpand)
-        assertEquals(smallWindowHeight, thoughtNode().fetchSemanticsNode().size.height)
+        assertStableGeometry(live, geometry(host))
+        rule.runOnUiThread { assertTrue(range.maxValue() > 0f) }
     }
 
-    private fun mount(seedLegacyExpanded: Boolean = false): Host {
+    private fun mount(): Host {
         val host = Host()
-        if (seedLegacyExpanded) {
-            ReadingPositionMemory.write(
-                InstrumentationRegistry.getInstrumentation().targetContext,
-                host.readingKey, ReadingPosition("expanded", 0, 87)
-            )
-        }
         mountedHost = host
         rule.mainClock.autoAdvance = false
         rule.setContent {
@@ -239,11 +176,10 @@ class ThinkingLaneStabilityTest {
         assertEquals("The answer must not jump when thinking completes", expected.answerTop, actual.answerTop, 1f)
     }
 
-    private fun assertInnerScrollReachesTheNewestLine() {
+    private fun assertFixedInnerScrollIsAvailable() {
         val range = thoughtNode().fetchSemanticsNode().config[SemanticsProperties.VerticalScrollAxisRange]
         rule.runOnUiThread {
             assertTrue("Live reasoning must scroll inside its own viewport", range.maxValue() > 0f)
-            assertEquals("The live lane must follow the newest line", range.maxValue(), range.value())
         }
     }
 
@@ -259,5 +195,5 @@ class ThinkingLaneStabilityTest {
     private fun historicalLimitPx(): Float = with(rule.density) { THINKING_LANE_MAX_HEIGHT.toPx() }
     private fun thoughtNode() = rule.onNodeWithTag("thinking_text", useUnmergedTree = true)
     private fun laneNode() = rule.onNodeWithTag("thinking_lane", useUnmergedTree = true)
-    private fun fullExpandNode() = rule.onNodeWithTag("thinking_full_expand_toggle")
+
 }

@@ -12,8 +12,6 @@ import androidx.compose.runtime.setValue
 internal class ThinkingLaneState {
     var expanded by mutableStateOf(false)
         private set
-    var fullExpanded by mutableStateOf(false)
-        private set
     var retainLiveHeight by mutableStateOf(false)
         private set
     var measuredHeightPx by mutableStateOf(0)
@@ -26,11 +24,6 @@ internal class ThinkingLaneState {
     fun toggle() {
         expanded = !expanded
         if (!expanded) retainLiveHeight = false
-        if (!expanded) fullExpanded = false
-    }
-
-    fun toggleFullExpanded() {
-        if (expanded) fullExpanded = !fullExpanded
     }
 
 }

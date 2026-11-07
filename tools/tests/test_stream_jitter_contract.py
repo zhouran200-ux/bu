@@ -5,42 +5,30 @@ UI = Path(__file__).resolve().parents[2] / "app/src/main/java/com/lucent/app/ui"
 
 
 class StreamJitterContractTest(unittest.TestCase):
-    def test_follow_uses_measured_geometry_without_byte_count_reanchoring(self):
+    def test_streaming_does_not_own_chat_scroll_position(self):
         page = (UI / "NotebookChatTab.kt").read_text(encoding="utf-8")
-        follow = (UI / "ChatTailFollow.kt").read_text(encoding="utf-8")
-        self.assertIn("FollowChatTail(", page)
-        self.assertNotIn("streamProgress", page)
-        self.assertNotIn("followStreamUpdates", page)
-        self.assertIn("snapshotFlow { listState.chatTailLayout()", follow)
-        self.assertIn("listState.scrollBy(distance)", follow)
-        self.assertNotIn("requestScrollToItem", follow)
-        self.assertNotIn("delay(", follow)
         coordinator = (UI / "chat/ChatActionsCoordinator.kt").read_text(encoding="utf-8")
-        initial = coordinator.split("fun startAnswer(", 1)[1].split("fun regenerateAnswer(", 1)[0]
-        self.assertNotIn("animateScrollToItem", initial)
-        self.assertNotIn("delay(", initial)
+        self.assertNotIn("followStream", page + coordinator)
+        self.assertNotIn("FollowChatTail", page)
+        self.assertNotIn("ChatScrollMath", page + coordinator)
 
-    def test_capsule_press_invalidates_old_fling_completion(self):
+    def test_chat_scroll_remains_manual_during_streaming(self):
         page = (UI / "NotebookChatTab.kt").read_text(encoding="utf-8")
-        self.assertIn("scrollOwnership.listScrolled()", page)
-        self.assertIn("if (scrollOwnership.finishListGesture())", page)
-        self.assertIn("scrollOwnership.takeOver()", page)
-        press = page.split("onPress =", 1)[1].split("onTap =", 1)[0]
-        self.assertIn("actions.followStream = false", press)
-        self.assertIn("viewportAnchor.userScrolled()", press)
-        self.assertIn("tryAwaitRelease()", press)
+        self.assertNotIn("followStream", page)
+        self.assertNotIn("ChatScrollOwnership", page)
+        self.assertIn("FloatingScrollCapsule", page)
         rail = (UI / "ChatScrollRail.kt").read_text(encoding="utf-8")
-        press = rail.split("onPress =", 1)[1].split("onDragStart =", 1)[0]
-        self.assertIn("latestDragStart()", press)
-        self.assertIn("stopScroll(MutatePriority.UserInput)", press)
+        self.assertIn("latestDragStart()", rail)
+        self.assertIn("stopScroll(MutatePriority.UserInput)", rail)
         self.assertNotIn("if (dragging) return@collect", rail)
 
-    def test_live_thought_retains_height_until_explicit_collapse(self):
+    def test_live_thought_stays_in_a_fixed_scrollable_lane(self):
         lane = (UI / "ChatThinkingLane.kt").read_text(encoding="utf-8")
         state = (UI / "ThinkingLaneState.kt").read_text(encoding="utf-8")
-        self.assertIn("streaming || lane.retainLiveHeight", lane)
-        self.assertIn("if (!expanded) retainLiveHeight = false", state)
-        self.assertIn("lane.retainStreamingHeight(streaming)", lane)
+        self.assertIn("heightIn(max = THINKING_LANE_MAX_HEIGHT)", lane)
+        self.assertIn("verticalScroll(lane.scroll)", lane)
+        self.assertIn("retainLiveHeight", state)
+        self.assertNotIn("fullExpanded", state + lane)
 
     def test_citation_buffer_is_display_only_and_finalization_invalidates_parse(self):
         markdown = (UI / "Markdown.kt").read_text(encoding="utf-8")

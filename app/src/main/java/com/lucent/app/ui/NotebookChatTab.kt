@@ -53,6 +53,7 @@ import kotlinx.coroutines.launch
 import androidx.compose.runtime.getValue
 import com.lucent.app.ui.chat.ChatActionsCoordinator
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 
 @OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
@@ -132,14 +133,6 @@ fun NotebookChatTab(
         )
     }
     val viewportAnchor = remember(notebookId) { ChatViewportAnchor() }
-    val scrollOwnership = remember(notebookId) { ChatScrollOwnership() }
-    LaunchedEffect(active) {
-        if (!active) {
-            actions.followStream = false
-        } else if (session.streamingAnswerId != null && !listState.canScrollForward) {
-            actions.followStream = true
-        }
-    }
     val readingScrollConnection = remember(listState) {
         object : androidx.compose.ui.input.nestedscroll.NestedScrollConnection {
             override fun onPreScroll(
@@ -147,25 +140,9 @@ fun NotebookChatTab(
                 source: androidx.compose.ui.input.nestedscroll.NestedScrollSource
             ): androidx.compose.ui.geometry.Offset {
                 if (source == androidx.compose.ui.input.nestedscroll.NestedScrollSource.UserInput && available.y != 0f) {
-                    scrollOwnership.listScrolled()
-                    actions.followStream = false
                     viewportAnchor.userScrolled()
                 }
                 return androidx.compose.ui.geometry.Offset.Zero
-            }
-
-            override suspend fun onPostFling(
-                consumed: androidx.compose.ui.unit.Velocity,
-                available: androidx.compose.ui.unit.Velocity
-            ): androidx.compose.ui.unit.Velocity {
-                if (scrollOwnership.finishListGesture()) {
-                    actions.followStream = ChatScrollMath.shouldFollowAfterScroll(
-                        wasFollowing = actions.followStream,
-                        atBottom = !listState.canScrollForward,
-                        userScrolling = true
-                    )
-                }
-                return androidx.compose.ui.unit.Velocity.Zero
             }
         }
     }
@@ -216,16 +193,9 @@ fun NotebookChatTab(
     var reasoningButtonBounds by remember { mutableStateOf(androidx.compose.ui.geometry.Rect.Zero) }
     var chatCoordinates by remember { mutableStateOf<androidx.compose.ui.layout.LayoutCoordinates?>(null) }
     LaunchedEffect(active) { if (!active) showReasoningMenu = false }
-    FollowChatTail(
-        listState = listState,
-        active = active,
-        following = actions.followStream,
-        canFollow = { actions.followStream && !actions.streamReserveBlocksFollow() }
-    )
-
     LaunchedEffect(listState, active, viewportAnchor) {
         if (!active) return@LaunchedEffect
-        androidx.compose.runtime.snapshotFlow {
+        snapshotFlow {
             val layout = listState.layoutInfo
             Triple(
                 layout.viewportSize.height - layout.afterContentPadding,
@@ -264,8 +234,6 @@ fun NotebookChatTab(
                             .pointerInput(Unit) {
                                 detectTapGestures(
                                     onPress = {
-                                        actions.followStream = false
-                                        scrollOwnership.takeOver()
                                         viewportAnchor.userScrolled()
                                         tryAwaitRelease()
                                     },
@@ -310,8 +278,6 @@ fun NotebookChatTab(
                                     onDelete = { actions.deleteMessage(msg) },
                                     expanded = messageUiState.userExpanded(msg.id),
                                     onExpandedChange = {
-                                        actions.followStream = false
-                                        scrollOwnership.takeOver()
                                         viewportAnchor.userScrolled()
                                         messageUiState.setUserExpanded(msg.id, it)
                                     }
@@ -326,8 +292,6 @@ fun NotebookChatTab(
                                         "chat:$notebookId:thought:${msg.id}", msg.id == streamingAnswerId, messageUiState
                                     ),
                                     onThinkingToggle = {
-                                        actions.followStream = false
-                                        scrollOwnership.takeOver()
                                         viewportAnchor.userScrolled()
                                     },
                                     streaming = msg.id == streamingAnswerId,
@@ -379,8 +343,6 @@ fun NotebookChatTab(
                     liveThought = streamingThought,
                     active = active,
                     onToggle = {
-                        actions.followStream = false
-                        scrollOwnership.takeOver()
                         viewportAnchor.userScrolled()
                     },
                     modifier = Modifier.align(Alignment.TopStart)
@@ -390,8 +352,6 @@ fun NotebookChatTab(
                     itemKeys = readingKeys,
                     enabled = active && !isImeVisible,
                     onDragStart = {
-                        scrollOwnership.takeOver()
-                        actions.followStream = false
                         viewportAnchor.userScrolled()
                     },
                     modifier = Modifier.align(Alignment.CenterEnd).padding(bottom = bottomInset)
@@ -409,7 +369,6 @@ fun NotebookChatTab(
                     visible = !atBottom && !isImeVisible && messages.isNotEmpty(),
                     motionOn = barMotionOn,
                     onClick = {
-                        actions.followStream = true
                         scope.launch {
                             listState.animateScrollToItem(
                                 (listState.layoutInfo.totalItemsCount - 1).coerceAtLeast(0)
@@ -427,18 +386,15 @@ fun NotebookChatTab(
                 streamingAnswerId = streamingAnswerId,
                 onMessageClick = { id ->
                     historyAnchorId = id
-                    actions.followStream = false
                     val target = messages.indexOfFirst { it.id == id }
                     if (target >= 0) scope.launch { listState.animateScrollToItem(target + 1) }
                 },
                 onTop = {
                     historyAnchorId = messages.firstOrNull()?.id
-                    actions.followStream = false
                     scope.launch { listState.animateScrollToItem(0) }
                 },
                 onBottom = {
                     historyAnchorId = messages.lastOrNull()?.id
-                    actions.followStream = true
                     scope.launch { listState.animateScrollToItem((listState.layoutInfo.totalItemsCount - 1).coerceAtLeast(0)) }
                 },
                 onDismiss = { showHistorySheet = false },

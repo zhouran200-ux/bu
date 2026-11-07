@@ -1,5 +1,12 @@
 # 全项目 Bug 审计结果
 
+## 2026-11-07：移除流式自动跟底与思考全部展开
+
+- 删除聊天流式输出的自动跟底调度、follow 状态、尾部几何计算和滚动所有权；生成过程中不再抢占用户滚动位置。键盘弹出导致的普通视口锚定（ChatViewportAnchor）保留，手动滚动胶囊和回到底部按钮保留。
+- 删除思考面板「完全展开 / 回到小窗」状态、按钮、双高度分支和命名空间粘性头中的对应按钮；思考正文始终限制在 `220.dp` 固定区域，通过内部 `verticalScroll` 滚动或手势滑动查看。
+- 删除思考区内部的自动跟随最新行；生成结束后仍保留固定高度，直到用户收起，避免回答位置跳动。用户展开/收起、跨列表重挂载和切换来源页的既有状态行为保留。
+- 删除 `ChatTailFollow.kt`、`ChatScrollOwnership.kt`、`ChatScrollMath.kt` 及对应测试；手动滚动轨道所需的 `ChatScrollTarget` 独立保留在 `ChatScrollTarget.kt`。清理 `thinkingFullExpand` / `thinkingReturnWindow` 文案和死引用。
+- 更新 JVM、Android 交互、契约测试和文档；验证：Debug JVM 685 项 / 103 套件全通过，Python 154 项通过，quick 10/10，Debug Lint 通过（31 warnings、5 hints，baseline 未扩大），Android 测试源码编译通过。未运行设备测试或 APK/AAB 打包。
 ## 2026-11-07：恢复获取模型后卡片长按复制
 
 - 根因：可用模型卡片在加入临时测试模型选择后改为只使用 `selectable` 点击手势，原有长按复制模型名回调没有迁移。

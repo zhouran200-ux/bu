@@ -6,13 +6,13 @@ UI = ROOT / "app/src/main/java/com/lucent/app/ui"
 
 
 class ApprovedUxContractTest(unittest.TestCase):
-    def test_user_scroll_pauses_before_list_consumes_delta(self):
+    def test_chat_scroll_stays_manual_during_streaming(self):
         text = (UI / "NotebookChatTab.kt").read_text(encoding="utf-8")
-        pre_scroll = text.split("override fun onPreScroll(", 1)[1].split("override suspend fun onPostFling", 1)[0]
-        self.assertIn("NestedScrollSource.UserInput", pre_scroll)
-        self.assertIn("followStream = false", pre_scroll)
-        self.assertIn(".nestedScroll(readingScrollConnection)", text)
-        self.assertNotIn("LaunchedEffect(atBottom, listState.isScrollInProgress)", text)
+        self.assertNotIn("followStream", text)
+        self.assertNotIn("FollowChatTail", text)
+        self.assertIn("ChatScrollToBottomButton", text)
+        self.assertIn("FloatingScrollCapsule", text)
+        self.assertNotIn("followStream", text)
 
     def test_notebook_tab_container_is_centered_and_twenty_percent_narrower(self):
         text = (UI / "NotebookDetailScreen.kt").read_text(encoding="utf-8")
@@ -37,7 +37,7 @@ class ApprovedUxContractTest(unittest.TestCase):
         self.assertNotIn("foregroundGlass", button)
         page = (UI / "NotebookChatTab.kt").read_text(encoding="utf-8")
         call = page.split("ChatScrollToBottomButton(", 1)[1].split("\n        )", 1)[0]
-        self.assertIn("followStream = true", call)
+        self.assertNotIn("followStream", call)
         self.assertIn("listState.animateScrollToItem", call)
 
     # Empty history visibility and absent jump actions now live in

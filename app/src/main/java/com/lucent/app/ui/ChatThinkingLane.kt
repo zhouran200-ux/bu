@@ -1,7 +1,6 @@
 package com.lucent.app.ui
 
 import com.lucent.app.i18n.S
-import kotlinx.coroutines.flow.conflate
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -32,7 +31,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.State
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -66,14 +64,6 @@ internal fun ThinkingLane(
     val canExpand = streaming || thought.isNotBlank()
     val expanded = lane.expanded && canExpand
     LaunchedEffect(streaming, lane.expanded) { lane.retainStreamingHeight(streaming) }
-    if (streaming && !lane.fullExpanded) {
-        LaunchedEffect(lane.scroll) {
-            snapshotFlow { lane.scroll.maxValue }.conflate().collect { max ->
-                if (max > 0 && lane.scroll.value != max) lane.scroll.scrollTo(max)
-            }
-        }
-    }
-
     Column(modifier = Modifier.fillMaxWidth()
         .onSizeChanged { lane.measuredHeightPx = it.height }
         .testTag("thinking_lane")) {
@@ -88,13 +78,6 @@ internal fun ThinkingLane(
                 canExpand = canExpand,
                 onToggle = { onToggle(); lane.toggle() }
             )
-            if (expanded) {
-                ThinkingFullExpandButton(
-                    fullExpanded = lane.fullExpanded,
-                    onToggle = { onToggle(); lane.toggleFullExpanded() },
-                    modifier = Modifier.testTag("thinking_full_expand_toggle")
-                )
-            }
         }
 
         AnimatedVisibility(
@@ -137,17 +120,11 @@ internal fun ThinkingLane(
                         lineHeight = (19f * reading.lineFactor).sp,
                         letterSpacing = reading.letterSpacing.sp,
                         fontFamily = reading.fontFamily,
-                        modifier = if (lane.fullExpanded) {
-                            Modifier
-                                .fillMaxWidth()
-                                .testTag("thinking_text")
-                        } else {
-                            Modifier
-                                .fillMaxWidth()
-                                .testTag("thinking_text")
-                                .heightIn(max = THINKING_LANE_MAX_HEIGHT)
-                                .verticalScroll(lane.scroll)
-                        }
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("thinking_text")
+                            .heightIn(max = THINKING_LANE_MAX_HEIGHT)
+                            .verticalScroll(lane.scroll)
                     )
                 }
                 if (streaming || lane.retainLiveHeight) {

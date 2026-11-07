@@ -140,8 +140,6 @@ open class Tr {
     open val thinkingCollapse: String = "收起思考过程"
     open val thinkingExpand: String = "展开思考过程"
     open val thinkingWaiting: String = "等待模型给出推理内容…"
-    open val thinkingFullExpand: String = "完全展开"
-    open val thinkingReturnWindow: String = "回到小窗"
     open val apiSwitchNotSaved: String = "切换方案未保存，请重试"
     open val apiAddNotSaved: String = "新增方案未保存，请重试"
     open val apiDeleteNotSaved: String = "删除方案未保存，请重试"

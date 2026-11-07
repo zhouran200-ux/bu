@@ -77,29 +77,3 @@ internal fun ThinkingHeader(
         }
     }
 }
-
-@Composable
-internal fun ThinkingFullExpandButton(
-    fullExpanded: Boolean,
-    onToggle: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val context = LocalContext.current
-    val accent = MaterialTheme.colorScheme.primary
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = modifier.clip(RoundedCornerShape(12.dp))
-            .clickable {
-                Haptics.tick(context)
-                onToggle()
-            }
-            .padding(horizontal = 8.dp, vertical = 6.dp)
-    ) {
-        Text(
-            text = if (fullExpanded) S.thinkingReturnWindow else S.thinkingFullExpand,
-            color = accent,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Medium
-        )
-    }
-}

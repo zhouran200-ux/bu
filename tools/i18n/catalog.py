@@ -139,8 +139,6 @@ ENTRIES = [
     ("thinkingCollapse", "收起思考过程"),
     ("thinkingExpand", "展开思考过程"),
     ("thinkingWaiting", "等待模型给出推理内容…"),
-    ("thinkingFullExpand", "完全展开"),
-    ("thinkingReturnWindow", "回到小窗"),
     ("apiSwitchNotSaved", "切换方案未保存，请重试"),
     ("apiAddNotSaved", "新增方案未保存，请重试"),
     ("apiDeleteNotSaved", "删除方案未保存，请重试"),

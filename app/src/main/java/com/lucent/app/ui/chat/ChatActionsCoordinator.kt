@@ -13,7 +13,6 @@ import com.lucent.app.data.ApiProfiles
 import com.lucent.app.data.Note
 import com.lucent.app.data.ReasoningPreset
 import com.lucent.app.i18n.S
-import com.lucent.app.ui.ChatScrollMath
 import com.lucent.app.ui.Haptics
 import com.lucent.app.ui.LucentToast
 import com.lucent.app.ui.PendingChatDelete
@@ -36,7 +35,6 @@ internal class ChatActionsCoordinator(
     internal val messages = session.messages
     internal val streamingAnswerId: Long? get() = session.streamingAnswerId
     internal var inputText by mutableStateOf("")
-    internal var followStream by mutableStateOf(false)
     internal var regenerateReserve by mutableStateOf<Pair<Long, Int>?>(null)
     internal var pendingDelete by mutableStateOf<PendingChatDelete?>(null)
     internal var profilesJson: String by mutableStateOf("")
@@ -54,13 +52,6 @@ internal class ChatActionsCoordinator(
     internal var systemPrompt by mutableStateOf(prefs.getString("prompt_$notebookId", "") ?: "")
     internal var historyRounds by androidx.compose.runtime.mutableIntStateOf(prefs.getInt("history_rounds_$notebookId", 10))
 
-    fun streamReserveBlocksFollow(): Boolean {
-        val entry = regenerateReserve ?: return false
-        if (streamingAnswerId != entry.first) return false
-        val info = listState.layoutInfo.visibleItemsInfo
-            .firstOrNull { it.key == "message:${entry.first}" } ?: return false
-        return info.size <= entry.second
-    }
 
     fun settlePendingDelete() {
         val pending = pendingDelete ?: return
@@ -166,7 +157,6 @@ internal class ChatActionsCoordinator(
         val saved = session.saveMessage(userMsg)
         val answerId = ids[1]
         messages.add(UiChatMessage(id = answerId, role = "assistant", content = ""))
-        followStream = true
         session.afterWrite(
             saved,
             onFailure = { messages.removeAll { it.id == answerId && it.content.isEmpty() } }
@@ -184,11 +174,6 @@ internal class ChatActionsCoordinator(
         val selection = ApiProfiles.resolveSelection(savedProfiles, selectedProfileId, selectedProfileName, selectedModel)
         if (selection == null || selection.second.isBlank() || selection.first.apiKey.isBlank()) return
         settlePendingDelete()
-        val atBottom = !listState.canScrollForward
-        followStream = ChatScrollMath.shouldFollowRegeneration(
-            isLastMessage = idx == messages.lastIndex,
-            atBottom = atBottom
-        )
         val itemIndex = idx + 1
         val layout = listState.layoutInfo
         val oldSize = layout.visibleItemsInfo.firstOrNull { it.key == "message:$answerId" }?.size
@@ -249,7 +234,6 @@ internal class ChatActionsCoordinator(
         if (messages.none { it.id == pending.message.id }) {
             val at = pending.index.coerceIn(0, messages.size)
             messages.add(at, pending.message)
-            followStream = false
             val keys = listOf("header") + messages.map { "message:${it.id}" } + "footer"
             val viewport = pending.viewport.resolve(keys)
             listState.requestScrollToItem(viewport.index, viewport.offset)

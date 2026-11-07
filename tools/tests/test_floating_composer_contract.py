@@ -53,7 +53,7 @@ class FloatingComposerContractTest(unittest.TestCase):
             self.assertIn(callback, composer)
 
     def test_scroll_and_regeneration_use_the_uncovered_viewport(self):
-        for name in ("NotebookChatTab.kt", "ChatScrollRail.kt", "chat/ChatActionsCoordinator.kt"):
+        for name in ("ChatScrollRail.kt", "chat/ChatActionsCoordinator.kt"):
             text = (UI / name).read_text(encoding="utf-8")
             self.assertIn("layout.afterContentPadding", text, name)
         overlays = (UI / "ChatScrollOverlays.kt").read_text(encoding="utf-8")

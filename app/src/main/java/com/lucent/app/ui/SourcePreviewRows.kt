@@ -5,7 +5,7 @@ import com.lucent.app.data.SourceTagging
 
 private const val CHAPTER_KEY_PREFIX = "chapter:"
 
-internal data class SourcePreviewRow(val key: String, val text: String) {
+internal data class SourcePreviewRow(val key: String, val text: String, val chapterTitle: String? = null) {
     val isChapter: Boolean get() = key.startsWith(CHAPTER_KEY_PREFIX)
 }
 
@@ -17,7 +17,7 @@ internal fun sourcePreviewRows(body: String, tagged: SourceTagging.Tagged): List
                 .takeIf { it >= 0 } ?: body.length
             val firstLine = body.substring(chapter.startOffset, minOf(lineEnd, chapter.endOffset))
             val heading = if (DocumentHeadings.titleOf(firstLine) != null) firstLine else "# ${chapter.title}"
-            add(SourcePreviewRow("chapter:${chapter.number}", "〔CH${chapter.number}〕\n$heading"))
+            add(SourcePreviewRow("chapter:${chapter.number}", "〔CH${chapter.number}〕\n$heading", chapter.title))
             slicesByChapter[chapter.number].orEmpty().forEach { slice ->
                 add(SourcePreviewRow(
                     "slice:${slice.id}",
@@ -25,5 +25,14 @@ internal fun sourcePreviewRows(body: String, tagged: SourceTagging.Tagged): List
                 ))
             }
         }
+    }
+}
+
+// Resolve headings once per document, not by scanning long text during every scroll.
+internal fun sourcePreviewSectionTitles(rows: List<SourcePreviewRow>, fallback: String): List<String> {
+    var current = fallback
+    return rows.map { row ->
+        if (row.isChapter) current = row.chapterTitle?.takeIf { it.isNotBlank() } ?: fallback
+        current
     }
 }

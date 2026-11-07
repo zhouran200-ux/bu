@@ -4,7 +4,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -13,11 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.DisposableEffect
@@ -30,9 +29,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.lucent.app.i18n.S
 import kotlin.math.abs
 
@@ -163,19 +160,18 @@ internal fun SourceReaderDocument(
                 source = source,
                 rows = content.previewRows,
                 listState = previewListState,
-                active = active && showIndexPreview,
-                onBack = returnToDocument
+                active = active && showIndexPreview
             )
         } else {
             BoxWithConstraints(modifier = Modifier.fillMaxSize().background(lucentPanelBackground()).testTag("source_reader_page")) {
-                val hasManageActions = onReplaceDocument != null || onRemoveDocument != null
-                val titleMaxWidth = (maxWidth - if (hasManageActions) 128.dp else 76.dp).coerceIn(120.dp, 280.dp)
+                val titleMaxWidth = (maxWidth - 24.dp).coerceIn(0.dp, 280.dp)
+                val bottomInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
                 SelectionContainer {
                     LazyColumn(
                         state = listState,
                         modifier = Modifier.fillMaxSize().testTag("source_reader_list")
                             .sourceReadingPosition(listState, readingKeys),
-                        contentPadding = PaddingValues(start = 18.dp, top = 60.dp, end = 18.dp, bottom = 16.dp),
+                        contentPadding = PaddingValues(start = 18.dp, top = 60.dp, end = 18.dp, bottom = 88.dp + bottomInset),
                         verticalArrangement = Arrangement.spacedBy(4.dp * reading.paragraphSpacing)
                     ) {
                         itemsIndexed(items, key = { _, item -> item.key }) { _, item ->
@@ -202,56 +198,29 @@ internal fun SourceReaderDocument(
                     modifier = Modifier.align(Alignment.CenterEnd)
                 )
 
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = androidx.compose.ui.graphics.Color.Transparent,
-                    contentColor = LocalOnGradient.current,
-                    shadowElevation = 0.dp,
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(12.dp)
-                        .widthIn(max = titleMaxWidth)
-                        .foregroundGlass(12.dp, reading = true)
-                ) {
-                    Text(
-                        text = currentSectionTitle,
-                        style = MaterialTheme.typography.labelMedium.copy(
-                            fontSize = 13.sp,
-                            lineHeight = 18.sp,
-                            letterSpacing = 0.sp,
-                            fontFamily = reading.fontFamily
-                        ),
-                        fontWeight = LucentTitles.SectionWeight,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
-                    )
-                }
+                SourceChapterBadge(
+                    title = currentSectionTitle,
+                    modifier = Modifier.align(Alignment.TopStart).padding(12.dp)
+                        .testTag("source_reader_chapter").widthIn(max = titleMaxWidth)
+                )
 
-                Row(
+                // Keep both controls above system navigation; list padding protects the final paragraph.
+                SourceReaderActions(
+                    enabled = active && !showIndexPreview,
+                    previewEnabled = source.tagged.text.isNotBlank(),
+                    onReplace = onReplaceDocument,
+                    onRemove = onRemoveDocument,
+                    onOpenPreview = {
+                        val position = listState.sourcePosition(readingKeys).forSourceLayout(previewKeys)
+                        previewListState = LazyListState(position.index, position.offset)
+                        modelVisited = true
+                        showIndexPreview = true
+                    },
                     modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    if (hasManageActions) {
-                        SourceManageEntry(
-                            enabled = active && !showIndexPreview,
-                            onReplace = onReplaceDocument,
-                            onRemove = onRemoveDocument
-                        )
-                    }
-                    SourceIndexPreviewEntry(
-                        enabled = active && !showIndexPreview && source.tagged.text.isNotBlank(),
-                        onClick = {
-                            val position = listState.sourcePosition(readingKeys).forSourceLayout(previewKeys)
-                            previewListState = LazyListState(position.index, position.offset)
-                            modelVisited = true
-                            showIndexPreview = true
-                        }
-                    )
-                }
+                        .align(Alignment.BottomEnd)
+                        .navigationBarsPadding()
+                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                )
 
             }
         }

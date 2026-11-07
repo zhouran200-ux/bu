@@ -51,4 +51,15 @@ class SourcePreviewRowsTest {
     fun blankSourcesHaveNoPreviewRows() {
         assertTrue(sourcePreviewRows(" \r\n ", SourceTagging.tag("空文档", " \r\n ")).isEmpty())
     }
+    @Test fun sectionTitlesFollowChaptersAndIgnoreLiteralMarkersInBody() {
+        val rows = listOf(
+            SourcePreviewRow("chapter:1", "heading", "First"),
+            SourcePreviewRow("slice:S1-1", "literal chapter marker"),
+            SourcePreviewRow("chapter:2", "heading", "Second"),
+            SourcePreviewRow("slice:S2-1", "body")
+        )
+        assertEquals(listOf("First", "First", "Second", "Second"), sourcePreviewSectionTitles(rows, "Book"))
+        assertEquals(emptyList(), sourcePreviewSectionTitles(emptyList(), "Book"))
+        assertEquals(listOf("Book"), sourcePreviewSectionTitles(listOf(SourcePreviewRow("chapter:1", "heading")), "Book"))
+    }
 }

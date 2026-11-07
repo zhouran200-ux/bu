@@ -16,6 +16,7 @@ import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -58,7 +59,7 @@ class SourceIndexPreviewTest {
         ))
     }
 
-    private fun render() {
+    private fun render(withManageActions: Boolean = false) {
         rule.setContent {
             MaterialTheme {
                 Column(Modifier.fillMaxSize()) {
@@ -70,7 +71,9 @@ class SourceIndexPreviewTest {
                         active = true,
                         emphasizedFocus = null,
                         onEmphasize = {},
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
+                        onReplaceDocument = if (withManageActions) ({}) else null,
+                        onRemoveDocument = if (withManageActions) ({}) else null
                     )
                 }
             }
@@ -81,6 +84,26 @@ class SourceIndexPreviewTest {
         rule.waitForIdle()
         val source = com.lucent.app.data.NovelSourceIndex.get(Note(id = 7L, title = "Document", body = documentBody))
         assertEquals(80, sourceReadingItems(source.body, source.tagged).size)
+    }
+
+    @Test fun readerActionsStayAtBottomWhileChapterStaysAtTop() {
+        render(withManageActions = true)
+        rule.onNodeWithContentDescription(S.sourcesManage).assertIsDisplayed()
+        rule.onNodeWithContentDescription(S.sourceIndexPreviewOpen).assertIsDisplayed()
+        val page = rule.onNodeWithTag("source_reader_page").fetchSemanticsNode().boundsInRoot
+        val chapter = rule.onNodeWithTag("source_reader_chapter").fetchSemanticsNode().boundsInRoot
+        val actions = rule.onNodeWithTag("source_reader_actions").fetchSemanticsNode().boundsInRoot
+        assertTrue(chapter.center.y < page.center.y)
+        assertTrue(actions.center.y > page.center.y)
+        assertTrue(actions.bottom <= page.bottom)
+        assertTrue(actions.right <= page.right)
+        rule.onNodeWithTag("source_reader_list").performScrollToIndex(79)
+        rule.waitForIdle()
+        val afterScroll = rule.onNodeWithTag("source_reader_actions").fetchSemanticsNode().boundsInRoot
+        assertEquals(actions, afterScroll)
+        rule.onNodeWithContentDescription(S.sourcesManage).performClick()
+        rule.onNodeWithText(S.sourcesReplace).assertIsDisplayed()
+        rule.onNodeWithText(S.sourcesRemove).assertIsDisplayed()
     }
 
     @Test fun everyPageSwitchSharesAnchorWithoutReusingOtherLayoutPixels() {
@@ -137,11 +160,11 @@ class SourceIndexPreviewTest {
             visible.value = true
         }
         rule.waitUntil(5_000) {
-            rule.onAllNodesWithContentDescription(S.sourceIndexPreviewBack).fetchSemanticsNodes().isNotEmpty()
+            rule.onAllNodesWithTag("source_model_page").fetchSemanticsNodes().isNotEmpty()
         }
         rule.waitForIdle()
         assertEquals(model, position("source_model_list"))
-        rule.onNodeWithContentDescription(S.sourceIndexPreviewBack).performClick()
+        InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
         rule.waitForIdle()
         assertPosition("source_reader_list", model.index, model.itemKey)
         rule.runOnIdle { visible.value = false }
@@ -191,7 +214,7 @@ class SourceIndexPreviewTest {
         rule.onNodeWithText("Notebook chrome").assertIsDisplayed()
         rule.onNodeWithTag("source_model_page").assertIsDisplayed()
         rule.onNodeWithText(S.sourceIndexPreviewTitle).assertIsDisplayed()
-        rule.onNodeWithContentDescription(S.sourceIndexPreviewBack).performClick()
+        InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
         rule.waitForIdle()
         rule.onNodeWithTag("source_reader_page").assertIsDisplayed()
         rule.onNodeWithTag("source_model_page").assertDoesNotExist()
@@ -212,13 +235,13 @@ class SourceIndexPreviewTest {
         render()
         rule.onNodeWithContentDescription(S.sourceIndexPreviewOpen).performClick()
         rule.waitForIdle()
-        rule.onNodeWithContentDescription(S.sourceIndexPreviewBack).performClick()
+        InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
         rule.waitForIdle()
         rule.onNodeWithTag("source_reader_list").performScrollToIndex(2)
         rule.onNodeWithContentDescription(S.sourceIndexPreviewOpen).performClick()
         rule.waitForIdle()
         assertPosition("source_model_list", 2, "chapter:2")
-        rule.onNodeWithContentDescription(S.sourceIndexPreviewBack).performClick()
+        InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
         rule.waitForIdle()
         assertPosition("source_reader_list", 2, "chapter:2")
     }
@@ -232,7 +255,7 @@ class SourceIndexPreviewTest {
         assertPosition("source_model_list", 21, "slice:S11-1")
         rule.onNodeWithText("〔S：11-1〕", substring = true).assertIsDisplayed()
         rule.onNodeWithTag("source_model_list").performScrollToIndex(41)
-        rule.onNodeWithContentDescription(S.sourceIndexPreviewBack).performClick()
+        InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
         rule.waitForIdle()
         assertPosition("source_reader_list", 41, "slice:S21-1")
         rule.onNodeWithText(paragraph(21), substring = true).assertIsDisplayed()

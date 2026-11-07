@@ -51,6 +51,17 @@ class SourcePreviewRowsTest {
     fun blankSourcesHaveNoPreviewRows() {
         assertTrue(sourcePreviewRows(" \r\n ", SourceTagging.tag("空文档", " \r\n ")).isEmpty())
     }
+    @Test fun realMarkdownChapterTitlesMatchReaderWithoutChangingRawText() {
+        val body = "# First chapter\n\nBody.\n\n## Second chapter\n\nMore text."
+        val tagged = SourceTagging.tag("Book", body)
+        val rows = sourcePreviewRows(body, tagged)
+        assertEquals(
+            sourceReadingItems(body, tagged).map { it.chapterTitle },
+            sourcePreviewSectionTitles(rows, "Book")
+        )
+        assertEquals(tagged.text, rows.joinToString("\n\n") { it.text })
+    }
+
     @Test fun sectionTitlesFollowChaptersAndIgnoreLiteralMarkersInBody() {
         val rows = listOf(
             SourcePreviewRow("chapter:1", "heading", "First"),

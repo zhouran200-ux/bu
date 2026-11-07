@@ -12,7 +12,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-// Both source layouts use one visual component so chapter labels cannot drift apart.
 @Composable
 internal fun SourceChapterBadge(title: String, modifier: Modifier = Modifier) {
     val reading = LocalReadingTypography.current

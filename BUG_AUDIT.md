@@ -1,5 +1,15 @@
 # 全项目 Bug 审计结果
 
+## 2026-11-08：修复浮窗提交门禁并复核全项目
+
+- 上次提交 `408d3563a930d08f3c0c205106378afea620dba1` 的 [check](https://github.com/zhouran200-ux/bu/actions/runs/42397599077) 失败：7 处新增说明注释违反既有门禁；API 33/35 均有两个模型卡交互测试与一个阅读锚点同步测试失败。JVM 检查 job 成功。[Build APK only](https://github.com/zhouran200-ux/bu/actions/runs/42397599150) 的构建 job 成功，但发布被失败的 check 阻止，未更新 Preview。结果来自公开 API 的 jobs 和 annotations；完整日志与报告下载需要认证，未读取。
+- 删除本次引入的 7 处 Kotlin 说明注释，未放宽门禁、未修改白名单或扩大 Lint baseline；上游许可证声明保留。
+- 修正 `ApiModelsSectionTest` 的宿主：使用与设置页一致的 Column 防止多个根节点重叠，并将选中状态通过 mutableStateOf 回传给受控组件；保留真实点击、长按剪贴板和再次取消断言。
+- 阅读锚点测试在模型页滚动后等待 Compose 空闲并断言源页已到目标切片，再发送系统返回，保留目标页位置断言。静态分析支持同步屏障缺失的判断，是否彻底解决云端失败仍需设备复跑确认。
+- 修复模型原文页章节浮窗直接显示 Markdown 标题标记的问题，复用与文档页相同的标题解析，并增加真实 SourceTagging 输入下两页标题一致、原文不变的回归。
+- 最终源码验证：quick 10/10、Python 工具测试 157 项、全量 Debug JVM 687 项 / 103 套件、Debug/Release Kotlin、Android 测试源码编译、Debug Lint 均通过。Lint 保留 30 warnings、5 hints，未修改 baseline。未本地运行设备测试、Release JVM/Release Lint 或打包 APK/AAB。
+- 全局残留扫描覆盖 351 个源码/配置文件，无错误或审查候选；333 个 Kotlin 文件通过代码卫生检查。旧入口和返回/复制专属文案无活动引用。642 行 ChatSessionTest 保持同一会话状态测试职责，本轮不为行数机械拆分；超大字体下章节浮窗顶部留白仍属未实机验证边界，不声称全项目无 bug。
+
 ## 2026-11-07：移除流式自动跟底与思考全部展开
 
 - 删除聊天流式输出的自动跟底调度、follow 状态、尾部几何计算和滚动所有权；生成过程中不再抢占用户滚动位置。键盘弹出导致的普通视口锚定（ChatViewportAnchor）保留，手动滚动胶囊和回到底部按钮保留。

@@ -10,7 +10,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.lucent.app.i18n.S
 
-// This floating panel displays metadata only; navigation stays with the system back handler.
 @Composable
 internal fun SourcePreviewInfoDock(sourceLine: String, modifier: Modifier = Modifier) {
     val reading = LocalReadingTypography.current

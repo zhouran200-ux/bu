@@ -255,6 +255,8 @@ class SourceIndexPreviewTest {
         assertPosition("source_model_list", 21, "slice:S11-1")
         rule.onNodeWithText("〔S：11-1〕", substring = true).assertIsDisplayed()
         rule.onNodeWithTag("source_model_list").performScrollToIndex(41)
+        rule.waitForIdle()
+        assertPosition("source_model_list", 41, "slice:S21-1")
         InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
         rule.waitForIdle()
         assertPosition("source_reader_list", 41, "slice:S21-1")

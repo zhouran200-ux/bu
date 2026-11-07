@@ -17,7 +17,8 @@ internal fun sourcePreviewRows(body: String, tagged: SourceTagging.Tagged): List
                 .takeIf { it >= 0 } ?: body.length
             val firstLine = body.substring(chapter.startOffset, minOf(lineEnd, chapter.endOffset))
             val heading = if (DocumentHeadings.titleOf(firstLine) != null) firstLine else "# ${chapter.title}"
-            add(SourcePreviewRow("chapter:${chapter.number}", "〔CH${chapter.number}〕\n$heading", chapter.title))
+            val title = DocumentHeadings.titleOf(chapter.title) ?: chapter.title
+            add(SourcePreviewRow("chapter:${chapter.number}", "〔CH${chapter.number}〕\n$heading", title))
             slicesByChapter[chapter.number].orEmpty().forEach { slice ->
                 add(SourcePreviewRow(
                     "slice:${slice.id}",
@@ -28,7 +29,6 @@ internal fun sourcePreviewRows(body: String, tagged: SourceTagging.Tagged): List
     }
 }
 
-// Resolve headings once per document, not by scanning long text during every scroll.
 internal fun sourcePreviewSectionTitles(rows: List<SourcePreviewRow>, fallback: String): List<String> {
     var current = fallback
     return rows.map { row ->

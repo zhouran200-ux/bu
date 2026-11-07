@@ -31,7 +31,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.lucent.app.i18n.S
 
-/** Reader-only controls; document mutations and reading-position state stay with their owners. */
 @Composable
 internal fun SourceReaderActions(
     enabled: Boolean,
@@ -76,7 +75,6 @@ internal fun SourceReaderActions(
                         modifier = Modifier.size(22.dp)
                     )
                 }
-                // Anchoring the popup to the bottom control lets it open above when space is limited.
                 DropdownMenu(
                     expanded = menuOpen && enabled,
                     onDismissRequest = { menuOpen = false },

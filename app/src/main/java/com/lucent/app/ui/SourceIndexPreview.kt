@@ -74,7 +74,6 @@ internal fun SourceIndexPreview(
                     state = listState,
                     modifier = Modifier.fillMaxSize().testTag("source_model_list")
                         .sourceReadingPosition(listState, rowKeys),
-                    // Measure the dock so enlarged fonts cannot hide the final text behind it.
                     contentPadding = PaddingValues(start = 18.dp, top = 60.dp, end = 18.dp, bottom = dockHeight + 28.dp + bottomInset),
                     verticalArrangement = Arrangement.spacedBy(20.dp * reading.paragraphSpacing)
                 ) {

@@ -204,7 +204,6 @@ internal fun SourceReaderDocument(
                         .testTag("source_reader_chapter").widthIn(max = titleMaxWidth)
                 )
 
-                // Keep both controls above system navigation; list padding protects the final paragraph.
                 SourceReaderActions(
                     enabled = active && !showIndexPreview,
                     previewEnabled = source.tagged.text.isNotBlank(),

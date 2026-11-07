@@ -111,6 +111,7 @@ open class Tr {
     open val apiFetchModelsFailed: String = "读取模型失败，请重试"
     open val apiAvailableModels: String = "可用模型"
     open val apiRemoveModel: String = "删除模型"
+    open val apiCopyModelName: String = "复制模型名称"
     open val apiModelNamePlaceholder: String = "输入模型名称"
     open val apiAddModel: String = "添加模型"
     open val apiTesting: String = "测试中..."

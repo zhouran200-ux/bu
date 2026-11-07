@@ -2,6 +2,8 @@ package com.lucent.app.ui.settings
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,7 +15,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -29,7 +30,10 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
@@ -38,11 +42,13 @@ import androidx.compose.ui.unit.sp
 import com.lucent.app.collapseExcessBlankLines
 import com.lucent.app.i18n.S
 import com.lucent.app.ui.ApiModelPickerDialog
+import com.lucent.app.ui.copyPlainTextWithToast
 import com.lucent.app.ui.LucentIcons
 import com.lucent.app.ui.LocalOnGradient
 import com.lucent.app.ui.LocalOnGradientMuted
 import com.lucent.app.ui.LucentTitles
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun ApiModelsSection(
     models: List<String>,
@@ -52,6 +58,7 @@ internal fun ApiModelsSection(
     onModelsChange: (List<String>) -> Unit,
     onCustomModelInputChange: (String) -> Unit
 ) {
+    val context = LocalContext.current
     val onGradient = LocalOnGradient.current
     val onGradientMuted = LocalOnGradientMuted.current
     Spacer(modifier = Modifier.height(10.dp))
@@ -108,11 +115,13 @@ internal fun ApiModelsSection(
                                 else onGradientMuted.copy(alpha = 0.2f),
                                 cardShape
                             )
-                            .selectable(
-                                selected = isTestModel,
+                            .combinedClickable(
                                 role = Role.RadioButton,
-                                onClick = { onTestModelChange(if (isTestModel) "" else m) }
+                                onClick = { onTestModelChange(if (isTestModel) "" else m) },
+                                onLongClickLabel = S.apiCopyModelName,
+                                onLongClick = { copyPlainTextWithToast(context, m) }
                             )
+                            .semantics { selected = isTestModel }
                             .padding(horizontal = 10.dp, vertical = 5.dp)
                     ) {
                         Box(

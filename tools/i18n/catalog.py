@@ -110,6 +110,7 @@ ENTRIES = [
     ("apiFetchModelsFailed", "读取模型失败，请重试"),
     ("apiAvailableModels", "可用模型"),
     ("apiRemoveModel", "删除模型"),
+    ("apiCopyModelName", "复制模型名称"),
     ("apiModelNamePlaceholder", "输入模型名称"),
     ("apiAddModel", "添加模型"),
     ("apiTesting", "测试中..."),

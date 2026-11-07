@@ -20,7 +20,9 @@ class ApiConfigContractTest(unittest.TestCase):
         self.assertIn("ApiModelPickerDialog(", section)
         self.assertIn("testModel: String", section)
         self.assertIn("onTestModelChange: (String) -> Unit", section)
-        self.assertIn("selectable(", section)
+        self.assertIn("combinedClickable(", section)
+        self.assertIn("onLongClick = { copyPlainTextWithToast(context, m) }", section)
+        self.assertIn("onLongClickLabel = S.apiCopyModelName", section)
         self.assertIn("testModel = testModel", page)
         self.assertIn("onTestModelChange = { testModel = it }", page)
 
